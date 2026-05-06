@@ -545,6 +545,7 @@ static string BuildConfigurationPortalHtml() =>
         async function load() {
           const response = await fetch("/api/settings");
           state = await response.json();
+          applyDefaultSettings();
           render();
           setStatus("Configuration loaded.");
         }
@@ -773,9 +774,20 @@ static string BuildConfigurationPortalHtml() =>
             return;
           }
           state = await response.json();
+          applyDefaultSettings();
           render();
           setStatus("Configuration saved.");
         });
+
+        function applyDefaultSettings() {
+          if (!state) {
+            return;
+          }
+
+          if (typeof state.reviewLearningEnabled !== "boolean") {
+            state.reviewLearningEnabled = true;
+          }
+        }
 
         function normalizeConfigurationReferences() {
           if (!state) {
@@ -906,9 +918,16 @@ internal static class SpecForgePortalSettingsStore
     public static SpecForgePortalSettings LoadOrDefault(string workspaceRoot) =>
         Load(workspaceRoot) ?? CreateDefault();
 
-    public static SpecForgePortalSettings Deserialize(string payload) =>
-        JsonSerializer.Deserialize<SpecForgePortalSettings>(payload, JsonOptions)
+    public static SpecForgePortalSettings Deserialize(string payload)
+    {
+        using var document = JsonDocument.Parse(payload);
+        var settings = JsonSerializer.Deserialize<SpecForgePortalSettings>(payload, JsonOptions)
             ?? throw new InvalidOperationException("Configuration payload could not be parsed.");
+
+        return document.RootElement.TryGetProperty("reviewLearningEnabled", out _)
+            ? settings
+            : settings with { ReviewLearningEnabled = true };
+    }
 
     public static void Save(string workspaceRoot, SpecForgePortalSettings settings)
     {
