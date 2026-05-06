@@ -430,7 +430,7 @@ static string BuildConfigurationPortalHtml() =>
         .card { border: 1px solid #2a3a4d; border-radius: 8px; padding: 14px; background: #0f1924; }
         .card-header { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 12px; }
         .card-title { font-weight: 800; }
-        .toggles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        .toggles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
         .toggle { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; min-height: 46px; padding: 10px 12px; border: 1px solid #2a3a4d; border-radius: 8px; background: #0f1924; text-transform: none; cursor: pointer; }
         .toggle input { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; pointer-events: none; }
         .toggle__label { color: #d5e0eb; font-size: 0.9rem; font-weight: 750; text-transform: none; }
@@ -791,6 +791,18 @@ static string BuildConfigurationPortalHtml() =>
           if (typeof state.pauseOnFailedReview !== "boolean") {
             state.pauseOnFailedReview = true;
           }
+
+          if (typeof state.reviewSubagentsEnabled !== "boolean") {
+            state.reviewSubagentsEnabled = true;
+          }
+
+          if (typeof state.autoPlayEnabled !== "boolean") {
+            state.autoPlayEnabled = true;
+          }
+
+          if (typeof state.autoReviewEnabled !== "boolean") {
+            state.autoReviewEnabled = true;
+          }
         }
 
         function normalizeConfigurationReferences() {
@@ -938,6 +950,21 @@ internal static class SpecForgePortalSettingsStore
             settings = settings with { PauseOnFailedReview = true };
         }
 
+        if (!document.RootElement.TryGetProperty("reviewSubagentsEnabled", out _))
+        {
+            settings = settings with { ReviewSubagentsEnabled = true };
+        }
+
+        if (!document.RootElement.TryGetProperty("autoPlayEnabled", out _))
+        {
+            settings = settings with { AutoPlayEnabled = true };
+        }
+
+        if (!document.RootElement.TryGetProperty("autoReviewEnabled", out _))
+        {
+            settings = settings with { AutoReviewEnabled = true };
+        }
+
         return settings;
     }
 
@@ -957,11 +984,11 @@ internal static class SpecForgePortalSettingsStore
             ReviewTolerance: "balanced",
             ReviewEvidencePolicy: "balanced",
             TechnicalDesignSubagentsEnabled: false,
-            ReviewSubagentsEnabled: false,
+            ReviewSubagentsEnabled: true,
             AutoRefinementAnswersEnabled: false,
             AutoRefinementAnswersProfile: null,
-            AutoPlayEnabled: false,
-            AutoReviewEnabled: false,
+            AutoPlayEnabled: true,
+            AutoReviewEnabled: true,
             MaxImplementationReviewCycles: 5,
             DestructiveRewindEnabled: false,
             PauseOnFailedReview: true,
