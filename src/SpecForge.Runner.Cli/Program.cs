@@ -643,6 +643,7 @@ static string BuildConfigurationPortalHtml() =>
           }
           state.maxImplementationReviewCycles = Number(document.getElementById("maxImplementationReviewCycles")?.value) || 5;
           document.querySelectorAll("[data-toggle]").forEach(element => state[element.dataset.toggle] = element.checked);
+          normalizeConfigurationReferences();
         }
 
         function syncField(element) {
@@ -725,11 +726,13 @@ static string BuildConfigurationPortalHtml() =>
           }
           if (target.dataset.removeModel) {
             state.modelProfiles.splice(Number(target.dataset.removeModel), 1);
+            normalizeConfigurationReferences();
             render();
             return;
           }
           if (target.dataset.removeAgent) {
             state.agentProfiles.splice(Number(target.dataset.removeAgent), 1);
+            normalizeConfigurationReferences();
             render();
           }
         });
@@ -763,6 +766,7 @@ static string BuildConfigurationPortalHtml() =>
         document.getElementById("settings-form").addEventListener("submit", async event => {
           event.preventDefault();
           sync();
+          normalizeConfigurationReferences();
           const response = await fetch("/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(state) });
           if (!response.ok) {
             setStatus(await response.text());
@@ -772,6 +776,35 @@ static string BuildConfigurationPortalHtml() =>
           render();
           setStatus("Configuration saved.");
         });
+
+        function normalizeConfigurationReferences() {
+          if (!state) {
+            return;
+          }
+
+          const modelNames = new Set(state.modelProfiles.map(model => model.name).filter(Boolean));
+          for (const agent of state.agentProfiles) {
+            if (agent.modelProfile && !modelNames.has(agent.modelProfile)) {
+              agent.modelProfile = "";
+            }
+          }
+
+          const agentNames = new Set(state.agentProfiles.map(agent => agent.name).filter(Boolean));
+          state.phaseAgentAssignments ||= {};
+          for (const key of Object.keys(state.phaseAgentAssignments)) {
+            if (state.phaseAgentAssignments[key] && !agentNames.has(state.phaseAgentAssignments[key])) {
+              state.phaseAgentAssignments[key] = null;
+            }
+          }
+
+          if (state.autoRefinementAnswersProfile && !agentNames.has(state.autoRefinementAnswersProfile)) {
+            state.autoRefinementAnswersProfile = null;
+          }
+
+          if (!state.autoRefinementAnswersProfile) {
+            state.autoRefinementAnswersEnabled = false;
+          }
+        }
 
         function toggleHelpPopover(button) {
           const existing = document.querySelector(".help-popover");
