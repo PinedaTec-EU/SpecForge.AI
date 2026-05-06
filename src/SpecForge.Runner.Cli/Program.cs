@@ -565,40 +565,125 @@ static string BuildConfigurationPortalHtml() =>
         }
 
         function sync() {
+          if (!state) {
+            return;
+          }
+
+          state.phaseAgentAssignments ||= {};
           document.querySelectorAll("[data-kind]").forEach(element => {
             const kind = element.dataset.kind;
             const index = Number(element.dataset.index);
             const field = element.dataset.field;
-            if (kind === "model") state.modelProfiles[index][field] = element.value;
-            if (kind === "agent") state.agentProfiles[index][field] = element.value;
+            if (kind === "model" && state.modelProfiles[index]) state.modelProfiles[index][field] = element.value;
+            if (kind === "agent" && state.agentProfiles[index]) state.agentProfiles[index][field] = element.value;
             if (kind === "assignment") state.phaseAgentAssignments[field] = element.value || null;
           });
           for (const id of ["refinementTolerance", "reviewTolerance", "reviewEvidencePolicy", "autoRefinementAnswersProfile", "reviewLearningSkillPath"]) {
-            state[id] = document.getElementById(id).value || null;
+            const element = document.getElementById(id);
+            if (element) state[id] = element.value || null;
           }
-          state.maxImplementationReviewCycles = Number(document.getElementById("maxImplementationReviewCycles").value) || 5;
+          state.maxImplementationReviewCycles = Number(document.getElementById("maxImplementationReviewCycles")?.value) || 5;
           document.querySelectorAll("[data-toggle]").forEach(element => state[element.dataset.toggle] = element.checked);
+        }
+
+        function syncField(element) {
+          if (!state || !element.dataset) {
+            return false;
+          }
+
+          const kind = element.dataset.kind;
+          const index = Number(element.dataset.index);
+          const field = element.dataset.field;
+          if (kind === "model" && state.modelProfiles[index]) {
+            state.modelProfiles[index][field] = element.value;
+            return field === "name";
+          }
+          if (kind === "agent" && state.agentProfiles[index]) {
+            state.agentProfiles[index][field] = element.value;
+            return field === "name";
+          }
+          if (kind === "assignment") {
+            state.phaseAgentAssignments ||= {};
+            state.phaseAgentAssignments[field] = element.value || null;
+          }
+
+          return false;
+        }
+
+        function updateDependentSelectOptions() {
+          if (!state) {
+            return;
+          }
+
+          const modelNames = state.modelProfiles.map(model => model.name).filter(Boolean);
+          document.querySelectorAll('select[data-kind="agent"][data-field="modelProfile"]').forEach(selectElement => {
+            updateSelectOptions(selectElement, modelNames, selectElement.value || modelNames[0] || "");
+          });
+
+          const agentNames = ["", ...state.agentProfiles.map(agent => agent.name).filter(Boolean)];
+          document.querySelectorAll('select[data-kind="assignment"]').forEach(selectElement => {
+            updateSelectOptions(selectElement, agentNames, selectElement.value || "");
+          });
+
+          const autoRefinementAnswersProfile = document.getElementById("autoRefinementAnswersProfile");
+          if (autoRefinementAnswersProfile instanceof HTMLSelectElement) {
+            updateSelectOptions(autoRefinementAnswersProfile, agentNames, autoRefinementAnswersProfile.value || "");
+          }
+        }
+
+        function updateSelectOptions(selectElement, options, selectedValue) {
+          const normalizedSelectedValue = options.includes(selectedValue) ? selectedValue : "";
+          selectElement.innerHTML = options
+            .map(option => `<option value="${escapeAttr(option)}" ${option === normalizedSelectedValue ? "selected" : ""}>${escapeText(option || "None")}</option>`)
+            .join("");
         }
 
         document.addEventListener("click", event => {
           const target = event.target;
           if (!(target instanceof HTMLElement)) return;
+          sync();
           if (target.id === "add-model") {
             state.modelProfiles.push({ name: "", provider: "codex", baseUrl: "", apiKey: "", model: "", reasoningEffort: "", repositoryAccess: "none" });
             render();
+            return;
           }
           if (target.id === "add-agent") {
             state.agentProfiles.push({ name: "", role: "", modelProfile: state.modelProfiles[0]?.name || "", instructions: "", repositoryAccess: "none", reasoningEffort: "" });
             render();
+            return;
           }
-          if (target.id === "reload") load();
+          if (target.id === "reload") {
+            load();
+            return;
+          }
           if (target.dataset.removeModel) {
             state.modelProfiles.splice(Number(target.dataset.removeModel), 1);
             render();
+            return;
           }
           if (target.dataset.removeAgent) {
             state.agentProfiles.splice(Number(target.dataset.removeAgent), 1);
             render();
+          }
+        });
+
+        document.addEventListener("input", event => {
+          const target = event.target;
+          if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+            const refreshNeeded = syncField(target);
+            if (refreshNeeded) {
+              updateDependentSelectOptions();
+            }
+          }
+        });
+
+        document.addEventListener("change", event => {
+          const target = event.target;
+          if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) {
+            const refreshNeeded = syncField(target);
+            if (refreshNeeded) {
+              updateDependentSelectOptions();
+            }
           }
         });
 
