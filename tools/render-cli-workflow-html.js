@@ -7,7 +7,7 @@ const { buildWorkflowHtml } = require("../dist/workflowView");
 const payload = JSON.parse(fs.readFileSync(0, "utf8"));
 const workflow = payload.workflow;
 const state = {
-  selectedPhaseId: workflow.currentPhase,
+  selectedPhaseId: payload.selectedPhaseId ?? workflow.currentPhase,
   selectedArtifactContent: payload.selectedArtifactContent ?? null,
   selectedOperationContent: payload.selectedOperationContent ?? null,
   contextSuggestions: [],
@@ -43,6 +43,13 @@ const browserShim = `
       catch {}
     },
     postMessage(message) {
+      if (message?.command === "selectPhase" && message.phaseId) {
+        const url = new URL(window.location.href);
+        url.searchParams.set("selectedPhaseId", message.phaseId);
+        window.location.href = url.toString();
+        return;
+      }
+
       window.dispatchEvent(new CustomEvent("specforge-cli-command", { detail: message }));
     }
   };

@@ -235,7 +235,11 @@ static async Task HandleWorkflowPortalRequestAsync(
             case ("GET", "/"):
                 await WriteHtmlResponseAsync(
                     context.Response,
-                    await BuildWorkflowPortalHtmlAsync(applicationService, workspaceRoot, usId));
+                    await BuildWorkflowPortalHtmlAsync(
+                        applicationService,
+                        workspaceRoot,
+                        usId,
+                        context.Request.QueryString["selectedPhaseId"]));
                 return;
             case ("GET", "/api/workflow"):
                 await WriteJsonResponseAsync(context.Response, await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, usId));
@@ -268,15 +272,18 @@ static async Task HandleWorkflowPortalRequestAsync(
 static async Task<string> BuildWorkflowPortalHtmlAsync(
     SpecForgeApplicationService applicationService,
     string workspaceRoot,
-    string usId)
+    string usId,
+    string? selectedPhaseId)
 {
     var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, usId);
+    var resolvedSelectedPhaseId = ResolveSelectedWorkflowPhaseId(workflow, selectedPhaseId);
     var payload = JsonSerializer.Serialize(
         new
         {
             workflow,
-            selectedArtifactContent = await ReadSelectedArtifactContentAsync(workflow),
-            selectedOperationContent = await ReadSelectedOperationContentAsync(workflow),
+            selectedPhaseId = resolvedSelectedPhaseId,
+            selectedArtifactContent = await ReadSelectedArtifactContentAsync(workflow, resolvedSelectedPhaseId),
+            selectedOperationContent = await ReadSelectedOperationContentAsync(workflow, resolvedSelectedPhaseId),
             signature = BuildWorkflowSignature(workflow)
         },
         SpecForgePortalSettingsStore.JsonOptions);
@@ -332,9 +339,21 @@ static async Task<string> RenderWorkflowHtmlWithNodeAsync(string payload)
     return html;
 }
 
-static async Task<string?> ReadSelectedArtifactContentAsync(UserStoryWorkflowDetails workflow)
+static string ResolveSelectedWorkflowPhaseId(UserStoryWorkflowDetails workflow, string? selectedPhaseId)
 {
-    var selectedPhase = workflow.Phases.FirstOrDefault(phase => phase.IsCurrent)
+    if (!string.IsNullOrWhiteSpace(selectedPhaseId) &&
+        workflow.Phases.Any(phase => string.Equals(phase.PhaseId, selectedPhaseId, StringComparison.Ordinal)))
+    {
+        return selectedPhaseId;
+    }
+
+    return workflow.CurrentPhase;
+}
+
+static async Task<string?> ReadSelectedArtifactContentAsync(UserStoryWorkflowDetails workflow, string selectedPhaseId)
+{
+    var selectedPhase = workflow.Phases.FirstOrDefault(phase => string.Equals(phase.PhaseId, selectedPhaseId, StringComparison.Ordinal))
+        ?? workflow.Phases.FirstOrDefault(phase => phase.IsCurrent)
         ?? workflow.Phases.FirstOrDefault();
     if (selectedPhase?.ArtifactPath is null || !File.Exists(selectedPhase.ArtifactPath))
     {
@@ -344,9 +363,10 @@ static async Task<string?> ReadSelectedArtifactContentAsync(UserStoryWorkflowDet
     return await File.ReadAllTextAsync(selectedPhase.ArtifactPath);
 }
 
-static async Task<string?> ReadSelectedOperationContentAsync(UserStoryWorkflowDetails workflow)
+static async Task<string?> ReadSelectedOperationContentAsync(UserStoryWorkflowDetails workflow, string selectedPhaseId)
 {
-    var selectedPhase = workflow.Phases.FirstOrDefault(phase => phase.IsCurrent)
+    var selectedPhase = workflow.Phases.FirstOrDefault(phase => string.Equals(phase.PhaseId, selectedPhaseId, StringComparison.Ordinal))
+        ?? workflow.Phases.FirstOrDefault(phase => phase.IsCurrent)
         ?? workflow.Phases.FirstOrDefault();
     if (selectedPhase?.OperationLogPath is null || !File.Exists(selectedPhase.OperationLogPath))
     {
