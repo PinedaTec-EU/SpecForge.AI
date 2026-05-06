@@ -787,6 +787,10 @@ static string BuildConfigurationPortalHtml() =>
           if (typeof state.reviewLearningEnabled !== "boolean") {
             state.reviewLearningEnabled = true;
           }
+
+          if (typeof state.pauseOnFailedReview !== "boolean") {
+            state.pauseOnFailedReview = true;
+          }
         }
 
         function normalizeConfigurationReferences() {
@@ -924,9 +928,17 @@ internal static class SpecForgePortalSettingsStore
         var settings = JsonSerializer.Deserialize<SpecForgePortalSettings>(payload, JsonOptions)
             ?? throw new InvalidOperationException("Configuration payload could not be parsed.");
 
-        return document.RootElement.TryGetProperty("reviewLearningEnabled", out _)
-            ? settings
-            : settings with { ReviewLearningEnabled = true };
+        if (!document.RootElement.TryGetProperty("reviewLearningEnabled", out _))
+        {
+            settings = settings with { ReviewLearningEnabled = true };
+        }
+
+        if (!document.RootElement.TryGetProperty("pauseOnFailedReview", out _))
+        {
+            settings = settings with { PauseOnFailedReview = true };
+        }
+
+        return settings;
     }
 
     public static void Save(string workspaceRoot, SpecForgePortalSettings settings)
@@ -952,7 +964,7 @@ internal static class SpecForgePortalSettingsStore
             AutoReviewEnabled: false,
             MaxImplementationReviewCycles: 5,
             DestructiveRewindEnabled: false,
-            PauseOnFailedReview: false,
+            PauseOnFailedReview: true,
             ReviewLearningEnabled: true,
             ReviewLearningSkillPath: ".codex/skills/sdd-phase-agents/SKILL.md",
             CompletedUsLockOnCompleted: false);
