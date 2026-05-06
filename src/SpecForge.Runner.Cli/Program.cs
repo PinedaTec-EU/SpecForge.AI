@@ -610,7 +610,15 @@ static string BuildConfigurationPortalHtml() =>
         }
 
         function select(kind, index, field, label, value, options) {
+          if (kind === "assignment") {
+            return `<label>${fieldLabel(label, `${kind}.${field}`)}<select data-kind="${kind}" data-index="${index}" data-field="${field}">${options.map(option => `<option value="${escapeAttr(option)}" ${option === value ? "selected" : ""}>${escapeText(option || "None")}</option>`).join("")}</select></label>`;
+          }
+
           return `<label><span class="field-label">${escapeText(label)}</span><span class="field-control"><select data-kind="${kind}" data-index="${index}" data-field="${field}">${options.map(option => `<option value="${escapeAttr(option)}" ${option === value ? "selected" : ""}>${escapeText(option || "None")}</option>`).join("")}</select>${helpButton(`${kind}.${field}`, label)}</span></label>`;
+        }
+
+        function fieldLabel(label, helpKey) {
+          return `<span class="field-label">${escapeText(label)}${helpButton(helpKey, label)}</span>`;
         }
 
         function helpButton(helpKey, label) {
