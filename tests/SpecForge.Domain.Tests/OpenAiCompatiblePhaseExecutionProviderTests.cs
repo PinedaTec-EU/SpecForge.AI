@@ -439,6 +439,68 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
         Assert.Contains("[static]", userPrompt);
         Assert.Contains("[operational]", userPrompt);
         Assert.Contains("[deferred]", userPrompt);
+        Assert.DoesNotContain("## Phase Subagent Reports", userPrompt);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_TechnicalDesign_WhenSubagentsEnabled_SynthesizesSpecialistReports()
+    {
+        await PrepareInitializedWorkspaceAsync();
+        var handler = new CapturingFakeHttpMessageHandler(BuildMinimalTechnicalDesignMarkdown());
+        var provider = new OpenAiCompatiblePhaseExecutionProvider(
+            new HttpClient(handler),
+            CreateOptions(
+                model: "llama3.1",
+                phaseSubagents: new OpenAiCompatiblePhaseSubagentOptions(TechnicalDesignEnabled: true)));
+        var context = new PhaseExecutionContext(
+            WorkspaceRoot: workspaceRoot,
+            UsId: "US-0001",
+            PhaseId: PhaseId.TechnicalDesign,
+            UserStoryPath: Path.Combine(workspaceRoot, ".specs", "us", "workflow", "US-0001", "us.md"),
+            PreviousArtifactPaths: new Dictionary<PhaseId, string>(),
+            ContextFilePaths: []);
+
+        var result = await provider.ExecuteAsync(context);
+
+        Assert.Equal(4, handler.RequestBodies.Count);
+        Assert.Contains("Subagent: `repository-scout`", OpenAiCompatibleRequestJson.ReadUserPrompt(handler.RequestBodies[0]));
+        Assert.Contains("Subagent: `solution-planner`", OpenAiCompatibleRequestJson.ReadUserPrompt(handler.RequestBodies[1]));
+        Assert.Contains("Subagent: `validation-strategist`", OpenAiCompatibleRequestJson.ReadUserPrompt(handler.RequestBodies[2]));
+        var coordinatorPrompt = OpenAiCompatibleRequestJson.ReadUserPrompt(handler.RequestBodies[3]);
+        Assert.Contains("## Phase Subagent Reports", coordinatorPrompt);
+        Assert.Contains("repository-scout - Repository context scout", coordinatorPrompt);
+        Assert.Contains("Produce the single complete Markdown artifact for the phase now.", coordinatorPrompt);
+        Assert.Contains(result.Execution!.Warnings!, warning => warning.Contains("Phase subagents enabled for `technical-design`", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_Review_WhenSubagentsEnabled_SynthesizesSpecialistReports()
+    {
+        await PrepareInitializedWorkspaceAsync();
+        var handler = new CapturingFakeHttpMessageHandler(BuildMinimalReviewMarkdown());
+        var provider = new OpenAiCompatiblePhaseExecutionProvider(
+            new HttpClient(handler),
+            CreateOptions(
+                model: "llama3.1",
+                phaseSubagents: new OpenAiCompatiblePhaseSubagentOptions(ReviewEnabled: true)));
+        var context = new PhaseExecutionContext(
+            WorkspaceRoot: workspaceRoot,
+            UsId: "US-0001",
+            PhaseId: PhaseId.Review,
+            UserStoryPath: Path.Combine(workspaceRoot, ".specs", "us", "workflow", "US-0001", "us.md"),
+            PreviousArtifactPaths: new Dictionary<PhaseId, string>(),
+            ContextFilePaths: []);
+
+        var result = await provider.ExecuteAsync(context);
+
+        Assert.Equal(4, handler.RequestBodies.Count);
+        Assert.Contains("Subagent: `functional-auditor`", OpenAiCompatibleRequestJson.ReadUserPrompt(handler.RequestBodies[0]));
+        Assert.Contains("Subagent: `technical-auditor`", OpenAiCompatibleRequestJson.ReadUserPrompt(handler.RequestBodies[1]));
+        Assert.Contains("Subagent: `release-risk-auditor`", OpenAiCompatibleRequestJson.ReadUserPrompt(handler.RequestBodies[2]));
+        var coordinatorPrompt = OpenAiCompatibleRequestJson.ReadUserPrompt(handler.RequestBodies[3]);
+        Assert.Contains("## Phase Subagent Reports", coordinatorPrompt);
+        Assert.Contains("release-risk-auditor - Release risk reviewer", coordinatorPrompt);
+        Assert.Contains(result.Execution!.Warnings!, warning => warning.Contains("Phase subagents enabled for `review`", StringComparison.Ordinal));
     }
 
     [Theory]
@@ -1443,7 +1505,8 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
         bool autoRefinementAnswersEnabled = false,
         string? autoRefinementAnswersProfile = null,
         bool reviewLearningEnabled = true,
-        string reviewLearningSkillPath = ".codex/skills/sdd-phase-agents/SKILL.md")
+        string reviewLearningSkillPath = ".codex/skills/sdd-phase-agents/SKILL.md",
+        OpenAiCompatiblePhaseSubagentOptions? phaseSubagents = null)
     {
         return new OpenAiCompatibleProviderOptions(
             RefinementTolerance: refinementTolerance,
@@ -1474,7 +1537,8 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
                     RepositoryAccess: repositoryAccess)
             ],
             PhaseAgentAssignments: new OpenAiCompatiblePhaseAgentAssignments(
-                DefaultAgent: profileName));
+                DefaultAgent: profileName),
+            PhaseSubagents: phaseSubagents);
     }
 
     private sealed class CapturingFakeHttpMessageHandler : HttpMessageHandler
@@ -1490,10 +1554,13 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
 
         public string LastBody { get; private set; } = string.Empty;
 
+        public List<string> RequestBodies { get; } = [];
+
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             LastRequest = request;
             LastBody = await request.Content!.ReadAsStringAsync(cancellationToken);
+            RequestBodies.Add(LastBody);
 
             var payload = JsonSerializer.Serialize(new
             {

@@ -333,6 +333,16 @@
           ],
           "description": "How the review phase treats missing automated, static, operational, and deferred validation evidence when deciding pass/fail readiness."
         },
+        "specForge.execution.technicalDesignSubagentsEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "When enabled, technical design runs specialist subagents before synthesizing the final phase artifact."
+        },
+        "specForge.execution.reviewSubagentsEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "When enabled, review runs specialist subagents before synthesizing the final review verdict artifact."
+        },
         "specForge.execution.autoRefinementAnswersProfile": {
           "type": "string",
           "default": "",

@@ -27,6 +27,10 @@ public sealed record OpenAiCompatiblePhaseAgentAssignments(
     string? ReleaseApprovalAgent = null,
     string? PrPreparationAgent = null);
 
+public sealed record OpenAiCompatiblePhaseSubagentOptions(
+    bool TechnicalDesignEnabled = false,
+    bool ReviewEnabled = false);
+
 public sealed record OpenAiCompatibleProviderOptions(
     string? SystemPrompt = null,
     string RefinementTolerance = "balanced",
@@ -38,4 +42,5 @@ public sealed record OpenAiCompatibleProviderOptions(
     string ReviewLearningSkillPath = ".codex/skills/sdd-phase-agents/SKILL.md",
     IReadOnlyList<OpenAiCompatibleModelProfile>? ModelProfiles = null,
     IReadOnlyList<OpenAiCompatibleAgentProfile>? AgentProfiles = null,
-    OpenAiCompatiblePhaseAgentAssignments? PhaseAgentAssignments = null);
+    OpenAiCompatiblePhaseAgentAssignments? PhaseAgentAssignments = null,
+    OpenAiCompatiblePhaseSubagentOptions? PhaseSubagents = null);

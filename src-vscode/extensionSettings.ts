@@ -9,6 +9,8 @@ export interface SpecForgeSettings {
   readonly refinementTolerance: string;
   readonly reviewTolerance: string;
   readonly reviewEvidencePolicy?: string;
+  readonly technicalDesignSubagentsEnabled?: boolean;
+  readonly reviewSubagentsEnabled?: boolean;
   readonly workflowGraphLayoutMode: "horizontal" | "vertical";
   readonly workflowGraphInitialZoomMode: "actual-size" | "fit-width";
   readonly userStoryListViewMode?: "category" | "phase";
@@ -115,6 +117,8 @@ export function readSpecForgeSettings(configuration: ConfigurationReader): SpecF
     refinementTolerance: normalizeTolerance(configuration.get<string>("execution.refinementTolerance", "balanced")),
     reviewTolerance: normalizeTolerance(configuration.get<string>("execution.reviewTolerance", "balanced")),
     reviewEvidencePolicy,
+    technicalDesignSubagentsEnabled: configuration.get<boolean>("execution.technicalDesignSubagentsEnabled", false),
+    reviewSubagentsEnabled: configuration.get<boolean>("execution.reviewSubagentsEnabled", false),
     workflowGraphLayoutMode: configuration.get<"horizontal" | "vertical">("ui.workflowGraphLayoutMode", "vertical") === "horizontal" ? "horizontal" : "vertical",
     workflowGraphInitialZoomMode: configuration.get<"actual-size" | "fit-width">("ui.workflowGraphInitialZoomMode", "actual-size") === "fit-width" ? "fit-width" : "actual-size",
     userStoryListViewMode,
@@ -147,6 +151,8 @@ export function buildBackendEnvironment(settings: SpecForgeSettings): NodeJS.Pro
   env.SPECFORGE_REFINEMENT_TOLERANCE = settings.refinementTolerance;
   env.SPECFORGE_REVIEW_TOLERANCE = settings.reviewTolerance;
   env.SPECFORGE_REVIEW_EVIDENCE_POLICY = settings.reviewEvidencePolicy ?? "balanced";
+  env.SPECFORGE_TECHNICAL_DESIGN_SUBAGENTS_ENABLED = settings.technicalDesignSubagentsEnabled === true ? "true" : "false";
+  env.SPECFORGE_REVIEW_SUBAGENTS_ENABLED = settings.reviewSubagentsEnabled === true ? "true" : "false";
   env.SPECFORGE_AUTO_REFINEMENT_ANSWERS_ENABLED = settings.autoRefinementAnswersEnabled ? "true" : "false";
   env.SPECFORGE_REVIEW_LEARNING_ENABLED = settings.reviewLearningEnabled === false ? "false" : "true";
   env.SPECFORGE_REVIEW_LEARNING_SKILL_PATH =
@@ -357,6 +363,8 @@ function buildSettingsDiagnostics(settings: SpecForgeSettings): string {
     `phaseAgents.review=${settings.phaseAgentAssignments.reviewAgent ?? "<unset>"}`,
     `phaseAgents.releaseApproval=${settings.phaseAgentAssignments.releaseApprovalAgent ?? "<unset>"}`,
     `phaseAgents.prPreparation=${settings.phaseAgentAssignments.prPreparationAgent ?? "<unset>"}`,
+    `subagents.technicalDesign=${settings.technicalDesignSubagentsEnabled === true}`,
+    `subagents.review=${settings.reviewSubagentsEnabled === true}`,
     `autoRefinementAnswers.enabled=${settings.autoRefinementAnswersEnabled}`,
     `autoRefinementAnswers.agent=${settings.autoRefinementAnswersProfile ?? "<unset>"}`,
     `autoReviewEnabled=${settings.autoReviewEnabled}`,

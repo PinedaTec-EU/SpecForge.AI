@@ -39,6 +39,8 @@ function readSpecForgeSettings(configuration) {
         refinementTolerance: normalizeTolerance(configuration.get("execution.refinementTolerance", "balanced")),
         reviewTolerance: normalizeTolerance(configuration.get("execution.reviewTolerance", "balanced")),
         reviewEvidencePolicy,
+        technicalDesignSubagentsEnabled: configuration.get("execution.technicalDesignSubagentsEnabled", false),
+        reviewSubagentsEnabled: configuration.get("execution.reviewSubagentsEnabled", false),
         workflowGraphLayoutMode: configuration.get("ui.workflowGraphLayoutMode", "vertical") === "horizontal" ? "horizontal" : "vertical",
         workflowGraphInitialZoomMode: configuration.get("ui.workflowGraphInitialZoomMode", "actual-size") === "fit-width" ? "fit-width" : "actual-size",
         userStoryListViewMode,
@@ -68,6 +70,8 @@ function buildBackendEnvironment(settings) {
     env.SPECFORGE_REFINEMENT_TOLERANCE = settings.refinementTolerance;
     env.SPECFORGE_REVIEW_TOLERANCE = settings.reviewTolerance;
     env.SPECFORGE_REVIEW_EVIDENCE_POLICY = settings.reviewEvidencePolicy ?? "balanced";
+    env.SPECFORGE_TECHNICAL_DESIGN_SUBAGENTS_ENABLED = settings.technicalDesignSubagentsEnabled === true ? "true" : "false";
+    env.SPECFORGE_REVIEW_SUBAGENTS_ENABLED = settings.reviewSubagentsEnabled === true ? "true" : "false";
     env.SPECFORGE_AUTO_REFINEMENT_ANSWERS_ENABLED = settings.autoRefinementAnswersEnabled ? "true" : "false";
     env.SPECFORGE_REVIEW_LEARNING_ENABLED = settings.reviewLearningEnabled === false ? "false" : "true";
     env.SPECFORGE_REVIEW_LEARNING_SKILL_PATH =
@@ -238,6 +242,8 @@ function buildSettingsDiagnostics(settings) {
         `phaseAgents.review=${settings.phaseAgentAssignments.reviewAgent ?? "<unset>"}`,
         `phaseAgents.releaseApproval=${settings.phaseAgentAssignments.releaseApprovalAgent ?? "<unset>"}`,
         `phaseAgents.prPreparation=${settings.phaseAgentAssignments.prPreparationAgent ?? "<unset>"}`,
+        `subagents.technicalDesign=${settings.technicalDesignSubagentsEnabled === true}`,
+        `subagents.review=${settings.reviewSubagentsEnabled === true}`,
         `autoRefinementAnswers.enabled=${settings.autoRefinementAnswersEnabled}`,
         `autoRefinementAnswers.agent=${settings.autoRefinementAnswersProfile ?? "<unset>"}`,
         `autoReviewEnabled=${settings.autoReviewEnabled}`,

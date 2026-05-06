@@ -163,6 +163,8 @@ static IPhaseExecutionProvider CreatePhaseExecutionProvider()
     const string modelProfilesEnvVar = "SPECFORGE_OPENAI_MODEL_PROFILES_JSON";
     const string agentProfilesEnvVar = "SPECFORGE_OPENAI_AGENT_PROFILES_JSON";
     const string phaseAgentsEnvVar = "SPECFORGE_OPENAI_PHASE_AGENT_ASSIGNMENTS_JSON";
+    const string technicalDesignSubagentsEnabledEnvVar = "SPECFORGE_TECHNICAL_DESIGN_SUBAGENTS_ENABLED";
+    const string reviewSubagentsEnabledEnvVar = "SPECFORGE_REVIEW_SUBAGENTS_ENABLED";
     const string refinementToleranceEnvVar = "SPECFORGE_REFINEMENT_TOLERANCE";
     const string legacyRefinementToleranceEnvVar = "SPECFORGE_CAPTURE_TOLERANCE";
     const string reviewToleranceEnvVar = "SPECFORGE_REVIEW_TOLERANCE";
@@ -226,8 +228,17 @@ static IPhaseExecutionProvider CreatePhaseExecutionProvider()
                 : reviewLearningSkillPath.Trim(),
             ModelProfiles: modelProfiles,
             AgentProfiles: agentProfiles,
-            PhaseAgentAssignments: phaseAgents));
+            PhaseAgentAssignments: phaseAgents,
+            PhaseSubagents: new OpenAiCompatiblePhaseSubagentOptions(
+                TechnicalDesignEnabled: IsEnabled(technicalDesignSubagentsEnabledEnvVar),
+                ReviewEnabled: IsEnabled(reviewSubagentsEnabledEnvVar))));
 }
+
+static bool IsEnabled(string environmentVariable) =>
+    string.Equals(
+        Environment.GetEnvironmentVariable(environmentVariable),
+        "true",
+        StringComparison.OrdinalIgnoreCase);
 
 static TimeSpan ReadOpenAiTimeout(string timeoutSecondsEnvVar)
 {

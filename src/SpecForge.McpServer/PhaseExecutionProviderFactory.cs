@@ -17,6 +17,8 @@ internal static class PhaseExecutionProviderFactory
     private const string ModelProfilesJsonEnvVar = "SPECFORGE_OPENAI_MODEL_PROFILES_JSON";
     private const string AgentProfilesJsonEnvVar = "SPECFORGE_OPENAI_AGENT_PROFILES_JSON";
     private const string PhaseAgentAssignmentsJsonEnvVar = "SPECFORGE_OPENAI_PHASE_AGENT_ASSIGNMENTS_JSON";
+    private const string TechnicalDesignSubagentsEnabledEnvVar = "SPECFORGE_TECHNICAL_DESIGN_SUBAGENTS_ENABLED";
+    private const string ReviewSubagentsEnabledEnvVar = "SPECFORGE_REVIEW_SUBAGENTS_ENABLED";
     private const string RefinementToleranceEnvVar = "SPECFORGE_REFINEMENT_TOLERANCE";
     private const string LegacyRefinementToleranceEnvVar = "SPECFORGE_CAPTURE_TOLERANCE";
     private const string ReviewToleranceEnvVar = "SPECFORGE_REVIEW_TOLERANCE";
@@ -98,9 +100,18 @@ internal static class PhaseExecutionProviderFactory
                 : reviewLearningSkillPath.Trim(),
             ModelProfiles: modelProfiles,
             AgentProfiles: agentProfiles,
-            PhaseAgentAssignments: assignments);
+            PhaseAgentAssignments: assignments,
+            PhaseSubagents: new OpenAiCompatiblePhaseSubagentOptions(
+                TechnicalDesignEnabled: IsEnabled(TechnicalDesignSubagentsEnabledEnvVar),
+                ReviewEnabled: IsEnabled(ReviewSubagentsEnabledEnvVar)));
         return new OpenAiCompatiblePhaseExecutionProvider(httpClient, options);
     }
+
+    private static bool IsEnabled(string environmentVariable) =>
+        string.Equals(
+            Environment.GetEnvironmentVariable(environmentVariable),
+            "true",
+            StringComparison.OrdinalIgnoreCase);
 
     private static IReadOnlyList<OpenAiCompatibleModelProfile> ReadModelProfilesFromEnvironment()
     {

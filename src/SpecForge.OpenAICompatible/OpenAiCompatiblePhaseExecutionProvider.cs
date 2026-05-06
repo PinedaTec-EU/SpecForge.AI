@@ -217,6 +217,21 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
         var prompt = await BuildEffectivePromptAsync(context, cancellationToken);
         SpecForgeDiagnostics.Log(
             $"[provider.execute] usId={context.UsId} phase={context.PhaseId} promptBuilt systemChars={prompt.SystemPrompt.Length} userChars={prompt.UserPrompt.Length} warnings={(prompt.Warnings?.Count ?? 0)}");
+
+        if (ShouldRunPhaseSubagents(context))
+        {
+            return await ExecuteWithPhaseSubagentsAsync(context, prompt, modelSelection, cancellationToken);
+        }
+
+        return await ExecuteSinglePhaseAsync(context, prompt, modelSelection, cancellationToken);
+    }
+
+    private async Task<PhaseExecutionResult> ExecuteSinglePhaseAsync(
+        PhaseExecutionContext context,
+        EffectivePrompt prompt,
+        ResolvedModelSelection modelSelection,
+        CancellationToken cancellationToken)
+    {
         if (ShouldUseNativeCli(modelSelection))
         {
             return await ExecuteViaNativeCliAsync(context, prompt, modelSelection, cancellationToken);
@@ -254,6 +269,170 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
                 InputSha256: inputSha256,
                 OutputSha256: outputSha256,
                 StructuredOutputSha256: null));
+    }
+
+    private async Task<PhaseExecutionResult> ExecuteWithPhaseSubagentsAsync(
+        PhaseExecutionContext context,
+        EffectivePrompt prompt,
+        ResolvedModelSelection modelSelection,
+        CancellationToken cancellationToken)
+    {
+        var subagents = ResolvePhaseSubagents(context.PhaseId);
+        SpecForgeDiagnostics.Log(
+            $"[provider.subagents] usId={context.UsId} phase={context.PhaseId} enabled=true count={subagents.Count} provider={modelSelection.ProviderKind} profile={modelSelection.ProfileName ?? "default"}");
+
+        var notes = new List<PhaseSubagentResult>();
+        foreach (var subagent in subagents)
+        {
+            SpecForgeDiagnostics.Log(
+                $"[provider.subagents] usId={context.UsId} phase={context.PhaseId} subagent={subagent.Name} starting");
+            var result = await ExecutePhaseSubagentAsync(context, prompt, modelSelection, subagent, cancellationToken);
+            notes.Add(result);
+            SpecForgeDiagnostics.Log(
+                $"[provider.subagents] usId={context.UsId} phase={context.PhaseId} subagent={subagent.Name} complete chars={result.Content.Length}");
+        }
+
+        var coordinatedPrompt = prompt with
+        {
+            UserPrompt = BuildCoordinatedPhasePrompt(prompt.UserPrompt, notes),
+            Warnings = AppendPromptWarning(
+                prompt.Warnings,
+                $"Phase subagents enabled for `{WorkflowPresentation.ToPhaseSlug(context.PhaseId)}`; coordinator synthesized {notes.Count} specialist reports.")
+        };
+
+        return await ExecuteSinglePhaseAsync(context, coordinatedPrompt, modelSelection, cancellationToken);
+    }
+
+    private async Task<PhaseSubagentResult> ExecutePhaseSubagentAsync(
+        PhaseExecutionContext context,
+        EffectivePrompt prompt,
+        ResolvedModelSelection modelSelection,
+        PhaseSubagentDefinition subagent,
+        CancellationToken cancellationToken)
+    {
+        var userPrompt = BuildPhaseSubagentPrompt(context, prompt.UserPrompt, subagent);
+
+        if (ShouldUseNativeCli(modelSelection))
+        {
+            var nativePrompt = NativeCliPromptBuilder.BuildStandaloneMarkdownPrompt(
+                modelSelection.ProviderKind,
+                $"SpecForge {WorkflowPresentation.ToPhaseSlug(context.PhaseId)} subagent: {subagent.Name}",
+                new EffectivePrompt(prompt.SystemPrompt, userPrompt, prompt.Warnings));
+            var nativeResult = await ExecuteStructuredNativeAsync(
+                context.WorkspaceRoot,
+                nativePrompt,
+                modelSelection,
+                context.PhaseId == PhaseId.Review ? "workspace-write" : "read-only",
+                cancellationToken);
+            return new PhaseSubagentResult(subagent.Name, subagent.Role, nativeResult.Content.Trim(), nativeResult.Usage);
+        }
+
+        var (content, usage, _, _) = await ExecuteStructuredHttpAsync(
+            modelSelection,
+            prompt.SystemPrompt,
+            userPrompt,
+            ResolveTemperature(context.PhaseId),
+            cancellationToken);
+        return new PhaseSubagentResult(subagent.Name, subagent.Role, content.Trim(), usage);
+    }
+
+    private bool ShouldRunPhaseSubagents(PhaseExecutionContext context)
+    {
+        if (!string.IsNullOrWhiteSpace(context.OperationPrompt))
+        {
+            return false;
+        }
+
+        return context.PhaseId switch
+        {
+            PhaseId.TechnicalDesign => options.PhaseSubagents?.TechnicalDesignEnabled == true,
+            PhaseId.Review => options.PhaseSubagents?.ReviewEnabled == true,
+            _ => false
+        };
+    }
+
+    private static IReadOnlyList<PhaseSubagentDefinition> ResolvePhaseSubagents(PhaseId phaseId) =>
+        phaseId switch
+        {
+            PhaseId.TechnicalDesign =>
+            [
+                new("repository-scout", "Repository context scout", "Identify existing files, modules, contracts, tests, and integration surfaces that constrain the design. Focus on evidence and local patterns."),
+                new("solution-planner", "Technical solution planner", "Propose a bounded implementation strategy that preserves responsibilities and avoids broad catch-all abstractions."),
+                new("validation-strategist", "Validation strategy planner", "Define concrete validation evidence, classify each item as [automated], [static], [operational], or [deferred], and call out risks.")
+            ],
+            PhaseId.Review =>
+            [
+                new("functional-auditor", "Functional compliance reviewer", "Compare implementation evidence against the approved spec and identify behavior gaps or unsupported scope changes."),
+                new("technical-auditor", "Technical design reviewer", "Verify implementation against the technical design, repository boundaries, and expected validation strategy."),
+                new("release-risk-auditor", "Release risk reviewer", "Assess missing evidence, operational risks, regression risk, and whether findings should block release readiness.")
+            ],
+            _ => []
+        };
+
+    private static string BuildPhaseSubagentPrompt(
+        PhaseExecutionContext context,
+        string phasePrompt,
+        PhaseSubagentDefinition subagent)
+    {
+        var builder = new StringBuilder()
+            .AppendLine(phasePrompt.Trim())
+            .AppendLine()
+            .AppendLine("## Subagent Assignment")
+            .AppendLine()
+            .AppendLine($"- Subagent: `{subagent.Name}`")
+            .AppendLine($"- Role: `{subagent.Role}`")
+            .AppendLine($"- Phase: `{context.PhaseId}`")
+            .AppendLine()
+            .AppendLine(subagent.Instructions)
+            .AppendLine()
+            .AppendLine("## Subagent Output Contract")
+            .AppendLine()
+            .AppendLine("Return only Markdown notes for the coordinator.")
+            .AppendLine("Use exactly these headings: `## Evidence`, `## Findings`, `## Risks`, and `## Coordinator Notes`.")
+            .AppendLine("Do not return the final phase artifact.")
+            .AppendLine("Do not return JSON.");
+
+        return builder.ToString().Trim();
+    }
+
+    private static string BuildCoordinatedPhasePrompt(
+        string phasePrompt,
+        IReadOnlyCollection<PhaseSubagentResult> notes)
+    {
+        var builder = new StringBuilder()
+            .AppendLine(phasePrompt.Trim())
+            .AppendLine()
+            .AppendLine("## Phase Subagent Reports")
+            .AppendLine()
+            .AppendLine("Use the specialist reports below as reviewable input. Resolve conflicts explicitly inside the final phase artifact when they affect the outcome.")
+            .AppendLine("Do not paste these reports verbatim; synthesize them into the required phase Markdown contract.")
+            .AppendLine();
+
+        foreach (var note in notes)
+        {
+            builder
+                .AppendLine($"### {note.Name} - {note.Role}")
+                .AppendLine()
+                .AppendLine(note.Content.Trim())
+                .AppendLine();
+        }
+
+        builder
+            .AppendLine("## Coordinator Instruction")
+            .AppendLine()
+            .AppendLine("Produce the single complete Markdown artifact for the phase now.")
+            .AppendLine("The artifact must satisfy the original phase contract exactly and include only final phase content.");
+
+        return builder.ToString().Trim();
+    }
+
+    private static IReadOnlyCollection<string>? AppendPromptWarning(
+        IReadOnlyCollection<string>? warnings,
+        string warning)
+    {
+        var combined = warnings?.ToList() ?? [];
+        combined.Add(warning);
+        return combined;
     }
 
     private static HttpRequestMessage BuildRequest(
@@ -1974,6 +2153,17 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
         string? AgentName,
         string? AgentRole,
         string? AgentInstructions);
+
+    private sealed record PhaseSubagentDefinition(
+        string Name,
+        string Role,
+        string Instructions);
+
+    private sealed record PhaseSubagentResult(
+        string Name,
+        string Role,
+        string Content,
+        TokenUsage? Usage);
 
     internal sealed record NativeCliInvocation(
         string ProviderKind,

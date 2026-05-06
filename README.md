@@ -197,6 +197,17 @@ Equivalent shorthand without an explicit `provider` field:
 
 Model profiles describe engines. Agent profiles describe who runs a phase, which model profile they use, their instructions, and their effective repository permission. Phases route to agents through `specForge.execution.phaseAgents`.
 
+Technical design and review can also run phase-local subagents before the final artifact is synthesized. These flags are off by default:
+
+```json
+{
+  "specForge.execution.technicalDesignSubagentsEnabled": true,
+  "specForge.execution.reviewSubagentsEnabled": true
+}
+```
+
+When enabled, SpecForge runs specialist model passes using the assigned phase agent, then asks a coordinator pass to produce the single canonical Markdown artifact for the phase. Technical design uses repository, solution-planning, and validation-strategy subagents. Review uses functional, technical, and release-risk auditors.
+
 Minimal agent profile:
 
 ```json
@@ -530,6 +541,8 @@ The extension contributes these settings:
 - `specForge.execution.refinementTolerance`
 - `specForge.execution.reviewTolerance`
 - `specForge.execution.reviewEvidencePolicy`
+- `specForge.execution.technicalDesignSubagentsEnabled`
+- `specForge.execution.reviewSubagentsEnabled`
 - `specForge.execution.autoRefinementAnswersProfile`
 - `specForge.ui.enableWatcher`
 - `specForge.ui.notifyOnAttention`
@@ -550,6 +563,7 @@ Use it to:
 - enter endpoint details for bridge-based providers
 - create or edit agent profiles with role, instructions, permissions, and a model profile reference
 - assign a configured agent to each workflow phase
+- enable switch-style subagent orchestration for technical design and review
 - read and write the same persisted values stored under `specForge.execution.modelProfiles`, `specForge.execution.agentProfiles`, and `specForge.execution.phaseAgents`
 
 Example persisted shape:
@@ -599,7 +613,9 @@ Example persisted shape:
     "technicalDesignAgent": "planner",
     "implementationAgent": "implementer",
     "reviewAgent": "reviewer"
-  }
+  },
+  "specForge.execution.technicalDesignSubagentsEnabled": true,
+  "specForge.execution.reviewSubagentsEnabled": true
 }
 ```
 

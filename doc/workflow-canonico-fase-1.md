@@ -14,6 +14,7 @@ Includes:
 - regression from review to an allowed previous phase
 - persistence of artifacts and minimum state
 - creation of the work branch after the first approved spec baseline
+- optional phase-local subagent orchestration for `technical-design` and `review`
 
 Does not include:
 
@@ -21,7 +22,7 @@ Does not include:
 - intra-user-story parallelization
 - real PR integration
 - real issue integration
-- advanced multi-agent assignment per phase
+- arbitrary advanced multi-agent assignment per phase
 
 ## Workflow Phases
 

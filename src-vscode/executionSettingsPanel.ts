@@ -19,6 +19,8 @@ type ExecutionSettingsMessage =
       readonly refinementTolerance?: string;
       readonly reviewTolerance?: string;
       readonly reviewEvidencePolicy?: string;
+      readonly technicalDesignSubagentsEnabled?: boolean;
+      readonly reviewSubagentsEnabled?: boolean;
       readonly watcherEnabled?: boolean;
       readonly attentionNotificationsEnabled?: boolean;
       readonly contextSuggestionsEnabled?: boolean;
@@ -96,6 +98,8 @@ class ExecutionSettingsPanelController {
               message.refinementTolerance ?? "balanced",
               message.reviewTolerance ?? "balanced",
               message.reviewEvidencePolicy ?? "balanced",
+              message.technicalDesignSubagentsEnabled ?? false,
+              message.reviewSubagentsEnabled ?? false,
               message.watcherEnabled ?? true,
               message.attentionNotificationsEnabled ?? true,
               message.contextSuggestionsEnabled ?? true,
@@ -138,6 +142,8 @@ class ExecutionSettingsPanelController {
       refinementTolerance: settings.refinementTolerance,
       reviewTolerance: settings.reviewTolerance,
       reviewEvidencePolicy: settings.reviewEvidencePolicy ?? "balanced",
+      technicalDesignSubagentsEnabled: settings.technicalDesignSubagentsEnabled === true,
+      reviewSubagentsEnabled: settings.reviewSubagentsEnabled === true,
       watcherEnabled: settings.watcherEnabled,
       attentionNotificationsEnabled: settings.attentionNotificationsEnabled,
       contextSuggestionsEnabled: settings.contextSuggestionsEnabled,
@@ -179,6 +185,8 @@ type ExecutionSettingsViewModel = {
   readonly refinementTolerance: string;
   readonly reviewTolerance: string;
   readonly reviewEvidencePolicy: string;
+  readonly technicalDesignSubagentsEnabled: boolean;
+  readonly reviewSubagentsEnabled: boolean;
   readonly watcherEnabled: boolean;
   readonly attentionNotificationsEnabled: boolean;
   readonly contextSuggestionsEnabled: boolean;
@@ -510,6 +518,44 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
     .phase-field--invalid .phase-field__hint {
       display: block;
     }
+    .switch-field {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+    }
+    .switch-field__copy {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+    .switch-control {
+      width: 54px;
+      height: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 3px;
+      cursor: pointer;
+      transition: background 120ms ease, border-color 120ms ease;
+    }
+    .switch-control::before {
+      content: "";
+      display: block;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.84);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+      transition: transform 120ms ease, background 120ms ease;
+    }
+    .switch-control[aria-checked="true"] {
+      border-color: rgba(114, 241, 184, 0.46);
+      background: rgba(36, 116, 82, 0.92);
+    }
+    .switch-control[aria-checked="true"]::before {
+      transform: translateX(24px);
+      background: #f3fff9;
+    }
     .warning-banner {
       display: none;
       gap: 8px;
@@ -642,6 +688,20 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
             <option value="advisory"${model.reviewEvidencePolicy === "advisory" ? " selected" : ""}>Advisory</option>
           </select>
           <span class="phase-field__hint">Controls how missing validation evidence affects review pass/fail readiness.</span>
+        </label>
+        <label class="phase-field switch-field">
+          <span class="switch-field__copy">
+            <span>Technical design subagents</span>
+            <span class="phase-field__inline-hint">Run specialist design scouts before the final technical design artifact is synthesized.</span>
+          </span>
+          <button class="switch-control" type="button" role="switch" aria-checked="${model.technicalDesignSubagentsEnabled ? "true" : "false"}" data-technical-design-subagents></button>
+        </label>
+        <label class="phase-field switch-field">
+          <span class="switch-field__copy">
+            <span>Review subagents</span>
+            <span class="phase-field__inline-hint">Run specialist review auditors before the final review verdict is synthesized.</span>
+          </span>
+          <button class="switch-control" type="button" role="switch" aria-checked="${model.reviewSubagentsEnabled ? "true" : "false"}" data-review-subagents></button>
         </label>
         <label class="phase-field">
           <span>Enable auto answers</span>
@@ -828,6 +888,8 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
       refinementTolerance: ${JSON.stringify(model.refinementTolerance)},
       reviewTolerance: ${JSON.stringify(model.reviewTolerance)},
       reviewEvidencePolicy: ${JSON.stringify(model.reviewEvidencePolicy)},
+      technicalDesignSubagentsEnabled: ${JSON.stringify(model.technicalDesignSubagentsEnabled)},
+      reviewSubagentsEnabled: ${JSON.stringify(model.reviewSubagentsEnabled)},
       watcherEnabled: ${JSON.stringify(model.watcherEnabled)},
       attentionNotificationsEnabled: ${JSON.stringify(model.attentionNotificationsEnabled)},
       contextSuggestionsEnabled: ${JSON.stringify(model.contextSuggestionsEnabled)},
@@ -980,6 +1042,8 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
       const refinementTolerance = document.querySelector("[data-refinement-tolerance]");
       const reviewTolerance = document.querySelector("[data-review-tolerance]");
       const reviewEvidencePolicy = document.querySelector("[data-review-evidence-policy]");
+      const technicalDesignSubagents = document.querySelector("[data-technical-design-subagents]");
+      const reviewSubagents = document.querySelector("[data-review-subagents]");
       const watcherEnabled = document.querySelector("[data-watcher-enabled]");
       const attentionNotificationsEnabled = document.querySelector("[data-attention-notifications-enabled]");
       const contextSuggestionsEnabled = document.querySelector("[data-context-suggestions-enabled]");
@@ -1112,6 +1176,9 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
           state.reviewEvidencePolicy = reviewEvidencePolicy.value || "balanced";
         });
       }
+
+      bindSwitch(technicalDesignSubagents, "technicalDesignSubagentsEnabled");
+      bindSwitch(reviewSubagents, "reviewSubagentsEnabled");
 
       if (watcherEnabled instanceof HTMLSelectElement) {
         watcherEnabled.value = state.watcherEnabled ? "true" : "false";
@@ -1417,6 +1484,21 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
       return '<label class="' + (hidden ? 'hidden-field' : '') + '"><span>' + escapeHtml(label) + '</span>' + controlMarkup + '</label>';
     }
 
+    function bindSwitch(control, stateKey) {
+      if (!(control instanceof HTMLButtonElement)) {
+        return;
+      }
+
+      const sync = () => {
+        control.setAttribute("aria-checked", state[stateKey] ? "true" : "false");
+      };
+      sync();
+      control.addEventListener("click", () => {
+        state[stateKey] = !state[stateKey];
+        sync();
+      });
+    }
+
     function syncFromDom() {
       const previousProfiles = state.modelProfiles.slice();
       const previousAgents = state.agentProfiles.slice();
@@ -1614,6 +1696,8 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
         refinementTolerance: state.refinementTolerance,
         reviewTolerance: state.reviewTolerance,
         reviewEvidencePolicy: state.reviewEvidencePolicy,
+        technicalDesignSubagentsEnabled: state.technicalDesignSubagentsEnabled,
+        reviewSubagentsEnabled: state.reviewSubagentsEnabled,
         watcherEnabled: state.watcherEnabled,
         attentionNotificationsEnabled: state.attentionNotificationsEnabled,
         contextSuggestionsEnabled: state.contextSuggestionsEnabled,
@@ -1648,6 +1732,8 @@ async function saveExecutionSettingsAsync(
   refinementTolerance = "balanced",
   reviewTolerance = "balanced",
   reviewEvidencePolicy = "balanced",
+  technicalDesignSubagentsEnabled = false,
+  reviewSubagentsEnabled = false,
   watcherEnabled = true,
   attentionNotificationsEnabled = true,
   contextSuggestionsEnabled = true,
@@ -1750,6 +1836,8 @@ async function saveExecutionSettingsAsync(
   await configuration.update("execution.refinementTolerance", refinementTolerance, vscode.ConfigurationTarget.Workspace);
   await configuration.update("execution.reviewTolerance", reviewTolerance, vscode.ConfigurationTarget.Workspace);
   await configuration.update("execution.reviewEvidencePolicy", reviewEvidencePolicy, vscode.ConfigurationTarget.Workspace);
+  await configuration.update("execution.technicalDesignSubagentsEnabled", technicalDesignSubagentsEnabled, vscode.ConfigurationTarget.Workspace);
+  await configuration.update("execution.reviewSubagentsEnabled", reviewSubagentsEnabled, vscode.ConfigurationTarget.Workspace);
   await configuration.update("ui.workflowGraphLayoutMode", workflowGraphLayoutMode, vscode.ConfigurationTarget.Global);
   await configuration.update("ui.workflowGraphInitialZoomMode", workflowGraphInitialZoomMode, vscode.ConfigurationTarget.Global);
   await configuration.update("ui.userStoryListViewMode", userStoryListViewMode, vscode.ConfigurationTarget.Global);
