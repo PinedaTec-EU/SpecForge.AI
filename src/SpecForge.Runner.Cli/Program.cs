@@ -410,6 +410,8 @@ static string BuildConfigurationPortalHtml() =>
         h2 { margin: 28px 0 12px; font-size: 1.1rem; color: #b8c7d6; }
         label { display: grid; gap: 6px; color: #b8c7d6; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; }
         .field-label { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+        .field-control { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+        .field-control .help-button { align-self: center; }
         .help-button { display: inline-grid; place-items: center; width: 18px; height: 18px; padding: 0; border-radius: 50%; background: #26384b; border: 1px solid #43586f; color: #d7e5f2; font-size: 0.72rem; font-weight: 800; line-height: 1; }
         .help-button:hover, .help-button[aria-expanded="true"] { background: #1d4f7a; border-color: #5f8fbd; }
         .help-popover { position: fixed; z-index: 20; max-width: min(320px, calc(100vw - 32px)); padding: 10px 12px; border: 1px solid #43586f; border-radius: 8px; background: #0b121a; color: #d7e5f2; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.42); font-size: 0.82rem; font-weight: 500; line-height: 1.45; text-transform: none; }
@@ -576,7 +578,7 @@ static string BuildConfigurationPortalHtml() =>
                 ${select("agent", index, "modelProfile", "Model profile", agent.modelProfile, state.modelProfiles.map(profile => profile.name))}
                 ${select("agent", index, "repositoryAccess", "Repository access", agent.repositoryAccess, ["none", "read", "read-write"])}
                 ${select("agent", index, "reasoningEffort", "Reasoning effort", agent.reasoningEffort || "", ["", "none", "minimal", "low", "medium", "high", "xhigh"])}
-                <label>${fieldLabel("Instructions", "agent.instructions")}<textarea data-kind="agent" data-index="${index}" data-field="instructions">${escapeText(agent.instructions || "")}</textarea></label>
+                <label><span class="field-label">Instructions</span><span class="field-control"><textarea data-kind="agent" data-index="${index}" data-field="instructions">${escapeText(agent.instructions || "")}</textarea>${helpButton("agent.instructions", "Instructions")}</span></label>
               </div>
             </article>`).join("");
         }
@@ -601,15 +603,11 @@ static string BuildConfigurationPortalHtml() =>
         }
 
         function input(kind, index, field, label, value, type = "text") {
-          return `<label>${fieldLabel(label, `${kind}.${field}`)}<input type="${type}" data-kind="${kind}" data-index="${index}" data-field="${field}" value="${escapeAttr(value || "")}"></label>`;
+          return `<label><span class="field-label">${escapeText(label)}</span><span class="field-control"><input type="${type}" data-kind="${kind}" data-index="${index}" data-field="${field}" value="${escapeAttr(value || "")}">${helpButton(`${kind}.${field}`, label)}</span></label>`;
         }
 
         function select(kind, index, field, label, value, options) {
-          return `<label>${fieldLabel(label, `${kind}.${field}`)}<select data-kind="${kind}" data-index="${index}" data-field="${field}">${options.map(option => `<option value="${escapeAttr(option)}" ${option === value ? "selected" : ""}>${escapeText(option || "None")}</option>`).join("")}</select></label>`;
-        }
-
-        function fieldLabel(label, helpKey) {
-          return `<span class="field-label">${escapeText(label)}${helpButton(helpKey, label)}</span>`;
+          return `<label><span class="field-label">${escapeText(label)}</span><span class="field-control"><select data-kind="${kind}" data-index="${index}" data-field="${field}">${options.map(option => `<option value="${escapeAttr(option)}" ${option === value ? "selected" : ""}>${escapeText(option || "None")}</option>`).join("")}</select>${helpButton(`${kind}.${field}`, label)}</span></label>`;
         }
 
         function helpButton(helpKey, label) {
