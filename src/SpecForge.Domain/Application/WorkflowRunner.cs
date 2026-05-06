@@ -252,6 +252,66 @@ public sealed class WorkflowRunner
             generatedArtifactPath);
     }
 
+    public async Task<ApprovalAnswerSuggestionResult> SuggestApprovalAnswerAsync(
+        string workspaceRoot,
+        string usId,
+        string question,
+        string actor = "user",
+        CancellationToken cancellationToken = default)
+    {
+        ValidateRequired(question, nameof(question));
+
+        var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, usId);
+        var workflowRun = await fileStore.LoadAsync(paths.RootDirectory, cancellationToken);
+        if (workflowRun.CurrentPhase != PhaseId.Spec)
+        {
+            throw new WorkflowDomainException("Approval answer suggestions can only be requested while the workflow is in the spec phase.");
+        }
+
+        var currentArtifactPath = paths.GetLatestExistingPhaseArtifactPath(PhaseId.Spec)
+            ?? throw new WorkflowDomainException("The spec artifact does not exist yet.");
+        var specMarkdown = await File.ReadAllTextAsync(currentArtifactPath, cancellationToken);
+        var context = new PhaseExecutionContext(
+            workspaceRoot,
+            workflowRun.UsId,
+            PhaseId.Spec,
+            paths.MainArtifactPath,
+            BuildPreviousArtifactMap(paths, PhaseId.Spec, includeReviewArtifactInContext: true),
+            BuildContextFilePaths(paths, PhaseId.Spec),
+            currentArtifactPath,
+            null);
+        var normalizedActor = NormalizeActor(actor);
+        var stopwatch = Stopwatch.StartNew();
+        var suggestion = await phaseExecutionProvider.SuggestApprovalAnswerAsync(
+            context,
+            specMarkdown,
+            question.Trim(),
+            cancellationToken);
+        stopwatch.Stop();
+
+        await AppendTimelineEventAsync(
+            paths.TimelineFilePath,
+            "approval_answer_suggested",
+            normalizedActor,
+            PhaseId.Spec,
+            $"Suggested model answer for spec question `{SummarizeQuestion(question)}`. The answer was not applied automatically.",
+            cancellationToken,
+            artifactPath: currentArtifactPath,
+            usage: suggestion.Usage,
+            durationMs: stopwatch.ElapsedMilliseconds,
+            execution: suggestion.Execution);
+
+        return new ApprovalAnswerSuggestionResult(
+            workflowRun.UsId,
+            WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase),
+            WorkflowPresentation.ToStatusSlug(workflowRun.Status),
+            question.Trim(),
+            suggestion.Answer,
+            suggestion.Usage,
+            stopwatch.ElapsedMilliseconds,
+            suggestion.Execution);
+    }
+
     public async Task<RequestRegressionResult> RequestRegressionAsync(
         string workspaceRoot,
         string usId,

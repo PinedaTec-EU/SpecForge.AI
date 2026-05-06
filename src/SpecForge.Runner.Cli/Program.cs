@@ -256,6 +256,19 @@ static async Task HandleWorkflowPortalRequestAsync(
             case ("GET", "/api/summary"):
                 await WriteJsonResponseAsync(context.Response, await applicationService.GetUserStorySummaryAsync(workspaceRoot, usId));
                 return;
+            case ("POST", "/api/suggest-approval-answer"):
+            {
+                using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var payload = await reader.ReadToEndAsync();
+                var request = JsonSerializer.Deserialize<ApprovalAnswerSuggestionRequest>(
+                    payload,
+                    SpecForgePortalSettingsStore.JsonOptions)
+                    ?? throw new InvalidOperationException("Suggestion payload could not be parsed.");
+                await WriteJsonResponseAsync(
+                    context.Response,
+                    await applicationService.SuggestApprovalAnswerAsync(workspaceRoot, usId, request.Question, request.Actor ?? "user"));
+                return;
+            }
             default:
                 context.Response.StatusCode = 404;
                 await WriteTextResponseAsync(context.Response, "Not found", "text/plain");
@@ -1084,6 +1097,8 @@ static string BuildConfigurationPortalHtml() =>
     </body>
     </html>
     """;
+
+internal sealed record ApprovalAnswerSuggestionRequest(string Question, string? Actor);
 
 internal sealed record SpecForgePortalSettings(
     IReadOnlyList<OpenAiCompatibleModelProfile> ModelProfiles,

@@ -208,6 +208,11 @@ static async Task<JsonNode> HandleToolCallAsync(
                 question: GetRequired(arguments, "question"),
                 answer: GetRequired(arguments, "answer"),
                 actor: GetOptional(arguments, "actor") ?? "user"),
+            "suggest_approval_answer" => await applicationService.SuggestApprovalAnswerAsync(
+                workspaceRoot: GetRequired(arguments, "workspaceRoot"),
+                usId: GetRequired(arguments, "usId"),
+                question: GetRequired(arguments, "question"),
+                actor: GetOptional(arguments, "actor") ?? "user"),
             "operate_current_phase_artifact" => await applicationService.OperateCurrentPhaseArtifactAsync(
                 workspaceRoot: GetRequired(arguments, "workspaceRoot"),
                 usId: GetRequired(arguments, "usId"),
@@ -467,6 +472,15 @@ static JsonObject BuildToolsList()
                         ("answer",        Prop("string", "Human answer to persist into the spec artifact.")),
                         ("actor",         Prop("string", "Actor submitting the answer. Defaults to 'user'."))))),
 
+            Tool("suggest_approval_answer", "Ask the configured spec model to draft an answer for one approval question without applying it.",
+                Schema(
+                    required: ["workspaceRoot", "usId", "question"],
+                    Props(
+                        ("workspaceRoot", Prop("string", "Absolute path to the workspace root.")),
+                        ("usId",          Prop("string", "User story identifier.")),
+                        ("question",      Prop("string", "Approval question to answer from the current spec context.")),
+                        ("actor",         Prop("string", "Actor requesting the suggestion. Defaults to 'user'."))))),
+
             Tool("operate_current_phase_artifact", "Apply a model-assisted operation over the current phase artifact and persist the trace.",
                 Schema(
                     required: ["workspaceRoot", "usId", "prompt"],
@@ -618,6 +632,11 @@ static async Task<object> HandleSpecForgeActionAsync(
             GetRequired(arguments, "usId"),
             GetRequired(parameters, "question"),
             GetRequired(parameters, "answer"),
+            GetOptional(parameters, "actor") ?? "user"),
+        "suggest_approval_answer" => await applicationService.SuggestApprovalAnswerAsync(
+            workspaceRoot,
+            GetRequired(arguments, "usId"),
+            GetRequired(parameters, "question"),
             GetOptional(parameters, "actor") ?? "user"),
         "operate_artifact" => await applicationService.OperateCurrentPhaseArtifactAsync(
             workspaceRoot,

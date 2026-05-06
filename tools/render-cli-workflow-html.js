@@ -30,11 +30,18 @@ const browserShim = `
   window.__specForgeVsCodeApi = window.__specForgeVsCodeApi || {
     getState() {
       try {
+        const state = JSON.parse(sessionStorage.getItem("specforge.workflow.state") || "{}");
         if (sessionStorage.getItem("specforge.workflow.userViewport") !== "true") {
-          return {};
+          delete state.graphScrollTop;
+          delete state.graphScrollLeft;
+          delete state.graphStageOffsetX;
+          delete state.graphStageOffsetY;
+          delete state.graphInitialZoomMode;
+          delete state.graphZoomMode;
+          delete state.graphZoomScale;
         }
 
-        return JSON.parse(sessionStorage.getItem("specforge.workflow.state") || "{}");
+        return state;
       }
       catch { return {}; }
     },
@@ -47,6 +54,40 @@ const browserShim = `
         const url = new URL(window.location.href);
         url.searchParams.set("selectedPhaseId", message.phaseId);
         window.location.href = url.toString();
+        return;
+      }
+
+      if (message?.command === "suggestApprovalAnswer" && message.question) {
+        fetch("/api/suggest-approval-answer", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ question: message.question, actor: "cli-user" })
+        })
+          .then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))))
+          .then(result => {
+            try {
+              const state = JSON.parse(sessionStorage.getItem("specforge.workflow.state") || "{}");
+              state.approvalAnswerDrafts = {
+                ...(state.approvalAnswerDrafts || {}),
+                [String(message.index)]: result.answer || ""
+              };
+              sessionStorage.setItem("specforge.workflow.state", JSON.stringify(state));
+            } catch {}
+            window.postMessage({
+              command: "approvalAnswerSuggested",
+              index: message.index,
+              question: result.question,
+              answer: result.answer || ""
+            }, "*");
+          })
+          .catch(error => {
+            window.postMessage({
+              command: "approvalAnswerSuggested",
+              index: message.index,
+              question: message.question,
+              answer: error instanceof Error ? error.message : String(error)
+            }, "*");
+          });
         return;
       }
 

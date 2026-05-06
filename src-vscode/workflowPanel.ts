@@ -53,6 +53,7 @@ type WorkflowPanelCommand =
   | { readonly command: "rewind"; readonly phaseId?: string; readonly iterationKey?: string }
   | { readonly command: "submitRefinementAnswers"; readonly answers?: string[] }
   | { readonly command: "submitApprovalAnswer"; readonly question?: string; readonly answer?: string }
+  | { readonly command: "suggestApprovalAnswer"; readonly question?: string; readonly index?: number }
   | { readonly command: "submitPhaseInput"; readonly prompt?: string }
   | { readonly command: "sendReviewToImplementation"; readonly prompt?: string; readonly includeReviewArtifactInContext?: boolean }
   | { readonly command: "reopenCompletedWorkflow"; readonly reasonKind?: string; readonly description?: string }
@@ -412,6 +413,11 @@ class WorkflowPanelController {
       case "submitApprovalAnswer":
         if (message.question && message.answer) {
           await this.submitApprovalAnswerAsync(message.question, message.answer);
+        }
+        return;
+      case "suggestApprovalAnswer":
+        if (message.question) {
+          await this.suggestApprovalAnswerAsync(message.question, message.index);
         }
         return;
       case "submitPhaseInput":
@@ -777,6 +783,24 @@ class WorkflowPanelController {
     appendSpecForgeDebugLog(`Workflow '${this.summary.usId}' submitApprovalAnswerAsync requested explorer refresh.`);
     await this.callbacks.refreshExplorer();
     await this.refreshAsync("submitApprovalAnswerAsync");
+  }
+
+  private async suggestApprovalAnswerAsync(question: string, index?: number): Promise<void> {
+    const result = await this.getBackendClient().suggestApprovalAnswer(
+      this.summary.usId,
+      question,
+      getCurrentActor()
+    );
+    appendSpecForgeLog(
+      `Workflow '${this.summary.usId}' suggested a model answer for approval question '${question.slice(0, 80)}'.`
+    );
+    await this.panel.webview.postMessage({
+      command: "approvalAnswerSuggested",
+      index,
+      question: result.question,
+      answer: result.answer ?? ""
+    });
+    await this.refreshAsync("suggestApprovalAnswerAsync");
   }
 
   private isExecutionConfigured(): boolean {

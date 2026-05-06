@@ -156,8 +156,17 @@ export function buildSpecPhaseSections(args: SpecPhaseViewArgs): PhaseSectionFra
                     type="button"
                     data-approval-answer-apply
                     data-index="${item.index}"
-                    ${selectedPhase.isCurrent ? "" : "disabled"}>
+                    ${selectedPhase.isCurrent && item.answer?.trim() ? "" : "disabled"}>
                     ${item.resolved ? "Update Answer" : "Apply Answer"}
+                  </button>
+                  <button
+                    class="workflow-action-button workflow-action-button--document"
+                    type="button"
+                    data-approval-answer-suggest
+                    data-index="${item.index}"
+                    data-question="${escapeHtmlAttribute(item.question)}"
+                    ${selectedPhase.isCurrent ? "" : "disabled"}>
+                    Answer Using Model
                   </button>
                 </div>
               </div>

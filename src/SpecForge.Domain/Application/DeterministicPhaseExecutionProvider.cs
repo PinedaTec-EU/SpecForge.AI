@@ -73,6 +73,20 @@ public sealed class DeterministicPhaseExecutionProvider : IPhaseExecutionProvide
             Execution: new PhaseExecutionMetadata("deterministic", "deterministic"));
     }
 
+    public Task<ApprovalAnswerSuggestionProviderResult> SuggestApprovalAnswerAsync(
+        PhaseExecutionContext context,
+        string specMarkdown,
+        string question,
+        CancellationToken cancellationToken = default)
+    {
+        var answer = string.IsNullOrWhiteSpace(specMarkdown)
+            ? null
+            : $"The current spec context supports this answer: {question.Trim()}";
+        return Task.FromResult(new ApprovalAnswerSuggestionProviderResult(
+            answer,
+            Execution: new PhaseExecutionMetadata("deterministic", "deterministic")));
+    }
+
     private static async Task<string> ComposeRefinementAsync(
         PhaseExecutionContext context,
         CancellationToken cancellationToken)

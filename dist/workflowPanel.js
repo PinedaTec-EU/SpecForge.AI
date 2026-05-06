@@ -345,6 +345,11 @@ class WorkflowPanelController {
                     await this.submitApprovalAnswerAsync(message.question, message.answer);
                 }
                 return;
+            case "suggestApprovalAnswer":
+                if (message.question) {
+                    await this.suggestApprovalAnswerAsync(message.question, message.index);
+                }
+                return;
             case "submitPhaseInput":
                 if (message.prompt) {
                     await this.submitPhaseInputAsync(message.prompt);
@@ -635,6 +640,17 @@ class WorkflowPanelController {
         (0, outputChannel_1.appendSpecForgeDebugLog)(`Workflow '${this.summary.usId}' submitApprovalAnswerAsync requested explorer refresh.`);
         await this.callbacks.refreshExplorer();
         await this.refreshAsync("submitApprovalAnswerAsync");
+    }
+    async suggestApprovalAnswerAsync(question, index) {
+        const result = await this.getBackendClient().suggestApprovalAnswer(this.summary.usId, question, (0, userActor_1.getCurrentActor)());
+        (0, outputChannel_1.appendSpecForgeLog)(`Workflow '${this.summary.usId}' suggested a model answer for approval question '${question.slice(0, 80)}'.`);
+        await this.panel.webview.postMessage({
+            command: "approvalAnswerSuggested",
+            index,
+            question: result.question,
+            answer: result.answer ?? ""
+        });
+        await this.refreshAsync("suggestApprovalAnswerAsync");
     }
     isExecutionConfigured() {
         return (0, extensionSettings_1.getSpecForgeSettingsStatus)((0, extensionSettings_1.getSpecForgeSettings)()).executionConfigured;

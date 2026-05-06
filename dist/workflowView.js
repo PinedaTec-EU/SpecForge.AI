@@ -7018,10 +7018,58 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
       if (typeof draft === "string") {
         input.value = draft;
       }
+      const applyButton = document.querySelector('[data-approval-answer-apply][data-index="' + index + '"]');
+      const syncApplyButton = () => {
+        if (applyButton instanceof HTMLButtonElement) {
+          applyButton.disabled = input.value.trim().length === 0;
+        }
+      };
+      syncApplyButton();
       input.addEventListener("input", () => {
         setApprovalAnswerDraft(index, input.value);
+        syncApplyButton();
       });
     }
+    for (const button of document.querySelectorAll("[data-approval-answer-suggest]")) {
+      if (!(button instanceof HTMLButtonElement)) {
+        continue;
+      }
+      button.addEventListener("click", () => {
+        const question = button.dataset.question ?? "";
+        const index = Number(button.dataset.index ?? "0");
+        if (!question) {
+          return;
+        }
+
+        button.disabled = true;
+        button.textContent = "Answering...";
+        vscode.postMessage({
+          command: "suggestApprovalAnswer",
+          question,
+          index
+        });
+      });
+    }
+    window.addEventListener("message", (event) => {
+      const message = event.data || {};
+      if (message.command !== "approvalAnswerSuggested") {
+        return;
+      }
+
+      const index = String(message.index ?? "");
+      const input = document.querySelector('[data-approval-answer-input][data-index="' + index + '"]');
+      if (input instanceof HTMLTextAreaElement) {
+        input.value = String(message.answer ?? "");
+        setApprovalAnswerDraft(index, input.value);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.focus();
+      }
+      const button = document.querySelector('[data-approval-answer-suggest][data-index="' + index + '"]');
+      if (button instanceof HTMLButtonElement) {
+        button.disabled = false;
+        button.textContent = "Answer Using Model";
+      }
+    });
     for (const button of document.querySelectorAll("[data-approval-answer-apply]")) {
       if (!(button instanceof HTMLButtonElement)) {
         continue;

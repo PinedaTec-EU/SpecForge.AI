@@ -226,6 +226,76 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
         return await ExecuteSinglePhaseAsync(context, prompt, modelSelection, cancellationToken);
     }
 
+    public async Task<ApprovalAnswerSuggestionProviderResult> SuggestApprovalAnswerAsync(
+        PhaseExecutionContext context,
+        string specMarkdown,
+        string question,
+        CancellationToken cancellationToken = default)
+    {
+        var modelSelection = ResolveModelSelection(PhaseId.Spec);
+        const string systemPrompt = """
+            You answer one pending SpecForge spec approval question.
+            Answer only the requested question.
+            Use only the supplied input spec and repository evidence in that spec.
+            You may infer when the evidence strongly supports the answer, but you must not invent facts.
+            If the supplied context is insufficient, answer exactly: I do not know from the available context.
+            Return plain answer text only. Do not include Markdown headings, preambles, JSON, or commentary.
+            """;
+        var userPrompt = new StringBuilder()
+            .AppendLine("# Input Spec")
+            .AppendLine()
+            .AppendLine(specMarkdown)
+            .AppendLine()
+            .AppendLine("# Question To Answer")
+            .AppendLine()
+            .AppendLine(question.Trim())
+            .ToString();
+
+        if (ShouldUseNativeCli(modelSelection))
+        {
+            var nativePrompt = NativeCliPromptBuilder.BuildStandaloneMarkdownPrompt(
+                modelSelection.ProviderKind,
+                "SpecForge Spec Approval Answer Suggestion",
+                new EffectivePrompt(systemPrompt, userPrompt));
+            var nativeResult = await ExecuteStructuredNativeAsync(
+                context.WorkspaceRoot,
+                nativePrompt,
+                modelSelection,
+                sandboxMode: "read-only",
+                cancellationToken);
+            return new ApprovalAnswerSuggestionProviderResult(
+                NormalizeSuggestedApprovalAnswer(nativeResult.Content),
+                nativeResult.Usage,
+                new PhaseExecutionMetadata(
+                    ProviderKind: modelSelection.ProviderKind,
+                    Model: string.IsNullOrWhiteSpace(modelSelection.Model) ? "default" : modelSelection.Model,
+                    ProfileName: modelSelection.ProfileName,
+                    AgentName: modelSelection.AgentName,
+                    AgentRole: modelSelection.AgentRole,
+                    InputSha256: ComputeSha256(nativePrompt),
+                    OutputSha256: ComputeSha256(nativeResult.Content)));
+        }
+
+        var (content, usage, inputSha256, outputSha256) = await ExecuteStructuredHttpAsync(
+            modelSelection,
+            systemPrompt,
+            userPrompt,
+            temperature: ResolveTemperature(PhaseId.Spec),
+            cancellationToken);
+        return new ApprovalAnswerSuggestionProviderResult(
+            NormalizeSuggestedApprovalAnswer(content),
+            usage,
+            new PhaseExecutionMetadata(
+                ProviderKind: modelSelection.ProviderKind,
+                Model: modelSelection.Model,
+                ProfileName: modelSelection.ProfileName,
+                BaseUrl: modelSelection.BaseUrl,
+                AgentName: modelSelection.AgentName,
+                AgentRole: modelSelection.AgentRole,
+                InputSha256: inputSha256,
+                OutputSha256: outputSha256));
+    }
+
     private async Task<PhaseExecutionResult> ExecuteSinglePhaseAsync(
         PhaseExecutionContext context,
         EffectivePrompt prompt,
@@ -1889,6 +1959,12 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
     private static string NormalizePhaseContent(PhaseExecutionContext context, string content)
     {
         return PhaseMarkdownArtifactContracts.NormalizeContent(content);
+    }
+
+    private static string? NormalizeSuggestedApprovalAnswer(string content)
+    {
+        var normalized = content.Trim().Trim('`').Trim();
+        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
     }
 
     private static bool HasExplicitAgentsForAllModelDrivenPhases(OpenAiCompatiblePhaseAgentAssignments? assignments) =>

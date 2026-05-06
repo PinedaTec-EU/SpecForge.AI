@@ -14,4 +14,11 @@ public interface IPhaseExecutionProvider
         PhaseExecutionContext context,
         RefinementSession session,
         CancellationToken cancellationToken = default);
+
+    Task<ApprovalAnswerSuggestionProviderResult> SuggestApprovalAnswerAsync(
+        PhaseExecutionContext context,
+        string specMarkdown,
+        string question,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(new ApprovalAnswerSuggestionProviderResult(null));
 }

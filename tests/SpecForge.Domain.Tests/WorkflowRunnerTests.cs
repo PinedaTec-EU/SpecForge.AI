@@ -337,6 +337,35 @@ public sealed class WorkflowRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task SuggestApprovalAnswerAsync_DraftsAnswerWithoutApplyingAndAuditsUsage()
+    {
+        var provider = new ApprovalAnswerSuggestionCapturingProvider();
+        var runner = new WorkflowRunner(provider);
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Test story", "feature", "workflow", "Initial source text");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0001");
+        var specPath = paths.GetLatestExistingPhaseArtifactPath(PhaseId.Spec)
+            ?? throw new InvalidOperationException("Expected a spec artifact.");
+        var specMarkdown = await File.ReadAllTextAsync(specPath);
+        var question = ApprovalQuestionMarkdown.ParseFromMarkdown(specMarkdown).First().Question;
+
+        var result = await runner.SuggestApprovalAnswerAsync(workspaceRoot, "US-0001", question, "test-user");
+
+        Assert.Equal(question, provider.LastQuestion);
+        Assert.Contains("Initial source text", provider.LastSpecMarkdown);
+        Assert.Equal("Drafted answer from model.", result.Answer);
+        Assert.Equal(42, result.Usage?.InputTokens);
+        var unchangedSpecMarkdown = await File.ReadAllTextAsync(specPath);
+        Assert.DoesNotContain("Drafted answer from model.", unchangedSpecMarkdown);
+        var timeline = await File.ReadAllTextAsync(paths.TimelineFilePath);
+        Assert.Contains("`approval_answer_suggested`", timeline);
+        Assert.Contains("Actor: `test-user`", timeline);
+        Assert.Contains("- input: `42`", timeline);
+        Assert.Contains("provider: `test-double`", timeline);
+    }
+
+    [Fact]
     public async Task ApproveCurrentPhaseAsync_WhenTitleRepeatsKindAndUsId_DeduplicatesWorkBranchProposal()
     {
         var runner = new WorkflowRunner();
@@ -1871,6 +1900,44 @@ public sealed class WorkflowRunnerTests : IDisposable
                         InputSha256: "input-hash",
                         OutputSha256: "output-hash",
                         StructuredOutputSha256: "structured-hash")));
+    }
+
+    private sealed class ApprovalAnswerSuggestionCapturingProvider : IPhaseExecutionProvider
+    {
+        private readonly DeterministicPhaseExecutionProvider inner = new();
+
+        public string? LastSpecMarkdown { get; private set; }
+
+        public string? LastQuestion { get; private set; }
+
+        public PhaseExecutionReadiness GetPhaseExecutionReadiness(PhaseId phaseId) =>
+            inner.GetPhaseExecutionReadiness(phaseId);
+
+        public Task<AutoRefinementAnswersResult?> TryAutoAnswerRefinementAsync(
+            PhaseExecutionContext context,
+            RefinementSession session,
+            CancellationToken cancellationToken = default) =>
+            inner.TryAutoAnswerRefinementAsync(context, session, cancellationToken);
+
+        public Task<PhaseExecutionResult> ExecuteAsync(
+            PhaseExecutionContext context,
+            CancellationToken cancellationToken = default) =>
+            inner.ExecuteAsync(context, cancellationToken);
+
+        public Task<ApprovalAnswerSuggestionProviderResult> SuggestApprovalAnswerAsync(
+            PhaseExecutionContext context,
+            string specMarkdown,
+            string question,
+            CancellationToken cancellationToken = default)
+        {
+            LastSpecMarkdown = specMarkdown;
+            LastQuestion = question;
+            return Task.FromResult(
+                new ApprovalAnswerSuggestionProviderResult(
+                    "Drafted answer from model.",
+                    new TokenUsage(42, 7, 49),
+                    new PhaseExecutionMetadata("test-double", "spec-model", "spec-profile", "http://stub.test/v1")));
+        }
     }
 
     private sealed class ReadyStateRefinementPhaseExecutionProvider : IPhaseExecutionProvider
