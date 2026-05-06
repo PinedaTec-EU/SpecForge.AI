@@ -21,7 +21,7 @@ const state = {
   debugMode: false,
   requireExplicitApprovalBranchAcceptance: false,
   graphLayoutMode: "vertical",
-  graphInitialZoomMode: "actual-size",
+  graphInitialZoomMode: "fit-width",
   workflowGraphLayout: null
 };
 
