@@ -29,7 +29,13 @@ const browserShim = `
 <script>
   window.__specForgeVsCodeApi = window.__specForgeVsCodeApi || {
     getState() {
-      try { return JSON.parse(sessionStorage.getItem("specforge.workflow.state") || "{}"); }
+      try {
+        if (sessionStorage.getItem("specforge.workflow.userViewport") !== "true") {
+          return {};
+        }
+
+        return JSON.parse(sessionStorage.getItem("specforge.workflow.state") || "{}");
+      }
       catch { return {}; }
     },
     setState(value) {
@@ -40,6 +46,16 @@ const browserShim = `
       window.dispatchEvent(new CustomEvent("specforge-cli-command", { detail: message }));
     }
   };
+  window.addEventListener("pointerdown", event => {
+    if (event.target?.closest?.('[data-panel-scroll="graph"], [data-graph-zoom-in], [data-graph-zoom-out], [data-graph-fit-width], [data-graph-auto-fit]')) {
+      sessionStorage.setItem("specforge.workflow.userViewport", "true");
+    }
+  }, true);
+  window.addEventListener("wheel", event => {
+    if (event.target?.closest?.('[data-panel-scroll="graph"]')) {
+      sessionStorage.setItem("specforge.workflow.userViewport", "true");
+    }
+  }, { capture: true, passive: true });
 </script>`;
 
 const refreshShim = `
