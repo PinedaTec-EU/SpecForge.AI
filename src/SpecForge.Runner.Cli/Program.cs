@@ -422,6 +422,7 @@ static string BuildConfigurationPortalHtml() =>
         button.secondary { background: #1d4f7a; }
         button.danger { background: #8f2f38; }
         .lead { margin: 0; color: #9fb0c1; }
+        .section-copy { margin: -4px 0 4px; color: #9fb0c1; line-height: 1.45; max-width: 78ch; }
         .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
         .panel { border: 1px solid #253447; border-radius: 8px; padding: 18px; background: #121d28; margin-top: 16px; }
         .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
@@ -449,11 +450,13 @@ static string BuildConfigurationPortalHtml() =>
         <form id="settings-form">
           <section class="panel">
             <h2>Model Profiles</h2>
+            <p class="section-copy">Model profiles describe the available model runtimes: provider type, endpoint credentials when needed, model identifier, reasoning effort, and default repository access.</p>
             <div id="models" class="cards"></div>
             <div class="toolbar"><button type="button" class="secondary" id="add-model">Add Model</button></div>
           </section>
           <section class="panel">
             <h2>Agent Profiles</h2>
+            <p class="section-copy">Agent profiles define the workflow roles that use those models, including phase-specific instructions and the repository permissions each role is allowed to use.</p>
             <div id="agents" class="cards"></div>
             <div class="toolbar"><button type="button" class="secondary" id="add-agent">Add Agent</button></div>
           </section>
