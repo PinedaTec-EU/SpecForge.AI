@@ -423,8 +423,14 @@ static string BuildConfigurationPortalHtml() =>
         .card-header { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 12px; }
         .card-title { font-weight: 800; }
         .toggles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-        .toggle { display: flex; align-items: center; gap: 10px; text-transform: none; }
-        .toggle input { width: auto; }
+        .toggle { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 46px; padding: 10px 12px; border: 1px solid #2a3a4d; border-radius: 8px; background: #0f1924; text-transform: none; cursor: pointer; }
+        .toggle input { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; pointer-events: none; }
+        .toggle__label { color: #d5e0eb; font-size: 0.9rem; font-weight: 750; text-transform: none; }
+        .toggle__switch { position: relative; flex: 0 0 auto; width: 46px; height: 26px; border-radius: 999px; background: #334255; border: 1px solid #47576b; transition: background 0.16s ease, border-color 0.16s ease; }
+        .toggle__switch::after { content: ""; position: absolute; width: 20px; height: 20px; left: 2px; top: 2px; border-radius: 50%; background: #e8eef5; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); transition: transform 0.16s ease; }
+        .toggle input:checked + .toggle__switch { background: #22664a; border-color: #3ba66d; }
+        .toggle input:checked + .toggle__switch::after { transform: translateX(20px); }
+        .toggle input:focus-visible + .toggle__switch { outline: 2px solid #f6d365; outline-offset: 3px; }
         .status { min-height: 24px; margin-top: 14px; color: #f6d365; }
         @media (max-width: 760px) { main { padding: 18px; } .grid, .toggles { grid-template-columns: 1fr; } }
       </style>
@@ -553,7 +559,7 @@ static string BuildConfigurationPortalHtml() =>
             element.value = state[id] ?? "";
           }
           document.getElementById("toggles").innerHTML = toggleFields.map(([field, label]) =>
-            `<label class="toggle"><input type="checkbox" data-toggle="${field}" ${state[field] ? "checked" : ""}>${escapeText(label)}</label>`).join("");
+            `<label class="toggle"><span class="toggle__label">${escapeText(label)}</span><input type="checkbox" data-toggle="${field}" ${state[field] ? "checked" : ""}><span class="toggle__switch" aria-hidden="true"></span></label>`).join("");
         }
 
         function input(kind, index, field, label, value, type = "text") {
