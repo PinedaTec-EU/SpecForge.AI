@@ -19,6 +19,9 @@ This repository consumes shared skills from `../ai-skills-shared`.
 - `./.codex/skills/sdd-phase-agents/SKILL.md`
 - This local skill applies only to the repository's SDD engineering workflow.
 - It does not replace or duplicate shared domain skills.
+- `./.codex/skills/functional-commit-version-bump/SKILL.md`
+- This local skill applies after completing any new functionality or functional subtask.
+- It enforces a functional commit followed by a separate version bump commit using the repository version bumper.
 
 ## Local Rules
 
