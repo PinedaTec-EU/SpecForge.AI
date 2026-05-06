@@ -168,6 +168,14 @@ dotnet run --project src/SpecForge.Runner.Cli/SpecForge.Runner.Cli.csproj -- ser
 
 The portal listens on `http://localhost:5127/` by default and persists workspace settings in `.specs/configuration/settings.json`. Workflow CLI commands use that file when model profile environment variables are not provided.
 
+### Serve a CLI workflow portal
+
+The CLI can also serve a workflow status page for a single user story. The page polls persisted workflow and runtime state, so changes performed through MCP tools appear without reopening the page:
+
+```bash
+dotnet run --project src/SpecForge.Runner.Cli/SpecForge.Runner.Cli.csproj -- serve-workflow "$PWD" US-001
+```
+
 ## Model Configuration
 
 By default, phase execution uses a deterministic local engine.

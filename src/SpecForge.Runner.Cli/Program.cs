@@ -58,6 +58,9 @@ try
         case "serve-configuration":
             await HandleServeConfigurationAsync(args);
             return 0;
+        case "serve-workflow":
+            await HandleServeWorkflowAsync(args);
+            return 0;
         default:
             return ExitWithError($"Unknown command '{command}'.");
     }
@@ -181,6 +184,74 @@ static async Task HandleServeConfigurationAsync(IReadOnlyList<string> args)
     {
         var context = await listener.GetContextAsync();
         _ = Task.Run(async () => await HandleConfigurationPortalRequestAsync(context, workspaceRoot));
+    }
+}
+
+static async Task HandleServeWorkflowAsync(IReadOnlyList<string> args)
+{
+    if (args.Count is < 3 or > 4)
+    {
+        throw new InvalidOperationException("Expected workspace root, user story id, and optional URL prefix for command 'serve-workflow'.");
+    }
+
+    var workspaceRoot = Path.GetFullPath(args[1]);
+    var usId = args[2];
+    var prefix = args.Count == 4 ? NormalizeHttpPrefix(args[3]) : "http://localhost:5127/";
+    var runner = new WorkflowRunner(CreatePhaseExecutionProvider(workspaceRoot));
+    var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+    using var listener = new HttpListener();
+    listener.Prefixes.Add(prefix);
+    listener.Start();
+    Console.WriteLine($"SpecForge workflow portal listening at {prefix}");
+    Console.WriteLine($"Workspace: {workspaceRoot}");
+    Console.WriteLine($"User story: {usId}");
+
+    while (listener.IsListening)
+    {
+        var context = await listener.GetContextAsync();
+        _ = Task.Run(() => HandleWorkflowPortalRequestAsync(context, applicationService, workspaceRoot, usId));
+    }
+}
+
+static async Task HandleWorkflowPortalRequestAsync(
+    HttpListenerContext context,
+    SpecForgeApplicationService applicationService,
+    string workspaceRoot,
+    string usId)
+{
+    try
+    {
+        var path = context.Request.Url?.AbsolutePath.TrimEnd('/') ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            path = "/";
+        }
+
+        switch ((context.Request.HttpMethod, path))
+        {
+            case ("GET", "/"):
+                await WriteHtmlResponseAsync(context.Response, BuildWorkflowPortalHtml(usId));
+                return;
+            case ("GET", "/api/workflow"):
+                await WriteJsonResponseAsync(context.Response, await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, usId));
+                return;
+            case ("GET", "/api/runtime-status"):
+                await WriteJsonResponseAsync(context.Response, await applicationService.GetUserStoryRuntimeStatusAsync(workspaceRoot, usId));
+                return;
+            case ("GET", "/api/summary"):
+                await WriteJsonResponseAsync(context.Response, await applicationService.GetUserStorySummaryAsync(workspaceRoot, usId));
+                return;
+            default:
+                context.Response.StatusCode = 404;
+                await WriteTextResponseAsync(context.Response, "Not found", "text/plain");
+                return;
+        }
+    }
+    catch (Exception exception)
+    {
+        context.Response.StatusCode = 500;
+        await WriteTextResponseAsync(context.Response, exception.Message, "text/plain");
     }
 }
 
@@ -875,6 +946,185 @@ static string BuildConfigurationPortalHtml() =>
     </body>
     </html>
     """;
+
+static string BuildWorkflowPortalHtml(string usId) =>
+    $$"""
+    <!doctype html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>SpecForge Workflow · {{EscapeHtml(usId)}}</title>
+      <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f1720; color: #e8eef5; }
+        main { max-width: 1180px; margin: 0 auto; padding: 28px; }
+        h1 { margin: 0; font-size: 1.8rem; }
+        h2 { margin: 0 0 12px; font-size: 1rem; color: #b8c7d6; text-transform: uppercase; letter-spacing: 0.04em; }
+        button { border: 0; border-radius: 8px; padding: 10px 14px; background: #1d4f7a; color: white; font-weight: 800; cursor: pointer; }
+        .hero { display: grid; gap: 12px; margin-bottom: 18px; }
+        .hero-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+        .meta { display: flex; gap: 8px; flex-wrap: wrap; color: #9fb0c1; }
+        .pill { display: inline-flex; align-items: center; min-height: 28px; padding: 4px 10px; border: 1px solid #2a3a4d; border-radius: 999px; background: #121d28; font-size: 0.86rem; }
+        .pill--attention { border-color: #866334; background: #332516; color: #ffd88b; }
+        .pill--ok { border-color: #2c7a53; background: #123323; color: #9cf0bd; }
+        .layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr); gap: 16px; align-items: start; }
+        .panel { border: 1px solid #253447; border-radius: 8px; padding: 16px; background: #121d28; }
+        .phases { display: grid; gap: 10px; }
+        .phase { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px; border: 1px solid #2a3a4d; border-radius: 8px; background: #0f1924; }
+        .phase--current { border-color: #2f8d60; box-shadow: 0 0 0 1px rgba(47, 141, 96, 0.28); }
+        .phase-index { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: #26384b; color: #d7e5f2; font-weight: 900; }
+        .phase-title { font-weight: 850; color: #e8eef5; }
+        .phase-state { color: #9fb0c1; font-size: 0.86rem; }
+        .details { display: grid; gap: 12px; }
+        .kv { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 10px; padding: 8px 0; border-bottom: 1px solid #253447; }
+        .kv:last-child { border-bottom: 0; }
+        .key { color: #9fb0c1; }
+        .value { color: #e8eef5; overflow-wrap: anywhere; }
+        .events { display: grid; gap: 10px; max-height: 420px; overflow: auto; }
+        .event { padding: 10px 12px; border: 1px solid #2a3a4d; border-radius: 8px; background: #0f1924; }
+        .event strong { display: block; margin-bottom: 4px; }
+        .event span { color: #9fb0c1; font-size: 0.84rem; }
+        .status { min-height: 22px; color: #9fb0c1; }
+        @media (max-width: 860px) { main { padding: 18px; } .layout { grid-template-columns: 1fr; } .kv { grid-template-columns: 1fr; gap: 4px; } }
+      </style>
+    </head>
+    <body>
+      <main>
+        <section class="hero">
+          <div class="hero-row">
+            <div>
+              <h1 id="title">{{EscapeHtml(usId)}} workflow</h1>
+              <div class="meta" id="meta"></div>
+            </div>
+            <button type="button" id="refresh">Refresh</button>
+          </div>
+          <div class="status" id="status">Loading workflow...</div>
+        </section>
+        <div class="layout">
+          <section class="panel">
+            <h2>Phases</h2>
+            <div class="phases" id="phases"></div>
+          </section>
+          <aside class="details">
+            <section class="panel">
+              <h2>Runtime</h2>
+              <div id="runtime"></div>
+            </section>
+            <section class="panel">
+              <h2>Controls</h2>
+              <div id="controls"></div>
+            </section>
+            <section class="panel">
+              <h2>Recent Events</h2>
+              <div class="events" id="events"></div>
+            </section>
+          </aside>
+        </div>
+      </main>
+      <script>
+        let lastSignature = "";
+        async function loadWorkflow() {
+          const [workflowResponse, runtimeResponse] = await Promise.all([
+            fetch("/api/workflow"),
+            fetch("/api/runtime-status")
+          ]);
+
+          if (!workflowResponse.ok) {
+            throw new Error(await workflowResponse.text());
+          }
+
+          const workflow = await workflowResponse.json();
+          const runtime = runtimeResponse.ok ? await runtimeResponse.json() : null;
+          render(workflow, runtime);
+        }
+
+        function render(workflow, runtime) {
+          document.getElementById("title").textContent = `${workflow.usId} · ${workflow.title || "Workflow"}`;
+          document.getElementById("meta").innerHTML = [
+            pill(workflow.status, workflow.status === "completed" ? "ok" : workflow.status === "waiting-user" ? "attention" : ""),
+            pill(`current: ${workflow.currentPhase}`),
+            workflow.workBranch ? pill(workflow.workBranch) : ""
+          ].join("");
+
+          document.getElementById("phases").innerHTML = (workflow.phases || []).map(phase => `
+            <article class="phase ${phase.isCurrent ? "phase--current" : ""}">
+              <div class="phase-index">${phase.order + 1}</div>
+              <div>
+                <div class="phase-title">${escapeText(phase.title || phase.phaseId)}</div>
+                <div class="phase-state">${escapeText(phase.phaseId)} · ${escapeText(phase.state || "pending")}${phase.isApproved ? " · approved" : ""}</div>
+              </div>
+              ${phase.requiresApproval ? pill("approval") : ""}
+            </article>`).join("");
+
+          const controls = workflow.controls || {};
+          document.getElementById("controls").innerHTML = [
+            kv("Can continue", controls.canContinue),
+            kv("Can approve", controls.canApprove),
+            kv("Requires approval", controls.requiresApproval),
+            kv("Blocking reason", controls.blockingReason || "none"),
+            kv("Execution phase", controls.executionPhase || "none")
+          ].join("");
+
+          document.getElementById("runtime").innerHTML = runtime
+            ? [
+                kv("Status", runtime.status),
+                kv("Active operation", runtime.activeOperation || "none"),
+                kv("Current phase", runtime.currentPhase || "none"),
+                kv("Last outcome", runtime.lastOutcome || "none"),
+                kv("Message", runtime.message || "none"),
+                kv("Stale", runtime.isStale)
+              ].join("")
+            : kv("Status", "not available");
+
+          document.getElementById("events").innerHTML = (workflow.events || []).slice(-8).reverse().map(event => `
+            <article class="event">
+              <strong>${escapeText(event.code || "event")}</strong>
+              <span>${escapeText(event.timestampUtc || "")} · ${escapeText(event.actor || "system")} · ${escapeText(event.phase || "workflow")}</span>
+              <div>${escapeText(event.summary || "")}</div>
+            </article>`).join("");
+
+          const signature = JSON.stringify({
+            status: workflow.status,
+            currentPhase: workflow.currentPhase,
+            controls,
+            runtime,
+            eventCount: (workflow.events || []).length
+          });
+          if (lastSignature && lastSignature !== signature) {
+            setStatus(`Updated from persisted workflow state at ${new Date().toLocaleTimeString()}.`);
+          } else if (!lastSignature) {
+            setStatus(`Loaded at ${new Date().toLocaleTimeString()}. Polling for MCP changes.`);
+          }
+          lastSignature = signature;
+        }
+
+        function pill(text, tone = "") {
+          return `<span class="pill ${tone ? `pill--${tone}` : ""}">${escapeText(String(text))}</span>`;
+        }
+
+        function kv(key, value) {
+          return `<div class="kv"><div class="key">${escapeText(key)}</div><div class="value">${escapeText(String(value ?? ""))}</div></div>`;
+        }
+
+        function setStatus(message) {
+          document.getElementById("status").textContent = message;
+        }
+
+        function escapeText(value) {
+          return String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[char]));
+        }
+
+        document.getElementById("refresh").addEventListener("click", () => loadWorkflow().catch(error => setStatus(error.message)));
+        loadWorkflow().catch(error => setStatus(error.message));
+        setInterval(() => loadWorkflow().catch(error => setStatus(error.message)), 1000);
+      </script>
+    </body>
+    </html>
+    """;
+
+static string EscapeHtml(string value) =>
+    WebUtility.HtmlEncode(value);
 
 internal sealed record SpecForgePortalSettings(
     IReadOnlyList<OpenAiCompatibleModelProfile> ModelProfiles,
