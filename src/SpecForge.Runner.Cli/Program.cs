@@ -409,6 +409,11 @@ static string BuildConfigurationPortalHtml() =>
         h1 { margin: 0 0 8px; font-size: 2rem; }
         h2 { margin: 28px 0 12px; font-size: 1.1rem; color: #b8c7d6; }
         label { display: grid; gap: 6px; color: #b8c7d6; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; }
+        .field-label { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+        .help-button { display: inline-grid; place-items: center; width: 18px; height: 18px; padding: 0; border-radius: 50%; background: #26384b; border: 1px solid #43586f; color: #d7e5f2; font-size: 0.72rem; font-weight: 800; line-height: 1; }
+        .help-button:hover, .help-button[aria-expanded="true"] { background: #1d4f7a; border-color: #5f8fbd; }
+        .help-popover { position: fixed; z-index: 20; max-width: min(320px, calc(100vw - 32px)); padding: 10px 12px; border: 1px solid #43586f; border-radius: 8px; background: #0b121a; color: #d7e5f2; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.42); font-size: 0.82rem; font-weight: 500; line-height: 1.45; text-transform: none; }
+        .help-popover[hidden] { display: none; }
         input, select, textarea { width: 100%; border: 1px solid #344456; border-radius: 8px; padding: 10px 12px; background: #111c27; color: #e8eef5; font: inherit; }
         textarea { min-height: 74px; resize: vertical; }
         button { border: 0; border-radius: 8px; padding: 10px 14px; background: #22664a; color: white; font-weight: 700; cursor: pointer; }
@@ -457,12 +462,12 @@ static string BuildConfigurationPortalHtml() =>
           <section class="panel">
             <h2>Workflow Behavior</h2>
             <div class="grid">
-              <label>Refinement tolerance<select id="refinementTolerance"><option>strict</option><option>balanced</option><option>inferential</option></select></label>
-              <label>Review tolerance<select id="reviewTolerance"><option>strict</option><option>balanced</option><option>inferential</option></select></label>
-              <label>Review evidence policy<select id="reviewEvidencePolicy"><option>strict</option><option>balanced</option><option>release</option><option>advisory</option></select></label>
-              <label>Auto-refinement agent<select id="autoRefinementAnswersProfile"></select></label>
-              <label>Review learning skill path<input id="reviewLearningSkillPath"></label>
-              <label>Max implementation/review cycles<input id="maxImplementationReviewCycles" type="number" min="1"></label>
+              <label><span class="field-label">Refinement tolerance<button class="help-button" type="button" aria-label="Refinement tolerance details" aria-expanded="false" data-help="Controls how much ambiguity refinement tolerates before spec can continue. Strict asks more questions; inferential allows the model to proceed with more assumptions.">?</button></span><select id="refinementTolerance"><option>strict</option><option>balanced</option><option>inferential</option></select></label>
+              <label><span class="field-label">Review tolerance<button class="help-button" type="button" aria-label="Review tolerance details" aria-expanded="false" data-help="Controls how demanding review is before it passes or fails delivered work. Strict requires stronger evidence; inferential is more permissive.">?</button></span><select id="reviewTolerance"><option>strict</option><option>balanced</option><option>inferential</option></select></label>
+              <label><span class="field-label">Review evidence policy<button class="help-button" type="button" aria-label="Review evidence policy details" aria-expanded="false" data-help="Controls how missing automated, static, operational, or deferred validation evidence affects review readiness.">?</button></span><select id="reviewEvidencePolicy"><option>strict</option><option>balanced</option><option>release</option><option>advisory</option></select></label>
+              <label><span class="field-label">Auto-refinement agent<button class="help-button" type="button" aria-label="Auto-refinement agent details" aria-expanded="false" data-help="Agent used to answer refinement questions automatically before the workflow hands the phase back to the user.">?</button></span><select id="autoRefinementAnswersProfile"></select></label>
+              <label><span class="field-label">Review learning skill path<button class="help-button" type="button" aria-label="Review learning skill path details" aria-expanded="false" data-help="Workspace-relative skill file where generalized lessons from failed reviews can be persisted.">?</button></span><input id="reviewLearningSkillPath"></label>
+              <label><span class="field-label">Max implementation/review cycles<button class="help-button" type="button" aria-label="Max implementation/review cycles details" aria-expanded="false" data-help="Maximum implementation attempts allowed in the implementation/review loop before automatic continuation stops.">?</button></span><input id="maxImplementationReviewCycles" type="number" min="1"></label>
             </div>
             <div class="toggles" id="toggles"></div>
           </section>
@@ -496,6 +501,39 @@ static string BuildConfigurationPortalHtml() =>
           ["reviewLearningEnabled", "Review learning"],
           ["completedUsLockOnCompleted", "Lock completed user stories"]
         ];
+        const helpDescriptions = {
+          "model.name": "Stable profile name used by agent routing and phase assignments.",
+          "model.provider": "Provider kind for this model profile. Codex, Claude, and Copilot use native/local CLI identity; openai-compatible uses an HTTP endpoint.",
+          "model.baseUrl": "Base URL for openai-compatible endpoints. Native CLI providers usually leave this empty.",
+          "model.apiKey": "API key for remote openai-compatible endpoints. Local endpoints and native CLI providers can leave it empty.",
+          "model.model": "Concrete model identifier for endpoint-based profiles. Native CLI providers can leave this empty to use their local default.",
+          "model.reasoningEffort": "Optional reasoning effort override sent to providers that support it.",
+          "model.repositoryAccess": "Repository access granted by this model profile when agents are derived directly from models.",
+          "agent.name": "Stable agent name used by phase routing and auto-refinement settings.",
+          "agent.role": "Operational role injected into prompts, such as planner, implementer, reviewer, or release-preparer.",
+          "agent.modelProfile": "Model profile this agent runs on.",
+          "agent.repositoryAccess": "Repository permissions granted to this agent. Implementation and review require read-write.",
+          "agent.reasoningEffort": "Optional reasoning effort override for this agent.",
+          "agent.instructions": "Additional behavior instructions injected into this agent's effective phase prompt.",
+          "assignment.defaultAgent": "Fallback agent used when a phase does not declare its own specific agent.",
+          "assignment.captureAgent": "Optional agent override for capture.",
+          "assignment.refinementAgent": "Agent used to resolve refinement and clarify source intent.",
+          "assignment.specAgent": "Agent used to produce and revise the functional spec.",
+          "assignment.technicalDesignAgent": "Agent used to produce the technical design.",
+          "assignment.implementationAgent": "Agent used to make repository changes. Requires read-write access.",
+          "assignment.reviewAgent": "Agent used to inspect implementation and decide review readiness. Requires read-write access.",
+          "assignment.releaseApprovalAgent": "Agent used to prepare the release-readiness approval artifact.",
+          "assignment.prPreparationAgent": "Agent used to prepare PR handoff content.",
+          "technicalDesignSubagentsEnabled": "Runs specialist design subagents before synthesizing the final technical design artifact.",
+          "reviewSubagentsEnabled": "Runs specialist review subagents before synthesizing the final review verdict.",
+          "autoRefinementAnswersEnabled": "Lets the selected model try to answer pending refinement questions once before handing control back to the user.",
+          "autoPlayEnabled": "Automatically resumes workflow playback after manual actions when the next phase can continue.",
+          "autoReviewEnabled": "Automatically continues from implementation into review after implementation artifacts are generated or updated.",
+          "destructiveRewindEnabled": "When enabled, rewinds and regressions delete later derived artifacts and branch metadata.",
+          "pauseOnFailedReview": "Automatically pauses workflow playback when review fails so the developer can inspect the result.",
+          "reviewLearningEnabled": "Allows implementation retries after failed review to persist generalized lessons into local skills or prompt guardrails.",
+          "completedUsLockOnCompleted": "Keeps completed user stories locked against direct rewind or artifact modification unless explicitly reopened."
+        };
         let state = null;
 
         async function load() {
@@ -538,7 +576,7 @@ static string BuildConfigurationPortalHtml() =>
                 ${select("agent", index, "modelProfile", "Model profile", agent.modelProfile, state.modelProfiles.map(profile => profile.name))}
                 ${select("agent", index, "repositoryAccess", "Repository access", agent.repositoryAccess, ["none", "read", "read-write"])}
                 ${select("agent", index, "reasoningEffort", "Reasoning effort", agent.reasoningEffort || "", ["", "none", "minimal", "low", "medium", "high", "xhigh"])}
-                <label>Instructions<textarea data-kind="agent" data-index="${index}" data-field="instructions">${escapeText(agent.instructions || "")}</textarea></label>
+                <label>${fieldLabel("Instructions", "agent.instructions")}<textarea data-kind="agent" data-index="${index}" data-field="instructions">${escapeText(agent.instructions || "")}</textarea></label>
               </div>
             </article>`).join("");
         }
@@ -559,15 +597,28 @@ static string BuildConfigurationPortalHtml() =>
             element.value = state[id] ?? "";
           }
           document.getElementById("toggles").innerHTML = toggleFields.map(([field, label]) =>
-            `<label class="toggle"><span class="toggle__label">${escapeText(label)}</span><input type="checkbox" data-toggle="${field}" ${state[field] ? "checked" : ""}><span class="toggle__switch" aria-hidden="true"></span></label>`).join("");
+            `<label class="toggle"><span class="toggle__label">${escapeText(label)}${helpButton(field, label)}</span><input type="checkbox" data-toggle="${field}" ${state[field] ? "checked" : ""}><span class="toggle__switch" aria-hidden="true"></span></label>`).join("");
         }
 
         function input(kind, index, field, label, value, type = "text") {
-          return `<label>${escapeText(label)}<input type="${type}" data-kind="${kind}" data-index="${index}" data-field="${field}" value="${escapeAttr(value || "")}"></label>`;
+          return `<label>${fieldLabel(label, `${kind}.${field}`)}<input type="${type}" data-kind="${kind}" data-index="${index}" data-field="${field}" value="${escapeAttr(value || "")}"></label>`;
         }
 
         function select(kind, index, field, label, value, options) {
-          return `<label>${escapeText(label)}<select data-kind="${kind}" data-index="${index}" data-field="${field}">${options.map(option => `<option value="${escapeAttr(option)}" ${option === value ? "selected" : ""}>${escapeText(option || "None")}</option>`).join("")}</select></label>`;
+          return `<label>${fieldLabel(label, `${kind}.${field}`)}<select data-kind="${kind}" data-index="${index}" data-field="${field}">${options.map(option => `<option value="${escapeAttr(option)}" ${option === value ? "selected" : ""}>${escapeText(option || "None")}</option>`).join("")}</select></label>`;
+        }
+
+        function fieldLabel(label, helpKey) {
+          return `<span class="field-label">${escapeText(label)}${helpButton(helpKey, label)}</span>`;
+        }
+
+        function helpButton(helpKey, label) {
+          const helpText = helpDescriptions[helpKey];
+          if (!helpText) {
+            return "";
+          }
+
+          return `<button class="help-button" type="button" aria-label="${escapeAttr(label)} details" aria-expanded="false" data-help="${escapeAttr(helpText)}">?</button>`;
         }
 
         function sync() {
@@ -647,6 +698,14 @@ static string BuildConfigurationPortalHtml() =>
         document.addEventListener("click", event => {
           const target = event.target;
           if (!(target instanceof HTMLElement)) return;
+          if (target.classList.contains("help-button")) {
+            event.preventDefault();
+            event.stopPropagation();
+            toggleHelpPopover(target);
+            return;
+          }
+
+          closeHelpPopover();
           sync();
           if (target.id === "add-model") {
             state.modelProfiles.push({ name: "", provider: "codex", baseUrl: "", apiKey: "", model: "", reasoningEffort: "", repositoryAccess: "none" });
@@ -670,6 +729,12 @@ static string BuildConfigurationPortalHtml() =>
           if (target.dataset.removeAgent) {
             state.agentProfiles.splice(Number(target.dataset.removeAgent), 1);
             render();
+          }
+        });
+
+        document.addEventListener("keydown", event => {
+          if (event.key === "Escape") {
+            closeHelpPopover();
           }
         });
 
@@ -705,6 +770,39 @@ static string BuildConfigurationPortalHtml() =>
           render();
           setStatus("Configuration saved.");
         });
+
+        function toggleHelpPopover(button) {
+          const existing = document.querySelector(".help-popover");
+          if (existing && existing.dataset.owner === button.dataset.help) {
+            closeHelpPopover();
+            return;
+          }
+
+          closeHelpPopover();
+          const popover = document.createElement("div");
+          popover.className = "help-popover";
+          popover.dataset.owner = button.dataset.help || "";
+          popover.textContent = button.dataset.help || "";
+          document.body.appendChild(popover);
+          const buttonBounds = button.getBoundingClientRect();
+          const popoverBounds = popover.getBoundingClientRect();
+          const left = Math.min(
+            Math.max(16, buttonBounds.left),
+            window.innerWidth - popoverBounds.width - 16);
+          const top = Math.min(
+            buttonBounds.bottom + 8,
+            window.innerHeight - popoverBounds.height - 16);
+          popover.style.left = `${left}px`;
+          popover.style.top = `${Math.max(16, top)}px`;
+          button.setAttribute("aria-expanded", "true");
+        }
+
+        function closeHelpPopover() {
+          document.querySelectorAll(".help-button[aria-expanded='true']").forEach(button => {
+            button.setAttribute("aria-expanded", "false");
+          });
+          document.querySelector(".help-popover")?.remove();
+        }
 
         function setStatus(message) { document.getElementById("status").textContent = message; }
         function escapeText(value) { return String(value ?? "").replace(/[&<>]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[character])); }
