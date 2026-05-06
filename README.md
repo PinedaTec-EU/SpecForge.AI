@@ -158,6 +158,16 @@ dotnet test SpecForge.AI.slnx
 npm run test:ts
 ```
 
+### Serve the CLI configuration portal
+
+Codex can use the CLI-served configuration portal without depending on the VS Code configuration panel:
+
+```bash
+dotnet run --project src/SpecForge.Runner.Cli/SpecForge.Runner.Cli.csproj -- serve-configuration "$PWD"
+```
+
+The portal listens on `http://localhost:5127/` by default and persists workspace settings in `.specs/configuration/settings.json`. Workflow CLI commands use that file when model profile environment variables are not provided.
+
 ## Model Configuration
 
 By default, phase execution uses a deterministic local engine.
