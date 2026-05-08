@@ -72,6 +72,64 @@ Business errors:
 - `invalid_source_text`
 - `us_storage_conflict`
 
+### `specforge_action:create_user_stories_from_goal`
+
+Purpose:
+
+- convert a broad `/goals` style product request into ordered SpecForge user stories
+- preserve traceability from the original goal to every created story
+- prevent direct broad-goal implementation when the SpecForge plugin is available
+
+Minimum input:
+
+```yaml
+workspaceRoot: /repo/SpecForge.AI
+action: create_user_stories_from_goal
+params:
+  goalId: GOAL-AUTH
+  goalText: |
+    /goals Build GitHub authentication with sessions and admin roles.
+  strategy: small-user-stories
+  actor: model-on-behalf-of-user
+  stories:
+    - title: Login with GitHub OAuth
+      kind: feature
+      category: integrations
+      sourceText: |
+        As a user, I want to sign in with GitHub so that I can access the product without a local password.
+      acceptanceCriteria:
+        - GitHub OAuth sign-in starts from the application login entrypoint.
+        - Failed OAuth responses are visible and do not create a session.
+    - title: Persist authenticated sessions
+      sourceText: |
+        As an authenticated user, I want my session to persist securely so that I do not need to sign in on every page load.
+      dependencies:
+        - US-0001
+```
+
+Minimum output:
+
+```yaml
+goalId: GOAL-AUTH
+goalText: /goals Build GitHub authentication with sessions and admin roles.
+strategy: small-user-stories
+recommendedFirstUserStory: US-0001
+createdStories:
+  - usId: US-0001
+    title: Login with GitHub OAuth
+    kind: feature
+    category: integrations
+    sequence: 1
+    rootDirectory: /repo/SpecForge.AI/.specs/us/integrations/US-0001
+    mainArtifactPath: /repo/SpecForge.AI/.specs/us/integrations/US-0001/us.md
+```
+
+Notes:
+
+- `usId` is optional per story; SpecForge assigns the next available `US-0001` style id when it is omitted.
+- `kind` defaults to `feature` and `category` defaults to `workflow` when omitted.
+- The persisted `us.md` source includes the original goal, decomposition strategy, sequence, and an explicit SDD coding policy.
+
 ### `import_us_from_markdown`
 
 Purpose:

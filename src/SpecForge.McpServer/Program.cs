@@ -278,7 +278,7 @@ static JsonObject BuildToolsList()
                     required: ["workspaceRoot", "action"],
                     Props(
                         ("workspaceRoot", Prop("string", "Absolute path to the workspace root.")),
-                        ("action",        Prop("string", "Mutation operation, e.g. create_user_story, advance_phase, approve_phase, request_regression, submit_refinement_answers, submit_approval_answer, operate_artifact, add_files, or set_file_kind.")),
+                        ("action",        Prop("string", "Mutation operation, e.g. create_user_story, create_user_stories_from_goal, advance_phase, approve_phase, request_regression, submit_refinement_answers, submit_approval_answer, operate_artifact, add_files, or set_file_kind.")),
                         ("usId",          Prop("string", "User story identifier when the action targets an existing user story.")),
                         ("params",        Prop("object", "Action-specific parameters. Keep this small and use the SpecForge skill for the exact shape."))))),
 
@@ -572,6 +572,13 @@ static async Task<object> HandleSpecForgeActionAsync(
             GetRequired(parameters, "category"),
             GetRequired(parameters, "sourceText"),
             GetOptional(parameters, "actor") ?? "user"),
+        "create_user_stories_from_goal" => await applicationService.CreateUserStoriesFromGoalAsync(
+            workspaceRoot,
+            GetRequired(parameters, "goalText"),
+            GetGoalUserStoryDrafts(parameters),
+            GetOptional(parameters, "goalId"),
+            GetOptional(parameters, "strategy"),
+            GetOptional(parameters, "actor") ?? "model-on-behalf-of-user"),
         "import_user_story" => await applicationService.ImportUserStoryAsync(
             workspaceRoot,
             GetRequired(parameters, "usId"),
@@ -660,6 +667,22 @@ static async Task<object> HandleSpecForgeActionAsync(
             GetOptional(parameters, "actor") ?? "user"),
         _ => throw new InvalidOperationException($"SpecForge action '{action}' is not supported.")
     };
+}
+
+static IReadOnlyList<GoalUserStoryDraft> GetGoalUserStoryDrafts(JsonObject parameters)
+{
+    if (parameters["stories"] is not JsonArray storiesNode)
+    {
+        throw new InvalidOperationException("Missing or invalid 'stories' array.");
+    }
+
+    var stories = storiesNode.Deserialize<IReadOnlyList<GoalUserStoryDraft>>(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+    if (stories is null || stories.Count == 0)
+    {
+        throw new InvalidOperationException("At least one goal user story draft is required.");
+    }
+
+    return stories;
 }
 
 static async Task<object> HandleSpecForgePromptsAsync(

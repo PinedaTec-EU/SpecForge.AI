@@ -196,6 +196,14 @@ public sealed class RepositoryPromptInitializer
         - Do not compress important business or technical context just to make the story shorter. Preserve facts that can reduce refinement loops, approval questions, design ambiguity, review failures, or later rewinds.
         - If the user gives an incomplete story, use the MCP workflow to surface or answer questions instead of silently inventing business-critical facts.
 
+        ## Goal Intake And /goals
+
+        - When the user invokes `/goals` or gives one broad product goal, treat it as goal intake, not as permission to implement the whole system directly.
+        - If SpecForge MCP tools are available, decompose the goal into small, ordered, independently reviewable user stories and persist them through `specforge_action` with action `create_user_stories_from_goal`.
+        - Do not modify product code from a broad `/goals` prompt before at least one resulting user story has moved through the required SpecForge SDD gates.
+        - Each generated story must preserve traceability to the original goal, include acceptance intent when known, and be narrow enough to complete through the canonical workflow without mixing unrelated features.
+        - After creating stories from a goal, recommend the first story to run and continue through MCP workflow tools one story at a time.
+
         ## Questions And Decisions
 
         - Questions can appear in multiple workflow phases, including refinement, spec approval, review, release approval, and reopened workflows.
