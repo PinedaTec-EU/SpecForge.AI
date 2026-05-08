@@ -47,7 +47,7 @@ The refinement step is also designed as an operational screen, not just a modal 
 Playback is intentionally theatrical enough to communicate that the workflow is moving without becoming noisy. The execution overlay pushes the current run state above the graph instead of burying it in the timeline.
 
 <p align="center">
-  <img loading="lazy" alt="Workflow playback overlay showing the active execution state" src="./doc/images/workflow-playback-overlay.png" width="92%"/>
+  <img loading="lazy" alt="Workflow playback overlay showing refinement execution" src="./doc/images/workflow-refinement-playback-overlay.png" width="92%"/>
 </p>
 
 ## Features

@@ -12,7 +12,7 @@ The current workflow UI already shows this state language clearly in practice.
 
 The playback overlay keeps active execution in the same visual system instead of inventing a separate status surface.
 
-![Workflow playback overlay during active execution](./images/workflow-playback-overlay.png)
+![Workflow playback overlay during refinement execution](./images/workflow-refinement-playback-overlay.png)
 
 ## Canonical Palette
 

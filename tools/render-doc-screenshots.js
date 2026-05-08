@@ -464,7 +464,7 @@ The workflow is blocked until the operator confirms where the model should surfa
     })
   },
   {
-    name: "workflow-playback-overlay",
+    name: "workflow-refinement-playback-overlay",
     windowSize: "1680,1180",
     ...buildWorkflow({
       workflow: {
