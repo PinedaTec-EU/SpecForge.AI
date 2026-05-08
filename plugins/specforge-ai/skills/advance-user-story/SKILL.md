@@ -7,6 +7,8 @@ description: Advance or approve a SpecForge user-story phase through MCP.
 
 Before advancing, call `specforge_query` with `query: "current_phase"` and inspect `canExecute` or blocking details when present.
 
+Before calling any mutation, briefly tell the user which SpecForge phase or gate you are about to operate and what the next expected step is. If the current phase is blocked on user validation, branch creation details, or approval, do not call `advance_phase` and do not implement locally. Submit only the explicit user answer through the matching gate action, or ask the user for the missing input.
+
 To run the current phase:
 
 ```json

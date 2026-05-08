@@ -21,6 +21,14 @@ Manual file edits are allowed only for explicit low-level repair when the MCP ca
 
 Use the current repository root as `workspaceRoot` unless the user provides another absolute path.
 
+## User-Gated Workflow
+
+When the user asks to use SpecForge, keep the model inside the SpecForge workflow. Tell the user what will happen before each major step: user-story creation, refinement, specification, technical design, implementation, review, release approval, branch creation, and PR preparation.
+
+Do not skip user validation gates. If the workflow is waiting for user approval, branch details, or any other user answer, stop and ask for that input through the relevant SpecForge gate instead of continuing locally.
+
+Do not implement the requested change outside SpecForge just because an artifact exists or a gate is pending. Implementation may begin only after the SpecForge workflow reaches the implementation phase and the required user approval or branch gate has been completed through the MCP action.
+
 ## Common Reads
 
 - List stories: `specforge_query` with `query: "list_user_stories"`.
