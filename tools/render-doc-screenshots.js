@@ -10,7 +10,6 @@ const { buildWorkflowHtml } = require("../dist/workflowView.js");
 const repoRoot = path.resolve(__dirname, "..");
 const docsImageDir = path.join(repoRoot, "doc", "images");
 const edgeBinary = "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge";
-const runtimeVersion = fs.readFileSync(path.join(repoRoot, "version.nfo"), "utf8").trim();
 
 if (!fs.existsSync(edgeBinary)) {
   throw new Error(`Microsoft Edge was not found at '${edgeBinary}'.`);
@@ -372,7 +371,7 @@ Reframe the workflow screen so model routing and approval checkpoints are explic
         contextSuggestions: [],
         settingsConfigured: true,
         settingsMessage: null,
-        runtimeVersion,
+        runtimeVersion: null,
         phaseModelAssignments: {
           defaultProfileName: "planner",
           implementationProfileName: "codex-main",
@@ -453,7 +452,7 @@ The workflow is blocked until the operator confirms where the model should surfa
         ],
         settingsConfigured: true,
         settingsMessage: null,
-        runtimeVersion,
+        runtimeVersion: null,
         phaseModelAssignments: {
           defaultProfileName: "planner",
           implementationProfileName: "codex-main",
@@ -493,7 +492,7 @@ The workflow has started playback and is advancing into the next executable phas
         contextSuggestions: [],
         settingsConfigured: true,
         settingsMessage: null,
-        runtimeVersion,
+        runtimeVersion: null,
         phaseModelAssignments: {
           defaultProfileName: "planner",
           implementationProfileName: "codex-main",
