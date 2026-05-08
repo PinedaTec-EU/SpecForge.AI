@@ -38,10 +38,10 @@ The workflow view is one of the strongest parts of the product already: it makes
   <img loading="lazy" alt="Workflow overview showing the constellation graph and spec detail" src="./doc/images/workflow-overview.png" width="92%"/>
 </p>
 
-The clarification step is also designed as an operational screen, not just a modal interruption. It keeps the blocked questions, repo-context suggestions, and current artifact visible together.
+The refinement step is also designed as an operational screen, not just a modal interruption. It keeps the blocked questions, repo-context suggestions, and current artifact visible together.
 
 <p align="center">
-  <img loading="lazy" alt="Clarification view showing suggested context files and pending answers" src="./doc/images/workflow-clarification-context.png" width="92%"/>
+  <img loading="lazy" alt="Refinement view showing suggested context files and pending answers" src="./doc/images/workflow-refinement-context.png" width="92%"/>
 </p>
 
 Playback is intentionally theatrical enough to communicate that the workflow is moving without becoming noisy. The execution overlay pushes the current run state above the graph instead of burying it in the timeline.

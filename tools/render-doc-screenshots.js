@@ -10,6 +10,7 @@ const { buildWorkflowHtml } = require("../dist/workflowView.js");
 const repoRoot = path.resolve(__dirname, "..");
 const docsImageDir = path.join(repoRoot, "doc", "images");
 const edgeBinary = "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge";
+const runtimeVersion = fs.readFileSync(path.join(repoRoot, "version.nfo"), "utf8").trim();
 
 if (!fs.existsSync(edgeBinary)) {
   throw new Error(`Microsoft Edge was not found at '${edgeBinary}'.`);
@@ -20,6 +21,7 @@ if (!fs.existsSync(docsImageDir)) {
 }
 
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "specforge-doc-screens-"));
+const playbackStartedAtMs = Date.now() + 60_000;
 
 const sharedPhases = [
   {
@@ -37,22 +39,22 @@ const sharedPhases = [
     approvePromptPath: null
   },
   {
-    phaseId: "clarification",
-    title: "Clarification",
+    phaseId: "refinement",
+    title: "Refinement",
     order: 1,
     requiresApproval: false,
     expectsHumanIntervention: true,
     isApproved: true,
     isCurrent: false,
     state: "completed",
-    artifactPath: "/tmp/specforge/clarification.md",
+    artifactPath: "/tmp/specforge/refinement.md",
     operationLogPath: null,
-    executePromptPath: "/tmp/specforge/prompts/clarification.execute.md",
+    executePromptPath: "/tmp/specforge/prompts/refinement.execute.md",
     approvePromptPath: null
   },
   {
-    phaseId: "refinement",
-    title: "Refinement",
+    phaseId: "spec",
+    title: "Spec",
     order: 2,
     requiresApproval: true,
     expectsHumanIntervention: true,
@@ -61,8 +63,8 @@ const sharedPhases = [
     state: "current",
     artifactPath: "/tmp/specforge/01-spec.md",
     operationLogPath: "/tmp/specforge/01-spec.ops.md",
-    executePromptPath: "/tmp/specforge/prompts/refinement.execute.md",
-    approvePromptPath: "/tmp/specforge/prompts/refinement.approve.md"
+    executePromptPath: "/tmp/specforge/prompts/spec.execute.md",
+    approvePromptPath: "/tmp/specforge/prompts/spec.approve.md"
   },
   {
     phaseId: "technical-design",
@@ -142,7 +144,7 @@ const baseWorkflow = {
   kind: "feature",
   category: "developer-experience",
   status: "waiting-user",
-  currentPhase: "refinement",
+  currentPhase: "spec",
   directoryPath: "/tmp/specforge/us.US-1427",
   workBranch: "feature/us-1427-workflow-visibility",
   mainArtifactPath: "/tmp/specforge/us.md",
@@ -153,10 +155,10 @@ const baseWorkflow = {
     canContinue: false,
     canApprove: true,
     requiresApproval: true,
-    blockingReason: "refinement_pending_user_approval",
+    blockingReason: null,
     canRestartFromSource: true,
-    regressionTargets: ["clarification"],
-    rewindTargets: ["clarification", "refinement"]
+    regressionTargets: ["refinement"],
+    rewindTargets: ["refinement", "spec"]
   },
   clarification: {
     status: "completed",
@@ -220,9 +222,9 @@ const baseWorkflow = {
       timestampUtc: "2026-04-23T08:19:00Z",
       code: "phase_completed",
       actor: "planner",
-      phase: "clarification",
-      summary: "Condensed scope questions and captured the answers needed before refinement.",
-      artifacts: ["/tmp/specforge/clarification.md"],
+      phase: "refinement",
+      summary: "Condensed scope questions and captured the answers needed before spec.",
+      artifacts: ["/tmp/specforge/refinement.md"],
       usage: {
         inputTokens: 891,
         outputTokens: 331,
@@ -240,8 +242,8 @@ const baseWorkflow = {
       timestampUtc: "2026-04-23T08:31:00Z",
       code: "phase_completed",
       actor: "planner",
-      phase: "refinement",
-      summary: "Produced the refinement baseline and surfaced one approval question for the operator.",
+      phase: "spec",
+      summary: "Produced the spec baseline and surfaced one approval question for the operator.",
       artifacts: ["/tmp/specforge/01-spec.md"],
       usage: {
         inputTokens: 2301,
@@ -260,7 +262,7 @@ const baseWorkflow = {
       timestampUtc: "2026-04-23T08:36:00Z",
       code: "phase_operated",
       actor: "jmr",
-      phase: "refinement",
+      phase: "spec",
       summary: "Requested a tighter visual narrative and stronger emphasis on execution metadata.",
       artifacts: ["/tmp/specforge/01-spec.v02.md"],
       usage: {
@@ -347,8 +349,8 @@ const screens = [
     ...buildWorkflow({
       workflow: baseWorkflow,
       state: {
-        selectedPhaseId: "refinement",
-        selectedArtifactContent: `# Refinement Baseline
+        selectedPhaseId: "spec",
+        selectedArtifactContent: `# Spec Baseline
 
 ## Goal
 Make the workflow view feel deliberate, premium, and operationally trustworthy.
@@ -357,7 +359,7 @@ Make the workflow view feel deliberate, premium, and operationally trustworthy.
 - The execution model is visible in the phase metrics.
 - Waiting-user states are obvious from the graph and the detail panel.
 - The operator can inspect iterations and operation logs without leaving the view.`,
-        selectedOperationContent: `# Artifact Operation Log · refinement
+        selectedOperationContent: `# Artifact Operation Log · spec
 
 ## 2026-04-23T08:36:00Z · \`jmr\`
 
@@ -370,11 +372,12 @@ Reframe the workflow screen so model routing and approval checkpoints are explic
         contextSuggestions: [],
         settingsConfigured: true,
         settingsMessage: null,
-        runtimeVersion: "runner 0.3.2",
+        runtimeVersion,
         phaseModelAssignments: {
           defaultProfileName: "planner",
           implementationProfileName: "codex-main",
-          reviewProfileName: "claude-review"
+          reviewProfileName: "claude-review",
+          specProfileName: "planner"
         },
         approvalBaseBranchProposal: "main",
         approvalWorkBranchProposal: "feature/us-1427-workflow-visibility",
@@ -384,19 +387,19 @@ Reframe the workflow screen so model routing and approval checkpoints are explic
     })
   },
   {
-    name: "workflow-clarification-context",
+    name: "workflow-refinement-context",
     windowSize: "1680,1820",
     ...buildWorkflow({
       workflow: {
         ...baseWorkflow,
         status: "waiting-user",
-        currentPhase: "clarification",
+        currentPhase: "refinement",
         phases: baseWorkflow.phases.map((phase) => ({
           ...phase,
-          isCurrent: phase.phaseId === "clarification",
+          isCurrent: phase.phaseId === "refinement",
           state: phase.phaseId === "capture"
             ? "completed"
-            : phase.phaseId === "clarification"
+            : phase.phaseId === "refinement"
               ? "current"
               : "pending"
         })),
@@ -405,9 +408,9 @@ Reframe the workflow screen so model routing and approval checkpoints are explic
           canContinue: false,
           canApprove: false,
           requiresApproval: false,
-          blockingReason: "needs_clarification",
+          blockingReason: "refinement_pending_answers",
           regressionTargets: [],
-          rewindTargets: ["capture", "clarification"]
+          rewindTargets: ["capture", "refinement"]
         },
         clarification: {
           status: "pending",
@@ -428,10 +431,10 @@ Reframe the workflow screen so model routing and approval checkpoints are explic
         }
       },
       state: {
-        selectedPhaseId: "clarification",
-        selectedArtifactContent: `# Clarification
+        selectedPhaseId: "refinement",
+        selectedArtifactContent: `# Refinement
 
-The workflow is blocked until the operator confirms where the model should surface in the refinement metrics and what screenshots belong in the documentation.`,
+The workflow is blocked until the operator confirms where the model should surface in the spec metrics and what screenshots belong in the documentation.`,
         contextSuggestions: [
           {
             path: "/tmp/specforge/context/src-vscode/workflowView.ts",
@@ -450,11 +453,12 @@ The workflow is blocked until the operator confirms where the model should surfa
         ],
         settingsConfigured: true,
         settingsMessage: null,
-        runtimeVersion: "runner 0.3.2",
+        runtimeVersion,
         phaseModelAssignments: {
           defaultProfileName: "planner",
           implementationProfileName: "codex-main",
-          reviewProfileName: "claude-review"
+          reviewProfileName: "claude-review",
+          refinementProfileName: "planner"
         }
       },
       playbackState: "idle"
@@ -489,15 +493,16 @@ The workflow has started playback and is advancing into the next executable phas
         contextSuggestions: [],
         settingsConfigured: true,
         settingsMessage: null,
-        runtimeVersion: "runner 0.3.2",
+        runtimeVersion,
         phaseModelAssignments: {
           defaultProfileName: "planner",
           implementationProfileName: "codex-main",
-          reviewProfileName: "claude-review"
+          reviewProfileName: "claude-review",
+          refinementProfileName: "planner"
         },
-        executionPhaseId: "clarification",
+        executionPhaseId: "refinement",
         completedPhaseIds: ["capture"],
-        playbackStartedAtMs: 1763890200000
+        playbackStartedAtMs
       },
       playbackState: "playing"
     })
@@ -512,6 +517,7 @@ function renderScreenshot(screen) {
 
   fs.writeFileSync(htmlPath, html, "utf8");
   fs.mkdirSync(edgeProfileDir, { recursive: true });
+  fs.rmSync(pngPath, { force: true });
 
   const child = spawn(
     edgeBinary,
