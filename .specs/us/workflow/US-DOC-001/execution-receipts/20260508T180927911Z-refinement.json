@@ -1,0 +1,44 @@
+{
+  "executionId": "20260508T180927911Z-refinement",
+  "usId": "US-DOC-001",
+  "phaseId": "refinement",
+  "startedAtUtc": "2026-05-08T18:09:27.9150590\u002B00:00",
+  "completedAtUtc": "2026-05-08T18:09:27.9599470\u002B00:00",
+  "inputManifest": {
+    "manifestSha256": "6e526f2052595e36c4122c13191854037659a798bd7cb78e7d7013eb4641252b",
+    "workspaceRoot": "/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI",
+    "userStoryPath": "/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/workflow/US-DOC-001/us.md",
+    "userStorySha256": "0ce9978107ca6d4027e3db8df5447d75e95a9a7e85373f7b36282cb613ac776d",
+    "workspaceGitHeadSha": "71ff1a243f81f3eea815e2df4bcb1c39be185a98",
+    "previousArtifacts": [],
+    "contextFiles": [],
+    "currentArtifact": null,
+    "operationPromptSha256": null
+  },
+  "outputManifest": {
+    "resultArtifactPath": "/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/workflow/US-DOC-001/phases/00-refinement.md",
+    "resultArtifactSha256": "629f36283c17021b11dded33de59414df6688ded796bf9f9187b7c71ba44598b",
+    "generatedFiles": [
+      {
+        "path": "/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/workflow/US-DOC-001/phases/00-refinement.md",
+        "sha256": "629f36283c17021b11dded33de59414df6688ded796bf9f9187b7c71ba44598b",
+        "phaseId": null
+      }
+    ]
+  },
+  "usage": null,
+  "execution": {
+    "providerKind": "deterministic",
+    "model": "deterministic",
+    "profileName": null,
+    "baseUrl": null,
+    "agentName": null,
+    "agentRole": null,
+    "warnings": null,
+    "runtimeVersion": "0.1.4.415\u002B71ff1a243f81f3eea815e2df4bcb1c39be185a98",
+    "inputSha256": null,
+    "outputSha256": null,
+    "structuredOutputSha256": null,
+    "receiptPath": null
+  }
+}

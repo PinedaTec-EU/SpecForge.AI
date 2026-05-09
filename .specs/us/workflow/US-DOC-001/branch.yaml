@@ -1,0 +1,21 @@
+﻿usId: US-DOC-001
+kind: feature
+category: workflow
+baseBranch: main
+workBranch: feature/us-doc-001-workflow-screenshots
+status: active
+createdAt: 2026-05-08T18:14:22.6307970+00:00
+createdFromPhase: spec
+strategy: single-branch-per-user-story
+titleSnapshot: Document visual workflow states with realistic screenshots
+sourceUsPath: /Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/workflow/US-DOC-001/us.md
+pullRequestStatus: not_requested
+pullRequestTargetBaseBranch: main
+pullRequestTitle: 
+pullRequestArtifactPath: 
+pullRequestDraft: 
+pullRequestNumber: 
+pullRequestUrl: 
+pullRequestRemoteBranch: 
+pullRequestHeadCommitSha: 
+pullRequestPublishedAt: 

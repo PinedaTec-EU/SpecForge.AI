@@ -1,0 +1,9 @@
+﻿usId: US-DOC-001
+workflowId: canonical-v1
+status: active
+currentPhase: technical-design
+sourceHash: sha256:d2d95376533af70092d9e44079e83a09bae40a57f7089f5816a351765cc72fd3
+createdWithRuntimeVersion: 0.1.4.415+71ff1a243f81f3eea815e2df4bcb1c39be185a98
+lastRuntimeVersion: 0.1.4.415+71ff1a243f81f3eea815e2df4bcb1c39be185a98
+approvedPhases:
+  - spec

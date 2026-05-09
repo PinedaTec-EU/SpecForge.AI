@@ -1,0 +1,10 @@
+﻿usId: US-DOC-001
+status: idle
+currentPhase: technical-design
+lastOutcome: succeeded
+activeOperation: null
+ownerProcessId: null
+startedAtUtc: null
+lastHeartbeatUtc: 2026-05-08T18:15:19.4752760Z
+lastCompletedAtUtc: 2026-05-08T18:15:19.4752760Z
+message: Completed 'generate-next-phase'.
