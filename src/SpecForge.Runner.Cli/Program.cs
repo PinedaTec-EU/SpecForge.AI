@@ -256,6 +256,47 @@ static async Task HandleWorkflowPortalRequestAsync(
             case ("GET", "/api/summary"):
                 await WriteJsonResponseAsync(context.Response, await applicationService.GetUserStorySummaryAsync(workspaceRoot, usId));
                 return;
+            case ("POST", "/api/continue"):
+                await WriteJsonResponseAsync(
+                    context.Response,
+                    await applicationService.GenerateNextPhaseAsync(workspaceRoot, usId, "cli-user"));
+                return;
+            case ("POST", "/api/approval-answer"):
+            {
+                using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var payload = await reader.ReadToEndAsync();
+                var request = JsonSerializer.Deserialize<ApprovalAnswerSubmitRequest>(
+                    payload,
+                    SpecForgePortalSettingsStore.JsonOptions)
+                    ?? throw new InvalidOperationException("Approval answer payload could not be parsed.");
+                await WriteJsonResponseAsync(
+                    context.Response,
+                    await applicationService.SubmitApprovalAnswerAsync(
+                        workspaceRoot,
+                        usId,
+                        request.Question,
+                        request.Answer,
+                        request.Actor ?? "cli-user"));
+                return;
+            }
+            case ("POST", "/api/approve"):
+            {
+                using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var payload = await reader.ReadToEndAsync();
+                var request = JsonSerializer.Deserialize<ApprovalSubmitRequest>(
+                    payload,
+                    SpecForgePortalSettingsStore.JsonOptions)
+                    ?? throw new InvalidOperationException("Approval payload could not be parsed.");
+                await WriteJsonResponseAsync(
+                    context.Response,
+                    await applicationService.ApprovePhaseAsync(
+                        workspaceRoot,
+                        usId,
+                        request.BaseBranch,
+                        request.WorkBranch,
+                        request.Actor ?? "cli-user"));
+                return;
+            }
             case ("POST", "/api/suggest-approval-answer"):
             {
                 using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
@@ -1099,6 +1140,10 @@ static string BuildConfigurationPortalHtml() =>
     """;
 
 internal sealed record ApprovalAnswerSuggestionRequest(string Question, string? Actor);
+
+internal sealed record ApprovalAnswerSubmitRequest(string Question, string Answer, string? Actor);
+
+internal sealed record ApprovalSubmitRequest(string? BaseBranch, string? WorkBranch, string? Actor);
 
 internal sealed record SpecForgePortalSettings(
     IReadOnlyList<OpenAiCompatibleModelProfile> ModelProfiles,
