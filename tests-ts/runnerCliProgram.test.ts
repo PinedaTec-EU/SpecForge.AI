@@ -27,6 +27,18 @@ test("CLI workflow portal exposes refinement answer submission endpoint", async 
   assert.match(source, /internal sealed record RefinementAnswersSubmitRequest\(IReadOnlyList<string> Answers, string\? Actor\);/);
 });
 
+test("CLI workflow portal uses a distinct default port and caches rendered workflow HTML", async () => {
+  const source = await fs.promises.readFile(programPath, "utf8");
+
+  assert.match(source, /serve-configuration[\s\S]*?"http:\/\/localhost:5127\/"/);
+  assert.match(source, /serve-workflow[\s\S]*?"http:\/\/localhost:5128\/"/);
+  assert.match(source, /ConcurrentDictionary<string, string> renderCache/);
+  assert.match(source, /renderCache\.TryGetValue\(cacheKey, out var cachedHtml\)/);
+  assert.match(source, /BuildWorkflowPortalCacheKey\(signature, resolvedSelectedPhaseId, selectedPhase\)/);
+  assert.match(source, /File\.GetLastWriteTimeUtc\(path\)\.Ticks/);
+  assert.match(source, /TrimWorkflowPortalRenderCache\(renderCache\)/);
+});
+
 test("CLI writes JSON with web serializer options for record responses", async () => {
   const source = await fs.promises.readFile(programPath, "utf8");
 

@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Diagnostics;
+using System.Collections.Concurrent;
 using SpecForge.Domain.Application;
 using SpecForge.Domain.Persistence;
 using SpecForge.OpenAICompatible;
@@ -197,9 +198,10 @@ static async Task HandleServeWorkflowAsync(IReadOnlyList<string> args)
 
     var workspaceRoot = Path.GetFullPath(args[1]);
     var usId = args[2];
-    var prefix = args.Count == 4 ? NormalizeHttpPrefix(args[3]) : "http://localhost:5127/";
+    var prefix = args.Count == 4 ? NormalizeHttpPrefix(args[3]) : "http://localhost:5128/";
     var runner = new WorkflowRunner(CreatePhaseExecutionProvider(workspaceRoot));
     var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+    var renderCache = new ConcurrentDictionary<string, string>();
 
     using var listener = new HttpListener();
     listener.Prefixes.Add(prefix);
@@ -211,7 +213,7 @@ static async Task HandleServeWorkflowAsync(IReadOnlyList<string> args)
     while (listener.IsListening)
     {
         var context = await listener.GetContextAsync();
-        _ = Task.Run(() => HandleWorkflowPortalRequestAsync(context, applicationService, workspaceRoot, usId));
+        _ = Task.Run(() => HandleWorkflowPortalRequestAsync(context, applicationService, workspaceRoot, usId, renderCache));
     }
 }
 
@@ -219,7 +221,8 @@ static async Task HandleWorkflowPortalRequestAsync(
     HttpListenerContext context,
     SpecForgeApplicationService applicationService,
     string workspaceRoot,
-    string usId)
+    string usId,
+    ConcurrentDictionary<string, string> renderCache)
 {
     try
     {
@@ -238,7 +241,8 @@ static async Task HandleWorkflowPortalRequestAsync(
                         applicationService,
                         workspaceRoot,
                         usId,
-                        context.Request.QueryString["selectedPhaseId"]));
+                        context.Request.QueryString["selectedPhaseId"],
+                        renderCache));
                 return;
             case ("GET", "/api/workflow"):
                 await WriteJsonResponseAsync(context.Response, await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, usId));
@@ -343,22 +347,34 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
     SpecForgeApplicationService applicationService,
     string workspaceRoot,
     string usId,
-    string? selectedPhaseId)
+    string? selectedPhaseId,
+    ConcurrentDictionary<string, string> renderCache)
 {
     var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, usId);
     var resolvedSelectedPhaseId = ResolveSelectedWorkflowPhaseId(workflow, selectedPhaseId);
+    var selectedPhase = ResolveSelectedWorkflowPhase(workflow, resolvedSelectedPhaseId);
+    var signature = BuildWorkflowSignature(workflow);
+    var cacheKey = BuildWorkflowPortalCacheKey(signature, resolvedSelectedPhaseId, selectedPhase);
+    if (renderCache.TryGetValue(cacheKey, out var cachedHtml))
+    {
+        return cachedHtml;
+    }
+
     var payload = JsonSerializer.Serialize(
         new
         {
             workflow,
             selectedPhaseId = resolvedSelectedPhaseId,
-            selectedArtifactContent = await ReadSelectedArtifactContentAsync(workflow, resolvedSelectedPhaseId),
-            selectedOperationContent = await ReadSelectedOperationContentAsync(workflow, resolvedSelectedPhaseId),
-            signature = BuildWorkflowSignature(workflow)
+            selectedArtifactContent = await ReadFileContentOrNullAsync(selectedPhase?.ArtifactPath),
+            selectedOperationContent = await ReadFileContentOrNullAsync(selectedPhase?.OperationLogPath),
+            signature
         },
         SpecForgePortalSettingsStore.JsonOptions);
 
-    return await RenderWorkflowHtmlWithNodeAsync(payload);
+    var html = await RenderWorkflowHtmlWithNodeAsync(payload);
+    renderCache[cacheKey] = html;
+    TrimWorkflowPortalRenderCache(renderCache);
+    return html;
 }
 
 static async Task<string> BuildWorkflowPortalSignatureAsync(
@@ -420,30 +436,50 @@ static string ResolveSelectedWorkflowPhaseId(UserStoryWorkflowDetails workflow, 
     return workflow.CurrentPhase;
 }
 
-static async Task<string?> ReadSelectedArtifactContentAsync(UserStoryWorkflowDetails workflow, string selectedPhaseId)
+static WorkflowPhaseDetails? ResolveSelectedWorkflowPhase(UserStoryWorkflowDetails workflow, string selectedPhaseId)
 {
-    var selectedPhase = workflow.Phases.FirstOrDefault(phase => string.Equals(phase.PhaseId, selectedPhaseId, StringComparison.Ordinal))
+    return workflow.Phases.FirstOrDefault(phase => string.Equals(phase.PhaseId, selectedPhaseId, StringComparison.Ordinal))
         ?? workflow.Phases.FirstOrDefault(phase => phase.IsCurrent)
         ?? workflow.Phases.FirstOrDefault();
-    if (selectedPhase?.ArtifactPath is null || !File.Exists(selectedPhase.ArtifactPath))
-    {
-        return null;
-    }
-
-    return await File.ReadAllTextAsync(selectedPhase.ArtifactPath);
 }
 
-static async Task<string?> ReadSelectedOperationContentAsync(UserStoryWorkflowDetails workflow, string selectedPhaseId)
+static async Task<string?> ReadFileContentOrNullAsync(string? path)
 {
-    var selectedPhase = workflow.Phases.FirstOrDefault(phase => string.Equals(phase.PhaseId, selectedPhaseId, StringComparison.Ordinal))
-        ?? workflow.Phases.FirstOrDefault(phase => phase.IsCurrent)
-        ?? workflow.Phases.FirstOrDefault();
-    if (selectedPhase?.OperationLogPath is null || !File.Exists(selectedPhase.OperationLogPath))
+    if (path is null || !File.Exists(path))
     {
         return null;
     }
 
-    return await File.ReadAllTextAsync(selectedPhase.OperationLogPath);
+    return await File.ReadAllTextAsync(path);
+}
+
+static string BuildWorkflowPortalCacheKey(
+    string signature,
+    string selectedPhaseId,
+    WorkflowPhaseDetails? selectedPhase)
+{
+    var artifactStamp = ReadLastWriteStamp(selectedPhase?.ArtifactPath);
+    var operationStamp = ReadLastWriteStamp(selectedPhase?.OperationLogPath);
+    return $"{signature}:{selectedPhaseId}:{artifactStamp}:{operationStamp}";
+}
+
+static long ReadLastWriteStamp(string? path) =>
+    path is not null && File.Exists(path)
+        ? File.GetLastWriteTimeUtc(path).Ticks
+        : 0;
+
+static void TrimWorkflowPortalRenderCache(ConcurrentDictionary<string, string> renderCache)
+{
+    const int maxEntries = 16;
+    if (renderCache.Count <= maxEntries)
+    {
+        return;
+    }
+
+    foreach (var key in renderCache.Keys.Take(renderCache.Count - maxEntries))
+    {
+        renderCache.TryRemove(key, out _);
+    }
 }
 
 static string BuildWorkflowSignature(UserStoryWorkflowDetails workflow)
