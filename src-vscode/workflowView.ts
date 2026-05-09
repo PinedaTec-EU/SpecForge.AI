@@ -2417,7 +2417,7 @@ export function buildWorkflowHtml(
     .runtime-version {
       font-size: 0.8rem;
       letter-spacing: 0.08em;
-      color: rgba(166, 255, 206, 0.78);
+      color: rgba(176, 180, 176, 0.78);
     }
     h1 {
       margin: 0;

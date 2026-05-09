@@ -539,7 +539,7 @@ function wrapHtml(content: string, busy: boolean, createFormResetToken: number, 
     .runtime-version {
       font-size: 0.68rem;
       letter-spacing: 0.08em;
-      color: rgba(166, 255, 206, 0.78);
+      color: rgba(176, 180, 176, 0.78);
     }
     .eyebrow.warning {
       color: #ffd75a;

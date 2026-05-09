@@ -324,6 +324,27 @@ public sealed class WorkflowRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task ContinuePhaseAsync_StampsRuntimeVersionOnArtifactsAndOnlyFirstSameVersionArtifactTimelineEvent()
+    {
+        var runner = new WorkflowRunner(new DeterministicPhaseExecutionProvider(), "0.1.3.224", "balanced");
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Test story", "feature", "workflow", "Initial source text");
+        var specResult = await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+        var technicalDesignResult = await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        Assert.NotNull(specResult.GeneratedArtifactPath);
+        Assert.NotNull(technicalDesignResult.GeneratedArtifactPath);
+        Assert.Contains("<!-- specforge-runtime-version: 0.1.3.224 -->", await File.ReadAllTextAsync(specResult.GeneratedArtifactPath!));
+        Assert.Contains("<!-- specforge-runtime-version: 0.1.3.224 -->", await File.ReadAllTextAsync(technicalDesignResult.GeneratedArtifactPath!));
+
+        var timelinePath = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0001").TimelineFilePath;
+        var timeline = await File.ReadAllTextAsync(timelinePath);
+        Assert.Equal(2, CountOccurrences(timeline, "runtime-version: `0.1.3.224`"));
+    }
+
+    [Fact]
     public async Task ApproveCurrentPhaseAsync_WhenApprovalQuestionsRemain_ThrowsValidationError()
     {
         var runner = new WorkflowRunner();
@@ -1872,6 +1893,9 @@ public sealed class WorkflowRunnerTests : IDisposable
                 "test-user");
         }
     }
+
+    private static int CountOccurrences(string value, string pattern) =>
+        value.Split(pattern, StringSplitOptions.None).Length - 1;
 
     private sealed class UsageCapturingPhaseExecutionProvider : IPhaseExecutionProvider
     {

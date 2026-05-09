@@ -228,7 +228,10 @@ public sealed class WorkflowRunner
         var generatedVersion = ExtractArtifactVersion(generatedArtifactPath);
         var generatedArtifactJsonPath = paths.GetPhaseArtifactJsonPath(PhaseId.Spec, generatedVersion);
         await File.WriteAllTextAsync(generatedArtifactJsonPath, SpecJson.Serialize(updatedDocument), cancellationToken);
-        await File.WriteAllTextAsync(generatedArtifactPath, SpecJson.RenderMarkdown(updatedDocument, workflowRun.UsId, generatedVersion), cancellationToken);
+        await File.WriteAllTextAsync(
+            generatedArtifactPath,
+            StampRuntimeVersion(SpecJson.RenderMarkdown(updatedDocument, workflowRun.UsId, generatedVersion), runtimeVersion),
+            cancellationToken);
 
         if (workflowRun.IsPhaseApproved(PhaseId.Spec))
         {
@@ -824,6 +827,7 @@ public sealed class WorkflowRunner
                 operationPrompt,
                 reopenGeneration.ArtifactPath,
                 contextArtifactPaths,
+                runtimeVersion,
                 cancellationToken);
             await AppendTimelineEventAsync(
                 paths.TimelineFilePath,
@@ -1168,6 +1172,7 @@ public sealed class WorkflowRunner
             prompt,
             generation.ArtifactPath,
             contextArtifactPaths,
+            runtimeVersion,
             cancellationToken);
         await fileStore.SaveAsync(workflowRun, paths.RootDirectory, cancellationToken);
         await AppendTimelineEventAsync(
@@ -1458,7 +1463,7 @@ public sealed class WorkflowRunner
             .Select(static path => $"'{path}'")
             .ToArray();
         SpecForgeDiagnostics.Log(
-            $"[runner.materialize] usId={workflowRun.UsId} phase={WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)} artifactPath='{artifactPath}' contextFiles={executionContext.ContextFilePaths.Count} previousArtifacts={executionContext.PreviousArtifactPaths.Count} currentArtifactPath='{currentArtifactPath ?? "(none)"}' operationPrompt={(string.IsNullOrWhiteSpace(operationPrompt) ? "no" : "yes")}");
+            $"[runner.materialize] usId={workflowRun.UsId} phase={WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)} runtimeVersion={runtimeVersion ?? "(none)"} artifactPath='{artifactPath}' contextFiles={executionContext.ContextFilePaths.Count} previousArtifacts={executionContext.PreviousArtifactPaths.Count} currentArtifactPath='{currentArtifactPath ?? "(none)"}' operationPrompt={(string.IsNullOrWhiteSpace(operationPrompt) ? "no" : "yes")}");
         SpecForgeDiagnostics.Log(
             $"[runner.materialize.in] usId={workflowRun.UsId} phase={WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)} executionId={executionId} inputManifestHash={inputManifest.ManifestSha256} userStory='{executionContext.UserStoryPath}' previousArtifacts=[{string.Join(", ", previousArtifactList)}] contextFiles=[{string.Join(", ", contextFileList)}] currentArtifact='{currentArtifactPath ?? "(none)"}'");
         var implementationEvidenceBaseline = workflowRun.CurrentPhase == PhaseId.Implementation
@@ -1485,7 +1490,7 @@ public sealed class WorkflowRunner
         if (workflowRun.CurrentPhase == PhaseId.Spec)
         {
             EnsureMaterializedSpecIsUsable(result.Content);
-            await File.WriteAllTextAsync(artifactPath, result.Content, cancellationToken);
+            await File.WriteAllTextAsync(artifactPath, StampRuntimeVersion(result.Content, executionMetadata?.RuntimeVersion), cancellationToken);
         }
         else if (workflowRun.CurrentPhase == PhaseId.Implementation)
         {
@@ -1497,24 +1502,24 @@ public sealed class WorkflowRunner
             await ImplementationPhaseEvidence.PersistAsync(paths, implementationEvidence, cancellationToken);
             await File.WriteAllTextAsync(
                 artifactPath,
-                ImplementationPhaseEvidence.AppendSection(
+                StampRuntimeVersion(ImplementationPhaseEvidence.AppendSection(
                     result.Content,
                     paths.GetPhaseEvidenceMarkdownPath(PhaseId.Implementation),
                     paths.GetPhaseEvidenceJsonPath(PhaseId.Implementation),
-                    implementationEvidence),
+                    implementationEvidence), executionMetadata?.RuntimeVersion),
                 cancellationToken);
         }
         else if (workflowRun.CurrentPhase == PhaseId.Review)
         {
             var version = ExtractArtifactVersion(artifactPath);
             var rawArtifactPath = BuildRawReviewArtifactPath(artifactPath);
-            await File.WriteAllTextAsync(rawArtifactPath, result.Content, cancellationToken);
+            await File.WriteAllTextAsync(rawArtifactPath, StampRuntimeVersion(result.Content, executionMetadata?.RuntimeVersion), cancellationToken);
             var reviewArtifact = EnforceReviewValidationStrategyContract(result.Content, paths, workflowRun.UsId, version, reviewEvidencePolicy);
-            await File.WriteAllTextAsync(artifactPath, reviewArtifact, cancellationToken);
+            await File.WriteAllTextAsync(artifactPath, StampRuntimeVersion(reviewArtifact, executionMetadata?.RuntimeVersion), cancellationToken);
         }
         else if (workflowRun.CurrentPhase == PhaseId.TechnicalDesign)
         {
-            await File.WriteAllTextAsync(artifactPath, result.Content, cancellationToken);
+            await File.WriteAllTextAsync(artifactPath, StampRuntimeVersion(result.Content, executionMetadata?.RuntimeVersion), cancellationToken);
         }
         else if (workflowRun.CurrentPhase is PhaseId.ReleaseApproval or PhaseId.PrPreparation)
         {
@@ -1524,17 +1529,17 @@ public sealed class WorkflowRunner
                 var document = PrPreparationArtifactJson.ParseMarkdown(result.Content);
                 EnsurePrPreparationArtifactIsPublishable(document);
                 var renderedMarkdown = PrPreparationArtifactJson.RenderMarkdown(document, workflowRun.UsId, version);
-                await File.WriteAllTextAsync(artifactPath, renderedMarkdown, cancellationToken);
+                await File.WriteAllTextAsync(artifactPath, StampRuntimeVersion(renderedMarkdown, executionMetadata?.RuntimeVersion), cancellationToken);
                 workflowRun.Branch?.RecordPreparedPullRequest(document.PrTitle, artifactPath);
             }
             else
             {
-                await File.WriteAllTextAsync(artifactPath, result.Content, cancellationToken);
+                await File.WriteAllTextAsync(artifactPath, StampRuntimeVersion(result.Content, executionMetadata?.RuntimeVersion), cancellationToken);
             }
         }
         else
         {
-            await File.WriteAllTextAsync(artifactPath, result.Content, cancellationToken);
+            await File.WriteAllTextAsync(artifactPath, StampRuntimeVersion(result.Content, executionMetadata?.RuntimeVersion), cancellationToken);
         }
 
         var generatedFiles = new List<string> { artifactPath };
@@ -1569,7 +1574,7 @@ public sealed class WorkflowRunner
         }
 
         SpecForgeDiagnostics.Log(
-            $"[runner.materialize.out] usId={workflowRun.UsId} phase={WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)} generatedFiles=[{string.Join(", ", generatedFiles.Select(static path => $"'{path}'"))}]");
+            $"[runner.materialize.out] usId={workflowRun.UsId} phase={WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)} runtimeVersion={executionMetadata?.RuntimeVersion ?? "(none)"} generatedFiles=[{string.Join(", ", generatedFiles.Select(static path => $"'{path}'"))}]");
 
         var receipt = new PhaseExecutionReceipt(
             executionId,
@@ -1599,7 +1604,7 @@ public sealed class WorkflowRunner
             ? null
             : executionMetadata with { ReceiptPath = receiptPath };
         SpecForgeDiagnostics.Log(
-            $"[runner.materialize.receipt] usId={workflowRun.UsId} phase={WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)} executionId={executionId} receipt='{receiptPath}' outputHash={receipt.OutputManifest.ResultArtifactSha256 ?? "(none)"}");
+            $"[runner.materialize.receipt] usId={workflowRun.UsId} phase={WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)} runtimeVersion={executionMetadata?.RuntimeVersion ?? "(none)"} executionId={executionId} receipt='{receiptPath}' outputHash={receipt.OutputManifest.ResultArtifactSha256 ?? "(none)"}");
         diagnostics.MarkCompleted($"artifactPath='{artifactPath}' receiptPath='{receiptPath}'");
         var repositoryEvidencePaths = workflowRun.CurrentPhase == PhaseId.Implementation
             ? TryReadImplementationEvidenceTouchedPaths(workspaceRoot, paths)
@@ -1626,6 +1631,23 @@ public sealed class WorkflowRunner
             : fileName + ".raw";
 
         return Path.Combine(directory, rawFileName);
+    }
+
+    private static string StampRuntimeVersion(string markdown, string? runtimeVersion)
+    {
+        if (string.IsNullOrWhiteSpace(runtimeVersion))
+        {
+            return markdown;
+        }
+
+        var normalizedVersion = runtimeVersion.Trim();
+        if (markdown.Contains("<!-- specforge-runtime-version:", StringComparison.Ordinal))
+        {
+            return markdown;
+        }
+
+        return markdown.TrimEnd() + Environment.NewLine + Environment.NewLine +
+            $"<!-- specforge-runtime-version: {normalizedVersion} -->" + Environment.NewLine;
     }
 
     private static IReadOnlyCollection<string> TryReadImplementationEvidenceTouchedPaths(
@@ -2441,6 +2463,10 @@ public sealed class WorkflowRunner
 
         if (execution is not null)
         {
+            var executionRuntimeVersion = ShouldWriteTimelineRuntimeVersion(timelinePath, normalizedArtifactPaths, execution.RuntimeVersion)
+                ? execution.RuntimeVersion
+                : null;
+
             builder.AppendLine("- Execution:")
                 .AppendLine($"  - provider: `{execution.ProviderKind}`")
                 .AppendLine($"  - model: `{execution.Model}`");
@@ -2465,9 +2491,9 @@ public sealed class WorkflowRunner
                 builder.AppendLine($"  - base-url: `{execution.BaseUrl}`");
             }
 
-            if (!string.IsNullOrWhiteSpace(execution.RuntimeVersion))
+            if (!string.IsNullOrWhiteSpace(executionRuntimeVersion))
             {
-                builder.AppendLine($"  - runtime-version: `{execution.RuntimeVersion}`");
+                builder.AppendLine($"  - runtime-version: `{executionRuntimeVersion}`");
             }
 
             if (execution.Warnings is { Count: > 0 })
@@ -2494,6 +2520,34 @@ public sealed class WorkflowRunner
         }
 
         await File.AppendAllTextAsync(timelinePath, builder.ToString(), cancellationToken);
+    }
+
+    private static bool ShouldWriteTimelineRuntimeVersion(
+        string timelinePath,
+        IReadOnlyCollection<string>? artifactPaths,
+        string? runtimeVersion)
+    {
+        if (string.IsNullOrWhiteSpace(runtimeVersion))
+        {
+            return false;
+        }
+
+        if (artifactPaths is not { Count: > 0 })
+        {
+            return true;
+        }
+
+        if (!File.Exists(timelinePath))
+        {
+            return true;
+        }
+
+        var priorArtifactRuntimeVersion = TimelineMarkdownParser.ParseEvents(File.ReadAllText(timelinePath))
+            .Where(static timelineEvent => timelineEvent.Artifacts.Count > 0)
+            .Select(static timelineEvent => timelineEvent.Execution?.RuntimeVersion)
+            .LastOrDefault(static version => !string.IsNullOrWhiteSpace(version));
+
+        return !string.Equals(priorArtifactRuntimeVersion, runtimeVersion.Trim(), StringComparison.Ordinal);
     }
 
     private static async Task<PhaseCommitResult?> CommitPhaseArtifactsAsync(
@@ -2753,6 +2807,7 @@ public sealed class WorkflowRunner
         string prompt,
         string generatedArtifactPath,
         IReadOnlyCollection<string> contextArtifactPaths,
+        string? runtimeVersion,
         CancellationToken cancellationToken)
     {
         var normalizedPrompt = prompt.Trim();
@@ -2782,6 +2837,11 @@ public sealed class WorkflowRunner
             .AppendLine()
             .AppendLine($"- Source Artifact: `{sourceArtifactPath.Replace('\\', '/')}`")
             .AppendLine($"- Result Artifact: `{generatedArtifactPath.Replace('\\', '/')}`");
+
+        if (!string.IsNullOrWhiteSpace(runtimeVersion))
+        {
+            builder.AppendLine($"- Runtime Version: `{runtimeVersion.Trim()}`");
+        }
 
         if (contextArtifactPaths.Count > 0)
         {
