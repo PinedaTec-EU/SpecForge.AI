@@ -12,7 +12,7 @@ import {
   showSpecForgeOutput
 } from "./outputChannel";
 import { readRuntimeVersionAsync } from "./runtimeVersion";
-import { hasActiveWorkflowPlayback, notifyWorkflowFileChanged, openWorkflowView, refreshWorkflowViews } from "./workflowPanel";
+import { hasActiveWorkflowPlayback, hasWorkflowViewOpen, notifyWorkflowFileChanged, openWorkflowView, refreshWorkflowViews } from "./workflowPanel";
 import { WorkflowAuditViewProvider } from "./workflowAuditView";
 import { SidebarViewProvider } from "./sidebarView";
 import {
@@ -319,7 +319,24 @@ function createExtensionActions(
     requestRegression,
     restartUserStoryFromSource,
     deleteUserStory,
-    continuePhase,
+    continuePhase: async (summary) => {
+      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      if (
+        workspaceRoot
+        && summary
+        && typeof summary === "object"
+        && "usId" in summary
+        && typeof summary.usId === "string"
+        && !hasWorkflowViewOpen(workspaceRoot, summary.usId)
+      ) {
+        appendSpecForgeLog(
+          `Workflow '${summary.usId}' continue requested without an open constellation portal; opening workflow view before iteration.`
+        );
+        await vscode.commands.executeCommand("specForge.openWorkflowView", summary);
+      }
+
+      await continuePhase(summary as UserStorySummary | undefined);
+    },
     disposeBackendClients,
     showOutput: async () => {
       showSpecForgeOutput(false);

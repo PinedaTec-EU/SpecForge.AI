@@ -137,6 +137,10 @@ export function hasActiveWorkflowPlayback(): boolean {
   return false;
 }
 
+export function hasWorkflowViewOpen(workspaceRoot: string, usId: string): boolean {
+  return panels.has(`${workspaceRoot}:${usId}`);
+}
+
 export function closeWorkflowView(workspaceRoot: string, usId: string): void {
   panels.get(`${workspaceRoot}:${usId}`)?.dispose();
 }
