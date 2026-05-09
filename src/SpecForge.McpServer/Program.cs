@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using SpecForge.Domain.Application;
@@ -29,7 +28,7 @@ var stdout = Console.OpenStandardOutput();
 
 while (true)
 {
-    var payload = await ReadMessageAsync(stdin);
+    var payload = await McpJsonRpcStdioTransport.ReadMessageAsync(stdin);
     if (payload is null)
     {
         break;
@@ -48,7 +47,7 @@ while (true)
 
     if (response is not null)
     {
-        await WriteMessageAsync(stdout, response.ToJsonString(serializerOptions));
+        await McpJsonRpcStdioTransport.WriteMessageAsync(stdout, response.ToJsonString(serializerOptions));
     }
 }
 
@@ -846,52 +845,4 @@ static JsonObject BuildErrorResponse(JsonNode? id, int code, string message)
             ["message"] = message
         }
     };
-}
-
-static async Task<JsonNode?> ReadMessageAsync(Stream input)
-{
-    const int maxHeaderSize = 8192;
-    var headerBytes = new List<byte>(256);
-    var buffer = new byte[1];
-    while (true)
-    {
-        var bytesRead = await input.ReadAsync(buffer);
-        if (bytesRead == 0)
-        {
-            return null;
-        }
-
-        headerBytes.Add(buffer[0]);
-
-        if (headerBytes.Count > maxHeaderSize)
-        {
-            throw new InvalidOperationException($"MCP message header exceeds maximum allowed size of {maxHeaderSize} bytes.");
-        }
-
-        var headerString = Encoding.UTF8.GetString(headerBytes.ToArray());
-        if (headerString.EndsWith("\r\n\r\n", StringComparison.Ordinal))
-        {
-            var contentLengthLine = headerString
-                .Split("\r\n", StringSplitOptions.RemoveEmptyEntries)
-                .First(line => line.StartsWith("Content-Length:", StringComparison.OrdinalIgnoreCase));
-            var contentLength = int.Parse(contentLengthLine.Split(':', 2)[1].Trim());
-            var contentBytes = new byte[contentLength];
-            var totalRead = 0;
-            while (totalRead < contentLength)
-            {
-                totalRead += await input.ReadAsync(contentBytes.AsMemory(totalRead, contentLength - totalRead));
-            }
-
-            return JsonNode.Parse(contentBytes) ?? throw new InvalidOperationException("Invalid JSON payload.");
-        }
-    }
-}
-
-static async Task WriteMessageAsync(Stream output, string json)
-{
-    var contentBytes = Encoding.UTF8.GetBytes(json);
-    var headerBytes = Encoding.ASCII.GetBytes($"Content-Length: {contentBytes.Length}\r\n\r\n");
-    await output.WriteAsync(headerBytes);
-    await output.WriteAsync(contentBytes);
-    await output.FlushAsync();
 }
