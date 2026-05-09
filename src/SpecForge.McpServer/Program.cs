@@ -270,7 +270,7 @@ static JsonObject BuildToolsList()
                     required: ["workspaceRoot", "query"],
                     Props(
                         ("workspaceRoot", Prop("string", "Absolute path to the workspace root.")),
-                        ("query",         Prop("string", "Read operation: list_user_stories, summary, workflow, current_phase, runtime_status, lineage, or files.")),
+                        ("query",         EnumProp("Read operation.", "list_user_stories", "summary", "workflow", "current_phase", "runtime_status", "lineage", "files")),
                         ("usId",          Prop("string", "User story identifier. Required for all queries except list_user_stories."))))),
 
             Tool("specforge_action", "Compact SpecForge mutation facade for Codex clients. Use this instead of editing .specs files directly.",
@@ -278,7 +278,7 @@ static JsonObject BuildToolsList()
                     required: ["workspaceRoot", "action"],
                     Props(
                         ("workspaceRoot", Prop("string", "Absolute path to the workspace root.")),
-                        ("action",        Prop("string", "Mutation operation, e.g. create_user_story, create_user_stories_from_goal, advance_phase, approve_phase, request_regression, submit_refinement_answers, submit_approval_answer, operate_artifact, add_files, or set_file_kind. Broad goals should be clarified into small MVP slices before create_user_stories_from_goal.")),
+                        ("action",        EnumProp("Mutation operation. Broad goals should be clarified into small MVP slices before create_user_stories_from_goal.", "create_user_story", "create_user_stories_from_goal", "import_user_story", "advance_phase", "approve_phase", "approve_review_anyway", "request_regression", "restart_from_source", "rewind_workflow", "reopen_completed", "reset_to_capture", "submit_refinement_answers", "submit_approval_answer", "suggest_approval_answer", "operate_artifact", "add_files", "set_file_kind", "repair_lineage")),
                         ("usId",          Prop("string", "User story identifier when the action targets an existing user story.")),
                         ("params",        Prop("object", "Action-specific parameters. Keep this small and use the SpecForge skill for the exact shape."))))),
 
@@ -287,7 +287,7 @@ static JsonObject BuildToolsList()
                     required: ["workspaceRoot", "operation"],
                     Props(
                         ("workspaceRoot", Prop("string", "Absolute path to the workspace root.")),
-                        ("operation",     Prop("string", "Prompt operation: initialize_repo_prompts or export_prompt_template.")),
+                        ("operation",     EnumProp("Prompt operation.", "initialize_repo_prompts", "export_prompt_template")),
                         ("promptPath",    Prop("string", "Template path for export_prompt_template.")),
                         ("overwrite",     Prop("boolean", "If true, overwrite existing prompt files. Defaults to false."))))),
 
@@ -298,7 +298,7 @@ static JsonObject BuildToolsList()
                         ("workspaceRoot", Prop("string", "Absolute path to the workspace root (folder containing .specs/).")),
                         ("usId",          Prop("string", "User story identifier, e.g. US-001.")),
                         ("title",         Prop("string", "Short descriptive title for the user story.")),
-                        ("kind",          Prop("string", "User story kind: feature, bug, or hotfix.")),
+                        ("kind",          EnumProp("User story kind.", "feature", "bug", "hotfix")),
                         ("category",      Prop("string", "Category that groups the user story, e.g. core, ux, api.")),
                         ("sourceText",    Prop("string", "Free-text description of the user story intent. Vague stories are allowed at capture, but refinement will keep asking until the MVP slice is buildable.")),
                         ("actor",         Prop("string", "Actor performing the action. Defaults to 'user'."))))),
@@ -311,7 +311,7 @@ static JsonObject BuildToolsList()
                         ("usId",          Prop("string", "User story identifier, e.g. US-001.")),
                         ("sourcePath",    Prop("string", "Absolute path to the source markdown file to import.")),
                         ("title",         Prop("string", "Short descriptive title for the user story.")),
-                        ("kind",          Prop("string", "User story kind: feature, bug, or hotfix.")),
+                        ("kind",          EnumProp("User story kind.", "feature", "bug", "hotfix")),
                         ("category",      Prop("string", "Category that groups the user story.")),
                         ("actor",         Prop("string", "Actor performing the action. Defaults to 'user'."))))),
 
@@ -412,7 +412,7 @@ static JsonObject BuildToolsList()
                     Props(
                         ("workspaceRoot", Prop("string", "Absolute path to the workspace root.")),
                         ("usId",          Prop("string", "User story identifier.")),
-                        ("targetPhase",   Prop("string", "Phase slug to regress to, e.g. refinement, spec, technical-design.")),
+                        ("targetPhase",   PhaseSlugProp("Phase slug to regress to.")),
                         ("reason",        Prop("string", "Optional reason for the regression.")),
                         ("destructive",   Prop("boolean", "Whether to delete later derived artifacts while regressing. Defaults to false.")),
                         ("actor",         Prop("string", "Actor requesting the regression. Defaults to 'user'."))))),
@@ -432,7 +432,7 @@ static JsonObject BuildToolsList()
                     Props(
                         ("workspaceRoot", Prop("string", "Absolute path to the workspace root.")),
                         ("usId",          Prop("string", "User story identifier.")),
-                        ("targetPhase",   Prop("string", "Phase slug to rewind to, e.g. refinement, spec, technical-design.")),
+                        ("targetPhase",   PhaseSlugProp("Phase slug to rewind to.")),
                         ("destructive",   Prop("boolean", "Whether to delete later derived artifacts while rewinding. Defaults to false.")),
                         ("actor",         Prop("string", "Actor requesting the rewind. Defaults to 'user'."))))),
 
@@ -442,7 +442,7 @@ static JsonObject BuildToolsList()
                     Props(
                         ("workspaceRoot", Prop("string", "Absolute path to the workspace root.")),
                         ("usId",          Prop("string", "User story identifier.")),
-                        ("reasonKind",    Prop("string", "Typed reopen reason: merge-conflict, defect, functional-issue, or technical-issue.")),
+                        ("reasonKind",    EnumProp("Typed reopen reason.", "merge-conflict", "defect", "functional-issue", "technical-issue")),
                         ("description",   Prop("string", "Human explanation for what failed or what must be incorporated now.")),
                         ("actor",         Prop("string", "Actor requesting the reopen. Defaults to 'user'."))))),
 
@@ -505,7 +505,7 @@ static JsonObject BuildToolsList()
                         ("workspaceRoot", Prop("string", "Absolute path to the workspace root.")),
                         ("usId",          Prop("string", "User story identifier.")),
                         ("sourcePaths",   ArrayProp("string", "Absolute paths of the files to copy into the user story.")),
-                        ("kind",          Prop("string", "File kind: 'context' or 'attachment'."))))),
+                        ("kind",          EnumProp("File kind.", "context", "attachment"))))),
 
             Tool("set_user_story_file_kind", "Move an existing user-story file between context and user-story info.",
                 Schema(
@@ -514,7 +514,7 @@ static JsonObject BuildToolsList()
                         ("workspaceRoot", Prop("string", "Absolute path to the workspace root.")),
                         ("usId",          Prop("string", "User story identifier.")),
                         ("filePath",      Prop("string", "Absolute path of the file to reclassify.")),
-                        ("kind",          Prop("string", "Target file kind: 'context' or 'attachment'.")))))
+                        ("kind",          EnumProp("Target file kind.", "context", "attachment")))))
         }
     };
 }
@@ -744,6 +744,34 @@ static JsonObject Props(params (string name, JsonObject schema)[] entries)
 
 static JsonObject Prop(string type, string description) =>
     new JsonObject { ["type"] = type, ["description"] = description };
+
+static JsonObject EnumProp(string description, params string[] values)
+{
+    var enumValues = new JsonArray();
+    foreach (var value in values)
+    {
+        enumValues.Add((JsonNode)value);
+    }
+
+    return new JsonObject
+    {
+        ["type"] = "string",
+        ["description"] = description,
+        ["enum"] = enumValues
+    };
+}
+
+static JsonObject PhaseSlugProp(string description) =>
+    EnumProp(
+        description,
+        "capture",
+        "refinement",
+        "spec",
+        "technical-design",
+        "implementation",
+        "review",
+        "release-approval",
+        "pr-preparation");
 
 static JsonObject ArrayProp(string itemType, string description) =>
     new JsonObject
