@@ -42,6 +42,23 @@ test("CLI workflow portal uses a distinct default port and caches rendered workf
   assert.match(renderCacheSource, /private void Trim\(\)/);
 });
 
+test("CLI workflow portal refresh signature includes workflow runtime versions", async () => {
+  const source = await fs.promises.readFile(programPath, "utf8");
+
+  assert.match(source, /workflow\.CreatedWithRuntimeVersion/);
+  assert.match(source, /workflow\.LastRuntimeVersion/);
+  assert.match(source, /BuildWorkflowSignature\(\s*UserStoryWorkflowDetails workflow,\s*IReadOnlyCollection<UserStorySummary> userStories\s*\)/);
+  assert.match(source, /userStories = userStories[\s\S]*?story\.CurrentPhase[\s\S]*?story\.Status/);
+});
+
+test("CLI workflow portal payload includes sidebar stories and configuration URL", async () => {
+  const source = await fs.promises.readFile(programPath, "utf8");
+
+  assert.match(source, /userStories = await applicationService\.ListUserStoriesAsync\(workspaceRoot\)/);
+  assert.match(source, /configurationPortalUrl = BuildConfigurationPortalUrl\(workflowPortalOrigin\)/);
+  assert.match(source, /ResolveWorkflowPortalUserStoryId\(context\.Request, usId\)/);
+});
+
 test("CLI writes JSON with web serializer options for record responses", async () => {
   const source = await fs.promises.readFile(programPath, "utf8");
 

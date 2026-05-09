@@ -20,3 +20,26 @@ test("CLI workflow shim rejects malformed refinement answer commands locally", a
   assert.match(script, /Array\.isArray\(message\.answers\)/);
   assert.doesNotMatch(script, /submitRefinementAnswers" && message\.answers/);
 });
+
+test("CLI workflow renderer passes runtime version into workflow state", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+
+  assert.match(script, /runtimeVersion: payload\.runtimeVersion \?\? workflow\.lastRuntimeVersion \?\? workflow\.createdWithRuntimeVersion \?\? null/);
+});
+
+test("CLI workflow renderer embeds the reusable user-story sidebar with collapsed actions", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+
+  assert.match(script, /buildSidebarHtml/);
+  assert.match(script, /data-cli-sidebar-stories/);
+  assert.match(script, /data-cli-sidebar-settings/);
+  assert.match(script, /window\.open\(\$\{JSON\.stringify\(configurationPortalUrl\)\}, "_blank", "noopener"\)/);
+});
+
+test("CLI workflow renderer routes sidebar story selection through the current portal", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+
+  assert.match(script, /message\.command === "openWorkflow" && message\.usId/);
+  assert.match(script, /url\.searchParams\.set\("usId", message\.usId\)/);
+  assert.match(script, /activeWorkflowUsId: workflow\.usId/);
+});

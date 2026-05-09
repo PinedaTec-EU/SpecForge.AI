@@ -231,6 +231,8 @@ static async Task HandleWorkflowPortalRequestAsync(
             path = "/";
         }
 
+        var requestUsId = ResolveWorkflowPortalUserStoryId(context.Request, usId);
+
         switch ((context.Request.HttpMethod, path))
         {
             case ("GET", "/"):
@@ -239,29 +241,33 @@ static async Task HandleWorkflowPortalRequestAsync(
                     await BuildWorkflowPortalHtmlAsync(
                         applicationService,
                         workspaceRoot,
-                        usId,
+                        requestUsId,
                         context.Request.QueryString["selectedPhaseId"],
+                        context.Request.Url?.GetLeftPart(UriPartial.Authority) ?? "http://localhost:5128",
                         renderCache));
                 return;
             case ("GET", "/api/workflow"):
-                await WriteJsonResponseAsync(context.Response, await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, usId));
+                await WriteJsonResponseAsync(context.Response, await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, requestUsId));
                 return;
             case ("GET", "/api/workflow-signature"):
                 await WriteTextResponseAsync(
                     context.Response,
-                    await BuildWorkflowPortalSignatureAsync(applicationService, workspaceRoot, usId),
+                    await BuildWorkflowPortalSignatureAsync(applicationService, workspaceRoot, requestUsId),
                     "text/plain");
                 return;
             case ("GET", "/api/runtime-status"):
-                await WriteJsonResponseAsync(context.Response, await applicationService.GetUserStoryRuntimeStatusAsync(workspaceRoot, usId));
+                await WriteJsonResponseAsync(context.Response, await applicationService.GetUserStoryRuntimeStatusAsync(workspaceRoot, requestUsId));
                 return;
             case ("GET", "/api/summary"):
-                await WriteJsonResponseAsync(context.Response, await applicationService.GetUserStorySummaryAsync(workspaceRoot, usId));
+                await WriteJsonResponseAsync(context.Response, await applicationService.GetUserStorySummaryAsync(workspaceRoot, requestUsId));
+                return;
+            case ("GET", "/api/user-stories"):
+                await WriteJsonResponseAsync(context.Response, new { items = await applicationService.ListUserStoriesAsync(workspaceRoot) });
                 return;
             case ("POST", "/api/continue"):
                 await WriteJsonResponseAsync(
                     context.Response,
-                    await applicationService.GenerateNextPhaseAsync(workspaceRoot, usId, "cli-user"));
+                    await applicationService.GenerateNextPhaseAsync(workspaceRoot, requestUsId, "cli-user"));
                 return;
             case ("POST", "/api/approval-answer"):
             {
@@ -275,7 +281,7 @@ static async Task HandleWorkflowPortalRequestAsync(
                     context.Response,
                     await applicationService.SubmitApprovalAnswerAsync(
                         workspaceRoot,
-                        usId,
+                        requestUsId,
                         request.Question,
                         request.Answer,
                         request.Actor ?? "cli-user"));
@@ -293,7 +299,7 @@ static async Task HandleWorkflowPortalRequestAsync(
                     context.Response,
                     await applicationService.SubmitRefinementAnswersAsync(
                         workspaceRoot,
-                        usId,
+                        requestUsId,
                         request.Answers,
                         request.Actor ?? "cli-user"));
                 return;
@@ -310,7 +316,7 @@ static async Task HandleWorkflowPortalRequestAsync(
                     context.Response,
                     await applicationService.ApprovePhaseAsync(
                         workspaceRoot,
-                        usId,
+                        requestUsId,
                         request.BaseBranch,
                         request.WorkBranch,
                         request.Actor ?? "cli-user"));
@@ -326,7 +332,7 @@ static async Task HandleWorkflowPortalRequestAsync(
                     ?? throw new InvalidOperationException("Suggestion payload could not be parsed.");
                 await WriteJsonResponseAsync(
                     context.Response,
-                    await applicationService.SuggestApprovalAnswerAsync(workspaceRoot, usId, request.Question, request.Actor ?? "user"));
+                    await applicationService.SuggestApprovalAnswerAsync(workspaceRoot, requestUsId, request.Question, request.Actor ?? "user"));
                 return;
             }
             default:
@@ -347,12 +353,14 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
     string workspaceRoot,
     string usId,
     string? selectedPhaseId,
+    string workflowPortalOrigin,
     WorkflowPortalRenderCache renderCache)
 {
     var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, usId);
     var resolvedSelectedPhaseId = ResolveSelectedWorkflowPhaseId(workflow, selectedPhaseId);
     var selectedPhase = ResolveSelectedWorkflowPhase(workflow, resolvedSelectedPhaseId);
-    var signature = BuildWorkflowSignature(workflow);
+    var userStories = await applicationService.ListUserStoriesAsync(workspaceRoot);
+    var signature = BuildWorkflowSignature(workflow, userStories);
     if (renderCache.TryGet(signature, resolvedSelectedPhaseId, selectedPhase, out var cachedHtml))
     {
         return cachedHtml;
@@ -365,6 +373,9 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
             selectedPhaseId = resolvedSelectedPhaseId,
             selectedArtifactContent = await ReadFileContentOrNullAsync(selectedPhase?.ArtifactPath),
             selectedOperationContent = await ReadFileContentOrNullAsync(selectedPhase?.OperationLogPath),
+            runtimeVersion = workflow.LastRuntimeVersion ?? workflow.CreatedWithRuntimeVersion,
+            userStories,
+            configurationPortalUrl = BuildConfigurationPortalUrl(workflowPortalOrigin),
             signature
         },
         SpecForgePortalSettingsStore.JsonOptions);
@@ -374,13 +385,63 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
     return html;
 }
 
+static string ResolveWorkflowPortalUserStoryId(HttpListenerRequest request, string fallbackUsId)
+{
+    var queryUsId = request.QueryString["usId"];
+    if (!string.IsNullOrWhiteSpace(queryUsId))
+    {
+        return queryUsId;
+    }
+
+    var referer = request.UrlReferrer;
+    var refererUsId = referer is null ? null : ParseQueryValue(referer.Query, "usId");
+    return string.IsNullOrWhiteSpace(refererUsId) ? fallbackUsId : refererUsId;
+}
+
+static string? ParseQueryValue(string query, string key)
+{
+    var trimmedQuery = query.TrimStart('?');
+    foreach (var part in trimmedQuery.Split('&', StringSplitOptions.RemoveEmptyEntries))
+    {
+        var separatorIndex = part.IndexOf('=', StringComparison.Ordinal);
+        var name = separatorIndex < 0 ? part : part[..separatorIndex];
+        if (!string.Equals(Uri.UnescapeDataString(name), key, StringComparison.Ordinal))
+        {
+            continue;
+        }
+
+        var value = separatorIndex < 0 ? string.Empty : part[(separatorIndex + 1)..];
+        return Uri.UnescapeDataString(value.Replace("+", " ", StringComparison.Ordinal));
+    }
+
+    return null;
+}
+
+static string BuildConfigurationPortalUrl(string workflowPortalOrigin)
+{
+    if (!Uri.TryCreate(workflowPortalOrigin, UriKind.Absolute, out var uri))
+    {
+        return "http://localhost:5127/";
+    }
+
+    var builder = new UriBuilder(uri)
+    {
+        Port = 5127,
+        Path = "/",
+        Query = string.Empty,
+        Fragment = string.Empty
+    };
+    return builder.Uri.ToString();
+}
+
 static async Task<string> BuildWorkflowPortalSignatureAsync(
     SpecForgeApplicationService applicationService,
     string workspaceRoot,
     string usId)
 {
     var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, usId);
-    return BuildWorkflowSignature(workflow);
+    var userStories = await applicationService.ListUserStoriesAsync(workspaceRoot);
+    return BuildWorkflowSignature(workflow, userStories);
 }
 
 static async Task<string> RenderWorkflowHtmlWithNodeAsync(string payload)
@@ -450,7 +511,9 @@ static async Task<string?> ReadFileContentOrNullAsync(string? path)
     return await File.ReadAllTextAsync(path);
 }
 
-static string BuildWorkflowSignature(UserStoryWorkflowDetails workflow)
+static string BuildWorkflowSignature(
+    UserStoryWorkflowDetails workflow,
+    IReadOnlyCollection<UserStorySummary> userStories)
 {
     var payload = JsonSerializer.Serialize(
         new
@@ -458,9 +521,24 @@ static string BuildWorkflowSignature(UserStoryWorkflowDetails workflow)
             workflow.UsId,
             workflow.Status,
             workflow.CurrentPhase,
+            workflow.CreatedWithRuntimeVersion,
+            workflow.LastRuntimeVersion,
             workflow.Controls,
             eventCount = workflow.Events.Count,
-            latestEvent = workflow.Events.LastOrDefault()
+            latestEvent = workflow.Events.LastOrDefault(),
+            userStories = userStories
+                .OrderBy(story => story.UsId, StringComparer.Ordinal)
+                .Select(story => new
+                {
+                    story.UsId,
+                    story.Title,
+                    story.Description,
+                    story.Category,
+                    story.CurrentPhase,
+                    story.Status,
+                    story.WorkBranch
+                })
+                .ToArray()
         },
         SpecForgePortalSettingsStore.JsonOptions);
     var hash = SHA256.HashData(Encoding.UTF8.GetBytes(payload));
