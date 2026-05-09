@@ -1,0 +1,142 @@
+using SpecForge.OpenAICompatible;
+
+namespace SpecForge.Domain.Tests;
+
+public sealed class SpecForgePortalSettingsStoreTests : IDisposable
+{
+    private readonly string workspaceRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+
+    [Fact]
+    public void LoadOrDefault_ReturnsExpectedWorkflowDefaults()
+    {
+        var settings = SpecForgePortalSettingsStore.LoadOrDefault(workspaceRoot);
+
+        Assert.Empty(settings.ModelProfiles);
+        Assert.Empty(settings.AgentProfiles);
+        Assert.Equal("balanced", settings.RefinementTolerance);
+        Assert.Equal("medium", settings.MvpRigor);
+        Assert.True(settings.ReviewSubagentsEnabled);
+        Assert.False(settings.AutoRefinementAnswersEnabled);
+        Assert.True(settings.AutoPlayEnabled);
+        Assert.True(settings.AutoReviewEnabled);
+        Assert.Equal(5, settings.MaxImplementationReviewCycles);
+        Assert.True(settings.PauseOnFailedReview);
+        Assert.True(settings.ReviewLearningEnabled);
+        Assert.False(settings.CompletedUsLockOnCompleted);
+    }
+
+    [Fact]
+    public void Deserialize_AppliesMigrationDefaultsForLegacyPayloads()
+    {
+        var payload = """
+            {
+              "modelProfiles": [],
+              "agentProfiles": [],
+              "phaseAgentAssignments": {},
+              "refinementTolerance": "balanced",
+              "mvpRigor": "",
+              "reviewTolerance": "balanced",
+              "reviewEvidencePolicy": "balanced",
+              "technicalDesignSubagentsEnabled": false,
+              "autoRefinementAnswersEnabled": false,
+              "autoRefinementAnswersProfile": null,
+              "destructiveRewindEnabled": false,
+              "maxImplementationReviewCycles": 3,
+              "reviewLearningSkillPath": ".codex/skills/sdd-phase-agents/SKILL.md",
+              "completedUsLockOnCompleted": false
+            }
+            """;
+
+        var settings = SpecForgePortalSettingsStore.Deserialize(payload);
+
+        Assert.Equal("medium", settings.MvpRigor);
+        Assert.True(settings.ReviewSubagentsEnabled);
+        Assert.True(settings.AutoPlayEnabled);
+        Assert.True(settings.AutoReviewEnabled);
+        Assert.True(settings.PauseOnFailedReview);
+        Assert.True(settings.ReviewLearningEnabled);
+    }
+
+    [Fact]
+    public void ResolveAgentProfiles_DerivesAgentsFromModelProfilesWhenNoAgentsConfigured()
+    {
+        var settings = SpecForgePortalSettingsStore.Deserialize(
+            """
+            {
+              "modelProfiles": [
+                {
+                  "name": "planner",
+                  "provider": "codex",
+                  "baseUrl": "",
+                  "apiKey": "",
+                  "model": "",
+                  "reasoningEffort": "high",
+                  "repositoryAccess": "read"
+                }
+              ],
+              "agentProfiles": [],
+              "phaseAgentAssignments": {},
+              "refinementTolerance": "balanced",
+              "mvpRigor": "medium",
+              "reviewTolerance": "balanced",
+              "reviewEvidencePolicy": "balanced",
+              "technicalDesignSubagentsEnabled": false,
+              "reviewSubagentsEnabled": true,
+              "autoRefinementAnswersEnabled": false,
+              "autoRefinementAnswersProfile": null,
+              "autoPlayEnabled": true,
+              "autoReviewEnabled": true,
+              "maxImplementationReviewCycles": 5,
+              "destructiveRewindEnabled": false,
+              "pauseOnFailedReview": true,
+              "reviewLearningEnabled": true,
+              "reviewLearningSkillPath": ".codex/skills/sdd-phase-agents/SKILL.md",
+              "completedUsLockOnCompleted": false
+            }
+            """);
+
+        var agent = Assert.Single(settings.ResolveAgentProfiles());
+        Assert.Equal("planner", agent.Name);
+        Assert.Equal("planner", agent.Role);
+        Assert.Equal("planner", agent.ModelProfile);
+        Assert.Equal("read", agent.RepositoryAccess);
+        Assert.Equal("high", agent.ReasoningEffort);
+    }
+
+    [Fact]
+    public void Save_AndLoad_RoundTripSettings()
+    {
+        var settings = SpecForgePortalSettingsStore.LoadOrDefault(workspaceRoot) with
+        {
+            ModelProfiles =
+            [
+                new OpenAiCompatibleModelProfile(
+                    Name: "local",
+                    Provider: "codex",
+                    BaseUrl: "",
+                    ApiKey: "",
+                    Model: "",
+                    ReasoningEffort: "medium",
+                    RepositoryAccess: "read")
+            ],
+            MvpRigor = "high",
+            AutoPlayEnabled = false
+        };
+
+        SpecForgePortalSettingsStore.Save(workspaceRoot, settings);
+
+        var loaded = SpecForgePortalSettingsStore.Load(workspaceRoot);
+        Assert.NotNull(loaded);
+        Assert.Equal("high", loaded.MvpRigor);
+        Assert.False(loaded.AutoPlayEnabled);
+        Assert.Equal("local", Assert.Single(loaded.ModelProfiles).Name);
+    }
+
+    public void Dispose()
+    {
+        if (Directory.Exists(workspaceRoot))
+        {
+            Directory.Delete(workspaceRoot, recursive: true);
+        }
+    }
+}

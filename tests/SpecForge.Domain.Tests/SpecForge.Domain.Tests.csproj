@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\src\SpecForge.Domain\SpecForge.Domain.csproj" />
     <ProjectReference Include="..\..\src\SpecForge.McpServer\SpecForge.McpServer.csproj" />
     <ProjectReference Include="..\..\src\SpecForge.OpenAICompatible\SpecForge.OpenAICompatible.csproj" />
+    <ProjectReference Include="..\..\src\SpecForge.Runner.Cli\SpecForge.Runner.Cli.csproj" />
   </ItemGroup>
 
 </Project>
