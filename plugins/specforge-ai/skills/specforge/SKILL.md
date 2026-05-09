@@ -29,6 +29,24 @@ Do not skip user validation gates. If the workflow is waiting for user approval,
 
 Do not implement the requested change outside SpecForge just because an artifact exists or a gate is pending. Implementation may begin only after the SpecForge workflow reaches the implementation phase and the required user approval or branch gate has been completed through the MCP action.
 
+## Intake Depth Gate
+
+When the user gives a broad, vague, or low-detail request, do not immediately create a user story or run implementation. First run an intake conversation and ask the minimum set of concrete questions needed to reach implementation-ready detail.
+
+Ask targeted questions until you can state, without guessing:
+
+- the target user or actor;
+- the business outcome and workflow trigger;
+- the exact behavior expected in the product;
+- inputs, outputs, states, data, and integrations involved;
+- scope boundaries and explicit out-of-scope items;
+- acceptance criteria and important failure or edge cases;
+- priority order and dependencies between slices.
+
+Keep the questions practical and grouped. Prefer 3-7 high-signal questions per round; do another round only when answers still leave blocking ambiguity. Do not invent client requirements to avoid asking.
+
+After the intake is concrete enough, split the goal into small, independently reviewable user stories. Each story must deliver one narrow functional increment, have clear acceptance intent, avoid mixing unrelated concerns, and be small enough to pass through SpecForge without over-engineering.
+
 ## Common Reads
 
 - List stories: `specforge_query` with `query: "list_user_stories"`.
@@ -42,6 +60,7 @@ Do not implement the requested change outside SpecForge just because an artifact
 Call `specforge_action` with `workspaceRoot`, `action`, optional top-level `usId`, and action-specific `params`.
 
 - Create: `action: "create_user_story"`.
+- Create multiple small stories from a concrete goal: `action: "create_user_stories_from_goal"`.
 - Import: `action: "import_user_story"`.
 - Continue: `action: "advance_phase"`.
 - Approve: `action: "approve_phase"`.

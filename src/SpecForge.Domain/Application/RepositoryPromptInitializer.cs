@@ -195,13 +195,16 @@ public sealed class RepositoryPromptInitializer
         - Prefer complete, precise, implementation-ready user stories. The more explicit the actor, goal, trigger, business rules, inputs, outputs, constraints, edge cases, and acceptance intent are, the better optimized the story is for the SpecForge workflow.
         - Do not compress important business or technical context just to make the story shorter. Preserve facts that can reduce refinement loops, approval questions, design ambiguity, review failures, or later rewinds.
         - If the user gives an incomplete story, use the MCP workflow to surface or answer questions instead of silently inventing business-critical facts.
+        - If the user request is broad, vague, or low-detail, run an intake conversation before creating user stories. Ask targeted questions until the actor, business outcome, trigger, expected behavior, inputs, outputs, states, data, integrations, scope boundaries, exclusions, acceptance criteria, failure cases, edge cases, priority, and dependencies are concrete enough to build professionally without over-engineering.
+        - Ask the minimum useful questions per round, usually 3-7 high-signal questions. Continue with another round only while blocking ambiguity remains. Do not invent client requirements just to proceed.
 
         ## Goal Intake And /goals
 
         - When the user invokes `/goals` or gives one broad product goal, treat it as goal intake, not as permission to implement the whole system directly.
-        - If SpecForge MCP tools are available, decompose the goal into small, ordered, independently reviewable user stories and persist them through `specforge_action` with action `create_user_stories_from_goal`.
+        - If the goal is not concrete enough to split safely, ask clarifying questions first instead of creating vague stories.
+        - Once the goal is concrete enough, decompose it into small, ordered, independently reviewable user stories and persist them through `specforge_action` with action `create_user_stories_from_goal`.
         - Do not modify product code from a broad `/goals` prompt before at least one resulting user story has moved through the required SpecForge SDD gates.
-        - Each generated story must preserve traceability to the original goal, include acceptance intent when known, and be narrow enough to complete through the canonical workflow without mixing unrelated features.
+        - Each generated story must preserve traceability to the original goal, include acceptance intent, deliver one narrow functional increment, avoid mixing unrelated concerns, and be small enough to complete through the canonical workflow without over-engineering.
         - After creating stories from a goal, recommend the first story to run and continue through MCP workflow tools one story at a time.
 
         ## Questions And Decisions
