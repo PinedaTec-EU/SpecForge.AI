@@ -127,6 +127,26 @@ const browserShim = `
         return;
       }
 
+      if (message?.command === "submitRefinementAnswers" && Array.isArray(message.answers)) {
+        fetch("/api/refinement-answers", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ answers: message.answers, actor: "cli-user" })
+        })
+          .then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))))
+          .then(() => {
+            window.location.reload();
+          })
+          .catch(error => {
+            window.postMessage({
+              command: "workflowActionFailed",
+              action: message.command,
+              detail: error instanceof Error ? error.message : String(error)
+            }, "*");
+          });
+        return;
+      }
+
       if (message?.command === "approve") {
         fetch("/api/approve", {
           method: "POST",

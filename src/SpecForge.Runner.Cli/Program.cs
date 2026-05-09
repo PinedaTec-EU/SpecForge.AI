@@ -20,41 +20,38 @@ try
     {
         case "create-us":
         {
-            var runner = CreateWorkflowRunner(args);
-            await HandleCreateUserStoryAsync(runner, args);
+            var applicationService = CreateApplicationService(args);
+            await HandleCreateUserStoryAsync(applicationService, args);
             return 0;
         }
         case "import-us":
         {
-            var runner = CreateWorkflowRunner(args);
-            await HandleImportUserStoryAsync(runner, args);
+            var applicationService = CreateApplicationService(args);
+            await HandleImportUserStoryAsync(applicationService, args);
             return 0;
         }
         case "continue-phase":
         {
-            var runner = CreateWorkflowRunner(args);
-            await HandleContinuePhaseAsync(runner, args);
+            var applicationService = CreateApplicationService(args);
+            await HandleContinuePhaseAsync(applicationService, args);
             return 0;
         }
         case "list-user-stories":
         {
-            var runner = CreateWorkflowRunner(args);
-            var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+            var applicationService = CreateApplicationService(args);
             await HandleListUserStoriesAsync(applicationService, args);
             return 0;
         }
         case "get-user-story-summary":
         {
-            var runner = CreateWorkflowRunner(args);
-            var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+            var applicationService = CreateApplicationService(args);
             await HandleGetUserStorySummaryAsync(applicationService, args);
             return 0;
         }
         case "approve-phase":
         {
-            var runner = CreateWorkflowRunner(args);
-            var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
-            await HandleApprovePhaseAsync(runner, applicationService, args);
+            var applicationService = CreateApplicationService(args);
+            await HandleApprovePhaseAsync(applicationService, args);
             return 0;
         }
         case "serve-configuration":
@@ -72,7 +69,7 @@ catch (Exception exception)
     return ExitWithError(exception.Message);
 }
 
-static async Task HandleCreateUserStoryAsync(WorkflowRunner runner, IReadOnlyList<string> args)
+static async Task HandleCreateUserStoryAsync(SpecForgeApplicationService applicationService, IReadOnlyList<string> args)
 {
     EnsureArgumentCount(args, expectedCount: 7);
 
@@ -82,17 +79,17 @@ static async Task HandleCreateUserStoryAsync(WorkflowRunner runner, IReadOnlyLis
     var kind = args[4];
     var category = args[5];
     var sourceText = args[6];
-    var rootDirectory = await runner.CreateUserStoryAsync(workspaceRoot, usId, title, kind, category, sourceText);
+    var result = await applicationService.CreateUserStoryAsync(workspaceRoot, usId, title, kind, category, sourceText, "cli-user");
 
     WriteJson(new
     {
-        usId,
-        rootDirectory,
-        mainArtifactPath = Path.Combine(rootDirectory, "us.md")
+        result.UsId,
+        result.RootDirectory,
+        result.MainArtifactPath
     });
 }
 
-static async Task HandleImportUserStoryAsync(WorkflowRunner runner, IReadOnlyList<string> args)
+static async Task HandleImportUserStoryAsync(SpecForgeApplicationService applicationService, IReadOnlyList<string> args)
 {
     EnsureArgumentCount(args, expectedCount: 7);
 
@@ -102,30 +99,29 @@ static async Task HandleImportUserStoryAsync(WorkflowRunner runner, IReadOnlyLis
     var title = args[4];
     var kind = args[5];
     var category = args[6];
-    var sourceText = await File.ReadAllTextAsync(sourcePath);
-    var rootDirectory = await runner.CreateUserStoryAsync(workspaceRoot, usId, title, kind, category, sourceText);
+    var result = await applicationService.ImportUserStoryAsync(workspaceRoot, usId, sourcePath, title, kind, category, "cli-user");
 
     WriteJson(new
     {
-        usId,
-        rootDirectory,
-        mainArtifactPath = Path.Combine(rootDirectory, "us.md")
+        result.UsId,
+        result.RootDirectory,
+        result.MainArtifactPath
     });
 }
 
-static async Task HandleContinuePhaseAsync(WorkflowRunner runner, IReadOnlyList<string> args)
+static async Task HandleContinuePhaseAsync(SpecForgeApplicationService applicationService, IReadOnlyList<string> args)
 {
     EnsureArgumentCount(args, expectedCount: 3);
 
     var workspaceRoot = args[1];
     var usId = args[2];
-    var result = await runner.ContinuePhaseAsync(workspaceRoot, usId);
+    var result = await applicationService.GenerateNextPhaseAsync(workspaceRoot, usId, "cli-user");
 
     WriteJson(new
     {
         result.UsId,
-        currentPhase = WorkflowPresentation.ToPhaseSlug(result.CurrentPhase),
-        status = WorkflowPresentation.ToStatusSlug(result.Status),
+        currentPhase = result.CurrentPhase,
+        status = result.Status,
         result.GeneratedArtifactPath
     });
 }
@@ -150,7 +146,6 @@ static async Task HandleGetUserStorySummaryAsync(SpecForgeApplicationService app
 }
 
 static async Task HandleApprovePhaseAsync(
-    WorkflowRunner runner,
     SpecForgeApplicationService applicationService,
     IReadOnlyList<string> args)
 {
@@ -162,9 +157,13 @@ static async Task HandleApprovePhaseAsync(
     var workBranch = args[4];
     var normalizedBaseBranch = string.Equals(baseBranch, "-", StringComparison.Ordinal) ? null : baseBranch;
     var normalizedWorkBranch = string.Equals(workBranch, "-", StringComparison.Ordinal) ? null : workBranch;
-    await runner.ApproveCurrentPhaseAsync(workspaceRoot, usId, normalizedBaseBranch, normalizedWorkBranch);
-    var summary = await applicationService.GetUserStorySummaryAsync(workspaceRoot, usId);
-    WriteJson(summary);
+    var result = await applicationService.ApprovePhaseAsync(
+        workspaceRoot,
+        usId,
+        normalizedBaseBranch,
+        normalizedWorkBranch,
+        "cli-user");
+    WriteJson(result);
 }
 
 static async Task HandleServeConfigurationAsync(IReadOnlyList<string> args)
@@ -276,6 +275,23 @@ static async Task HandleWorkflowPortalRequestAsync(
                         usId,
                         request.Question,
                         request.Answer,
+                        request.Actor ?? "cli-user"));
+                return;
+            }
+            case ("POST", "/api/refinement-answers"):
+            {
+                using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var payload = await reader.ReadToEndAsync();
+                var request = JsonSerializer.Deserialize<RefinementAnswersSubmitRequest>(
+                    payload,
+                    SpecForgePortalSettingsStore.JsonOptions)
+                    ?? throw new InvalidOperationException("Refinement answers payload could not be parsed.");
+                await WriteJsonResponseAsync(
+                    context.Response,
+                    await applicationService.SubmitRefinementAnswersAsync(
+                        workspaceRoot,
+                        usId,
+                        request.Answers,
                         request.Actor ?? "cli-user"));
                 return;
             }
@@ -494,7 +510,7 @@ static void EnsureArgumentCount(IReadOnlyList<string> args, int expectedCount)
 
 static void WriteJson<T>(T payload)
 {
-    Console.WriteLine(JsonSerializer.Serialize(payload));
+    Console.WriteLine(JsonSerializer.Serialize(payload, SpecForgePortalSettingsStore.JsonOptions));
 }
 
 static string NormalizeHttpPrefix(string value)
@@ -533,11 +549,12 @@ static int ExitWithError(string message)
     return 1;
 }
 
-static WorkflowRunner CreateWorkflowRunner(IReadOnlyList<string> args)
+static SpecForgeApplicationService CreateApplicationService(IReadOnlyList<string> args)
 {
     var workspaceRoot = args.Count > 1 ? args[1] : null;
+    var runner = new WorkflowRunner(CreatePhaseExecutionProvider(workspaceRoot));
 
-    return new WorkflowRunner(CreatePhaseExecutionProvider(workspaceRoot));
+    return new SpecForgeApplicationService(new UserStoryFileStore(), runner);
 }
 
 static IPhaseExecutionProvider CreatePhaseExecutionProvider(string? workspaceRoot)
@@ -1147,6 +1164,8 @@ static string BuildConfigurationPortalHtml() =>
 internal sealed record ApprovalAnswerSuggestionRequest(string Question, string? Actor);
 
 internal sealed record ApprovalAnswerSubmitRequest(string Question, string Answer, string? Actor);
+
+internal sealed record RefinementAnswersSubmitRequest(IReadOnlyList<string> Answers, string? Actor);
 
 internal sealed record ApprovalSubmitRequest(string? BaseBranch, string? WorkBranch, string? Actor);
 
