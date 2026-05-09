@@ -37,6 +37,7 @@ exports.openWorkflowView = openWorkflowView;
 exports.refreshWorkflowViews = refreshWorkflowViews;
 exports.notifyWorkflowFileChanged = notifyWorkflowFileChanged;
 exports.hasActiveWorkflowPlayback = hasActiveWorkflowPlayback;
+exports.hasWorkflowViewOpen = hasWorkflowViewOpen;
 exports.closeWorkflowView = closeWorkflowView;
 const fs = __importStar(require("node:fs"));
 const path = __importStar(require("node:path"));
@@ -102,6 +103,9 @@ function hasActiveWorkflowPlayback() {
         }
     }
     return false;
+}
+function hasWorkflowViewOpen(workspaceRoot, usId) {
+    return panels.has(`${workspaceRoot}:${usId}`);
 }
 function closeWorkflowView(workspaceRoot, usId) {
     panels.get(`${workspaceRoot}:${usId}`)?.dispose();

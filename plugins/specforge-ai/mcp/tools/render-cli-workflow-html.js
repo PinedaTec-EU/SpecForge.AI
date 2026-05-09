@@ -91,6 +91,86 @@ const browserShim = `
         return;
       }
 
+      if (message?.command === "continue" || message?.command === "play") {
+        fetch("/api/continue", { method: "POST" })
+          .then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))))
+          .then(() => {
+            window.location.reload();
+          })
+          .catch(error => {
+            window.postMessage({
+              command: "workflowActionFailed",
+              action: message.command,
+              detail: error instanceof Error ? error.message : String(error)
+            }, "*");
+          });
+        return;
+      }
+
+      if (message?.command === "submitApprovalAnswer" && message.question && message.answer) {
+        fetch("/api/approval-answer", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ question: message.question, answer: message.answer, actor: "cli-user" })
+        })
+          .then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))))
+          .then(() => {
+            window.location.reload();
+          })
+          .catch(error => {
+            window.postMessage({
+              command: "workflowActionFailed",
+              action: message.command,
+              detail: error instanceof Error ? error.message : String(error)
+            }, "*");
+          });
+        return;
+      }
+
+      if (message?.command === "submitRefinementAnswers" && Array.isArray(message.answers)) {
+        fetch("/api/refinement-answers", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ answers: message.answers, actor: "cli-user" })
+        })
+          .then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))))
+          .then(() => {
+            window.location.reload();
+          })
+          .catch(error => {
+            window.postMessage({
+              command: "workflowActionFailed",
+              action: message.command,
+              detail: error instanceof Error ? error.message : String(error)
+            }, "*");
+          });
+        return;
+      }
+
+      if (message?.command === "approve") {
+        fetch("/api/approve", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            baseBranch: message.baseBranch || null,
+            workBranch: message.workBranch || null,
+            actor: "cli-user"
+          })
+        })
+          .then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))))
+          .then(() => {
+            window.location.reload();
+          })
+          .catch(error => {
+            window.postMessage({
+              command: "workflowActionFailed",
+              action: message.command,
+              detail: error instanceof Error ? error.message : String(error)
+            }, "*");
+          });
+        return;
+      }
+
       window.dispatchEvent(new CustomEvent("specforge-cli-command", { detail: message }));
     }
   };

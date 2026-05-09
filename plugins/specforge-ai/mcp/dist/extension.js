@@ -253,7 +253,19 @@ function createExtensionActions(explorerProvider, sidebarProvider, workflowAudit
         requestRegression: specsExplorer_1.requestRegression,
         restartUserStoryFromSource: specsExplorer_1.restartUserStoryFromSource,
         deleteUserStory: specsExplorer_1.deleteUserStory,
-        continuePhase: specsExplorer_1.continuePhase,
+        continuePhase: async (summary) => {
+            const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+            if (workspaceRoot
+                && summary
+                && typeof summary === "object"
+                && "usId" in summary
+                && typeof summary.usId === "string"
+                && !(0, workflowPanel_1.hasWorkflowViewOpen)(workspaceRoot, summary.usId)) {
+                (0, outputChannel_1.appendSpecForgeLog)(`Workflow '${summary.usId}' continue requested without an open constellation portal; opening workflow view before iteration.`);
+                await vscode.commands.executeCommand("specForge.openWorkflowView", summary);
+            }
+            await (0, specsExplorer_1.continuePhase)(summary);
+        },
         disposeBackendClients: specsExplorer_1.disposeBackendClients,
         showOutput: async () => {
             (0, outputChannel_1.showSpecForgeOutput)(false);
