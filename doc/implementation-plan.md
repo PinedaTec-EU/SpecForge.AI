@@ -151,9 +151,11 @@ Phase 5 is resolved at its minimum scope:
 3. phase execution already generates real artifacts derived from state
 4. the minimum UX already offers detail, contextual actions, and basic feedback
 
-The next leap is not more base infrastructure. The minimum MCP backend already exists and the OpenAI-compatible provider with repo-versioned prompts is already operational. What remains to reach a usable MVP is to close the explicit-workflow gaps and make that real scope visible in documentation and UX.
+The next leap is not more base infrastructure. The minimum MCP backend, OpenAI-compatible provider, repo-versioned prompts, CLI workflow portal, graph view, refinement hardening, and packaged MCP plugin artifacts are already operational. What remains to reach a stronger product MVP is to close the external-integration gaps and turn the workflow evidence into something easy to review, export, and trust.
 
 ## MVP Roadmap
+
+Last reviewed: 2026-05-09, against implementation through `0.1.4.432`.
 
 Goal:
 
@@ -190,17 +192,32 @@ Included in the MVP:
 - ✅ persisted runtime status per user story to detect long-running executions and block duplicate reentry
 - ✅ separate `refinement.md` artifact to accumulate refinement questions and answers without mutating `us.md`
 - ✅ per-user starring of a user story with disk persistence and auto-reopen when VS Code is reopened
+- ✅ CLI workflow portal with graph view, phase selection, cached HTML rendering, and browser actions for continue, refinement answers, approval answers, and approval
+- ✅ workflow portal auto-open before model-driven phase iteration when the workflow constellation is not already visible
+- ✅ concrete intake gate and hardened refinement so broad goals are clarified before decomposing into buildable user stories
+- ✅ configurable MVP rigor (`low`, `medium`, `high`) for refinement strictness
+- ✅ MCP tool schemas constrained with enums and fail-fast argument validation
+- ✅ packaged MCP plugin bundle with compiled webview assets and MCP server artifacts
 
 Does not block the MVP:
 
 - ✅ workflow graph view
-- [ ] rich detail panel with diff, navigable timeline, or effective prompt inspection
+- ✅ richer phase detail UI with graph visualization, audit, metrics, lineage, and selected-phase artifacts
+- [ ] prompt diffing and visible effective prompt inspection/editing from the extension
 - [ ] real PR/issues integration
 - ✅ phase agent profiles with real repository permissions
 - [ ] customizable workflows and advanced agent strategies
 - [ ] show completed user stories through an explicit UI switch
 - [ ] add search over user stories/workflows in the side view
 - [ ] link with ticketing tools (Jira, etc.)
+
+High-value additions worth considering:
+
+- [ ] Definition-of-Ready dashboard for refinement: show which MVP dimensions are still missing, which questions block progress, and why the selected rigor level is not yet satisfied.
+- [ ] PR evidence pack: generate a compact summary from timeline, artifacts, review verdict, validation evidence, and changed files for PR descriptions or release notes.
+- [ ] Review findings workflow: turn failed review items into tracked remediation tasks with status, owner, and retry history instead of leaving them only in Markdown.
+- [ ] Plugin packaging/release command: one command to compile TypeScript, publish MCP binaries, sync plugin artifacts, validate tests, and prepare a versioned distributable.
+- [ ] Roadmap/changelog automation: derive candidate release notes and roadmap status from `done` commits, then ask for human approval before persisting docs.
 
 Recently completed subtask:
 
@@ -238,11 +255,22 @@ Recently completed subtasks:
 - ✅ expose persisted runtime status through MCP so a model can check whether a user story is still running
 - ✅ block a second `generate_next_phase` while a recent live execution exists for the same user story
 - ✅ keep accumulated refinement questions in the visual workflow while removing them from `us.md`
+- ✅ add model-assisted approval answer suggestions from the workflow portal
+- ✅ add CLI workflow portal actions so the browser view can drive workflow progression
+- ✅ add graph cache busting and refreshed documentation screenshots
+- ✅ harden goal intake and refinement before spec readiness
+- ✅ configure MVP rigor and propagate it through settings, prompts, MCP, CLI, and OpenAI-compatible execution
+- ✅ extract MCP stdio transport, MCP tool registry, CLI settings store, and workflow render cache for SRP and focused tests
+- ✅ expand MCP/portal tests across happy path and edge cases
+- ✅ add packaged SpecForge MCP plugin bundle and regenerate distribution artifacts
+- ✅ create a consolidated changelog for the recent release range
 - [ ] complete rich prompt inspection/editing from the extension with diff or visible effective prompt
 
 Pending subtasks before the MVP is considered complete:
 
 - [ ] enrich `branch.yaml` lifecycle with real Git/PR metadata
+- [ ] add completed-story visibility controls and sidebar search
+- [ ] add PR/issue integration or an export-first bridge if direct integration is too early
 
 Persistence artifacts already defined or being defined:
 

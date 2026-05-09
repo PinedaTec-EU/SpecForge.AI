@@ -678,6 +678,8 @@ This preference file currently stores the starred user story that should reopen 
 
 ## Roadmap
 
+Last reviewed: 2026-05-09, against implementation through `0.1.4.432`.
+
 ### Phase 1 foundation
 
 - [x] define workflow, persistence, and templates
@@ -709,12 +711,21 @@ This preference file currently stores the starred user story that should reopen 
 - [x] persist a per-user starred user story on disk and autoopen it when reopening the workspace
 - [x] suggest refinement-time context files through local heuristics and repo neighborhood, behind a default-enabled feature flag
 - [x] expose persisted runtime status so MCP clients can avoid duplicating long-running workflow executions
-- [ ] finalize richer branch lifecycle rules and Git/PR metadata
 - [x] add richer phase detail UI and graph visualization
-- [ ] add issue and PR preparation integration
+- [x] add CLI workflow portal with graph view, cached rendering, phase selection, and browser-driven workflow actions
+- [x] auto-open the workflow portal before model-driven phase iteration when the constellation is not already visible
+- [x] harden broad-goal intake and refinement so vague ideas are clarified before buildable user stories are created
+- [x] add configurable MVP rigor levels for refinement
+- [x] constrain MCP schemas and fail fast on invalid array arguments
+- [x] extract MCP/CLI helper units for SRP and broaden edge-case coverage
+- [x] package the SpecForge MCP plugin bundle with compiled webview and MCP server artifacts
 - [x] support phase agent profiles with real repository permissions
+- [ ] finalize richer branch lifecycle rules and Git/PR metadata
+- [ ] add issue and PR preparation integration
 - [ ] add a switch to show completed user stories and workflows
 - [ ] add sidebar search across user stories and workflows
+- [ ] add prompt diffing and effective prompt inspection/editing UX
+- [ ] add a one-command plugin release pipeline for compile, MCP publish, artifact sync, and validation
 
 ## MVP Roadmap
 
@@ -730,6 +741,9 @@ The current target is an MVP, not a feature-complete product.
 - [x] support explicit regression to an earlier valid phase
 - [x] support safe restart from the original source
 - [x] support per-user starred user stories with automatic reopening
+- [x] support hardened refinement with configurable MVP rigor
+- [x] support workflow graph inspection from VS Code and CLI portal
+- [x] support MCP/plugin distribution artifacts for local model clients
 
 ### Post-MVP
 
@@ -739,6 +753,13 @@ The current target is an MVP, not a feature-complete product.
 - [ ] customizable workflows
 - [ ] completed user story visibility toggle in the sidebar
 - [ ] user story and workflow search in the sidebar
+
+### High-value candidates
+
+- [ ] Definition-of-Ready dashboard for refinement, showing exactly which MVP dimensions still block progress.
+- [ ] PR evidence pack generated from workflow timeline, review verdict, validation evidence, and changed files.
+- [ ] Review findings workflow with tracked remediation status instead of only Markdown review notes.
+- [ ] Roadmap and changelog assistant that drafts updates from `done` commits and waits for human approval.
 
 ## Development
 
