@@ -37,6 +37,7 @@ exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = __importStar(require("vscode"));
 const fs = __importStar(require("node:fs"));
+const path = __importStar(require("node:path"));
 const detailsPanel_1 = require("./detailsPanel");
 const executionSettingsPanel_1 = require("./executionSettingsPanel");
 const extensionRuntime_1 = require("./extensionRuntime");
@@ -246,6 +247,24 @@ function createExtensionActions(explorerProvider, sidebarProvider, workflowAudit
                 },
                 hasPendingExecutionSettings: (root) => (0, specsExplorer_1.hasPendingBackendClientReset)(root)
             });
+        },
+        openCliWorkflowPortal: async (summary) => {
+            const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+            if (!workspaceRoot || !summary || typeof summary !== "object" || !("usId" in summary)) {
+                void vscode.window.showWarningMessage("Open a workspace and select a SpecForge user story before opening the CLI workflow portal.");
+                return;
+            }
+            const usId = String(summary.usId);
+            const url = "http://localhost:5127/";
+            const projectPath = path.join(__dirname, "..", "src", "SpecForge.Runner.Cli", "SpecForge.Runner.Cli.csproj");
+            const terminal = vscode.window.createTerminal({
+                name: `SpecForge Workflow ${usId}`,
+                cwd: workspaceRoot
+            });
+            terminal.show(false);
+            terminal.sendText(`dotnet run --project "${projectPath}" -- serve-workflow "${workspaceRoot}" "${usId}" "${url}"`);
+            await vscode.env.openExternal(vscode.Uri.parse(url));
+            (0, outputChannel_1.appendSpecForgeLog)(`Opened CLI workflow portal for '${usId}' at ${url}.`);
         },
         openMainArtifact: specsExplorer_1.openMainArtifact,
         showUserStoryDetails: detailsPanel_1.showUserStoryDetails,
