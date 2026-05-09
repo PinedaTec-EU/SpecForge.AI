@@ -312,6 +312,16 @@
           ],
           "description": "How demanding refinement should be before the workflow advances to spec. This also adjusts the temperature sent for the refinement phase."
         },
+        "specForge.execution.mvpRigor": {
+          "type": "string",
+          "default": "medium",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "description": "How much product detail refinement requires before a user story can become a buildable MVP slice. Low is lean, medium is professional, high is exacting."
+        },
         "specForge.execution.reviewTolerance": {
           "type": "string",
           "default": "balanced",

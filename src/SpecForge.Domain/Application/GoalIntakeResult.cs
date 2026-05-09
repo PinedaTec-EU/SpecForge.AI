@@ -7,7 +7,11 @@ public sealed record GoalUserStoryDraft(
     string? Category,
     string SourceText,
     IReadOnlyList<string>? AcceptanceCriteria = null,
-    IReadOnlyList<string>? Dependencies = null);
+    IReadOnlyList<string>? Dependencies = null,
+    IReadOnlyList<string>? ClarifiedAnswers = null,
+    IReadOnlyList<string>? NonGoals = null,
+    string? MvpOutcome = null,
+    string? SliceRationale = null);
 
 public sealed record GoalUserStoryCreationResult(
     string UsId,

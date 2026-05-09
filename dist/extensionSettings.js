@@ -37,6 +37,7 @@ function readSpecForgeSettings(configuration) {
         effectivePhaseAgentAssignments: resolveEffectivePhaseAgentAssignments(effectiveAgentProfiles, phaseAgentAssignments),
         autoRefinementAnswersProfile,
         refinementTolerance: normalizeTolerance(configuration.get("execution.refinementTolerance", "balanced")),
+        mvpRigor: normalizeMvpRigor(configuration.get("execution.mvpRigor", "medium")),
         reviewTolerance: normalizeTolerance(configuration.get("execution.reviewTolerance", "balanced")),
         reviewEvidencePolicy,
         technicalDesignSubagentsEnabled: configuration.get("execution.technicalDesignSubagentsEnabled", false),
@@ -68,6 +69,7 @@ function buildBackendEnvironment(settings) {
         env.SPECFORGE_OPENAI_PHASE_AGENT_ASSIGNMENTS_JSON = JSON.stringify(settings.phaseAgentAssignments);
     }
     env.SPECFORGE_REFINEMENT_TOLERANCE = settings.refinementTolerance;
+    env.SPECFORGE_MVP_RIGOR = settings.mvpRigor ?? "medium";
     env.SPECFORGE_REVIEW_TOLERANCE = settings.reviewTolerance;
     env.SPECFORGE_REVIEW_EVIDENCE_POLICY = settings.reviewEvidencePolicy ?? "balanced";
     env.SPECFORGE_TECHNICAL_DESIGN_SUBAGENTS_ENABLED = settings.technicalDesignSubagentsEnabled === true ? "true" : "false";
@@ -244,6 +246,7 @@ function buildSettingsDiagnostics(settings) {
         `phaseAgents.prPreparation=${settings.phaseAgentAssignments.prPreparationAgent ?? "<unset>"}`,
         `subagents.technicalDesign=${settings.technicalDesignSubagentsEnabled === true}`,
         `subagents.review=${settings.reviewSubagentsEnabled === true}`,
+        `mvpRigor=${settings.mvpRigor ?? "medium"}`,
         `autoRefinementAnswers.enabled=${settings.autoRefinementAnswersEnabled}`,
         `autoRefinementAnswers.agent=${settings.autoRefinementAnswersProfile ?? "<unset>"}`,
         `autoReviewEnabled=${settings.autoReviewEnabled}`,
@@ -404,6 +407,10 @@ function normalizeUnknownOptional(value) {
 function normalizeTolerance(value) {
     const normalized = value?.trim().toLowerCase();
     return normalized === "strict" || normalized === "inferential" ? normalized : "balanced";
+}
+function normalizeMvpRigor(value) {
+    const normalized = value?.trim().toLowerCase();
+    return normalized === "low" || normalized === "high" ? normalized : "medium";
 }
 function normalizeReviewEvidencePolicy(value) {
     const normalized = value?.trim().toLowerCase();

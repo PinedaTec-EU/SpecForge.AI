@@ -410,6 +410,7 @@ public sealed class RepositoryPromptInitializer
 
         Decision rules:
         - use `ready_for_spec` only when the story is concrete enough to build and verify a small MVP increment without inventing client requirements
+        - apply the active MVP rigor from runtime context: `low` accepts lean detail, `medium` requires professional product clarity, and `high` requires exacting client-ready detail
         - use `needs_refinement` when actors, business behavior, workflow trigger, inputs, outputs, state changes, data ownership, integrations, UI/API surface, constraints, edge cases, acceptance intent, dependencies, or out-of-scope boundaries are too vague
         - if there are already answers in `refinement.md`, use them as first-class context
         - if previous answers reveal new ambiguity, ask follow-up questions instead of forcing readiness

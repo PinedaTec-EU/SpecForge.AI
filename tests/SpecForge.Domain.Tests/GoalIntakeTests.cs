@@ -22,7 +22,11 @@ public sealed class GoalIntakeTests : IDisposable
                     Category: "integrations",
                     SourceText: "As a user, I want to sign in with GitHub so that I can access the product without a local password.",
                     AcceptanceCriteria: ["OAuth failures do not create a session."],
-                    Dependencies: null),
+                    Dependencies: null,
+                    ClarifiedAnswers: ["GitHub is the only identity provider for the MVP."],
+                    NonGoals: ["Local password sign-up is out of scope."],
+                    MvpOutcome: "A user can authenticate with GitHub and enter the product.",
+                    SliceRationale: "Authentication is the first independent release slice."),
                 new GoalUserStoryDraft(
                     UsId: null,
                     Title: "Persist authenticated sessions",
@@ -58,6 +62,10 @@ public sealed class GoalIntakeTests : IDisposable
         Assert.Contains("- Coding policy: do not implement directly from the broad goal", firstStory);
         Assert.Contains("/goals Build GitHub authentication", firstStory);
         Assert.Contains("- OAuth failures do not create a session.", firstStory);
+        Assert.Contains("## MVP Slice", firstStory);
+        Assert.Contains("- Outcome: A user can authenticate with GitHub and enter the product.", firstStory);
+        Assert.Contains("- Local password sign-up is out of scope.", firstStory);
+        Assert.Contains("- GitHub is the only identity provider for the MVP.", firstStory);
     }
 
     [Fact]

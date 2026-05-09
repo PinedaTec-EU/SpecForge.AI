@@ -549,6 +549,7 @@ static IPhaseExecutionProvider CreatePhaseExecutionProvider(string? workspaceRoo
     const string reviewSubagentsEnabledEnvVar = "SPECFORGE_REVIEW_SUBAGENTS_ENABLED";
     const string refinementToleranceEnvVar = "SPECFORGE_REFINEMENT_TOLERANCE";
     const string legacyRefinementToleranceEnvVar = "SPECFORGE_CAPTURE_TOLERANCE";
+    const string mvpRigorEnvVar = "SPECFORGE_MVP_RIGOR";
     const string reviewToleranceEnvVar = "SPECFORGE_REVIEW_TOLERANCE";
     const string reviewEvidencePolicyEnvVar = "SPECFORGE_REVIEW_EVIDENCE_POLICY";
     const string autoRefinementAnswersEnabledEnvVar = "SPECFORGE_AUTO_REFINEMENT_ANSWERS_ENABLED";
@@ -602,6 +603,9 @@ static IPhaseExecutionProvider CreatePhaseExecutionProvider(string? workspaceRoo
                 ?? Environment.GetEnvironmentVariable(legacyRefinementToleranceEnvVar)
                 ?? portalSettings?.RefinementTolerance
                 ?? "balanced",
+            MvpRigor: Environment.GetEnvironmentVariable(mvpRigorEnvVar)
+                ?? portalSettings?.MvpRigor
+                ?? "medium",
             ReviewTolerance: Environment.GetEnvironmentVariable(reviewToleranceEnvVar) ?? portalSettings?.ReviewTolerance ?? "balanced",
             ReviewEvidencePolicy: Environment.GetEnvironmentVariable(reviewEvidencePolicyEnvVar) ?? portalSettings?.ReviewEvidencePolicy ?? "balanced",
             AutoRefinementAnswersEnabled: string.Equals(
@@ -732,6 +736,7 @@ static string BuildConfigurationPortalHtml() =>
             <h2>Workflow Behavior</h2>
             <div class="grid">
               <label><span class="field-label">Refinement tolerance</span><span class="field-control"><select id="refinementTolerance"><option>strict</option><option>balanced</option><option>inferential</option></select><button class="help-button" type="button" aria-label="Refinement tolerance details" aria-expanded="false" data-help="Controls how much ambiguity refinement tolerates before spec can continue. Strict asks more questions; inferential allows the model to proceed with more assumptions.">?</button></span></label>
+              <label><span class="field-label">MVP rigor</span><span class="field-control"><select id="mvpRigor"><option>low</option><option>medium</option><option>high</option></select><button class="help-button" type="button" aria-label="MVP rigor details" aria-expanded="false" data-help="Controls how much product detail refinement requires before a user story can become a buildable MVP slice. Low is lean; high is exacting.">?</button></span></label>
               <label><span class="field-label">Review tolerance</span><span class="field-control"><select id="reviewTolerance"><option>strict</option><option>balanced</option><option>inferential</option></select><button class="help-button" type="button" aria-label="Review tolerance details" aria-expanded="false" data-help="Controls how demanding review is before it passes or fails delivered work. Strict requires stronger evidence; inferential is more permissive.">?</button></span></label>
               <label><span class="field-label">Review evidence policy</span><span class="field-control"><select id="reviewEvidencePolicy"><option>strict</option><option>balanced</option><option>release</option><option>advisory</option></select><button class="help-button" type="button" aria-label="Review evidence policy details" aria-expanded="false" data-help="Controls how missing automated, static, operational, or deferred validation evidence affects review readiness.">?</button></span></label>
               <label><span class="field-label">Auto-refinement agent</span><span class="field-control"><select id="autoRefinementAnswersProfile"></select><button class="help-button" type="button" aria-label="Auto-refinement agent details" aria-expanded="false" data-help="Agent used to answer refinement questions automatically before the workflow hands the phase back to the user.">?</button></span></label>
@@ -858,7 +863,7 @@ static string BuildConfigurationPortalHtml() =>
         }
 
         function renderBehavior() {
-          for (const id of ["refinementTolerance", "reviewTolerance", "reviewEvidencePolicy", "autoRefinementAnswersProfile", "reviewLearningSkillPath", "maxImplementationReviewCycles"]) {
+          for (const id of ["refinementTolerance", "mvpRigor", "reviewTolerance", "reviewEvidencePolicy", "autoRefinementAnswersProfile", "reviewLearningSkillPath", "maxImplementationReviewCycles"]) {
             const element = document.getElementById(id);
             if (!element) continue;
             if (id === "autoRefinementAnswersProfile") {
@@ -901,7 +906,7 @@ static string BuildConfigurationPortalHtml() =>
             if (kind === "agent" && state.agentProfiles[index]) state.agentProfiles[index][field] = element.value;
             if (kind === "assignment") state.phaseAgentAssignments[field] = element.value || null;
           });
-          for (const id of ["refinementTolerance", "reviewTolerance", "reviewEvidencePolicy", "autoRefinementAnswersProfile", "reviewLearningSkillPath"]) {
+          for (const id of ["refinementTolerance", "mvpRigor", "reviewTolerance", "reviewEvidencePolicy", "autoRefinementAnswersProfile", "reviewLearningSkillPath"]) {
             const element = document.getElementById(id);
             if (element) state[id] = element.value || null;
           }
@@ -1150,6 +1155,7 @@ internal sealed record SpecForgePortalSettings(
     IReadOnlyList<OpenAiCompatibleAgentProfile> AgentProfiles,
     OpenAiCompatiblePhaseAgentAssignments? PhaseAgentAssignments,
     string RefinementTolerance,
+    string MvpRigor,
     string ReviewTolerance,
     string ReviewEvidencePolicy,
     bool TechnicalDesignSubagentsEnabled,
@@ -1214,6 +1220,11 @@ internal static class SpecForgePortalSettingsStore
             settings = settings with { ReviewLearningEnabled = true };
         }
 
+        if (!document.RootElement.TryGetProperty("mvpRigor", out _) || string.IsNullOrWhiteSpace(settings.MvpRigor))
+        {
+            settings = settings with { MvpRigor = "medium" };
+        }
+
         if (!document.RootElement.TryGetProperty("pauseOnFailedReview", out _))
         {
             settings = settings with { PauseOnFailedReview = true };
@@ -1250,6 +1261,7 @@ internal static class SpecForgePortalSettingsStore
             AgentProfiles: [],
             PhaseAgentAssignments: new OpenAiCompatiblePhaseAgentAssignments(),
             RefinementTolerance: "balanced",
+            MvpRigor: "medium",
             ReviewTolerance: "balanced",
             ReviewEvidencePolicy: "balanced",
             TechnicalDesignSubagentsEnabled: false,

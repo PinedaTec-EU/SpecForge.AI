@@ -130,6 +130,7 @@ test("readSpecForgeSettings normalizes model profiles and preserves toggles", ()
     }),
     autoRefinementAnswersProfile: null,
     refinementTolerance: "inferential",
+    mvpRigor: "medium",
     reviewTolerance: "strict",
     reviewEvidencePolicy: "release",
     technicalDesignSubagentsEnabled: true,
@@ -239,6 +240,7 @@ test("buildBackendEnvironment serializes model profiles, agent profiles, and ass
     }),
     autoRefinementAnswersProfile: null,
     refinementTolerance: "strict",
+    mvpRigor: "medium",
     reviewTolerance: "inferential",
     reviewEvidencePolicy: "balanced",
     workflowGraphLayoutMode: "vertical",
@@ -299,6 +301,7 @@ test("buildBackendEnvironment serializes model profiles, agent profiles, and ass
       reviewAgent: "light"
     })),
     SPECFORGE_REFINEMENT_TOLERANCE: "strict",
+    SPECFORGE_MVP_RIGOR: "medium",
     SPECFORGE_REVIEW_TOLERANCE: "inferential",
     SPECFORGE_REVIEW_EVIDENCE_POLICY: "balanced",
     SPECFORGE_TECHNICAL_DESIGN_SUBAGENTS_ENABLED: "false",

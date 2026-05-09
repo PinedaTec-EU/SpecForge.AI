@@ -64,6 +64,7 @@ public sealed class RepositoryPromptInitializerTests : IDisposable
         Assert.Contains("Model-driven workflow phases", sharedSystemPrompt);
         Assert.Contains("stay in refinement for as many iterations as needed", refinementSystemPrompt);
         Assert.Contains("build and verify a small MVP increment", refinementPrompt);
+        Assert.Contains("apply the active MVP rigor", refinementPrompt);
         Assert.Contains("prefer another refinement iteration over a speculative spec", refinementPrompt);
         Assert.Contains("implementation evidence", implementationSystemPrompt);
         Assert.Contains("repository evidence, touched files, and validations", implementationPrompt);

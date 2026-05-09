@@ -278,7 +278,7 @@ static JsonObject BuildToolsList()
                     required: ["workspaceRoot", "action"],
                     Props(
                         ("workspaceRoot", Prop("string", "Absolute path to the workspace root.")),
-                        ("action",        Prop("string", "Mutation operation, e.g. create_user_story, create_user_stories_from_goal, advance_phase, approve_phase, request_regression, submit_refinement_answers, submit_approval_answer, operate_artifact, add_files, or set_file_kind.")),
+                        ("action",        Prop("string", "Mutation operation, e.g. create_user_story, create_user_stories_from_goal, advance_phase, approve_phase, request_regression, submit_refinement_answers, submit_approval_answer, operate_artifact, add_files, or set_file_kind. Broad goals should be clarified into small MVP slices before create_user_stories_from_goal.")),
                         ("usId",          Prop("string", "User story identifier when the action targets an existing user story.")),
                         ("params",        Prop("object", "Action-specific parameters. Keep this small and use the SpecForge skill for the exact shape."))))),
 
@@ -300,7 +300,7 @@ static JsonObject BuildToolsList()
                         ("title",         Prop("string", "Short descriptive title for the user story.")),
                         ("kind",          Prop("string", "User story kind: feature, bug, or hotfix.")),
                         ("category",      Prop("string", "Category that groups the user story, e.g. core, ux, api.")),
-                        ("sourceText",    Prop("string", "Free-text description of the user story intent.")),
+                        ("sourceText",    Prop("string", "Free-text description of the user story intent. Vague stories are allowed at capture, but refinement will keep asking until the MVP slice is buildable.")),
                         ("actor",         Prop("string", "Actor performing the action. Defaults to 'user'."))))),
 
             Tool("import_us_from_markdown", "Import a user story from an existing markdown file.",

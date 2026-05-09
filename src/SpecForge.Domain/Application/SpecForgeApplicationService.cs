@@ -206,6 +206,8 @@ public sealed class SpecForgeApplicationService
     {
         var acceptanceCriteria = NormalizeList(draft.AcceptanceCriteria);
         var dependencies = NormalizeList(draft.Dependencies);
+        var clarifiedAnswers = NormalizeList(draft.ClarifiedAnswers);
+        var nonGoals = NormalizeList(draft.NonGoals);
         var lines = new List<string>
         {
             "## SpecForge Goal Intake",
@@ -224,12 +226,44 @@ public sealed class SpecForgeApplicationService
             RequireTrimmed(draft.SourceText, "User story source text is required.")
         };
 
+        if (!string.IsNullOrWhiteSpace(draft.MvpOutcome) || !string.IsNullOrWhiteSpace(draft.SliceRationale))
+        {
+            lines.Add("");
+            lines.Add("## MVP Slice");
+            lines.Add("");
+            if (!string.IsNullOrWhiteSpace(draft.MvpOutcome))
+            {
+                lines.Add($"- Outcome: {draft.MvpOutcome.Trim()}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(draft.SliceRationale))
+            {
+                lines.Add($"- Slice rationale: {draft.SliceRationale.Trim()}");
+            }
+        }
+
         if (acceptanceCriteria.Count > 0)
         {
             lines.Add("");
             lines.Add("## Acceptance Intent");
             lines.Add("");
             lines.AddRange(acceptanceCriteria.Select(static item => $"- {item}"));
+        }
+
+        if (nonGoals.Count > 0)
+        {
+            lines.Add("");
+            lines.Add("## Non Goals");
+            lines.Add("");
+            lines.AddRange(nonGoals.Select(static item => $"- {item}"));
+        }
+
+        if (clarifiedAnswers.Count > 0)
+        {
+            lines.Add("");
+            lines.Add("## Clarified Intake Answers");
+            lines.Add("");
+            lines.AddRange(clarifiedAnswers.Select(static item => $"- {item}"));
         }
 
         if (dependencies.Count > 0)

@@ -47,6 +47,14 @@ Keep the questions practical and grouped. Prefer 3-7 high-signal questions per r
 
 After the intake is concrete enough, split the goal into small, independently reviewable user stories. Each story must deliver one narrow functional increment, have clear acceptance intent, avoid mixing unrelated concerns, and be small enough to pass through SpecForge without over-engineering.
 
+Refinement applies the configured MVP rigor:
+
+- `low`: lean MVP detail; still requires actor, outcome, main flow, and at least one observable acceptance criterion.
+- `medium`: professional MVP detail; requires behavior, data/state impact, boundaries, dependencies, edge cases, and acceptance criteria.
+- `high`: exacting MVP detail; requires client-ready clarity on UI/API contracts, alternate paths, integrations, non-goals, validation evidence, and dependencies.
+
+Auto-refinement answers are disabled by default. If disabled, warn the user that unresolved refinement questions will need their direct answers; do not treat that as a blocker or enable it automatically.
+
 ## Common Reads
 
 - List stories: `specforge_query` with `query: "list_user_stories"`.

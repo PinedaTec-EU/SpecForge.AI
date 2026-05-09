@@ -62,7 +62,15 @@ For a concrete broad goal that should become multiple small stories, use `action
         "acceptanceCriteria": [
           "Concrete observable criterion."
         ],
-        "dependencies": []
+        "dependencies": [],
+        "clarifiedAnswers": [
+          "Relevant answer from the intake conversation."
+        ],
+        "nonGoals": [
+          "Explicitly excluded scope."
+        ],
+        "mvpOutcome": "The customer-visible MVP outcome this slice enables.",
+        "sliceRationale": "Why this is one small independent increment."
       }
     ]
   }

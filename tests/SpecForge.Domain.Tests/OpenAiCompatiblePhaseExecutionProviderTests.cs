@@ -279,6 +279,8 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
         var userPrompt = OpenAiCompatibleRequestJson.ReadUserPrompt(handler.LastBody);
         Assert.Contains($"Active tolerance: `{refinementTolerance}`", userPrompt);
         Assert.Contains(expectedGuidance, userPrompt);
+        Assert.Contains("MVP rigor: `medium`", userPrompt);
+        Assert.Contains("Auto-refinement answers: `disabled`", userPrompt);
     }
 
     [Fact]

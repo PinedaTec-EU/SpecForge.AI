@@ -21,6 +21,7 @@ internal static class PhaseExecutionProviderFactory
     private const string ReviewSubagentsEnabledEnvVar = "SPECFORGE_REVIEW_SUBAGENTS_ENABLED";
     private const string RefinementToleranceEnvVar = "SPECFORGE_REFINEMENT_TOLERANCE";
     private const string LegacyRefinementToleranceEnvVar = "SPECFORGE_CAPTURE_TOLERANCE";
+    private const string MvpRigorEnvVar = "SPECFORGE_MVP_RIGOR";
     private const string ReviewToleranceEnvVar = "SPECFORGE_REVIEW_TOLERANCE";
     private const string ReviewEvidencePolicyEnvVar = "SPECFORGE_REVIEW_EVIDENCE_POLICY";
     private const string AutoRefinementAnswersEnabledEnvVar = "SPECFORGE_AUTO_REFINEMENT_ANSWERS_ENABLED";
@@ -90,6 +91,7 @@ internal static class PhaseExecutionProviderFactory
         var options = new OpenAiCompatibleProviderOptions(
             SystemPrompt: systemPrompt,
             RefinementTolerance: refinementTolerance,
+            MvpRigor: Environment.GetEnvironmentVariable(MvpRigorEnvVar) ?? "medium",
             ReviewTolerance: reviewTolerance,
             ReviewEvidencePolicy: reviewEvidencePolicy,
             AutoRefinementAnswersEnabled: autoRefinementAnswersEnabled,

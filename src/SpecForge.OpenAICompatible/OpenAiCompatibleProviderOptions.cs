@@ -34,6 +34,7 @@ public sealed record OpenAiCompatiblePhaseSubagentOptions(
 public sealed record OpenAiCompatibleProviderOptions(
     string? SystemPrompt = null,
     string RefinementTolerance = "balanced",
+    string MvpRigor = "medium",
     string ReviewTolerance = "balanced",
     string ReviewEvidencePolicy = "balanced",
     bool AutoRefinementAnswersEnabled = false,

@@ -17,6 +17,7 @@ type ExecutionSettingsMessage =
       readonly agentProfiles?: readonly Partial<SpecForgeAgentProfile>[];
       readonly phaseAgentAssignments?: Partial<SpecForgePhaseAgentAssignments>;
       readonly refinementTolerance?: string;
+      readonly mvpRigor?: "low" | "medium" | "high";
       readonly reviewTolerance?: string;
       readonly reviewEvidencePolicy?: string;
       readonly technicalDesignSubagentsEnabled?: boolean;
@@ -96,6 +97,7 @@ class ExecutionSettingsPanelController {
               message.agentProfiles ?? [],
               message.phaseAgentAssignments ?? {},
               message.refinementTolerance ?? "balanced",
+              message.mvpRigor ?? "medium",
               message.reviewTolerance ?? "balanced",
               message.reviewEvidencePolicy ?? "balanced",
               message.technicalDesignSubagentsEnabled ?? false,
@@ -140,6 +142,7 @@ class ExecutionSettingsPanelController {
       agentProfiles: settings.agentProfiles ?? deriveAgentProfilesFromModels(settings.modelProfiles),
       phaseAgentAssignments: settings.phaseAgentAssignments,
       refinementTolerance: settings.refinementTolerance,
+      mvpRigor: settings.mvpRigor ?? "medium",
       reviewTolerance: settings.reviewTolerance,
       reviewEvidencePolicy: settings.reviewEvidencePolicy ?? "balanced",
       technicalDesignSubagentsEnabled: settings.technicalDesignSubagentsEnabled === true,
@@ -183,6 +186,7 @@ type ExecutionSettingsViewModel = {
   readonly agentProfiles: readonly SpecForgeAgentProfile[];
   readonly phaseAgentAssignments: SpecForgePhaseAgentAssignments;
   readonly refinementTolerance: string;
+  readonly mvpRigor: "low" | "medium" | "high";
   readonly reviewTolerance: string;
   readonly reviewEvidencePolicy: string;
   readonly technicalDesignSubagentsEnabled: boolean;
@@ -671,6 +675,15 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
           <span class="phase-field__hint">Controls how much ambiguity refinement tolerates before spec can continue.</span>
         </label>
         <label class="phase-field">
+          <span>MVP rigor</span>
+          <select data-mvp-rigor>
+            <option value="low"${model.mvpRigor === "low" ? " selected" : ""}>Low</option>
+            <option value="medium"${model.mvpRigor === "medium" ? " selected" : ""}>Medium</option>
+            <option value="high"${model.mvpRigor === "high" ? " selected" : ""}>High</option>
+          </select>
+          <span class="phase-field__hint">Controls how much product detail refinement requires before a story can become a buildable MVP slice.</span>
+        </label>
+        <label class="phase-field">
           <span>Review tolerance</span>
           <select data-review-tolerance>
             <option value="strict"${model.reviewTolerance === "strict" ? " selected" : ""}>Strict</option>
@@ -886,6 +899,7 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
       agentProfiles: ${JSON.stringify(model.agentProfiles)},
       phaseAgentAssignments: ${JSON.stringify(model.phaseAgentAssignments)},
       refinementTolerance: ${JSON.stringify(model.refinementTolerance)},
+      mvpRigor: ${JSON.stringify(model.mvpRigor)},
       reviewTolerance: ${JSON.stringify(model.reviewTolerance)},
       reviewEvidencePolicy: ${JSON.stringify(model.reviewEvidencePolicy)},
       technicalDesignSubagentsEnabled: ${JSON.stringify(model.technicalDesignSubagentsEnabled)},
@@ -1040,6 +1054,7 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
       const autoRefinementProfile = document.querySelector("[data-auto-refinement-profile]");
       const autoRefinementWrapper = document.querySelector("[data-auto-refinement-profile-wrapper]");
       const refinementTolerance = document.querySelector("[data-refinement-tolerance]");
+      const mvpRigor = document.querySelector("[data-mvp-rigor]");
       const reviewTolerance = document.querySelector("[data-review-tolerance]");
       const reviewEvidencePolicy = document.querySelector("[data-review-evidence-policy]");
       const technicalDesignSubagents = document.querySelector("[data-technical-design-subagents]");
@@ -1160,6 +1175,13 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
         refinementTolerance.value = state.refinementTolerance || "balanced";
         refinementTolerance.addEventListener("change", () => {
           state.refinementTolerance = refinementTolerance.value || "balanced";
+        });
+      }
+
+      if (mvpRigor instanceof HTMLSelectElement) {
+        mvpRigor.value = state.mvpRigor || "medium";
+        mvpRigor.addEventListener("change", () => {
+          state.mvpRigor = mvpRigor.value || "medium";
         });
       }
 
@@ -1694,6 +1716,7 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
         agentProfiles: state.agentProfiles,
         phaseAgentAssignments: state.phaseAgentAssignments,
         refinementTolerance: state.refinementTolerance,
+        mvpRigor: state.mvpRigor,
         reviewTolerance: state.reviewTolerance,
         reviewEvidencePolicy: state.reviewEvidencePolicy,
         technicalDesignSubagentsEnabled: state.technicalDesignSubagentsEnabled,
@@ -1730,6 +1753,7 @@ async function saveExecutionSettingsAsync(
   agentProfiles: readonly Partial<SpecForgeAgentProfile>[],
   phaseAgentAssignments: Partial<SpecForgePhaseAgentAssignments>,
   refinementTolerance = "balanced",
+  mvpRigor: "low" | "medium" | "high" = "medium",
   reviewTolerance = "balanced",
   reviewEvidencePolicy = "balanced",
   technicalDesignSubagentsEnabled = false,
@@ -1834,6 +1858,7 @@ async function saveExecutionSettingsAsync(
   await configuration.update("execution.phaseAgents", normalizedAssignments, vscode.ConfigurationTarget.Workspace);
   await configuration.update("execution.phaseModels", undefined, vscode.ConfigurationTarget.Workspace);
   await configuration.update("execution.refinementTolerance", refinementTolerance, vscode.ConfigurationTarget.Workspace);
+  await configuration.update("execution.mvpRigor", mvpRigor, vscode.ConfigurationTarget.Workspace);
   await configuration.update("execution.reviewTolerance", reviewTolerance, vscode.ConfigurationTarget.Workspace);
   await configuration.update("execution.reviewEvidencePolicy", reviewEvidencePolicy, vscode.ConfigurationTarget.Workspace);
   await configuration.update("execution.technicalDesignSubagentsEnabled", technicalDesignSubagentsEnabled, vscode.ConfigurationTarget.Workspace);

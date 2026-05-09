@@ -22,6 +22,9 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
     private const string StrictTolerance = "strict";
     private const string BalancedTolerance = "balanced";
     private const string InferentialTolerance = "inferential";
+    private const string LowMvpRigor = "low";
+    private const string MediumMvpRigor = "medium";
+    private const string HighMvpRigor = "high";
     private readonly HttpClient httpClient;
     private readonly OpenAiCompatibleProviderOptions options;
     private readonly RepositoryPromptCatalog promptCatalog;
@@ -66,6 +69,13 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
         {
             throw new ArgumentException(
                 "RefinementTolerance must be one of: strict, balanced, inferential.",
+                nameof(options));
+        }
+
+        if (!IsSupportedMvpRigor(options.MvpRigor))
+        {
+            throw new ArgumentException(
+                "MvpRigor must be one of: low, medium, high.",
                 nameof(options));
         }
 
@@ -879,6 +889,12 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
                 .AppendLine()
                 .AppendLine($"- Active tolerance: `{options.RefinementTolerance}`")
                 .AppendLine($"- Guidance: {ResolveRefinementGuidance(options.RefinementTolerance)}")
+                .AppendLine($"- MVP rigor: `{NormalizeMvpRigor(options.MvpRigor)}`")
+                .AppendLine($"- MVP guidance: {ResolveMvpRigorGuidance(options.MvpRigor)}")
+                .AppendLine($"- Auto-refinement answers: `{(options.AutoRefinementAnswersEnabled ? "enabled" : "disabled")}`")
+                .AppendLine(options.AutoRefinementAnswersEnabled
+                    ? "- Auto-refinement may attempt grounded answers once, but must not invent client intent."
+                    : "- Auto-refinement is disabled; any unresolved refinement question must be surfaced to the user.")
                 .AppendLine()
                 .AppendLine("## Refinement Markdown Contract")
                 .AppendLine()
@@ -1709,6 +1725,17 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
                 "Use balanced judgment, but prefer another refinement iteration over a speculative spec whenever missing detail would affect implementation, validation, scope, or customer expectations."
         };
 
+    private static string ResolveMvpRigorGuidance(string rigor) =>
+        NormalizeMvpRigor(rigor) switch
+        {
+            LowMvpRigor =>
+                "Low rigor allows a lean MVP slice once actor, outcome, main flow, and one observable acceptance criterion are clear; ask only questions that would materially change implementation.",
+            HighMvpRigor =>
+                "High rigor is exacting: keep refinement open until actor, trigger, happy path, alternate paths, data rules, UI/API contract, integrations, boundaries, dependencies, non-goals, edge cases, and validation evidence are explicit.",
+            _ =>
+                "Medium rigor requires enough detail to build a professional MVP slice: actor, outcome, trigger, behavior, inputs, outputs, state/data rules, boundaries, dependencies, edge cases, and acceptance criteria must be concrete."
+        };
+
     private static string ResolveReviewGuidance(string tolerance) =>
         NormalizeTolerance(tolerance) switch
         {
@@ -1732,6 +1759,9 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
     private static bool IsSupportedTolerance(string tolerance) =>
         NormalizeTolerance(tolerance) is StrictTolerance or BalancedTolerance or InferentialTolerance;
 
+    private static bool IsSupportedMvpRigor(string rigor) =>
+        NormalizeMvpRigor(rigor) is LowMvpRigor or MediumMvpRigor or HighMvpRigor;
+
     private static bool IsSupportedReviewEvidencePolicy(string policy) =>
         NormalizeReviewEvidencePolicy(policy) is "strict" or "balanced" or "release" or "advisory";
 
@@ -1739,6 +1769,11 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
         string.IsNullOrWhiteSpace(tolerance)
             ? BalancedTolerance
             : tolerance.Trim().ToLowerInvariant();
+
+    private static string NormalizeMvpRigor(string rigor) =>
+        string.IsNullOrWhiteSpace(rigor)
+            ? MediumMvpRigor
+            : rigor.Trim().ToLowerInvariant();
 
     private static string NormalizeReviewEvidencePolicy(string policy) =>
         string.IsNullOrWhiteSpace(policy)

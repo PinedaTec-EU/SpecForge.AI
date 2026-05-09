@@ -7,6 +7,7 @@ export interface SpecForgeSettings {
   readonly effectivePhaseAgentAssignments: EffectiveSpecForgePhaseAgentAssignments;
   readonly autoRefinementAnswersProfile: string | null;
   readonly refinementTolerance: string;
+  readonly mvpRigor?: "low" | "medium" | "high";
   readonly reviewTolerance: string;
   readonly reviewEvidencePolicy?: string;
   readonly technicalDesignSubagentsEnabled?: boolean;
@@ -115,6 +116,7 @@ export function readSpecForgeSettings(configuration: ConfigurationReader): SpecF
     effectivePhaseAgentAssignments: resolveEffectivePhaseAgentAssignments(effectiveAgentProfiles, phaseAgentAssignments),
     autoRefinementAnswersProfile,
     refinementTolerance: normalizeTolerance(configuration.get<string>("execution.refinementTolerance", "balanced")),
+    mvpRigor: normalizeMvpRigor(configuration.get<string>("execution.mvpRigor", "medium")),
     reviewTolerance: normalizeTolerance(configuration.get<string>("execution.reviewTolerance", "balanced")),
     reviewEvidencePolicy,
     technicalDesignSubagentsEnabled: configuration.get<boolean>("execution.technicalDesignSubagentsEnabled", false),
@@ -149,6 +151,7 @@ export function buildBackendEnvironment(settings: SpecForgeSettings): NodeJS.Pro
   }
 
   env.SPECFORGE_REFINEMENT_TOLERANCE = settings.refinementTolerance;
+  env.SPECFORGE_MVP_RIGOR = settings.mvpRigor ?? "medium";
   env.SPECFORGE_REVIEW_TOLERANCE = settings.reviewTolerance;
   env.SPECFORGE_REVIEW_EVIDENCE_POLICY = settings.reviewEvidencePolicy ?? "balanced";
   env.SPECFORGE_TECHNICAL_DESIGN_SUBAGENTS_ENABLED = settings.technicalDesignSubagentsEnabled === true ? "true" : "false";
@@ -365,6 +368,7 @@ function buildSettingsDiagnostics(settings: SpecForgeSettings): string {
     `phaseAgents.prPreparation=${settings.phaseAgentAssignments.prPreparationAgent ?? "<unset>"}`,
     `subagents.technicalDesign=${settings.technicalDesignSubagentsEnabled === true}`,
     `subagents.review=${settings.reviewSubagentsEnabled === true}`,
+    `mvpRigor=${settings.mvpRigor ?? "medium"}`,
     `autoRefinementAnswers.enabled=${settings.autoRefinementAnswersEnabled}`,
     `autoRefinementAnswers.agent=${settings.autoRefinementAnswersProfile ?? "<unset>"}`,
     `autoReviewEnabled=${settings.autoReviewEnabled}`,
@@ -559,6 +563,11 @@ function normalizeUnknownOptional(value: unknown): string | null {
 function normalizeTolerance(value: string | undefined): string {
   const normalized = value?.trim().toLowerCase();
   return normalized === "strict" || normalized === "inferential" ? normalized : "balanced";
+}
+
+function normalizeMvpRigor(value: string | undefined): "low" | "medium" | "high" {
+  const normalized = value?.trim().toLowerCase();
+  return normalized === "low" || normalized === "high" ? normalized : "medium";
 }
 
 function normalizeReviewEvidencePolicy(value: string | undefined): string {
