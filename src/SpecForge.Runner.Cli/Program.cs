@@ -3,7 +3,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Diagnostics;
-using System.Collections.Concurrent;
 using SpecForge.Domain.Application;
 using SpecForge.Domain.Persistence;
 using SpecForge.OpenAICompatible;
@@ -201,7 +200,7 @@ static async Task HandleServeWorkflowAsync(IReadOnlyList<string> args)
     var prefix = args.Count == 4 ? NormalizeHttpPrefix(args[3]) : "http://localhost:5128/";
     var runner = new WorkflowRunner(CreatePhaseExecutionProvider(workspaceRoot));
     var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
-    var renderCache = new ConcurrentDictionary<string, string>();
+    var renderCache = new WorkflowPortalRenderCache();
 
     using var listener = new HttpListener();
     listener.Prefixes.Add(prefix);
@@ -222,7 +221,7 @@ static async Task HandleWorkflowPortalRequestAsync(
     SpecForgeApplicationService applicationService,
     string workspaceRoot,
     string usId,
-    ConcurrentDictionary<string, string> renderCache)
+    WorkflowPortalRenderCache renderCache)
 {
     try
     {
@@ -348,14 +347,13 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
     string workspaceRoot,
     string usId,
     string? selectedPhaseId,
-    ConcurrentDictionary<string, string> renderCache)
+    WorkflowPortalRenderCache renderCache)
 {
     var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, usId);
     var resolvedSelectedPhaseId = ResolveSelectedWorkflowPhaseId(workflow, selectedPhaseId);
     var selectedPhase = ResolveSelectedWorkflowPhase(workflow, resolvedSelectedPhaseId);
     var signature = BuildWorkflowSignature(workflow);
-    var cacheKey = BuildWorkflowPortalCacheKey(signature, resolvedSelectedPhaseId, selectedPhase);
-    if (renderCache.TryGetValue(cacheKey, out var cachedHtml))
+    if (renderCache.TryGet(signature, resolvedSelectedPhaseId, selectedPhase, out var cachedHtml))
     {
         return cachedHtml;
     }
@@ -372,8 +370,7 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
         SpecForgePortalSettingsStore.JsonOptions);
 
     var html = await RenderWorkflowHtmlWithNodeAsync(payload);
-    renderCache[cacheKey] = html;
-    TrimWorkflowPortalRenderCache(renderCache);
+    renderCache.Store(signature, resolvedSelectedPhaseId, selectedPhase, html);
     return html;
 }
 
@@ -451,35 +448,6 @@ static async Task<string?> ReadFileContentOrNullAsync(string? path)
     }
 
     return await File.ReadAllTextAsync(path);
-}
-
-static string BuildWorkflowPortalCacheKey(
-    string signature,
-    string selectedPhaseId,
-    WorkflowPhaseDetails? selectedPhase)
-{
-    var artifactStamp = ReadLastWriteStamp(selectedPhase?.ArtifactPath);
-    var operationStamp = ReadLastWriteStamp(selectedPhase?.OperationLogPath);
-    return $"{signature}:{selectedPhaseId}:{artifactStamp}:{operationStamp}";
-}
-
-static long ReadLastWriteStamp(string? path) =>
-    path is not null && File.Exists(path)
-        ? File.GetLastWriteTimeUtc(path).Ticks
-        : 0;
-
-static void TrimWorkflowPortalRenderCache(ConcurrentDictionary<string, string> renderCache)
-{
-    const int maxEntries = 16;
-    if (renderCache.Count <= maxEntries)
-    {
-        return;
-    }
-
-    foreach (var key in renderCache.Keys.Take(renderCache.Count - maxEntries))
-    {
-        renderCache.TryRemove(key, out _);
-    }
 }
 
 static string BuildWorkflowSignature(UserStoryWorkflowDetails workflow)
