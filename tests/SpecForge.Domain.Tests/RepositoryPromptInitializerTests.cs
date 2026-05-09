@@ -39,6 +39,8 @@ public sealed class RepositoryPromptInitializerTests : IDisposable
         var manifestContent = await File.ReadAllTextAsync(paths.PromptManifestPath);
         var sharedSystemPrompt = await File.ReadAllTextAsync(paths.SharedSystemPromptPath);
         var sharedOutputRulesPrompt = await File.ReadAllTextAsync(paths.SharedOutputRulesPromptPath);
+        var refinementSystemPrompt = await File.ReadAllTextAsync(paths.RefinementExecuteSystemPromptPath);
+        var refinementPrompt = await File.ReadAllTextAsync(paths.RefinementExecutePromptPath);
         var implementationSystemPrompt = await File.ReadAllTextAsync(paths.ImplementationExecuteSystemPromptPath);
         var implementationPrompt = await File.ReadAllTextAsync(paths.ImplementationExecutePromptPath);
         var reviewSystemPrompt = await File.ReadAllTextAsync(paths.ReviewExecuteSystemPromptPath);
@@ -60,6 +62,9 @@ public sealed class RepositoryPromptInitializerTests : IDisposable
         Assert.Contains("complete Markdown artifact", sharedSystemPrompt);
         Assert.Contains("Return only Markdown", sharedOutputRulesPrompt);
         Assert.Contains("Model-driven workflow phases", sharedSystemPrompt);
+        Assert.Contains("stay in refinement for as many iterations as needed", refinementSystemPrompt);
+        Assert.Contains("build and verify a small MVP increment", refinementPrompt);
+        Assert.Contains("prefer another refinement iteration over a speculative spec", refinementPrompt);
         Assert.Contains("implementation evidence", implementationSystemPrompt);
         Assert.Contains("repository evidence, touched files, and validations", implementationPrompt);
         Assert.Contains("Implementation Strategy` must be an operational implementation plan", await File.ReadAllTextAsync(paths.TechnicalDesignExecutePromptPath));

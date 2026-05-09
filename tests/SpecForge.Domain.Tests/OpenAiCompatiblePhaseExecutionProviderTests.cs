@@ -250,9 +250,9 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
     }
 
     [Theory]
-    [InlineData("strict", 0.0d, "Be conservative. Ask for refinement whenever actor, trigger, business behavior, inputs, outputs, rules, or acceptance intent are materially ambiguous.")]
-    [InlineData("balanced", 0.2d, "Use balanced judgment. Ask only for gaps that would block a credible spec, but do not invent business-critical facts.")]
-    [InlineData("inferential", 0.4d, "Be permissive. Prefer `ready_for_spec` when the core actor, outcome, and flow are understandable, and infer reasonable defaults unless a missing detail would likely invalidate spec.")]
+    [InlineData("strict", 0.0d, "Be strict. Ask for refinement whenever actor, trigger, business behavior, inputs, outputs, rules, acceptance intent, boundaries, dependencies, or edge cases are materially ambiguous.")]
+    [InlineData("balanced", 0.2d, "Use balanced judgment, but prefer another refinement iteration over a speculative spec whenever missing detail would affect implementation, validation, scope, or customer expectations.")]
+    [InlineData("inferential", 0.4d, "Use limited inference only for non-critical repository facts. Keep asking refinement questions while any client requirement, MVP boundary, acceptance criterion, workflow behavior, data rule, or integration detail is uncertain.")]
     public async Task ExecuteAsync_RefinementTolerance_ChangesTemperatureAndPrompt(
         string refinementTolerance,
         double expectedTemperature,

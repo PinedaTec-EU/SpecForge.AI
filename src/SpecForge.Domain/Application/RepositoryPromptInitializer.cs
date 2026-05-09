@@ -288,8 +288,10 @@ public sealed class RepositoryPromptInitializer
         """
         This is the system prompt for the refinement execute template.
 
-        Diagnose readiness for spec conservatively and keep every unresolved gap explicit.
-        Ask only concrete blocking questions, and never invent answers that were not provided by the repository context.
+        Diagnose readiness for spec aggressively and keep every unresolved gap explicit.
+        A poor or broad story must stay in refinement for as many iterations as needed.
+        Ask concrete blocking questions repeatedly until the story can support a small MVP slice without invented client requirements.
+        Never invent answers that were not provided by the user, repository context, or prior refinement answers.
         """;
 
     private static string BuildSpecExecuteSystemPrompt() =>
@@ -396,7 +398,8 @@ public sealed class RepositoryPromptInitializer
 
         Goal:
         - inspect `us.md` and decide whether the story is ready for spec
-        - if it is not ready, ask only the minimum concrete questions needed
+        - if it is not ready, ask the next concrete questions needed to make the story buildable
+        - keep asking in later refinement iterations until the story has enough detail for a professional MVP slice
         - if it is ready, say so explicitly and avoid inventing new questions
 
         Required sections:
@@ -406,10 +409,13 @@ public sealed class RepositoryPromptInitializer
         - Questions
 
         Decision rules:
-        - use `ready_for_spec` when the story is concrete enough to produce a meaningful spec
-        - use `needs_refinement` when actors, business behavior, inputs, outputs, rules, or acceptance intent are too vague
+        - use `ready_for_spec` only when the story is concrete enough to build and verify a small MVP increment without inventing client requirements
+        - use `needs_refinement` when actors, business behavior, workflow trigger, inputs, outputs, state changes, data ownership, integrations, UI/API surface, constraints, edge cases, acceptance intent, dependencies, or out-of-scope boundaries are too vague
         - if there are already answers in `refinement.md`, use them as first-class context
-        - keep the questions concrete and answerable by the user inside the extension
+        - if previous answers reveal new ambiguity, ask follow-up questions instead of forcing readiness
+        - keep questions concrete and answerable by the user inside the extension
+        - group questions by theme when there are many gaps, but do not suppress blocking questions just to keep the list short
+        - prefer another refinement iteration over a speculative spec whenever requirements are incomplete
         """;
 
     private static string BuildSpecExecutePrompt() =>

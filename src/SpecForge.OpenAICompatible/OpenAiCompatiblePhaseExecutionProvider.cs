@@ -886,7 +886,9 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
                 .AppendLine("Use the required headings exactly once: `## State`, `## Decision`, `## Reason`, and `## Questions`.")
                 .AppendLine("Do not return JSON.")
                 .AppendLine("If the story is ready for spec, write `ready_for_spec` in `## Decision` and include `1. No refinement questions remain.` in `## Questions`.")
-                .AppendLine("If the story still needs refinement, write `needs_refinement` in `## Decision` and include the exact pending questions as a numbered list.");
+                .AppendLine("A story is ready only when it is detailed enough to build and verify a small MVP increment without inventing client requirements.")
+                .AppendLine("If the story still needs refinement, write `needs_refinement` in `## Decision` and include the exact pending questions as a numbered list.")
+                .AppendLine("Ask follow-up questions in as many refinement iterations as needed; do not pass a vague story to spec just to make progress.");
         }
 
         if (context.PhaseId == PhaseId.Spec)
@@ -1700,11 +1702,11 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
         NormalizeTolerance(tolerance) switch
         {
             StrictTolerance =>
-                "Be conservative. Ask for refinement whenever actor, trigger, business behavior, inputs, outputs, rules, or acceptance intent are materially ambiguous.",
+                "Be strict. Ask for refinement whenever actor, trigger, business behavior, inputs, outputs, rules, acceptance intent, boundaries, dependencies, or edge cases are materially ambiguous.",
             InferentialTolerance =>
-                "Be permissive. Prefer `ready_for_spec` when the core actor, outcome, and flow are understandable, and infer reasonable defaults unless a missing detail would likely invalidate spec.",
+                "Use limited inference only for non-critical repository facts. Keep asking refinement questions while any client requirement, MVP boundary, acceptance criterion, workflow behavior, data rule, or integration detail is uncertain.",
             _ =>
-                "Use balanced judgment. Ask only for gaps that would block a credible spec, but do not invent business-critical facts."
+                "Use balanced judgment, but prefer another refinement iteration over a speculative spec whenever missing detail would affect implementation, validation, scope, or customer expectations."
         };
 
     private static string ResolveReviewGuidance(string tolerance) =>
