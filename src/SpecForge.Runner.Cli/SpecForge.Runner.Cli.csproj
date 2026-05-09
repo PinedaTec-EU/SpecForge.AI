@@ -12,4 +12,19 @@
     <ProjectReference Include="..\SpecForge.OpenAICompatible\SpecForge.OpenAICompatible.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\tools\render-cli-workflow-html.js"
+          Link="tools\render-cli-workflow-html.js"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\dist\*.js"
+          LinkBase="dist"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\dist\workflow-view\*.js"
+          LinkBase="dist\workflow-view"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
