@@ -24,3 +24,11 @@ test("MCP schemas constrain common phase, kind, and reason values", async () => 
   assert.match(source, /"kind",\s*EnumProp\("File kind\.", "context", "attachment"\)/);
   assert.match(source, /"kind",\s*EnumProp\("User story kind\.", "feature", "bug", "hotfix"\)/);
 });
+
+test("MCP required array arguments fail fast when missing or empty", async () => {
+  const source = await fs.promises.readFile(programPath, "utf8");
+
+  assert.match(source, /throw new InvalidOperationException\(\$"Missing required array argument '\{key\}'\."\)/);
+  assert.match(source, /Required array argument '\{key\}' must contain at least one non-empty value/);
+  assert.doesNotMatch(source, /if \(arguments\[key\] is not JsonArray array\)\s*\{\s*return \[\];\s*\}/);
+});

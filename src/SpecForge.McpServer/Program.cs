@@ -808,14 +808,20 @@ static string[] GetStringArray(JsonObject arguments, string key)
 {
     if (arguments[key] is not JsonArray array)
     {
-        return [];
+        throw new InvalidOperationException($"Missing required array argument '{key}'.");
     }
 
-    return array
+    var values = array
         .Select(static item => item?.GetValue<string>()?.Trim())
         .Where(static item => !string.IsNullOrWhiteSpace(item))
         .Cast<string>()
         .ToArray();
+    if (values.Length == 0)
+    {
+        throw new InvalidOperationException($"Required array argument '{key}' must contain at least one non-empty value.");
+    }
+
+    return values;
 }
 
 static JsonObject BuildSuccessResponse(JsonNode? id, JsonNode result)
