@@ -87,14 +87,20 @@ function lockOpenIcon() {
 function userPhaseIcon() {
     return `
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="M12 4.5a3.75 3.75 0 1 1 0 7.5 3.75 3.75 0 0 1 0-7.5Zm0 9c-4.13 0-7.5 2.54-7.5 5.67 0 .46.37.83.83.83h13.34c.46 0 .83-.37.83-.83 0-3.13-3.37-5.67-7.5-5.67Z"></path>
+      <circle cx="12" cy="8" r="5"></circle>
+      <path d="M20 21a8 8 0 0 0-16 0"></path>
     </svg>
   `;
 }
 function automationPhaseIcon() {
     return `
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="M10.13 2.63a1 1 0 0 1 1.74 0l.78 1.37a8.2 8.2 0 0 1 1.72.7l1.5-.44a1 1 0 0 1 1.23.56l.74 1.6a1 1 0 0 1-.24 1.2l-1.1 1.1c.08.4.12.8.12 1.21 0 .4-.04.8-.12 1.2l1.1 1.1a1 1 0 0 1 .24 1.21l-.74 1.6a1 1 0 0 1-1.22.56l-1.51-.44c-.54.3-1.11.53-1.72.7l-.78 1.37a1 1 0 0 1-1.74 0l-.78-1.37a8.2 8.2 0 0 1-1.72-.7l-1.5.44a1 1 0 0 1-1.23-.56l-.74-1.6a1 1 0 0 1 .24-1.2l1.1-1.1a6.34 6.34 0 0 1 0-2.42l-1.1-1.1a1 1 0 0 1-.24-1.21l.74-1.6a1 1 0 0 1 1.22-.56l1.51.44c.54-.3 1.11-.53 1.72-.7l.78-1.37ZM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"></path>
+      <path d="M12 8V4H8"></path>
+      <rect width="16" height="12" x="4" y="8" rx="3"></rect>
+      <path d="M2 14h2"></path>
+      <path d="M20 14h2"></path>
+      <path d="M15 13v2"></path>
+      <path d="M9 13v2"></path>
     </svg>
   `;
 }
