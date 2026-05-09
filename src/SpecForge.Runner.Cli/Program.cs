@@ -559,123 +559,44 @@ static SpecForgeApplicationService CreateApplicationService(IReadOnlyList<string
 
 static IPhaseExecutionProvider CreatePhaseExecutionProvider(string? workspaceRoot)
 {
-    const string modelProfilesEnvVar = "SPECFORGE_OPENAI_MODEL_PROFILES_JSON";
-    const string agentProfilesEnvVar = "SPECFORGE_OPENAI_AGENT_PROFILES_JSON";
-    const string phaseAgentsEnvVar = "SPECFORGE_OPENAI_PHASE_AGENT_ASSIGNMENTS_JSON";
-    const string technicalDesignSubagentsEnabledEnvVar = "SPECFORGE_TECHNICAL_DESIGN_SUBAGENTS_ENABLED";
-    const string reviewSubagentsEnabledEnvVar = "SPECFORGE_REVIEW_SUBAGENTS_ENABLED";
-    const string refinementToleranceEnvVar = "SPECFORGE_REFINEMENT_TOLERANCE";
-    const string legacyRefinementToleranceEnvVar = "SPECFORGE_CAPTURE_TOLERANCE";
-    const string mvpRigorEnvVar = "SPECFORGE_MVP_RIGOR";
-    const string reviewToleranceEnvVar = "SPECFORGE_REVIEW_TOLERANCE";
-    const string reviewEvidencePolicyEnvVar = "SPECFORGE_REVIEW_EVIDENCE_POLICY";
-    const string autoRefinementAnswersEnabledEnvVar = "SPECFORGE_AUTO_REFINEMENT_ANSWERS_ENABLED";
-    const string legacyAutoRefinementAnswersEnabledEnvVar = "SPECFORGE_AUTO_CLARIFICATION_ANSWERS_ENABLED";
-    const string autoRefinementAnswersProfileEnvVar = "SPECFORGE_AUTO_REFINEMENT_ANSWERS_PROFILE";
-    const string legacyAutoRefinementAnswersProfileEnvVar = "SPECFORGE_AUTO_CLARIFICATION_ANSWERS_PROFILE";
-    const string reviewLearningEnabledEnvVar = "SPECFORGE_REVIEW_LEARNING_ENABLED";
-    const string reviewLearningSkillPathEnvVar = "SPECFORGE_REVIEW_LEARNING_SKILL_PATH";
-    const string systemPromptEnvVar = "SPECFORGE_OPENAI_SYSTEM_PROMPT";
-    const string timeoutSecondsEnvVar = "SPECFORGE_OPENAI_TIMEOUT_SECONDS";
-
     var portalSettings = string.IsNullOrWhiteSpace(workspaceRoot)
         ? null
         : SpecForgePortalSettingsStore.Load(workspaceRoot);
-    var payload = Environment.GetEnvironmentVariable(modelProfilesEnvVar)
-        ?? (portalSettings?.ModelProfiles.Count > 0 ? JsonSerializer.Serialize(portalSettings.ModelProfiles, SpecForgePortalSettingsStore.JsonOptions) : null);
-    if (string.IsNullOrWhiteSpace(payload))
+
+    return OpenAiCompatiblePhaseExecutionProviderFactory.Create(key =>
     {
-        return new DeterministicPhaseExecutionProvider();
-    }
+        if (portalSettings is null)
+        {
+            return null;
+        }
 
-    var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true
-    };
-    var modelProfiles = JsonSerializer.Deserialize<List<OpenAiCompatibleModelProfile>>(payload, jsonOptions)
-        ?? throw new InvalidOperationException($"{modelProfilesEnvVar} could not be parsed.");
-    var agentProfiles = JsonSerializer.Deserialize<List<OpenAiCompatibleAgentProfile>>(
-            Environment.GetEnvironmentVariable(agentProfilesEnvVar)
-                ?? (portalSettings is null ? null : JsonSerializer.Serialize(portalSettings.ResolveAgentProfiles(), SpecForgePortalSettingsStore.JsonOptions))
-                ?? "[]",
-            jsonOptions)
-        ?? [];
-    var phaseAgents = JsonSerializer.Deserialize<OpenAiCompatiblePhaseAgentAssignments>(
-        Environment.GetEnvironmentVariable(phaseAgentsEnvVar)
-            ?? (portalSettings is null ? null : JsonSerializer.Serialize(portalSettings.PhaseAgentAssignments, SpecForgePortalSettingsStore.JsonOptions))
-            ?? "{}",
-        jsonOptions);
-    var autoRefinementAnswersProfile = Environment.GetEnvironmentVariable(autoRefinementAnswersProfileEnvVar)
-        ?? Environment.GetEnvironmentVariable(legacyAutoRefinementAnswersProfileEnvVar)
-        ?? portalSettings?.AutoRefinementAnswersProfile;
-    var reviewLearningSkillPath = Environment.GetEnvironmentVariable(reviewLearningSkillPathEnvVar)
-        ?? portalSettings?.ReviewLearningSkillPath;
-
-    return new OpenAiCompatiblePhaseExecutionProvider(
-        new HttpClient { Timeout = ReadOpenAiTimeout(timeoutSecondsEnvVar) },
-        new OpenAiCompatibleProviderOptions(
-            SystemPrompt: Environment.GetEnvironmentVariable(systemPromptEnvVar)
-                ?? "You generate SpecForge workflow artifacts. Follow the phase-specific Markdown output contract exactly and do not return JSON.",
-            RefinementTolerance: Environment.GetEnvironmentVariable(refinementToleranceEnvVar)
-                ?? Environment.GetEnvironmentVariable(legacyRefinementToleranceEnvVar)
-                ?? portalSettings?.RefinementTolerance
-                ?? "balanced",
-            MvpRigor: Environment.GetEnvironmentVariable(mvpRigorEnvVar)
-                ?? portalSettings?.MvpRigor
-                ?? "medium",
-            ReviewTolerance: Environment.GetEnvironmentVariable(reviewToleranceEnvVar) ?? portalSettings?.ReviewTolerance ?? "balanced",
-            ReviewEvidencePolicy: Environment.GetEnvironmentVariable(reviewEvidencePolicyEnvVar) ?? portalSettings?.ReviewEvidencePolicy ?? "balanced",
-            AutoRefinementAnswersEnabled: string.Equals(
-                Environment.GetEnvironmentVariable(autoRefinementAnswersEnabledEnvVar)
-                    ?? Environment.GetEnvironmentVariable(legacyAutoRefinementAnswersEnabledEnvVar)
-                    ?? portalSettings?.AutoRefinementAnswersEnabled.ToString(),
-                "true",
-                StringComparison.OrdinalIgnoreCase),
-            AutoRefinementAnswersProfile: string.IsNullOrWhiteSpace(autoRefinementAnswersProfile)
-                ? null
-                : autoRefinementAnswersProfile.Trim(),
-            ReviewLearningEnabled: !string.Equals(
-                Environment.GetEnvironmentVariable(reviewLearningEnabledEnvVar)
-                    ?? portalSettings?.ReviewLearningEnabled.ToString(),
-                "false",
-                StringComparison.OrdinalIgnoreCase),
-            ReviewLearningSkillPath: string.IsNullOrWhiteSpace(reviewLearningSkillPath)
-                ? ".codex/skills/sdd-phase-agents/SKILL.md"
-                : reviewLearningSkillPath.Trim(),
-            ModelProfiles: modelProfiles,
-            AgentProfiles: agentProfiles,
-            PhaseAgentAssignments: phaseAgents,
-            PhaseSubagents: new OpenAiCompatiblePhaseSubagentOptions(
-                TechnicalDesignEnabled: IsEnabled(technicalDesignSubagentsEnabledEnvVar, portalSettings?.TechnicalDesignSubagentsEnabled),
-                ReviewEnabled: IsEnabled(reviewSubagentsEnabledEnvVar, portalSettings?.ReviewSubagentsEnabled))));
-}
-
-static bool IsEnabled(string environmentVariable, bool? fallback = null)
-{
-    var configured = Environment.GetEnvironmentVariable(environmentVariable);
-    if (string.IsNullOrWhiteSpace(configured))
-    {
-        return fallback == true;
-    }
-
-    return string.Equals(configured, "true", StringComparison.OrdinalIgnoreCase);
-}
-
-static TimeSpan ReadOpenAiTimeout(string timeoutSecondsEnvVar)
-{
-    var configured = Environment.GetEnvironmentVariable(timeoutSecondsEnvVar);
-    if (string.IsNullOrWhiteSpace(configured))
-    {
-        return TimeSpan.FromMinutes(10);
-    }
-
-    if (int.TryParse(configured, out var seconds) && seconds > 0)
-    {
-        return TimeSpan.FromSeconds(seconds);
-    }
-
-    throw new InvalidOperationException(
-        $"Environment variable '{timeoutSecondsEnvVar}' must be a positive integer number of seconds.");
+        return key switch
+        {
+            OpenAiCompatiblePhaseExecutionProviderFactory.ModelProfilesJsonEnvVar when portalSettings.ModelProfiles.Count > 0 =>
+                JsonSerializer.Serialize(portalSettings.ModelProfiles, SpecForgePortalSettingsStore.JsonOptions),
+            OpenAiCompatiblePhaseExecutionProviderFactory.AgentProfilesJsonEnvVar =>
+                JsonSerializer.Serialize(portalSettings.ResolveAgentProfiles(), SpecForgePortalSettingsStore.JsonOptions),
+            OpenAiCompatiblePhaseExecutionProviderFactory.PhaseAgentAssignmentsJsonEnvVar =>
+                JsonSerializer.Serialize(portalSettings.PhaseAgentAssignments, SpecForgePortalSettingsStore.JsonOptions),
+            OpenAiCompatiblePhaseExecutionProviderFactory.TechnicalDesignSubagentsEnabledEnvVar =>
+                portalSettings.TechnicalDesignSubagentsEnabled.ToString(),
+            OpenAiCompatiblePhaseExecutionProviderFactory.ReviewSubagentsEnabledEnvVar =>
+                portalSettings.ReviewSubagentsEnabled.ToString(),
+            OpenAiCompatiblePhaseExecutionProviderFactory.RefinementToleranceEnvVar => portalSettings.RefinementTolerance,
+            OpenAiCompatiblePhaseExecutionProviderFactory.MvpRigorEnvVar => portalSettings.MvpRigor,
+            OpenAiCompatiblePhaseExecutionProviderFactory.ReviewToleranceEnvVar => portalSettings.ReviewTolerance,
+            OpenAiCompatiblePhaseExecutionProviderFactory.ReviewEvidencePolicyEnvVar => portalSettings.ReviewEvidencePolicy,
+            OpenAiCompatiblePhaseExecutionProviderFactory.AutoRefinementAnswersEnabledEnvVar =>
+                portalSettings.AutoRefinementAnswersEnabled.ToString(),
+            OpenAiCompatiblePhaseExecutionProviderFactory.AutoRefinementAnswersProfileEnvVar =>
+                portalSettings.AutoRefinementAnswersProfile,
+            OpenAiCompatiblePhaseExecutionProviderFactory.ReviewLearningEnabledEnvVar =>
+                portalSettings.ReviewLearningEnabled.ToString(),
+            OpenAiCompatiblePhaseExecutionProviderFactory.ReviewLearningSkillPathEnvVar =>
+                portalSettings.ReviewLearningSkillPath,
+            _ => null
+        };
+    });
 }
 
 static string BuildConfigurationPortalHtml() =>
