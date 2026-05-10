@@ -61,6 +61,9 @@ function createHarness() {
     async openWorkflowView(summary) {
       actionCalls.push(`openWorkflowView:${String(summary)}`);
     },
+    async openCliWorkflowPortal(summary) {
+      actionCalls.push(`openCliWorkflowPortal:${String(summary)}`);
+    },
     async openMainArtifact(summary) {
       actionCalls.push(`openMainArtifact:${String(summary)}`);
     },
@@ -115,6 +118,7 @@ test("activateExtension registers the tree provider and all expected commands", 
     "specForge.deleteUserStory",
     "specForge.importUserStory",
     "specForge.initializeRepoPrompts",
+    "specForge.openCliWorkflowPortal",
     "specForge.openMainArtifact",
     "specForge.openPromptTemplates",
     "specForge.openWorkflowView",
@@ -124,7 +128,7 @@ test("activateExtension registers the tree provider and all expected commands", 
     "specForge.showOutput",
     "specForge.showUserStoryDetails"
   ]);
-  assert.equal(harness.context.subscriptions.length, 15);
+  assert.equal(harness.context.subscriptions.length, 16);
 });
 
 test("mutating commands refresh the explorer after the action completes", async () => {
@@ -159,6 +163,7 @@ test("read-only commands do not refresh and forward the provided summary", async
 
   await harness.registeredCommands.get("specForge.openPromptTemplates")?.();
   await harness.registeredCommands.get("specForge.openWorkflowView")?.("US-0001");
+  await harness.registeredCommands.get("specForge.openCliWorkflowPortal")?.("US-0004");
   await harness.registeredCommands.get("specForge.openMainArtifact")?.("US-0002");
   await harness.registeredCommands.get("specForge.showUserStoryDetails")?.("US-0003");
   await harness.registeredCommands.get("specForge.refreshUserStories")?.();
@@ -166,6 +171,7 @@ test("read-only commands do not refresh and forward the provided summary", async
   assert.deepEqual(harness.actionCalls, [
     "openPromptTemplates",
     "openWorkflowView:US-0001",
+    "openCliWorkflowPortal:US-0004",
     "openMainArtifact:US-0002",
     "showUserStoryDetails:US-0003"
   ]);

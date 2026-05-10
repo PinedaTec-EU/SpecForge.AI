@@ -12,6 +12,7 @@ export interface ExtensionActions {
   initializeRepoPrompts(overwrite?: boolean): Promise<void>;
   openPromptTemplates(): Promise<void>;
   openWorkflowView(summary: unknown): Promise<void>;
+  openCliWorkflowPortal(summary: unknown): Promise<void>;
   openMainArtifact(summary: unknown): Promise<void>;
   showUserStoryDetails(summary: unknown): Promise<void>;
   approveCurrentPhase(summary: unknown): Promise<void>;
@@ -60,6 +61,9 @@ export function activateExtension(
     }),
     host.registerCommand("specForge.openWorkflowView", async (summary) => {
       await actions.openWorkflowView(summary);
+    }),
+    host.registerCommand("specForge.openCliWorkflowPortal", async (summary) => {
+      await actions.openCliWorkflowPortal(summary);
     }),
     host.registerCommand("specForge.openMainArtifact", async (summary) => {
       await actions.openMainArtifact(summary);

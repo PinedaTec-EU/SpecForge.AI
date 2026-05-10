@@ -20,6 +20,7 @@
     "onCommand:specForge.initializeRepoPrompts",
     "onCommand:specForge.openPromptTemplates",
     "onCommand:specForge.openWorkflowView",
+    "onCommand:specForge.openCliWorkflowPortal",
     "onCommand:specForge.openExecutionSettings",
     "onCommand:specForge.openMainArtifact",
     "onCommand:specForge.continuePhase",
@@ -94,6 +95,10 @@
       {
         "command": "specForge.openWorkflowView",
         "title": "Open Workflow View"
+      },
+      {
+        "command": "specForge.openCliWorkflowPortal",
+        "title": "Open CLI Workflow Portal"
       },
       {
         "command": "specForge.openExecutionSettings",
@@ -462,7 +467,15 @@
         }
       }
     },
-    "menus": {}
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "specForge.openCliWorkflowPortal",
+          "when": "view == specForge.userStories && viewItem == userStory",
+          "group": "navigation@2"
+        }
+      ]
+    }
   },
   "scripts": {
     "compile": "npm run compile:ts && npm run compile:mcp",
