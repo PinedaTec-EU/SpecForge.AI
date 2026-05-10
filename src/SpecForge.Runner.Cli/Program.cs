@@ -258,6 +258,21 @@ static async Task HandleWorkflowPortalRequestAsync(
             case ("GET", "/api/runtime-status"):
                 await WriteJsonResponseAsync(context.Response, await applicationService.GetUserStoryRuntimeStatusAsync(workspaceRoot, requestUsId));
                 return;
+            case ("GET", "/configuration"):
+                await WriteHtmlResponseAsync(context.Response, BuildConfigurationPortalHtml());
+                return;
+            case ("GET", "/api/settings"):
+                await WriteJsonResponseAsync(context.Response, SpecForgePortalSettingsStore.LoadOrDefault(workspaceRoot));
+                return;
+            case ("PUT", "/api/settings"):
+            {
+                using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var payload = await reader.ReadToEndAsync();
+                var settings = SpecForgePortalSettingsStore.Deserialize(payload);
+                SpecForgePortalSettingsStore.Save(workspaceRoot, settings);
+                await WriteJsonResponseAsync(context.Response, settings);
+                return;
+            }
             case ("GET", "/api/summary"):
                 await WriteJsonResponseAsync(context.Response, await applicationService.GetUserStorySummaryAsync(workspaceRoot, requestUsId));
                 return;
@@ -424,14 +439,13 @@ static string BuildConfigurationPortalUrl(string workflowPortalOrigin, string? f
     if (!Uri.TryCreate(workflowPortalOrigin, UriKind.Absolute, out var uri))
     {
         return string.IsNullOrWhiteSpace(fragment)
-            ? "http://localhost:5127/"
-            : $"http://localhost:5127/#{fragment}";
+            ? "http://localhost:5128/configuration"
+            : $"http://localhost:5128/configuration#{fragment}";
     }
 
     var builder = new UriBuilder(uri)
     {
-        Port = 5127,
-        Path = "/",
+        Path = "/configuration",
         Query = string.Empty,
         Fragment = string.IsNullOrWhiteSpace(fragment) ? string.Empty : fragment
     };
@@ -839,6 +853,7 @@ static string BuildConfigurationPortalHtml() =>
           state = await response.json();
           applyDefaultSettings();
           render();
+          scrollToHashSection();
           setStatus("Configuration loaded.");
         }
 
@@ -847,6 +862,15 @@ static string BuildConfigurationPortalHtml() =>
           renderAgents();
           renderAssignments();
           renderBehavior();
+        }
+
+        function scrollToHashSection() {
+          const hash = window.location.hash.slice(1);
+          if (!hash) {
+            return;
+          }
+
+          document.getElementById(hash)?.scrollIntoView({ block: "start" });
         }
 
         function renderModels() {
@@ -1163,6 +1187,7 @@ static string BuildConfigurationPortalHtml() =>
         function escapeText(value) { return String(value ?? "").replace(/[&<>]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[character])); }
         function escapeAttr(value) { return escapeText(value).replace(/"/g, "&quot;"); }
         load();
+        window.addEventListener("hashchange", scrollToHashSection);
       </script>
     </body>
     </html>

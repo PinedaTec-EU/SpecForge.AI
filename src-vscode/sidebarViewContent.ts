@@ -1843,7 +1843,7 @@ function buildStoryRowMarkup(summary: UserStorySummary, starredUserStoryId: stri
         ${shouldRenderPhaseRail(summary.status)
           ? `
             <span class="story-card__phase-rail" aria-hidden="true">
-              <span class="story-card__phase-label">${phaseLabelFor(summary.currentPhase)}</span>
+              <span class="story-card__phase-label">${phaseRailLabelFor(summary.currentPhase, summary.status)}</span>
             </span>
           `
           : ""}
@@ -1924,8 +1924,16 @@ function phaseLabelFor(currentPhase: string): string {
   return phaseLabels[currentPhase] ?? "?";
 }
 
+function phaseRailLabelFor(currentPhase: string, status: string): string {
+  return isErrorStatus(status) ? "ERROR" : phaseLabelFor(currentPhase);
+}
+
 function shouldRenderPhaseRail(status: string): boolean {
   return status !== "completed" && status !== "superseded" && status !== "abandoned";
+}
+
+function isErrorStatus(status: string): boolean {
+  return status === "failed" || status === "error" || status === "errored" || status === "invalid" || status === "blocked";
 }
 
 function phaseRailStatus(status: string): string {

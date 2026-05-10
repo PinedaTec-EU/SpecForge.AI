@@ -1793,7 +1793,7 @@ function buildStoryRowMarkup(summary, starredUserStoryId, activeWorkflowUsId) {
         ${shouldRenderPhaseRail(summary.status)
         ? `
             <span class="story-card__phase-rail" aria-hidden="true">
-              <span class="story-card__phase-label">${phaseLabelFor(summary.currentPhase)}</span>
+              <span class="story-card__phase-label">${phaseRailLabelFor(summary.currentPhase, summary.status)}</span>
             </span>
           `
         : ""}
@@ -1869,8 +1869,14 @@ function phaseLabelFor(currentPhase) {
     };
     return phaseLabels[currentPhase] ?? "?";
 }
+function phaseRailLabelFor(currentPhase, status) {
+    return isErrorStatus(status) ? "ERROR" : phaseLabelFor(currentPhase);
+}
 function shouldRenderPhaseRail(status) {
     return status !== "completed" && status !== "superseded" && status !== "abandoned";
+}
+function isErrorStatus(status) {
+    return status === "failed" || status === "error" || status === "errored" || status === "invalid" || status === "blocked";
 }
 function phaseRailStatus(status) {
     switch (status) {

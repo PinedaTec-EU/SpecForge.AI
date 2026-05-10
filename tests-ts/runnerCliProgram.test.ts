@@ -58,6 +58,10 @@ test("CLI workflow portal payload includes sidebar stories and configuration URL
   assert.match(source, /configurationPortalUrl = BuildConfigurationPortalUrl\(workflowPortalOrigin\)/);
   assert.match(source, /configurationProvidersUrl = BuildConfigurationPortalUrl\(workflowPortalOrigin, "providers"\)/);
   assert.match(source, /configurationAdvancedUrl = BuildConfigurationPortalUrl\(workflowPortalOrigin, "advanced"\)/);
+  assert.match(source, /case \("GET", "\/configuration"\):/);
+  assert.match(source, /case \("GET", "\/api\/settings"\):/);
+  assert.match(source, /case \("PUT", "\/api\/settings"\):/);
+  assert.match(source, /Path = "\/configuration"/);
   assert.match(source, /<section class="panel" id="providers">/);
   assert.match(source, /<section class="panel" id="advanced">/);
   assert.match(source, /ResolveWorkflowPortalUserStoryId\(context\.Request, usId\)/);

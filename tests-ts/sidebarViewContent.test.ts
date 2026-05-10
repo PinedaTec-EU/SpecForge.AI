@@ -215,6 +215,25 @@ test("buildSidebarHtml uses the paused phase rail tone when a story is paused by
   assert.match(html, /story-card--status-paused/);
 });
 
+test("buildSidebarHtml labels error stories explicitly on the phase rail", () => {
+  const html = buildSidebarHtml(model({
+    categories: ["workflow"],
+    userStories: [{
+      usId: "US-0006",
+      title: "Errored story",
+      category: "workflow",
+      currentPhase: "unknown-phase",
+      status: "error",
+      mainArtifactPath: "/tmp/us.md",
+      directoryPath: "/tmp/us.US-0006",
+      workBranch: null
+    }],
+  }));
+
+  assert.match(html, /story-card--status-blocked/);
+  assert.match(html, /<span class="story-card__phase-label">ERROR<\/span>/);
+});
+
 test("buildSidebarHtml hides the phase rail for completed user stories", () => {
   const html = buildSidebarHtml(model({
     categories: ["workflow"],
