@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/PinedaTec-EU/SpecForge.AI">
-    <img loading="lazy" alt="Sphere Integration Hub" src="./doc/images/banner.png" width="85%"/>
+    <img loading="lazy" alt="SpecForge.AI" src="./doc/images/banner.png" width="85%"/>
   </a>
 </p>
 
@@ -20,10 +20,13 @@ Implemented today:
 - .NET domain core for workflow rules and transitions
 - local YAML persistence for `state.yaml` and `branch.yaml`
 - local timeline and artifact generation via a workflow runner
-- minimal VS Code extension scaffold
+- VS Code extension with user-story intake, explorer, workflow view, graph visualization, audit, and contextual actions
 - user story explorer over `.specs/us/`
-- minimal MCP server over `stdio`
+- local MCP server over `stdio`
+- packaged Codex/MCP plugin bundle for repository-local installation
 - OpenAI-compatible phase provider infrastructure
+- native CLI provider routing for Codex, Claude, and Copilot profiles
+- CLI workflow portal for browser-based workflow inspection and operation
 
 Not implemented yet:
 
@@ -70,7 +73,10 @@ Playback is intentionally theatrical enough to communicate that the workflow is 
 - Explicit artifact operation logs such as `phases/01-spec.ops.md` when a developer asks the model to operate over the current spec
 - Technical state in YAML
 - Minimal workflow automation through a .NET runner
-- Minimal VS Code extension for creating, importing, listing, and opening user stories
+- VS Code extension for creating, importing, listing, opening, and operating user stories
+- CLI workflow portal via `serve-workflow`, with graph view, phase selection, browser actions, and cached HTML rendering
+- Context menu action to open the CLI workflow portal for a selected user story
+- Packaged Codex plugin under `plugins/specforge-ai/` with skills, MCP server, compiled webview assets, and quick prompts
 
 ## Repository Layout
 
@@ -78,8 +84,11 @@ Playback is intentionally theatrical enough to communicate that the workflow is 
 .
 ├── doc/                       # Product, architecture, workflow, templates, roadmap
 ├── media/                     # VS Code extension assets
+├── plugins/specforge-ai/      # Packaged Codex/MCP plugin bundle
 ├── src-vscode/                # VS Code extension source
 ├── src/SpecForge.Domain/      # Workflow domain and application core
+├── src/SpecForge.McpServer/   # MCP stdio server
+├── src/SpecForge.Runner.Cli/  # CLI portals and workflow runner shell
 ├── tests/SpecForge.Domain.Tests/
 ├── .specs/                    # Runtime user story persistence in the workspace
 ├── package.json               # VS Code extension manifest
@@ -105,6 +114,14 @@ The current design is intentionally split into layers:
   - orchestration boundary between extension and backend execution
   - base for future provider abstraction and richer backend execution
   - workflow file tools for listing, adding, and reclassifying `context files` versus `user story info`
+- CLI/browser portal:
+  - `serve-configuration` for local execution settings
+  - `serve-workflow` for graph-based workflow inspection and browser-driven workflow actions
+  - optional launch from the VS Code user-story context menu
+- Codex plugin bundle:
+  - skills that force SpecForge operations through the MCP boundary
+  - packaged MCP binaries and webview rendering assets for repository-local use
+  - quick prompts including opening the CLI workflow portal
 
 See the detailed design documents in:
 
@@ -175,6 +192,26 @@ The CLI can also serve a workflow status page for a single user story. The page 
 ```bash
 dotnet run --project src/SpecForge.Runner.Cli/SpecForge.Runner.Cli.csproj -- serve-workflow "$PWD" US-001
 ```
+
+From the VS Code extension, right-click a user story in the SpecForge.AI view and choose **Open CLI Workflow Portal** to start the same browser portal for that story.
+
+### Packaged Codex/MCP plugin
+
+The repository includes a packaged local plugin at `plugins/specforge-ai/`. Consumer repositories can copy or install that bundle under `.agents/plugins/specforge-ai/` and point their MCP config at the local server:
+
+```json
+{
+  "servers": {
+    "specforge": {
+      "type": "stdio",
+      "command": "${workspaceFolder}/.agents/plugins/specforge-ai/mcp/SpecForge.McpServer",
+      "args": []
+    }
+  }
+}
+```
+
+The bundle includes task-focused skills and quick prompts for common operations such as listing user stories, advancing phases, and opening the CLI workflow portal.
 
 ## Model Configuration
 
@@ -719,6 +756,7 @@ Last reviewed: 2026-05-09, against implementation through `0.1.4.432`.
 - [x] constrain MCP schemas and fail fast on invalid array arguments
 - [x] extract MCP/CLI helper units for SRP and broaden edge-case coverage
 - [x] package the SpecForge MCP plugin bundle with compiled webview and MCP server artifacts
+- [x] expose a user-story context action to open the CLI workflow portal
 - [x] support phase agent profiles with real repository permissions
 - [ ] finalize richer branch lifecycle rules and Git/PR metadata
 - [ ] add issue and PR preparation integration
@@ -744,6 +782,7 @@ The current target is an MVP, not a feature-complete product.
 - [x] support hardened refinement with configurable MVP rigor
 - [x] support workflow graph inspection from VS Code and CLI portal
 - [x] support MCP/plugin distribution artifacts for local model clients
+- [x] support launching the CLI workflow portal from the VS Code user-story context menu
 
 ### Post-MVP
 
@@ -753,6 +792,7 @@ The current target is an MVP, not a feature-complete product.
 - [ ] customizable workflows
 - [ ] completed user story visibility toggle in the sidebar
 - [ ] user story and workflow search in the sidebar
+- [ ] one-command plugin release/sync pipeline
 
 ### High-value candidates
 

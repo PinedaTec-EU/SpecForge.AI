@@ -199,6 +199,7 @@ Included in the MVP:
 - ✅ configurable MVP rigor (`low`, `medium`, `high`) for refinement strictness
 - ✅ MCP tool schemas constrained with enums and fail-fast argument validation
 - ✅ packaged MCP plugin bundle with compiled webview assets and MCP server artifacts
+- ✅ user-story context action to open the CLI workflow portal
 
 Does not block the MVP:
 
@@ -259,6 +260,7 @@ Recently completed subtasks:
 - ✅ add model-assisted approval answer suggestions from the workflow portal
 - ✅ add CLI workflow portal actions so the browser view can drive workflow progression
 - ✅ add graph cache busting and refreshed documentation screenshots
+- ✅ add VS Code context menu entry and packaged-plugin quick prompt for opening the CLI workflow portal
 - ✅ harden goal intake and refinement before spec readiness
 - ✅ configure MVP rigor and propagate it through settings, prompts, MCP, CLI, and OpenAI-compatible execution
 - ✅ extract MCP stdio transport, MCP tool registry, CLI settings store, and workflow render cache for SRP and focused tests

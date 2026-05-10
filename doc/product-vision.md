@@ -24,6 +24,7 @@ Development teams that need:
 - progress visibility
 - the ability to intervene without breaking traceability
 - central governance of several repositories from one operational surface
+- a local MCP/plugin boundary that agents can use without depending on conversational memory
 
 ## Expected Outcome
 
@@ -36,6 +37,8 @@ Starting from a user story, the system must allow a governed flow through:
 5. review
 6. PR preparation
 
+The same workflow should be inspectable from VS Code, a local browser portal, and MCP clients, with all three surfaces reading the same persisted repository artifacts.
+
 SpecForge Central must also allow teams to register and manage multiple repositories. The central surface owns repository discovery, selection, readiness, and portfolio visibility; each managed repository remains the owner of its local `.specs/` artifacts, prompts, state, and workflow history.
 
 ## Principles
@@ -46,6 +49,7 @@ SpecForge Central must also allow teams to register and manage multiple reposito
 - The UX must prioritize operational clarity.
 - The system must allow checkpoints and human intervention between phases, but only where the checkpoint meaningfully changes risk.
 - Multi-repository management must not move workflow truth out of the managed repository.
+- Local plugin distribution must keep the workflow portable across repositories: clone the repository, install or copy the plugin bundle, and run the same MCP-backed process.
 
 ## Non-Goals For Phase 1
 

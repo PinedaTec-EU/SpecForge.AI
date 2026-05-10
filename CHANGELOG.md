@@ -10,6 +10,8 @@ Source range: commits after `9ecf2b0` through `c4dacf6`.
 ### Added
 
 - Added a CLI workflow portal (`serve-workflow`) with graph-based workflow inspection, phase selection, fit-width graph defaults, stable centering until user viewport changes, and model-assisted spec approval answer suggestions.
+- Added a VS Code user-story context menu action, **Open CLI Workflow Portal**, to launch the local browser portal directly for the selected story.
+- Added a packaged-plugin quick prompt for opening the SpecForge CLI workflow portal from Codex.
 - Wired the CLI workflow portal to real workflow actions on `main`, including continue/play, approval answer submission, refinement answer submission, and phase approval from the browser shim.
 - Added automatic workflow portal opening before phase iteration so model-driven workflow runs surface the constellation view when needed.
 - Added SpecForge goal intake support for Codex-style broad goals, including user-gated workflow rules before creating goal-derived user stories.
@@ -20,6 +22,7 @@ Source range: commits after `9ecf2b0` through `c4dacf6`.
 
 ### Changed
 
+- Updated the packaged MCP/plugin bundle so consumer repositories can run the local `SpecForge.McpServer` from `.agents/plugins/specforge-ai/mcp` instead of depending on the development repository path.
 - Hardened refinement readiness so vague or under-specified ideas must be clarified before spec generation; refinement now pushes for enough product detail to support an efficient MVP implementation without over-engineering.
 - Required concrete intake before goal story creation, with shared skill guidance updated to make the model ask clarifying questions before decomposing broad goals into small user stories.
 - Aligned CLI workflow commands with `SpecForgeApplicationService` instead of bypassing application-level workflow behavior.
@@ -45,4 +48,3 @@ Source range: commits after `9ecf2b0` through `c4dacf6`.
 - Current validation at this entry:
   - `dotnet test SpecForge.AI.slnx`: 204 tests passing.
   - `npm run test:ts`: 174 tests passing.
-
