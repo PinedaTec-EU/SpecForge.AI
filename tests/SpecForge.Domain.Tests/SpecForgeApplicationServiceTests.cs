@@ -25,6 +25,20 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ListUserStoriesAsync_IgnoresIncompleteUserStoryDirectories()
+    {
+        var runner = new WorkflowRunner();
+        var applicationService = new SpecForgeApplicationService();
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+        Directory.CreateDirectory(Path.Combine(workspaceRoot, ".specs", "us", "workflow", "US-PROOF-001"));
+
+        var items = await applicationService.ListUserStoriesAsync(workspaceRoot);
+
+        var summary = Assert.Single(items);
+        Assert.Equal("US-0001", summary.UsId);
+    }
+
+    [Fact]
     public async Task GetUserStorySummaryAsync_ReturnsBranchNameWhenAvailable()
     {
         var runner = new WorkflowRunner();

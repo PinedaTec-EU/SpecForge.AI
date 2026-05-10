@@ -190,6 +190,11 @@ public sealed class SpecForgeApplicationService
 
         foreach (var directory in directories.OrderBy(static directory => directory, StringComparer.Ordinal))
         {
+            if (!File.Exists(new UserStoryFilePaths(directory).StateFilePath))
+            {
+                continue;
+            }
+
             summaries.Add(await GetUserStorySummaryFromDirectoryAsync(directory, cancellationToken));
         }
 
