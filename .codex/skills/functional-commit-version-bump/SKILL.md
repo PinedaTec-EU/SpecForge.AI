@@ -5,7 +5,7 @@ description: Use in this repository after completing any new functionality or fu
 
 # Functional Commit And Version Bump
 
-This repository requires every completed functional change to close with two traceable commits:
+This repository requires every completed functional change to close with two traceable commits. Do not consider a functional change complete until both commits exist:
 
 1. A functional commit for the delivered change.
 2. A separate version bump commit created after the functional commit.
@@ -38,6 +38,7 @@ git commit -m "done bump version after <outcome>"
 ## Guardrails
 
 - Do not run the version bump before the functional commit.
+- Do not stop after only the functional commit when the task delivered a functional change.
 - Do not mix functional code/docs changes with version bump changes.
 - If the functional task is intentionally not committed, do not run the version bump.
 - If `dotnet versionbumper` fails, stop and report the failure instead of hand-editing version files.
