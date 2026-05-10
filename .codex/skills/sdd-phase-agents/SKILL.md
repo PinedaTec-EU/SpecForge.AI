@@ -15,3 +15,9 @@ Skill local para el workflow SDD de este repositorio.
 - Si una decision automatica depende de un flag o de `workflow.controls`, registra tambien la decision tomada y el valor relevante.
 - Usa `appendSpecForgeLog(...)` para eventos operativos que deban verse siempre y `appendSpecForgeDebugLog(...)` para detalle adicional orientado a desarrollo.
 - No reduzcas ni ocultes logging util de diagnostico en modo desarrollo salvo que exista ruido claramente redundante y el reemplazo conserve la trazabilidad funcional.
+
+## Web y portal CLI
+
+- Si se toca codigo que afecta a la web, sidebar, workflow view, portal CLI, renderer HTML, assets compilados o cualquier superficie servida en navegador, actualiza el servidor o proceso que este corriendo antes de validar visualmente.
+- Si el servidor no soporta hot reload fiable para esa ruta, recompila lo necesario y reinicia el proceso servido antes de abrir o recargar el portal.
+- Despues de actualizar el servidor, valida la URL afectada en navegador y confirma que la pantalla corresponde al codigo recien compilado.
