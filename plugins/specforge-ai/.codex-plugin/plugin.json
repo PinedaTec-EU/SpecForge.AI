@@ -34,7 +34,8 @@
     "defaultPrompt": [
       "List my SpecForge user stories",
       "Advance the current SpecForge phase",
-      "Open the SpecForge workflow view"
+      "Open the SpecForge workflow view",
+      "Open the SpecForge CLI workflow portal"
     ],
     "brandColor": "#1F6F5B",
     "composerIcon": "./assets/specforge.svg",
