@@ -24,13 +24,29 @@ Non-responsibilities:
 Responsibilities:
 
 - govern the SDD workflow
+- expose managed-repository catalog operations for SpecForge Central
 - validate transitions and regressions
 - apply approval policies
 - invoke LLM providers through an abstraction
 - persist and recover technical state
 - emit traceable results and events
 
-### 3. Repository As Source Of Truth
+### 3. SpecForge Central
+
+Responsibilities:
+
+- maintain the catalog of managed repositories
+- register, edit, disable, and remove repository references
+- show repository readiness and workflow status across the portfolio
+- route create, import, inspect, and continue actions to the selected repository
+
+Non-responsibilities:
+
+- storing repository-local workflow artifacts as the primary truth
+- deleting repositories or `.specs/` data when a catalog entry is removed
+- executing a single user story across several repositories in phase 1
+
+### 4. Repository As Source Of Truth
 
 Responsibilities:
 
@@ -41,7 +57,7 @@ Responsibilities:
 
 ## Main Design Rule
 
-The extension orchestrates interaction. The MCP decides lifecycle. The repository preserves traceability.
+The extension and central portal orchestrate interaction. The MCP decides lifecycle. SpecForge Central selects and monitors repositories. Each repository preserves traceability for its own workflows.
 
 ## Initial Canonical Workflow
 

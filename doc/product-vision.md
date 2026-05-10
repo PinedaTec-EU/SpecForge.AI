@@ -23,6 +23,7 @@ Development teams that need:
 - versioned living documentation
 - progress visibility
 - the ability to intervene without breaking traceability
+- central governance of several repositories from one operational surface
 
 ## Expected Outcome
 
@@ -35,6 +36,8 @@ Starting from a user story, the system must allow a governed flow through:
 5. review
 6. PR preparation
 
+SpecForge Central must also allow teams to register and manage multiple repositories. The central surface owns repository discovery, selection, readiness, and portfolio visibility; each managed repository remains the owner of its local `.specs/` artifacts, prompts, state, and workflow history.
+
 ## Principles
 
 - Chat is not the final source of truth.
@@ -42,6 +45,7 @@ Starting from a user story, the system must allow a governed flow through:
 - The tool must be usable from another workstation by cloning the repository only.
 - The UX must prioritize operational clarity.
 - The system must allow checkpoints and human intervention between phases, but only where the checkpoint meaningfully changes risk.
+- Multi-repository management must not move workflow truth out of the managed repository.
 
 ## Non-Goals For Phase 1
 

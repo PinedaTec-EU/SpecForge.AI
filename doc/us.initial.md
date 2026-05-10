@@ -18,6 +18,7 @@ Build a VS Code tool that governs AI-assisted SDD workflows with:
 - [Target architecture](./architecture.md)
 - [Initial domain model](./domain-model.md)
 - [Implementation plan](./implementation-plan.md)
+- [Managed repositories user story](./us.managed-repositories.md)
 
 ## User Story State
 
@@ -45,4 +46,5 @@ This user story no longer tries to describe everything in a single file. The wor
 ## Notes
 
 - Repository persistence remains a central principle.
+- SpecForge Central must manage several repositories from one control surface, while each managed repository keeps its own persisted SpecForge artifacts as its source of truth.
 - Workflow customization and parallel execution remain future capabilities, not mandatory phase-1 complexity.

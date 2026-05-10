@@ -13,10 +13,25 @@ Represents the user story managed by SpecForge.
 Responsibilities:
 
 - stable identity
+- reference to the owning repository
 - reference to the primary artifact
 - global state
 - link to the applied workflow
 - preservation of the initial source hash used to start the flow
+
+### `ManagedRepository`
+
+Represents a repository known by SpecForge Central.
+
+Responsibilities:
+
+- stable repository identity
+- display name and optional grouping metadata
+- local path or remote URL
+- default branch
+- enabled or disabled state
+- readiness status derived from repository files and configuration
+- link to repository-local SpecForge artifacts
 
 ### `WorkflowDefinition`
 
@@ -111,6 +126,9 @@ These stay outside the initial domain and should return only if implementation r
 ## Initial Invariants
 
 - A `UserStory` has a single active `WorkflowRun`.
+- A `UserStory` belongs to exactly one `ManagedRepository`.
+- SpecForge Central can catalog many `ManagedRepository` records, but workflow artifacts remain stored in the owning repository.
+- A disabled `ManagedRepository` cannot start new phase execution from the central surface.
 - Only one `PhaseRun` in `running` state may exist per `WorkflowRun`.
 - The next phase cannot start if the required checkpoint is not approved.
 - Every regression must target a phase allowed by `WorkflowDefinition`.

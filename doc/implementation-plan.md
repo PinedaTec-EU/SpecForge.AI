@@ -126,6 +126,7 @@ Deliverables:
 18. ✅ extend UX with graph view and richer phase detail
 19. [ ] complete a richer prompt editor/inspector from the extension
 20. [ ] enrich branch lifecycle with real Git/PR integration
+21. [ ] introduce SpecForge Central managed-repository catalog and repository selection
 
 ## Risks To Watch
 
@@ -270,6 +271,7 @@ Pending subtasks before the MVP is considered complete:
 
 - [ ] enrich `branch.yaml` lifecycle with real Git/PR metadata
 - [ ] add completed-story visibility controls and sidebar search
+- [ ] add SpecForge Central repository management: catalog, readiness, create/register flow, and target repository selection
 - [ ] add PR/issue integration or an export-first bridge if direct integration is too early
 
 Persistence artifacts already defined or being defined:
