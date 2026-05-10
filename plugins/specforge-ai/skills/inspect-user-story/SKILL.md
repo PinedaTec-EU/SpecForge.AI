@@ -7,6 +7,23 @@ description: Inspect SpecForge user stories, workflow state, current phase, runt
 
 Use `specforge_query`.
 
+## Default Visual Inspection
+
+When the user asks to see, view, open, review, or inspect a specific user story, prefer the SpecForge workflow portal over raw file reads:
+
+1. Start the local workflow portal with the CLI:
+
+```bash
+dotnet run --project src/SpecForge.Runner.Cli/SpecForge.Runner.Cli.csproj -- serve-workflow <workspaceRoot> <usId> <urlPrefix>
+```
+
+Use an available localhost port for `<urlPrefix>`, for example `http://localhost:5128/`.
+
+2. Open the resulting local URL in the browser/in-app browser.
+3. Use `specforge_query` or direct file reads only as supporting context when the user asks for a textual summary, when the portal cannot start, or when troubleshooting.
+
+Do not treat a Markdown dump of `.specs/**/us.md` as sufficient for "show me the US" unless the user explicitly asks for the raw file contents.
+
 Common calls:
 
 ```json

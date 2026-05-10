@@ -21,6 +21,16 @@ Manual file edits are allowed only for explicit low-level repair when the MCP ca
 
 Use the current repository root as `workspaceRoot` unless the user provides another absolute path.
 
+## Viewing User Stories
+
+When the user asks to see, view, open, review, or inspect a specific user story, the default SF behavior is to open the workflow portal, not just read `.specs` files:
+
+```bash
+dotnet run --project src/SpecForge.Runner.Cli/SpecForge.Runner.Cli.csproj -- serve-workflow <workspaceRoot> <usId> <urlPrefix>
+```
+
+Choose an available localhost port for `<urlPrefix>` and open the URL in the browser/in-app browser. Use `specforge_query` and Markdown file reads only as supporting context, or when the user explicitly asks for raw text.
+
 ## User-Gated Workflow
 
 When the user asks to use SpecForge, keep the model inside the SpecForge workflow. Tell the user what will happen before each major step: user-story creation, refinement, specification, technical design, implementation, review, release approval, branch creation, and PR preparation.
