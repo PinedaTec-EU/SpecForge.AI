@@ -34,7 +34,7 @@ test("CLI workflow portal uses a distinct default port and caches rendered workf
   const source = await fs.promises.readFile(programPath, "utf8");
   const renderCacheSource = await fs.promises.readFile(renderCachePath, "utf8");
 
-  assert.match(source, /serve-configuration[\s\S]*?"http:\/\/localhost:5128\/configuration\/"/);
+  assert.match(source, /serve-configuration[\s\S]*?"http:\/\/localhost:5128\/"/);
   assert.match(source, /serve-workflow[\s\S]*?"http:\/\/localhost:5128\/"/);
   assert.match(source, /var renderCache = new WorkflowPortalRenderCache\(\)/);
   assert.match(source, /renderCache\.TryGet\(signature, resolvedSelectedPhaseId, selectedPhase, out var cachedHtml\)/);

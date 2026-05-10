@@ -174,7 +174,7 @@ static async Task HandleServeConfigurationAsync(IReadOnlyList<string> args)
     }
 
     var workspaceRoot = Path.GetFullPath(args[1]);
-    var prefix = args.Count == 3 ? NormalizeHttpPrefix(args[2]) : "http://localhost:5128/configuration/";
+    var prefix = args.Count == 3 ? NormalizeHttpPrefix(args[2]) : "http://localhost:5128/";
     using var listener = new HttpListener();
     listener.Prefixes.Add(prefix);
     listener.Start();
