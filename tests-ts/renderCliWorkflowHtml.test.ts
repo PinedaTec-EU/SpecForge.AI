@@ -59,3 +59,17 @@ test("CLI workflow renderer routes sidebar story selection through the current p
   assert.match(script, /url\.searchParams\.set\("usId", message\.usId\)/);
   assert.match(script, /activeWorkflowUsId: workflow\.usId/);
 });
+
+test("CLI workflow renderer handles sidebar starred story toggles locally", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+  const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
+
+  for (const content of [script, packagedScript]) {
+    assert.match(content, /starredUserStoryStorageKey = "specforge\.cli\.sidebar\.starredUserStoryId"/);
+    assert.match(content, /message\.command === "toggleStarredUserStory" && message\.usId/);
+    assert.match(content, /setStarredUserStoryId\(current === message\.usId \? null : message\.usId\)/);
+    assert.match(content, /button\.classList\.toggle\("story-star--active", active\)/);
+    assert.match(content, /const label = \(active \? "Unstar " : "Star "\) \+ usId/);
+    assert.match(content, /icon\.textContent = active \? "★" : "☆"/);
+  }
+});

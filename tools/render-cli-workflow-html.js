@@ -303,8 +303,10 @@ const sidebarShell = `
   (() => {
     document.body.classList.add("specforge-cli-with-sidebar");
     const collapsedKey = "specforge.cli.sidebar.collapsed";
+    const starredUserStoryStorageKey = "specforge.cli.sidebar.starredUserStoryId";
     const configOverlay = document.querySelector("[data-cli-config-overlay]");
     const configFrame = document.querySelector("[data-cli-config-frame]");
+    const sidebarFrame = document.querySelector('iframe[title="User stories"]');
     const openConfiguration = (url) => {
       if (configFrame) {
         configFrame.setAttribute("src", url);
@@ -313,6 +315,31 @@ const sidebarShell = `
     };
     const closeConfiguration = () => {
       configOverlay?.setAttribute("hidden", "");
+    };
+    const getStarredUserStoryId = () => {
+      try { return localStorage.getItem(starredUserStoryStorageKey) || null; }
+      catch { return null; }
+    };
+    const setStarredUserStoryId = (usId) => {
+      try {
+        if (usId) localStorage.setItem(starredUserStoryStorageKey, usId);
+        else localStorage.removeItem(starredUserStoryStorageKey);
+      } catch {}
+    };
+    const applySidebarStarredUserStory = () => {
+      const starredUserStoryId = getStarredUserStoryId();
+      const doc = sidebarFrame?.contentDocument;
+      if (!doc) return;
+      for (const button of doc.querySelectorAll('[data-command="toggleStarredUserStory"][data-us-id]')) {
+        const usId = button.getAttribute("data-us-id") || "";
+        const active = usId === starredUserStoryId;
+        const label = (active ? "Unstar " : "Star ") + usId;
+        button.classList.toggle("story-star--active", active);
+        button.setAttribute("title", label);
+        button.setAttribute("aria-label", label);
+        const icon = button.querySelector("[aria-hidden='true']");
+        if (icon) icon.textContent = active ? "★" : "☆";
+      }
     };
     const applyCollapsed = (collapsed) => {
       document.body.classList.toggle("specforge-cli-sidebar-collapsed", collapsed);
@@ -324,6 +351,8 @@ const sidebarShell = `
     document.querySelector("[data-cli-sidebar-settings]")?.addEventListener("click", () => {
       openConfiguration(${JSON.stringify(configurationAdvancedUrl)});
     });
+    sidebarFrame?.addEventListener("load", applySidebarStarredUserStory);
+    applySidebarStarredUserStory();
     document.querySelector("[data-cli-config-close]")?.addEventListener("click", closeConfiguration);
     configOverlay?.addEventListener("click", event => {
       if (event.target === configOverlay) closeConfiguration();
@@ -339,6 +368,12 @@ const sidebarShell = `
         url.searchParams.delete("selectedPhaseId");
         url.searchParams.set("usId", message.usId);
         window.location.href = url.toString();
+        return;
+      }
+      if (message.command === "toggleStarredUserStory" && message.usId) {
+        const current = getStarredUserStoryId();
+        setStarredUserStoryId(current === message.usId ? null : message.usId);
+        applySidebarStarredUserStory();
         return;
       }
       if (message.command === "openExecutionSettings") {
