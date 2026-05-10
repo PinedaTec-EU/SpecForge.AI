@@ -115,8 +115,7 @@ The current design is intentionally split into layers:
   - base for future provider abstraction and richer backend execution
   - workflow file tools for listing, adding, and reclassifying `context files` versus `user story info`
 - CLI/browser portal:
-  - `serve-configuration` for local execution settings
-  - `serve-workflow` for graph-based workflow inspection and browser-driven workflow actions
+  - `serve-workflow` as the single browser portal for user stories, workflow inspection, workflow actions, providers, and advanced configuration
   - optional launch from the VS Code user-story context menu
 - Codex plugin bundle:
   - skills that force SpecForge operations through the MCP boundary
@@ -175,25 +174,21 @@ dotnet test SpecForge.AI.slnx
 npm run test:ts
 ```
 
-### Serve the CLI configuration portal
+### Serve the CLI portal
 
-Codex can use the CLI-served configuration portal without depending on the VS Code configuration panel:
-
-```bash
-dotnet run --project src/SpecForge.Runner.Cli/SpecForge.Runner.Cli.csproj -- serve-configuration "$PWD"
-```
-
-The portal listens on `http://localhost:5127/` by default and persists workspace settings in `.specs/configuration/settings.json`. Workflow CLI commands use that file when model profile environment variables are not provided.
-
-### Serve a CLI workflow portal
-
-The CLI can also serve a workflow status page for a single user story. The page polls persisted workflow and runtime state, so changes performed through MCP tools appear without reopening the page:
+The CLI serves a single browser portal for the current workspace. The root page shows the repo's user stories and workflow graph. The `/configuration` page inside the same portal manages providers, phase routing, and advanced settings without a separate configuration server:
 
 ```bash
-dotnet run --project src/SpecForge.Runner.Cli/SpecForge.Runner.Cli.csproj -- serve-workflow "$PWD" US-001
+dotnet run --project src/SpecForge.Runner.Cli/SpecForge.Runner.Cli.csproj -- serve-workflow "$PWD"
 ```
 
-From the VS Code extension, right-click a user story in the SpecForge.AI view and choose **Open CLI Workflow Portal** to start the same browser portal for that story.
+The portal listens on `http://localhost:5128/` by default and persists workspace settings in `.specs/configuration/settings.json`. To focus a specific story at startup, pass its id after the workspace root:
+
+```bash
+dotnet run --project src/SpecForge.Runner.Cli/SpecForge.Runner.Cli.csproj -- serve-workflow "$PWD" US-0001
+```
+
+From the VS Code extension, right-click a user story in the SpecForge.AI view and choose **Open CLI Workflow Portal** to start the same portal focused on that story.
 
 ### Packaged Codex/MCP plugin
 

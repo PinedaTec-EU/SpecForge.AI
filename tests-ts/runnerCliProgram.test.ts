@@ -34,11 +34,11 @@ test("CLI workflow portal uses a distinct default port and caches rendered workf
   const source = await fs.promises.readFile(programPath, "utf8");
   const renderCacheSource = await fs.promises.readFile(renderCachePath, "utf8");
 
-  assert.match(source, /serve-configuration[\s\S]*?"http:\/\/localhost:5128\/"/);
   assert.match(source, /serve-workflow[\s\S]*?"http:\/\/localhost:5128\/"/);
-  assert.match(source, /case "serve-configuration":[\s\S]*?HandleServeConfigurationAsync\(args\)/);
-  assert.match(source, /HandleServeConfigurationAsync[\s\S]*?ResolveDefaultWorkflowPortalUserStoryIdAsync/);
-  assert.match(source, /HandleServeConfigurationAsync[\s\S]*?HandleWorkflowPortalRequestAsync\(context, applicationService, workspaceRoot, defaultUsId, renderCache\)/);
+  assert.doesNotMatch(source, /serve-configuration/);
+  assert.match(source, /Expected workspace root, optional user story id, and optional URL prefix for command 'serve-workflow'\./);
+  assert.match(source, /ResolveDefaultWorkflowPortalUserStoryIdAsync\(applicationService, workspaceRoot\)/);
+  assert.match(source, /LooksLikeHttpPrefix\(args\[2\]\)/);
   assert.match(source, /var renderCache = new WorkflowPortalRenderCache\(\)/);
   assert.match(source, /renderCache\.TryGet\(signature, resolvedSelectedPhaseId, selectedPhase, out var cachedHtml\)/);
   assert.match(source, /renderCache\.Store\(signature, resolvedSelectedPhaseId, selectedPhase, html\)/);

@@ -54,9 +54,6 @@ try
             await HandleApprovePhaseAsync(applicationService, args);
             return 0;
         }
-        case "serve-configuration":
-            await HandleServeConfigurationAsync(args);
-            return 0;
         case "serve-workflow":
             await HandleServeWorkflowAsync(args);
             return 0;
@@ -166,46 +163,25 @@ static async Task HandleApprovePhaseAsync(
     WriteJson(result);
 }
 
-static async Task HandleServeConfigurationAsync(IReadOnlyList<string> args)
-{
-    if (args.Count is < 2 or > 3)
-    {
-        throw new InvalidOperationException("Expected workspace root and optional URL prefix for command 'serve-configuration'.");
-    }
-
-    var workspaceRoot = Path.GetFullPath(args[1]);
-    var prefix = args.Count == 3 ? NormalizeHttpPrefix(args[2]) : "http://localhost:5128/";
-    var runner = new WorkflowRunner(CreatePhaseExecutionProvider(workspaceRoot));
-    var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
-    var defaultUsId = await ResolveDefaultWorkflowPortalUserStoryIdAsync(applicationService, workspaceRoot);
-    var renderCache = new WorkflowPortalRenderCache();
-
-    using var listener = new HttpListener();
-    listener.Prefixes.Add(prefix);
-    listener.Start();
-    Console.WriteLine($"SpecForge portal listening at {prefix}");
-    Console.WriteLine($"Workspace: {workspaceRoot}");
-    Console.WriteLine($"Default user story: {defaultUsId}");
-
-    while (listener.IsListening)
-    {
-        var context = await listener.GetContextAsync();
-        _ = Task.Run(() => HandleWorkflowPortalRequestAsync(context, applicationService, workspaceRoot, defaultUsId, renderCache));
-    }
-}
-
 static async Task HandleServeWorkflowAsync(IReadOnlyList<string> args)
 {
-    if (args.Count is < 3 or > 4)
+    if (args.Count is < 2 or > 4)
     {
-        throw new InvalidOperationException("Expected workspace root, user story id, and optional URL prefix for command 'serve-workflow'.");
+        throw new InvalidOperationException("Expected workspace root, optional user story id, and optional URL prefix for command 'serve-workflow'.");
     }
 
     var workspaceRoot = Path.GetFullPath(args[1]);
-    var usId = args[2];
-    var prefix = args.Count == 4 ? NormalizeHttpPrefix(args[3]) : "http://localhost:5128/";
     var runner = new WorkflowRunner(CreatePhaseExecutionProvider(workspaceRoot));
     var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+    var usId = args.Count >= 3 && !LooksLikeHttpPrefix(args[2])
+        ? args[2]
+        : await ResolveDefaultWorkflowPortalUserStoryIdAsync(applicationService, workspaceRoot);
+    var prefix = args.Count switch
+    {
+        4 => NormalizeHttpPrefix(args[3]),
+        3 when LooksLikeHttpPrefix(args[2]) => NormalizeHttpPrefix(args[2]),
+        _ => "http://localhost:5128/"
+    };
     var renderCache = new WorkflowPortalRenderCache();
 
     using var listener = new HttpListener();
@@ -604,11 +580,15 @@ static string NormalizeHttpPrefix(string value)
     var prefix = value.Trim();
     if (prefix.Length == 0)
     {
-        throw new InvalidOperationException("The configuration portal URL prefix cannot be empty.");
+        throw new InvalidOperationException("The portal URL prefix cannot be empty.");
     }
 
     return prefix.EndsWith("/", StringComparison.Ordinal) ? prefix : $"{prefix}/";
 }
+
+static bool LooksLikeHttpPrefix(string value) =>
+    value.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+    value.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
 
 static Task WriteJsonResponseAsync<T>(HttpListenerResponse response, T payload)
 {
