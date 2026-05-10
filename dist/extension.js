@@ -255,7 +255,7 @@ function createExtensionActions(explorerProvider, sidebarProvider, workflowAudit
                 return;
             }
             const usId = String(summary.usId);
-            const url = "http://localhost:5127/";
+            const url = "http://localhost:5128/";
             const projectPath = path.join(__dirname, "..", "src", "SpecForge.Runner.Cli", "SpecForge.Runner.Cli.csproj");
             const terminal = vscode.window.createTerminal({
                 name: `SpecForge Workflow ${usId}`,
