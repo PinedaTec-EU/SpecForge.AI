@@ -60,6 +60,22 @@ test("CLI workflow renderer routes sidebar story selection through the current p
   assert.match(script, /activeWorkflowUsId: workflow\.usId/);
 });
 
+test("CLI workflow renderer routes sidebar edit action to the user story source phase", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+  const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
+  const packagedSidebar = await fs.promises.readFile(
+    path.join(process.cwd(), "plugins", "specforge-ai", "mcp", "dist", "sidebarViewContent.js"),
+    "utf8");
+
+  for (const content of [script, packagedScript]) {
+    assert.match(content, /message\.command === "openMainArtifact" && message\.usId/);
+    assert.match(content, /url\.searchParams\.set\("selectedPhaseId", "capture"\)/);
+  }
+
+  assert.match(packagedSidebar, /data-command="openMainArtifact" data-us-id="\$\{\(0, htmlEscape_1\.escapeHtmlAttr\)\(summary\.usId\)\}" role="menuitem"/);
+  assert.doesNotMatch(packagedSidebar, /<button class="action-menu__item" type="button" role="menuitem" disabled>\s+<span class="action-menu__item-icon" aria-hidden="true">✎<\/span>\s+<span>Edit US info<\/span>/);
+});
+
 test("CLI workflow renderer handles sidebar starred story toggles locally", async () => {
   const script = await fs.promises.readFile(scriptPath, "utf8");
   const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");

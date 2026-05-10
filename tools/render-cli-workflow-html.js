@@ -370,6 +370,13 @@ const sidebarShell = `
         window.location.href = url.toString();
         return;
       }
+      if (message.command === "openMainArtifact" && message.usId) {
+        const url = new URL(window.location.href);
+        url.searchParams.set("usId", message.usId);
+        url.searchParams.set("selectedPhaseId", "capture");
+        window.location.href = url.toString();
+        return;
+      }
       if (message.command === "toggleStarredUserStory" && message.usId) {
         const current = getStarredUserStoryId();
         setStarredUserStoryId(current === message.usId ? null : message.usId);

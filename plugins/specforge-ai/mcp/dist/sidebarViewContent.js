@@ -1816,7 +1816,7 @@ function buildStoryRowMarkup(summary, starredUserStoryId, activeWorkflowUsId) {
             <span aria-hidden="true">☰</span>
           </button>
           <div class="action-menu__panel" data-action-menu-panel role="menu" hidden>
-            <button class="action-menu__item" type="button" role="menuitem" disabled>
+            <button class="action-menu__item" type="button" data-command="openMainArtifact" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}" role="menuitem">
               <span class="action-menu__item-icon" aria-hidden="true">✎</span>
               <span>Edit US info</span>
             </button>
