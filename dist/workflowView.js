@@ -3545,6 +3545,14 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
       flex-wrap: wrap;
       min-height: 24px;
     }
+    .phase-node-header-actions {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-left: auto;
+      flex: 0 0 auto;
+    }
     .phase-role-badge {
       width: 38px;
       height: 38px;
@@ -3561,10 +3569,36 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
         inset 0 1px 0 rgba(255, 255, 255, 0.08),
         0 8px 18px rgba(0, 0, 0, 0.18);
     }
+    .phase-role-badge--model-automated {
+      color: rgba(204, 214, 228, 0.9);
+      border-color: rgba(204, 214, 228, 0.2);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03)),
+        rgba(111, 121, 137, 0.14);
+    }
+    .phase-role-badge--user-enabled {
+      color: rgba(118, 190, 255, 0.98);
+      border-color: rgba(92, 181, 255, 0.38);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04)),
+        rgba(8, 32, 62, 0.9);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.18),
+        0 10px 18px rgba(9, 39, 82, 0.16),
+        0 0 18px rgba(76, 166, 255, 0.16);
+    }
     .phase-role-badge svg {
       width: 18px;
       height: 18px;
       fill: currentColor;
+    }
+    .phase-role-badge--model-automated svg,
+    .phase-role-badge--user-enabled svg {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
     .phase-current-rail {
       position: absolute;
@@ -8014,13 +8048,15 @@ function buildPhaseGraph(workflow, state, selectedPhaseId, playbackState, effect
         const phaseIsSelected = phase.phaseId === selectedPhaseId;
         const phaseSelectTargetId = phase.phaseId;
         const phaseRoleIcon = phase.expectsHumanIntervention ? (0, icons_1.userPhaseIcon)() : (0, icons_1.automationPhaseIcon)();
-        const phaseRoleLabel = phase.expectsHumanIntervention ? "User step" : "Automated step";
+        const phaseRoleModifier = phase.expectsHumanIntervention ? "user-enabled" : "model-automated";
+        const phaseRoleLabel = phase.expectsHumanIntervention ? "User intervention enabled" : "Model automated";
         const phaseVisualIcon = (0, icons_1.workflowPhaseIcon)(phase.phaseId);
         const phaseHeaderMeta = phase.requiresApproval ? `<span class="phase-tag approval">approval</span>` : "";
         const pauseButtonLabel = pauseArmed
             ? `Remove pause before ${phase.title}`
             : `Pause before ${phase.title}`;
         const statusIcon = renderGraphPhaseStatusIcon(phase, visualTone, state.completedUsLockOnCompleted !== false);
+        const phaseRoleBadge = `<span class="phase-role-badge phase-role-badge--${(0, htmlEscape_1.escapeHtmlAttr)(phaseRoleModifier)}" title="${(0, htmlEscape_1.escapeHtmlAttr)(phaseRoleLabel)}" aria-label="${(0, htmlEscape_1.escapeHtmlAttr)(phaseRoleLabel)}">${phaseRoleIcon}</span>`;
         return `
     <div
       class="phase-node ${(0, htmlEscape_1.escapeHtmlAttr)(phase.phaseId)} phase-tone-${(0, htmlEscape_1.escapeHtmlAttr)(visualTone)}${phaseIsSelected ? " selected" : ""}${phaseIsCurrent ? " phase-node--current" : ""}${phase.phaseId === "completed" ? " phase-node--final" : ""}"
@@ -8034,7 +8070,11 @@ function buildPhaseGraph(workflow, state, selectedPhaseId, playbackState, effect
       <div class="phase-node-content${phaseIsCurrent ? " phase-node-content--current" : ""}">
         <div class="phase-node-header">
           <div class="phase-node-header-main">${phaseHeaderMeta}</div>
-          ${canPausePhase
+          <div class="phase-node-header-actions">
+            ${phase.phaseId === "completed"
+            ? `<span class="phase-role-badge graph-phase-status-icon" title="Completed workflow lock state" aria-label="Completed workflow lock state">${statusIcon || phaseRoleIcon}</span>`
+            : phaseRoleBadge}
+            ${canPausePhase
             ? `<button
                 class="phase-pause-toggle${pauseArmed ? " phase-pause-toggle--armed" : ""}"
                 type="button"
@@ -8046,7 +8086,8 @@ function buildPhaseGraph(workflow, state, selectedPhaseId, playbackState, effect
                 title="${(0, htmlEscape_1.escapeHtmlAttr)(pauseButtonLabel)}">
                 ${(0, icons_1.pauseIcon)()}
               </button>`
-            : `<span class="phase-role-badge graph-phase-status-icon" title="${(0, htmlEscape_1.escapeHtmlAttr)(phaseRoleLabel)}" aria-label="${(0, htmlEscape_1.escapeHtmlAttr)(phaseRoleLabel)}">${statusIcon || phaseRoleIcon}</span>`}
+            : ""}
+          </div>
         </div>
         <div class="phase-node-body">
           <span class="phase-node-visual" aria-hidden="true">${phaseVisualIcon}</span>

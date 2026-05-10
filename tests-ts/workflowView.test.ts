@@ -4965,6 +4965,9 @@ test("buildWorkflowHtml renders the reference graph layout with canonical refine
   assert.match(html, /phase-node review[\s\S]*?--phase-left-desktop-horizontal:/);
   assert.match(html, /phase-node review[\s\S]*?--phase-left-mobile-horizontal:/);
   assert.match(html, /phase-node release-approval[\s\S]*?--phase-left-desktop-horizontal:/);
+  assert.match(html, /phase-node implementation[\s\S]*?phase-role-badge phase-role-badge--model-automated[\s\S]*?aria-label="Model automated"[\s\S]*?<rect width="16" height="12" x="4" y="8" rx="3"/);
+  assert.match(html, /phase-node release-approval[\s\S]*?phase-role-badge phase-role-badge--user-enabled[\s\S]*?aria-label="User intervention enabled"[\s\S]*?<circle cx="12" cy="8" r="5"/);
+  assert.match(html, /phase-node release-approval[\s\S]*?phase-role-badge phase-role-badge--user-enabled[\s\S]*?data-command="togglePhasePause"/);
   assert.match(html, /data-phase-id="spec"[\s\S]*<h3>Spec<\/h3>/);
   assert.match(html, /data-edge="capture-&gt;refinement"/);
   assert.match(html, /data-edge="refinement-&gt;spec"/);
