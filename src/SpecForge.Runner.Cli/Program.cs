@@ -174,7 +174,7 @@ static async Task HandleServeConfigurationAsync(IReadOnlyList<string> args)
     }
 
     var workspaceRoot = Path.GetFullPath(args[1]);
-    var prefix = args.Count == 3 ? NormalizeHttpPrefix(args[2]) : "http://localhost:5127/";
+    var prefix = args.Count == 3 ? NormalizeHttpPrefix(args[2]) : "http://localhost:5128/configuration/";
     using var listener = new HttpListener();
     listener.Prefixes.Add(prefix);
     listener.Start();
@@ -567,20 +567,25 @@ static async Task HandleConfigurationPortalRequestAsync(HttpListenerContext cont
 {
     try
     {
-        var path = context.Request.Url?.AbsolutePath ?? "/";
-        if (context.Request.HttpMethod == "GET" && path == "/")
+        var path = context.Request.Url?.AbsolutePath.TrimEnd('/') ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            path = "/";
+        }
+
+        if (context.Request.HttpMethod == "GET" && path is "/" or "/configuration")
         {
             await WriteHtmlResponseAsync(context.Response, BuildConfigurationPortalHtml());
             return;
         }
 
-        if (context.Request.HttpMethod == "GET" && path == "/api/settings")
+        if (context.Request.HttpMethod == "GET" && path is "/api/settings" or "/configuration/api/settings")
         {
             await WriteJsonResponseAsync(context.Response, SpecForgePortalSettingsStore.LoadOrDefault(workspaceRoot));
             return;
         }
 
-        if (context.Request.HttpMethod == "PUT" && path == "/api/settings")
+        if (context.Request.HttpMethod == "PUT" && path is "/api/settings" or "/configuration/api/settings")
         {
             using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
             var payload = await reader.ReadToEndAsync();
@@ -849,7 +854,7 @@ static string BuildConfigurationPortalHtml() =>
         let state = null;
 
         async function load() {
-          const response = await fetch("/api/settings");
+          const response = await fetch("api/settings");
           state = await response.json();
           applyDefaultSettings();
           render();
@@ -1084,7 +1089,7 @@ static string BuildConfigurationPortalHtml() =>
           event.preventDefault();
           sync();
           normalizeConfigurationReferences();
-          const response = await fetch("/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(state) });
+          const response = await fetch("api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(state) });
           if (!response.ok) {
             setStatus(await response.text());
             return;

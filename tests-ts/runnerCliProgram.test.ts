@@ -34,7 +34,7 @@ test("CLI workflow portal uses a distinct default port and caches rendered workf
   const source = await fs.promises.readFile(programPath, "utf8");
   const renderCacheSource = await fs.promises.readFile(renderCachePath, "utf8");
 
-  assert.match(source, /serve-configuration[\s\S]*?"http:\/\/localhost:5127\/"/);
+  assert.match(source, /serve-configuration[\s\S]*?"http:\/\/localhost:5128\/configuration\/"/);
   assert.match(source, /serve-workflow[\s\S]*?"http:\/\/localhost:5128\/"/);
   assert.match(source, /var renderCache = new WorkflowPortalRenderCache\(\)/);
   assert.match(source, /renderCache\.TryGet\(signature, resolvedSelectedPhaseId, selectedPhase, out var cachedHtml\)/);
@@ -75,6 +75,9 @@ test("CLI workflow portal payload includes sidebar stories and configuration URL
   assert.match(source, /case \("GET", "\/configuration"\):/);
   assert.match(source, /case \("GET", "\/api\/settings"\):/);
   assert.match(source, /case \("PUT", "\/api\/settings"\):/);
+  assert.match(source, /path is "\/api\/settings" or "\/configuration\/api\/settings"/);
+  assert.match(source, /fetch\("api\/settings"/);
+  assert.doesNotMatch(source, /fetch\("\/api\/settings"/);
   assert.match(source, /Path = "\/configuration"/);
   assert.match(source, /<section class="panel" id="providers">/);
   assert.match(source, /<section class="panel" id="advanced">/);
