@@ -56,6 +56,10 @@ test("CLI workflow portal payload includes sidebar stories and configuration URL
 
   assert.match(source, /userStories = await applicationService\.ListUserStoriesAsync\(workspaceRoot\)/);
   assert.match(source, /configurationPortalUrl = BuildConfigurationPortalUrl\(workflowPortalOrigin\)/);
+  assert.match(source, /configurationProvidersUrl = BuildConfigurationPortalUrl\(workflowPortalOrigin, "providers"\)/);
+  assert.match(source, /configurationAdvancedUrl = BuildConfigurationPortalUrl\(workflowPortalOrigin, "advanced"\)/);
+  assert.match(source, /<section class="panel" id="providers">/);
+  assert.match(source, /<section class="panel" id="advanced">/);
   assert.match(source, /ResolveWorkflowPortalUserStoryId\(context\.Request, usId\)/);
 });
 

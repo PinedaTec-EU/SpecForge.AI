@@ -306,9 +306,17 @@ function buildBusyIndicatorMarkup(model) {
   `;
 }
 function buildRuntimeVersionMarkup(runtimeVersion) {
-    return runtimeVersion
-        ? `<span class="runtime-version">v.${(0, htmlEscape_1.escapeHtml)(runtimeVersion)}</span>`
+    const displayVersion = formatRuntimeVersion(runtimeVersion);
+    return displayVersion
+        ? `<span class="runtime-version">v.${(0, htmlEscape_1.escapeHtml)(displayVersion)}</span>`
         : "";
+}
+function formatRuntimeVersion(runtimeVersion) {
+    const version = runtimeVersion?.trim();
+    if (!version) {
+        return null;
+    }
+    return version.split("+", 1)[0] || version;
 }
 function buildCreateActionButton(enabled) {
     return `

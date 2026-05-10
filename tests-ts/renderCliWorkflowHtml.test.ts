@@ -33,7 +33,10 @@ test("CLI workflow renderer embeds the reusable user-story sidebar with collapse
   assert.match(script, /buildSidebarHtml/);
   assert.match(script, /data-cli-sidebar-stories/);
   assert.match(script, /data-cli-sidebar-settings/);
-  assert.match(script, /window\.open\(\$\{JSON\.stringify\(configurationPortalUrl\)\}, "_blank", "noopener"\)/);
+  assert.match(script, /configurationProvidersUrl = payload\.configurationProvidersUrl \|\| configurationPortalUrl/);
+  assert.match(script, /configurationAdvancedUrl = payload\.configurationAdvancedUrl \|\| configurationPortalUrl/);
+  assert.match(script, /window\.open\(\$\{JSON\.stringify\(configurationAdvancedUrl\)\}, "_blank", "noopener"\)/);
+  assert.match(script, /window\.open\(\$\{JSON\.stringify\(configurationProvidersUrl\)\}, "_blank", "noopener"\)/);
 });
 
 test("CLI workflow renderer routes sidebar story selection through the current portal", async () => {

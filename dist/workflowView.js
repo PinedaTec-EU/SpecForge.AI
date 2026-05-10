@@ -61,6 +61,17 @@ function formatDuration(durationMs) {
     const seconds = ((durationMs % 60_000) / 1_000).toFixed(1);
     return `${minutes}m ${seconds}s`;
 }
+function formatRuntimeVersion(runtimeVersion) {
+    const version = runtimeVersion?.trim();
+    if (!version) {
+        return null;
+    }
+    return version.split("+", 1)[0] || version;
+}
+function buildRuntimeVersionMarkup(runtimeVersion) {
+    const displayVersion = formatRuntimeVersion(runtimeVersion);
+    return displayVersion ? `<span class="runtime-version">v.${(0, htmlEscape_1.escapeHtml)(displayVersion)}</span>` : "";
+}
 function formatMetricNumber(value) {
     return new Intl.NumberFormat("en-US").format(value);
 }
@@ -5560,7 +5571,7 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
         <div class="hero-main">
           <div class="hero-caption">
             <p class="eyebrow">SpecForge.AI Workflow Graph</p>
-            ${state.runtimeVersion ? `<span class="runtime-version">v.${(0, htmlEscape_1.escapeHtml)(state.runtimeVersion)}</span>` : ""}
+            ${buildRuntimeVersionMarkup(state.runtimeVersion)}
           </div>
           <h1>${(0, htmlEscape_1.escapeHtml)(buildWorkflowHeroTitle(workflow))}</h1>
           <div class="hero-meta">

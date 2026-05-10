@@ -376,6 +376,8 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
             runtimeVersion = workflow.LastRuntimeVersion ?? workflow.CreatedWithRuntimeVersion,
             userStories,
             configurationPortalUrl = BuildConfigurationPortalUrl(workflowPortalOrigin),
+            configurationProvidersUrl = BuildConfigurationPortalUrl(workflowPortalOrigin, "providers"),
+            configurationAdvancedUrl = BuildConfigurationPortalUrl(workflowPortalOrigin, "advanced"),
             signature
         },
         SpecForgePortalSettingsStore.JsonOptions);
@@ -417,11 +419,13 @@ static string? ParseQueryValue(string query, string key)
     return null;
 }
 
-static string BuildConfigurationPortalUrl(string workflowPortalOrigin)
+static string BuildConfigurationPortalUrl(string workflowPortalOrigin, string? fragment = null)
 {
     if (!Uri.TryCreate(workflowPortalOrigin, UriKind.Absolute, out var uri))
     {
-        return "http://localhost:5127/";
+        return string.IsNullOrWhiteSpace(fragment)
+            ? "http://localhost:5127/"
+            : $"http://localhost:5127/#{fragment}";
     }
 
     var builder = new UriBuilder(uri)
@@ -429,7 +433,7 @@ static string BuildConfigurationPortalUrl(string workflowPortalOrigin)
         Port = 5127,
         Path = "/",
         Query = string.Empty,
-        Fragment = string.Empty
+        Fragment = string.IsNullOrWhiteSpace(fragment) ? string.Empty : fragment
     };
     return builder.Uri.ToString();
 }
@@ -736,23 +740,23 @@ static string BuildConfigurationPortalHtml() =>
         <h1>SpecForge Configuration</h1>
         <p class="lead">Configure the CLI-served workflow runtime for Codex without depending on the Visual Studio configuration surface.</p>
         <form id="settings-form">
-          <section class="panel">
+          <section class="panel" id="providers">
             <h2>Model Profiles</h2>
             <p class="section-copy">Model profiles describe the available model runtimes: provider type, endpoint credentials when needed, model identifier, reasoning effort, and default repository access.</p>
             <div id="models" class="cards"></div>
             <div class="toolbar"><button type="button" class="secondary" id="add-model">Add Model</button></div>
           </section>
-          <section class="panel">
+          <section class="panel" id="agent-profiles">
             <h2>Agent Profiles</h2>
             <p class="section-copy">Agent profiles define the workflow roles that use those models, including phase-specific instructions and the repository permissions each role is allowed to use.</p>
             <div id="agents" class="cards"></div>
             <div class="toolbar"><button type="button" class="secondary" id="add-agent">Add Agent</button></div>
           </section>
-          <section class="panel">
+          <section class="panel" id="routing">
             <h2>Phase Routing</h2>
             <div id="assignments" class="grid"></div>
           </section>
-          <section class="panel">
+          <section class="panel" id="advanced">
             <h2>Workflow Behavior</h2>
             <div class="grid">
               <label><span class="field-label">Refinement tolerance</span><span class="field-control"><select id="refinementTolerance"><option>strict</option><option>balanced</option><option>inferential</option></select><button class="help-button" type="button" aria-label="Refinement tolerance details" aria-expanded="false" data-help="Controls how much ambiguity refinement tolerates before spec can continue. Strict asks more questions; inferential allows the model to proceed with more assumptions.">?</button></span></label>

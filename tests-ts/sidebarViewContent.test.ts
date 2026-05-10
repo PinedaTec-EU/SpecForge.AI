@@ -107,6 +107,26 @@ test("buildSidebarHtml exposes a compact prompt customization action", () => {
   assert.doesNotMatch(html, /Repo prompts ready/);
 });
 
+test("buildSidebarHtml trims commit metadata from the displayed runtime version", () => {
+  const html = buildSidebarHtml(model({
+    runtimeVersion: "0.1.4.415+71ff1a243f81f3eea815e2df4bcb1c39be185a98",
+    categories: ["workflow"],
+    userStories: [{
+      usId: "US-0001",
+      title: "Workflow graph",
+      category: "workflow",
+      currentPhase: "spec",
+      status: "active",
+      mainArtifactPath: "/tmp/us.md",
+      directoryPath: "/tmp/us.US-0001",
+      workBranch: null
+    }],
+  }));
+
+  assert.match(html, /v\.0\.1\.4\.415/);
+  assert.doesNotMatch(html, /71ff1a243f81f3eea815e2df4bcb1c39be185a98/);
+});
+
 test("buildSidebarHtml uses compact actions instead of a separate create card when stories already exist", () => {
   const html = buildSidebarHtml(model({
     categories: ["workflow"],

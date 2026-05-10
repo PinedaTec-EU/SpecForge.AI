@@ -9,6 +9,8 @@ const payload = JSON.parse(fs.readFileSync(0, "utf8"));
 const workflow = payload.workflow;
 const userStories = Array.isArray(payload.userStories) ? payload.userStories : [];
 const configurationPortalUrl = payload.configurationPortalUrl || "http://localhost:5127/";
+const configurationProvidersUrl = payload.configurationProvidersUrl || configurationPortalUrl;
+const configurationAdvancedUrl = payload.configurationAdvancedUrl || configurationPortalUrl;
 const state = {
   selectedPhaseId: payload.selectedPhaseId ?? workflow.currentPhase,
   selectedArtifactContent: payload.selectedArtifactContent ?? null,
@@ -292,7 +294,7 @@ const sidebarShell = `
     document.querySelector("[data-cli-sidebar-collapse]")?.addEventListener("click", () => applyCollapsed(true));
     document.querySelector("[data-cli-sidebar-stories]")?.addEventListener("click", () => applyCollapsed(false));
     document.querySelector("[data-cli-sidebar-settings]")?.addEventListener("click", () => {
-      window.open(${JSON.stringify(configurationPortalUrl)}, "_blank", "noopener");
+      window.open(${JSON.stringify(configurationAdvancedUrl)}, "_blank", "noopener");
     });
     window.addEventListener("message", event => {
       if (event.data?.source !== "specforge-cli-sidebar") return;
@@ -305,7 +307,7 @@ const sidebarShell = `
         return;
       }
       if (message.command === "openExecutionSettings") {
-        window.open(${JSON.stringify(configurationPortalUrl)}, "_blank", "noopener");
+        window.open(${JSON.stringify(configurationProvidersUrl)}, "_blank", "noopener");
       }
     });
   })();
