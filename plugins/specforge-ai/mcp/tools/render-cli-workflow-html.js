@@ -8,7 +8,7 @@ const { buildSidebarHtml } = require("../dist/sidebarViewContent");
 const payload = JSON.parse(fs.readFileSync(0, "utf8"));
 const workflow = payload.workflow;
 const userStories = Array.isArray(payload.userStories) ? payload.userStories : [];
-const configurationPortalUrl = payload.configurationPortalUrl || "http://localhost:5127/";
+const configurationPortalUrl = payload.configurationPortalUrl || "http://localhost:5128/configuration";
 const state = {
   selectedPhaseId: payload.selectedPhaseId ?? workflow.currentPhase,
   selectedArtifactContent: payload.selectedArtifactContent ?? null,

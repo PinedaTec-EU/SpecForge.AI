@@ -6,6 +6,7 @@ import * as path from "node:path";
 const programPath = path.join(process.cwd(), "src", "SpecForge.Runner.Cli", "Program.cs");
 const renderCachePath = path.join(process.cwd(), "src", "SpecForge.Runner.Cli", "WorkflowPortalRenderCache.cs");
 const extensionPath = path.join(process.cwd(), "src-vscode", "extension.ts");
+const packagedExtensionPath = path.join(process.cwd(), "plugins", "specforge-ai", "mcp", "dist", "extension.js");
 
 test("CLI phase commands route through the application service", async () => {
   const source = await fs.promises.readFile(programPath, "utf8");
@@ -45,10 +46,14 @@ test("CLI workflow portal uses a distinct default port and caches rendered workf
 
 test("VS Code command opens the CLI workflow portal on the workflow port", async () => {
   const source = await fs.promises.readFile(extensionPath, "utf8");
+  const packagedSource = await fs.promises.readFile(packagedExtensionPath, "utf8");
 
   assert.match(source, /openCliWorkflowPortal:[\s\S]*?const url = "http:\/\/localhost:5128\/"/);
+  assert.match(packagedSource, /openCliWorkflowPortal:[\s\S]*?const url = "http:\/\/localhost:5128\/"/);
   assert.match(source, /serve-workflow "\$\{workspaceRoot\}" "\$\{usId\}" "\$\{url\}"/);
+  assert.match(packagedSource, /serve-workflow "\$\{workspaceRoot\}" "\$\{usId\}" "\$\{url\}"/);
   assert.doesNotMatch(source, /openCliWorkflowPortal:[\s\S]*?const url = "http:\/\/localhost:5127\/"/);
+  assert.doesNotMatch(packagedSource, /openCliWorkflowPortal:[\s\S]*?const url = "http:\/\/localhost:5127\/"/);
 });
 
 test("CLI workflow portal refresh signature includes workflow runtime versions", async () => {

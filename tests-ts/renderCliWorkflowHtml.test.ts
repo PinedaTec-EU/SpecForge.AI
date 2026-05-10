@@ -4,6 +4,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 const scriptPath = path.join(process.cwd(), "tools", "render-cli-workflow-html.js");
+const packagedScriptPath = path.join(process.cwd(), "plugins", "specforge-ai", "mcp", "tools", "render-cli-workflow-html.js");
 
 test("CLI workflow shim posts refinement answers to the workflow portal API", async () => {
   const script = await fs.promises.readFile(scriptPath, "utf8");
@@ -39,6 +40,16 @@ test("CLI workflow renderer embeds the reusable user-story sidebar with collapse
   assert.match(script, /openConfiguration\(\$\{JSON\.stringify\(configurationAdvancedUrl\)\}\)/);
   assert.match(script, /openConfiguration\(\$\{JSON\.stringify\(configurationProvidersUrl\)\}\)/);
   assert.doesNotMatch(script, /window\.open\(/);
+});
+
+test("CLI workflow renderer falls back to the embedded workflow configuration route", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+  const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
+
+  assert.match(script, /configurationPortalUrl = payload\.configurationPortalUrl \|\| "http:\/\/localhost:5128\/configuration"/);
+  assert.match(packagedScript, /configurationPortalUrl = payload\.configurationPortalUrl \|\| "http:\/\/localhost:5128\/configuration"/);
+  assert.doesNotMatch(script, /configurationPortalUrl = payload\.configurationPortalUrl \|\| "http:\/\/localhost:5127\//);
+  assert.doesNotMatch(packagedScript, /configurationPortalUrl = payload\.configurationPortalUrl \|\| "http:\/\/localhost:5127\//);
 });
 
 test("CLI workflow renderer routes sidebar story selection through the current portal", async () => {
