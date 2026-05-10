@@ -1789,7 +1789,7 @@ function buildStoryRowMarkup(summary, starredUserStoryId, activeWorkflowUsId) {
     ].join(" ");
     return `
     <div class="story-row story-row--shell story-row--status-${(0, htmlEscape_1.escapeHtmlAttr)(statusTone)}${isActiveWorkflow ? " story-row--selected" : ""}" data-story-search-text="${(0, htmlEscape_1.escapeHtmlAttr)(searchText)}">
-      <button class="story-card${shouldRenderPhaseRail(summary.status) ? ` story-card--active story-card--phase-${(0, htmlEscape_1.escapeHtmlAttr)(summary.currentPhase)} story-card--status-${(0, htmlEscape_1.escapeHtmlAttr)(phaseRailStatus(summary.status))}` : ""}" data-command="openWorkflow" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}">
+      <button class="story-card${shouldRenderPhaseRail(summary.status) ? ` story-card--active story-card--phase-${(0, htmlEscape_1.escapeHtmlAttr)(summary.currentPhase)} story-card--status-${(0, htmlEscape_1.escapeHtmlAttr)(phaseRailStatus(summary.status))}` : ""}" type="button" data-command="openWorkflow" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}">
         ${shouldRenderPhaseRail(summary.status)
         ? `
             <span class="story-card__phase-rail" aria-hidden="true">
@@ -1806,6 +1806,7 @@ function buildStoryRowMarkup(summary, starredUserStoryId, activeWorkflowUsId) {
       <div class="story-actions">
         <button
           class="icon-action story-star${starredUserStoryId === summary.usId ? " story-star--active" : ""}"
+          type="button"
           data-command="toggleStarredUserStory"
           data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}"
           title="${(0, htmlEscape_1.escapeHtmlAttr)(starredUserStoryId === summary.usId ? `Unstar ${summary.usId}` : `Star ${summary.usId}`)}"
@@ -1824,7 +1825,7 @@ function buildStoryRowMarkup(summary, starredUserStoryId, activeWorkflowUsId) {
             <span aria-hidden="true">☰</span>
           </button>
           <div class="action-menu__panel" data-action-menu-panel role="menu" hidden>
-            <button class="action-menu__item" type="button" role="menuitem" disabled>
+            <button class="action-menu__item" type="button" data-command="openMainArtifact" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}" role="menuitem">
               <span class="action-menu__item-icon" aria-hidden="true">✎</span>
               <span>Edit US info</span>
             </button>

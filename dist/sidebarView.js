@@ -144,6 +144,12 @@ class SidebarViewProvider {
                 }
                 await this.openWorkflowAsync(message.usId);
                 return;
+            case "openMainArtifact":
+                if (!message.usId) {
+                    return;
+                }
+                await this.openMainArtifactAsync(message.usId);
+                return;
             case "deleteUserStory":
                 if (!message.usId) {
                     return;
@@ -242,6 +248,14 @@ class SidebarViewProvider {
         }
         const summary = await (0, specsExplorer_1.getOrCreateBackendClient)(workspaceRoot).getUserStorySummary(usId);
         await vscode.commands.executeCommand("specForge.openWorkflowView", summary);
+    }
+    async openMainArtifactAsync(usId) {
+        const workspaceRoot = getWorkspaceRoot();
+        if (!workspaceRoot) {
+            return;
+        }
+        const summary = await (0, specsExplorer_1.getOrCreateBackendClient)(workspaceRoot).getUserStorySummary(usId);
+        await vscode.commands.executeCommand("specForge.openMainArtifact", summary);
     }
     async deleteUserStoryAsync(usId) {
         const workspaceRoot = getWorkspaceRoot();

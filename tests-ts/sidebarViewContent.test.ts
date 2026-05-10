@@ -343,6 +343,27 @@ test("buildSidebarHtml marks the starred user story with a highlighted star acti
   }));
 
   assert.match(html, /story-star--active/);
+  assert.match(html, /class="icon-action story-star story-star--active"\s+type="button"\s+data-command="toggleStarredUserStory"\s+data-us-id="US-0009"/);
   assert.match(html, /aria-label="Unstar US-0009"/);
   assert.match(html, />★</);
+});
+
+test("buildSidebarHtml wires user story row actions to selectable commands", () => {
+  const html = buildSidebarHtml(model({
+    categories: ["workflow"],
+    userStories: [{
+      usId: "US-0010",
+      title: "Editable workflow",
+      category: "workflow",
+      currentPhase: "capture",
+      status: "active",
+      mainArtifactPath: "/tmp/us.md",
+      directoryPath: "/tmp/us.US-0010",
+      workBranch: null
+    }]
+  }));
+
+  assert.match(html, /class="story-card[^"]*" type="button" data-command="openWorkflow" data-us-id="US-0010"/);
+  assert.match(html, /data-command="openMainArtifact" data-us-id="US-0010" role="menuitem">\s+<span class="action-menu__item-icon" aria-hidden="true">✎<\/span>\s+<span>Edit US info<\/span>/);
+  assert.doesNotMatch(html, /<button class="action-menu__item" type="button" role="menuitem" disabled>\s+<span class="action-menu__item-icon" aria-hidden="true">✎<\/span>\s+<span>Edit US info<\/span>/);
 });

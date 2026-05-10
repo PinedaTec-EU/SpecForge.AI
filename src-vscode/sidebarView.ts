@@ -32,6 +32,7 @@ type SidebarMessage =
   | { readonly command: "openSettings" }
   | { readonly command: "openPromptTemplates" }
   | { readonly command: "openWorkflow"; readonly usId?: string }
+  | { readonly command: "openMainArtifact"; readonly usId?: string }
   | { readonly command: "toggleStarredUserStory"; readonly usId?: string }
   | { readonly command: "resetUserStoryToCapture"; readonly usId?: string }
   | { readonly command: "deleteUserStory"; readonly usId?: string }
@@ -166,6 +167,13 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 
         await this.openWorkflowAsync(message.usId);
         return;
+      case "openMainArtifact":
+        if (!message.usId) {
+          return;
+        }
+
+        await this.openMainArtifactAsync(message.usId);
+        return;
       case "deleteUserStory":
         if (!message.usId) {
           return;
@@ -278,6 +286,16 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 
     const summary = await getOrCreateBackendClient(workspaceRoot).getUserStorySummary(usId);
     await vscode.commands.executeCommand("specForge.openWorkflowView", summary);
+  }
+
+  private async openMainArtifactAsync(usId: string): Promise<void> {
+    const workspaceRoot = getWorkspaceRoot();
+    if (!workspaceRoot) {
+      return;
+    }
+
+    const summary = await getOrCreateBackendClient(workspaceRoot).getUserStorySummary(usId);
+    await vscode.commands.executeCommand("specForge.openMainArtifact", summary);
   }
 
   private async deleteUserStoryAsync(usId: string): Promise<void> {
