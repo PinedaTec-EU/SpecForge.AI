@@ -36,6 +36,9 @@ test("CLI workflow portal uses a distinct default port and caches rendered workf
 
   assert.match(source, /serve-configuration[\s\S]*?"http:\/\/localhost:5128\/"/);
   assert.match(source, /serve-workflow[\s\S]*?"http:\/\/localhost:5128\/"/);
+  assert.match(source, /case "serve-configuration":[\s\S]*?HandleServeConfigurationAsync\(args\)/);
+  assert.match(source, /HandleServeConfigurationAsync[\s\S]*?ResolveDefaultWorkflowPortalUserStoryIdAsync/);
+  assert.match(source, /HandleServeConfigurationAsync[\s\S]*?HandleWorkflowPortalRequestAsync\(context, applicationService, workspaceRoot, defaultUsId, renderCache\)/);
   assert.match(source, /var renderCache = new WorkflowPortalRenderCache\(\)/);
   assert.match(source, /renderCache\.TryGet\(signature, resolvedSelectedPhaseId, selectedPhase, out var cachedHtml\)/);
   assert.match(source, /renderCache\.Store\(signature, resolvedSelectedPhaseId, selectedPhase, html\)/);
@@ -75,7 +78,6 @@ test("CLI workflow portal payload includes sidebar stories and configuration URL
   assert.match(source, /case \("GET", "\/configuration"\):/);
   assert.match(source, /case \("GET", "\/api\/settings"\):/);
   assert.match(source, /case \("PUT", "\/api\/settings"\):/);
-  assert.match(source, /path is "\/api\/settings" or "\/configuration\/api\/settings"/);
   assert.match(source, /fetch\("api\/settings"/);
   assert.doesNotMatch(source, /fetch\("\/api\/settings"/);
   assert.match(source, /Path = "\/configuration"/);

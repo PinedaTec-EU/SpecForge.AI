@@ -175,16 +175,22 @@ static async Task HandleServeConfigurationAsync(IReadOnlyList<string> args)
 
     var workspaceRoot = Path.GetFullPath(args[1]);
     var prefix = args.Count == 3 ? NormalizeHttpPrefix(args[2]) : "http://localhost:5128/";
+    var runner = new WorkflowRunner(CreatePhaseExecutionProvider(workspaceRoot));
+    var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+    var defaultUsId = await ResolveDefaultWorkflowPortalUserStoryIdAsync(applicationService, workspaceRoot);
+    var renderCache = new WorkflowPortalRenderCache();
+
     using var listener = new HttpListener();
     listener.Prefixes.Add(prefix);
     listener.Start();
-    Console.WriteLine($"SpecForge configuration portal listening at {prefix}");
+    Console.WriteLine($"SpecForge portal listening at {prefix}");
     Console.WriteLine($"Workspace: {workspaceRoot}");
+    Console.WriteLine($"Default user story: {defaultUsId}");
 
     while (listener.IsListening)
     {
         var context = await listener.GetContextAsync();
-        _ = Task.Run(async () => await HandleConfigurationPortalRequestAsync(context, workspaceRoot));
+        _ = Task.Run(() => HandleWorkflowPortalRequestAsync(context, applicationService, workspaceRoot, defaultUsId, renderCache));
     }
 }
 
@@ -563,46 +569,21 @@ static string BuildWorkflowSignature(
     return Convert.ToHexString(hash);
 }
 
-static async Task HandleConfigurationPortalRequestAsync(HttpListenerContext context, string workspaceRoot)
+static async Task<string> ResolveDefaultWorkflowPortalUserStoryIdAsync(
+    SpecForgeApplicationService applicationService,
+    string workspaceRoot)
 {
-    try
+    var stories = await applicationService.ListUserStoriesAsync(workspaceRoot);
+    var story = stories
+        .OrderBy(static item => item.UsId, StringComparer.Ordinal)
+        .FirstOrDefault();
+
+    if (story is null)
     {
-        var path = context.Request.Url?.AbsolutePath.TrimEnd('/') ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            path = "/";
-        }
-
-        if (context.Request.HttpMethod == "GET" && path is "/" or "/configuration")
-        {
-            await WriteHtmlResponseAsync(context.Response, BuildConfigurationPortalHtml());
-            return;
-        }
-
-        if (context.Request.HttpMethod == "GET" && path is "/api/settings" or "/configuration/api/settings")
-        {
-            await WriteJsonResponseAsync(context.Response, SpecForgePortalSettingsStore.LoadOrDefault(workspaceRoot));
-            return;
-        }
-
-        if (context.Request.HttpMethod == "PUT" && path is "/api/settings" or "/configuration/api/settings")
-        {
-            using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-            var payload = await reader.ReadToEndAsync();
-            var settings = SpecForgePortalSettingsStore.Deserialize(payload);
-            SpecForgePortalSettingsStore.Save(workspaceRoot, settings);
-            await WriteJsonResponseAsync(context.Response, settings);
-            return;
-        }
-
-        context.Response.StatusCode = 404;
-        await WriteTextResponseAsync(context.Response, "Not found", "text/plain; charset=utf-8");
+        throw new InvalidOperationException("The workspace does not contain any SpecForge user stories to show in the portal.");
     }
-    catch (Exception exception)
-    {
-        context.Response.StatusCode = 500;
-        await WriteTextResponseAsync(context.Response, exception.Message, "text/plain; charset=utf-8");
-    }
+
+    return story.UsId;
 }
 
 static void EnsureArgumentCount(IReadOnlyList<string> args, int expectedCount)
