@@ -1878,7 +1878,7 @@ function sortStoriesByPhase(items: readonly UserStorySummary[]): UserStorySummar
 }
 
 function buildStoryRowMarkup(summary: UserStorySummary, starredUserStoryId: string | null, activeWorkflowUsId: string | null, isDroppedView: boolean): string {
-  const isActiveWorkflow = !isDroppedView && activeWorkflowUsId === summary.usId;
+  const isActiveWorkflow = activeWorkflowUsId === summary.usId;
   const statusTone = phaseRailStatus(summary.status);
   const displayTitle = buildStoryDisplayTitle(summary);
   const searchText = [
@@ -1891,7 +1891,7 @@ function buildStoryRowMarkup(summary: UserStorySummary, starredUserStoryId: stri
   ].join(" ");
   return `
     <div class="story-row story-row--shell story-row--status-${escapeHtmlAttr(statusTone)}${isActiveWorkflow ? " story-row--selected" : ""}" data-story-search-text="${escapeHtmlAttr(searchText)}">
-      <button class="story-card${shouldRenderPhaseRail(summary.status) ? ` story-card--active story-card--phase-${escapeHtmlAttr(summary.currentPhase)} story-card--status-${escapeHtmlAttr(phaseRailStatus(summary.status))}` : ""}" type="button" ${isDroppedView ? "disabled" : `data-command="openWorkflow" data-us-id="${escapeHtmlAttr(summary.usId)}"`}>
+      <button class="story-card${shouldRenderPhaseRail(summary.status) ? ` story-card--active story-card--phase-${escapeHtmlAttr(summary.currentPhase)} story-card--status-${escapeHtmlAttr(phaseRailStatus(summary.status))}` : ""}" type="button" data-command="openWorkflow" data-us-id="${escapeHtmlAttr(summary.usId)}">
         ${shouldRenderPhaseRail(summary.status)
           ? `
             <span class="story-card__phase-rail" aria-hidden="true">

@@ -370,6 +370,29 @@ test("buildSidebarHtml wires user story row actions to selectable commands", () 
   assert.doesNotMatch(html, /<button class="action-menu__item" type="button" role="menuitem" disabled>\s+<span class="action-menu__item-icon" aria-hidden="true">✎<\/span>\s+<span>Edit US info<\/span>/);
 });
 
+test("buildSidebarHtml keeps dropped story cards selectable", () => {
+  const html = buildSidebarHtml(model({
+    activeWorkflowUsId: "US-0011",
+    showDroppedUserStories: true,
+    categories: ["workflow"],
+    userStories: [{
+      usId: "US-0011",
+      title: "Dropped workflow",
+      category: "workflow",
+      currentPhase: "capture",
+      status: "active",
+      mainArtifactPath: "/tmp/us.md",
+      directoryPath: "/tmp/us.US-0011",
+      workBranch: null
+    }]
+  }));
+
+  assert.match(html, /Dropped backlog/);
+  assert.match(html, /story-row--selected/);
+  assert.match(html, /class="story-card[^"]*" type="button" data-command="openWorkflow" data-us-id="US-0011"/);
+  assert.doesNotMatch(html, /<button class="story-card[^"]*" type="button" disabled>/);
+});
+
 test("buildSidebarHtml raises the active story row above neighboring cards while its menu is open", () => {
   const html = buildSidebarHtml(model({
     categories: ["workflow"],
