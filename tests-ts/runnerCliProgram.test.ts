@@ -97,6 +97,8 @@ test("CLI workflow portal payload includes sidebar stories and configuration URL
   assert.match(source, /fetch\("api\/settings"/);
   assert.doesNotMatch(source, /fetch\("\/api\/settings"/);
   assert.match(source, /Path = "\/configuration"/);
+  assert.match(source, /<span class="runtime-version">v\.__RUNTIME_VERSION__<\/span>/);
+  assert.match(source, /Replace\("__RUNTIME_VERSION__", WebUtility\.HtmlEncode\(GetRuntimeVersion\(\) \?\? "unknown"\), StringComparison\.Ordinal\)/);
   assert.match(source, /<button class="tab-button"[\s\S]*?data-tab-target="providers">Models<\/button>/);
   assert.match(source, /<button class="tab-button"[\s\S]*?data-tab-target="advanced">Client Basics<\/button>/);
   assert.match(source, /<button class="tab-button"[\s\S]*?data-tab-target="central">SpecForge Central<\/button>/);

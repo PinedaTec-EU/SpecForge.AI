@@ -849,6 +849,8 @@ static string BuildConfigurationPortalHtml() =>
         button.secondary { background: #1d4f7a; }
         button.danger { background: #8f2f38; }
         .lead { margin: 0; color: #9fb0c1; }
+        .title-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+        .runtime-version { color: #7f8da0; font-size: 0.95rem; font-weight: 600; }
         .section-copy { margin: -4px 0 4px; color: #9fb0c1; line-height: 1.45; max-width: 78ch; }
         .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
         .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 22px; border-bottom: 1px solid #253447; }
@@ -877,7 +879,10 @@ static string BuildConfigurationPortalHtml() =>
     </head>
     <body>
       <main>
-        <h1>SpecForge Configuration</h1>
+        <div class="title-row">
+          <h1>SpecForge Configuration</h1>
+          <span class="runtime-version">v.__RUNTIME_VERSION__</span>
+        </div>
         <p class="lead">Configure the CLI-served workflow runtime for Codex without depending on the Visual Studio configuration surface.</p>
         <form id="settings-form">
           <nav class="tabs" aria-label="Configuration sections">
@@ -1377,7 +1382,7 @@ static string BuildConfigurationPortalHtml() =>
       </script>
     </body>
     </html>
-    """;
+    """.Replace("__RUNTIME_VERSION__", WebUtility.HtmlEncode(GetRuntimeVersion() ?? "unknown"), StringComparison.Ordinal);
 
 internal sealed record ApprovalAnswerSuggestionRequest(string Question, string? Actor);
 
