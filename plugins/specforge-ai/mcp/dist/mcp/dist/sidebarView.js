@@ -58,6 +58,7 @@ class SidebarViewProvider {
     showCreateForm = false;
     busyMessage = null;
     activeWorkflowUsId = null;
+    showDroppedUserStories = false;
     createFileMode = "context";
     createFiles = [];
     createReferenceScanVersion = 0;
@@ -163,6 +164,12 @@ class SidebarViewProvider {
                 }
                 await this.dropUserStoryAsync(message.usId);
                 return;
+            case "recoverUserStory":
+                if (!message.usId) {
+                    return;
+                }
+                await this.recoverUserStoryAsync(message.usId);
+                return;
             case "resetUserStoryToCapture":
                 if (!message.usId) {
                     return;
@@ -180,6 +187,10 @@ class SidebarViewProvider {
                     return;
                 }
                 await this.toggleStarredUserStoryAsync(message.usId);
+                return;
+            case "toggleDroppedUserStories":
+                this.showDroppedUserStories = !this.showDroppedUserStories;
+                await this.safeRenderAsync();
                 return;
             case "initializeRepoPrompts":
                 await this.runBusyActionAsync("Exporting prompt templates...", async () => {
@@ -288,7 +299,7 @@ class SidebarViewProvider {
             (0, outputChannel_1.appendSpecForgeLog)(`Drop US for '${usId}' was cancelled by the user.`);
             return;
         }
-        const storiesRoot = path.join(workspaceRoot, ".specs", "us") + path.sep;
+        const storiesRoot = path.resolve(workspaceRoot, ".specs", "us") + path.sep;
         const targetPath = path.resolve(summary.directoryPath);
         if (!targetPath.startsWith(storiesRoot)) {
             void vscode.window.showErrorMessage(`Refusing to drop '${usId}' because its path is outside .specs/us.`);
@@ -303,6 +314,29 @@ class SidebarViewProvider {
             }
             await this.onDidCreateUserStory();
             void vscode.window.showInformationMessage(`${usId} dropped.`);
+        });
+    }
+    async recoverUserStoryAsync(usId) {
+        const workspaceRoot = getWorkspaceRoot();
+        if (!workspaceRoot) {
+            return;
+        }
+        const summary = await (0, specsExplorer_1.getOrCreateBackendClient)(workspaceRoot).getUserStorySummary(usId);
+        const confirmation = await vscode.window.showWarningMessage(`Recover ${usId}? It will appear again in the active SpecForge panel.`, { modal: true, detail: summary.directoryPath }, "Recover US");
+        if (confirmation !== "Recover US") {
+            (0, outputChannel_1.appendSpecForgeLog)(`Recover US for '${usId}' was cancelled by the user.`);
+            return;
+        }
+        const storiesRoot = path.resolve(workspaceRoot, ".specs", "us") + path.sep;
+        const targetPath = path.resolve(summary.directoryPath);
+        if (!targetPath.startsWith(storiesRoot)) {
+            void vscode.window.showErrorMessage(`Refusing to recover '${usId}' because its path is outside .specs/us.`);
+            return;
+        }
+        await this.runBusyActionAsync(`Recovering ${usId}...`, async () => {
+            await fs.promises.rm(path.join(targetPath, ".dropped"), { force: true });
+            await this.onDidCreateUserStory();
+            void vscode.window.showInformationMessage(`${usId} recovered.`);
         });
     }
     async resetUserStoryToCaptureAsync(usId) {
@@ -504,6 +538,8 @@ class SidebarViewProvider {
                 activeWorkflowUsId: this.activeWorkflowUsId,
                 runtimeVersion,
                 viewMode: settings.userStoryListViewMode ?? "category",
+                showDroppedUserStories: this.showDroppedUserStories,
+                droppedUserStoryCount: 0,
                 createFileMode: this.createFileMode,
                 createFiles: this.createFiles,
                 createFormResetToken: this.createFormResetToken,
@@ -515,9 +551,13 @@ class SidebarViewProvider {
         }
         const hasPersistedStories = await hasPersistedUserStoriesAsync(workspaceRoot);
         (0, outputChannel_1.appendSpecForgeLog)(`Sidebar persisted user story probe for '${workspaceRoot}': ${hasPersistedStories}.`);
+        const backendClient = (0, specsExplorer_1.getOrCreateBackendClient)(workspaceRoot);
         const userStories = hasPersistedStories
-            ? await (0, specsExplorer_1.getOrCreateBackendClient)(workspaceRoot).listUserStories()
+            ? await backendClient.listUserStories(this.showDroppedUserStories ? "dropped" : "active")
             : [];
+        const droppedUserStoryCount = hasPersistedStories
+            ? (this.showDroppedUserStories ? userStories.length : (await backendClient.listUserStories("dropped")).length)
+            : 0;
         const categories = await getUserStoryCategoriesAsync(workspaceRoot);
         const promptsStatus = await (0, repoPromptsStatus_1.getRepoPromptsStatusAsync)(workspaceRoot);
         const settings = (0, extensionSettings_1.getSpecForgeSettings)();
@@ -542,6 +582,8 @@ class SidebarViewProvider {
             activeWorkflowUsId: this.activeWorkflowUsId,
             runtimeVersion,
             viewMode: settings.userStoryListViewMode ?? "category",
+            showDroppedUserStories: this.showDroppedUserStories,
+            droppedUserStoryCount,
             createFileMode: this.createFileMode,
             createFiles: this.createFiles,
             createFormResetToken: this.createFormResetToken,
@@ -570,6 +612,8 @@ class SidebarViewProvider {
                 activeWorkflowUsId: this.activeWorkflowUsId,
                 runtimeVersion: await (0, runtimeVersion_1.readRuntimeVersionAsync)(),
                 viewMode: (0, extensionSettings_1.getSpecForgeSettings)().userStoryListViewMode ?? "category",
+                showDroppedUserStories: this.showDroppedUserStories,
+                droppedUserStoryCount: 0,
                 createFileMode: this.createFileMode,
                 createFiles: this.createFiles,
                 createFormResetToken: this.createFormResetToken,

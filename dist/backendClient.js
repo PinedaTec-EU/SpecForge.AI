@@ -95,12 +95,13 @@ class StdioMcpBackendClient {
             }
         });
     }
-    async listUserStories() {
-        (0, outputChannel_1.appendSpecForgeLog)(`Listing user stories for workspace '${this.workspaceRoot}'.`);
+    async listUserStories(visibility = "active") {
+        (0, outputChannel_1.appendSpecForgeLog)(`Listing ${visibility} user stories for workspace '${this.workspaceRoot}'.`);
         const result = await this.callTool("list_user_stories", {
-            workspaceRoot: this.workspaceRoot
+            workspaceRoot: this.workspaceRoot,
+            visibility
         });
-        (0, outputChannel_1.appendSpecForgeLog)(`list_user_stories returned ${result.items.length} item(s) for '${this.workspaceRoot}': ${result.items.map((item) => `${item.usId}@${item.category}`).join(", ") || "none"}.`);
+        (0, outputChannel_1.appendSpecForgeLog)(`list_user_stories(${visibility}) returned ${result.items.length} item(s) for '${this.workspaceRoot}': ${result.items.map((item) => `${item.usId}@${item.category}`).join(", ") || "none"}.`);
         return result.items;
     }
     async getUserStorySummary(usId) {

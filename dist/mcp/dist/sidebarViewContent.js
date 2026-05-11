@@ -25,6 +25,26 @@ function buildSidebarHtml(model) {
         ? buildPromptsBootstrapMarkup(model.userStories.length === 0, model.promptsMessage ?? null)
         : "";
     if (model.userStories.length === 0 && !model.showCreateForm) {
+        if (model.showDroppedUserStories) {
+            return wrapHtml(`
+        ${busyIndicatorMarkup}
+        ${buildSettingsWarningMarkup(model)}
+        ${promptsBootstrapMarkup}
+        <section class="story-list">
+          <div class="section-header">
+            <div>
+              <div class="panel-caption">
+                <p class="eyebrow">Dropped User Stories</p>
+                ${buildRuntimeVersionMarkup(model.runtimeVersion)}
+              </div>
+              <h2>No dropped user stories</h2>
+            </div>
+            ${buildCompactActions(model)}
+          </div>
+          <p class="copy story-list__empty">Dropped user stories will appear here when they are marked as deleted.</p>
+        </section>
+      `, isBusy, model.createFormResetToken ?? 0, model.typographyCssVars ?? "");
+        }
         return wrapHtml(`
       ${busyIndicatorMarkup}
       ${buildSettingsWarningMarkup(model)}
@@ -39,6 +59,7 @@ function buildSidebarHtml(model) {
             <h1>Create your first user story</h1>
           </div>
           <div class="compact-actions">
+            ${buildDroppedStoriesActionButton(model.showDroppedUserStories, model.droppedUserStoryCount)}
             ${buildExecutionSettingsActionButton()}
           </div>
         </div>
@@ -53,7 +74,7 @@ function buildSidebarHtml(model) {
     const storiesMarkup = storySections.map((section) => `
     <section class="story-group${section.heading ? "" : " story-group--flat"}">
       ${section.heading ? `<div class="group-header">${(0, htmlEscape_1.escapeHtml)(section.heading)}</div>` : ""}
-      ${section.items.map((summary) => buildStoryRowMarkup(summary, model.starredUserStoryId, model.activeWorkflowUsId)).join("")}
+      ${section.items.map((summary) => buildStoryRowMarkup(summary, model.starredUserStoryId, model.activeWorkflowUsId, model.showDroppedUserStories)).join("")}
     </section>
   `).join("");
     const formMarkup = model.showCreateForm
@@ -262,15 +283,15 @@ function buildSidebarHtml(model) {
       <div class="section-header">
         <div>
           <div class="panel-caption">
-            <p class="eyebrow">User Stories</p>
+            <p class="eyebrow">${model.showDroppedUserStories ? "Dropped User Stories" : "User Stories"}</p>
             ${buildRuntimeVersionMarkup(model.runtimeVersion)}
           </div>
-          <h2>${model.viewMode === "phase" ? "Workflow backlog by phase" : "Workflow backlog"}</h2>
+          <h2>${model.showDroppedUserStories ? "Dropped backlog" : model.viewMode === "phase" ? "Workflow backlog by phase" : "Workflow backlog"}</h2>
         </div>
         ${buildCompactActions(model)}
       </div>
       ${buildStorySearchMarkup()}
-      ${storiesMarkup || "<p class=\"copy story-list__empty\">Create or import a user story to start the workflow.</p>"}
+      ${storiesMarkup || `<p class="copy story-list__empty">${model.showDroppedUserStories ? "No dropped user stories to recover." : "Create or import a user story to start the workflow."}</p>`}
       <p class="copy story-list__empty" data-story-search-empty hidden>No user stories match this search.</p>
     </section>
   `, isBusy, model.createFormResetToken ?? 0, model.typographyCssVars ?? "");
@@ -375,10 +396,27 @@ function buildExecutionSettingsActionButton() {
 function buildCompactActions(model) {
     return `
     <div class="compact-actions">
-      ${buildCreateActionButton(model.promptsInitialized)}
+      ${buildDroppedStoriesActionButton(model.showDroppedUserStories, model.droppedUserStoryCount)}
+      ${model.showDroppedUserStories ? "" : buildCreateActionButton(model.promptsInitialized)}
       ${buildExecutionSettingsActionButton()}
       ${buildPromptMenu(model.promptsInitialized)}
     </div>
+  `;
+}
+function buildDroppedStoriesActionButton(showDroppedUserStories, droppedUserStoryCount) {
+    const title = showDroppedUserStories
+        ? "Show active user stories"
+        : droppedUserStoryCount > 0
+            ? `Show dropped user stories (${droppedUserStoryCount})`
+            : "Show dropped user stories";
+    return `
+    <button
+      class="icon-action${showDroppedUserStories ? " icon-action--active" : ""}"
+      data-command="toggleDroppedUserStories"
+      title="${(0, htmlEscape_1.escapeHtmlAttr)(title)}"
+      aria-label="${(0, htmlEscape_1.escapeHtmlAttr)(title)}">
+      <span aria-hidden="true">${showDroppedUserStories ? "↩" : "⊘"}</span>
+    </button>
   `;
 }
 function buildPromptsBootstrapMarkup(isFirstRun, promptsMessage) {
@@ -584,6 +622,10 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
     .icon-action:hover {
       background: rgba(114, 241, 184, 0.12);
       border-color: rgba(114, 241, 184, 0.34);
+    }
+    .icon-action--active {
+      background: rgba(114, 241, 184, 0.16);
+      border-color: rgba(114, 241, 184, 0.44);
     }
     .icon-action--danger {
       color: #ff9b9b;
@@ -1775,8 +1817,8 @@ function sortStoriesByPhase(items) {
         return left.usId.localeCompare(right.usId);
     });
 }
-function buildStoryRowMarkup(summary, starredUserStoryId, activeWorkflowUsId) {
-    const isActiveWorkflow = activeWorkflowUsId === summary.usId;
+function buildStoryRowMarkup(summary, starredUserStoryId, activeWorkflowUsId, isDroppedView) {
+    const isActiveWorkflow = !isDroppedView && activeWorkflowUsId === summary.usId;
     const statusTone = phaseRailStatus(summary.status);
     const displayTitle = buildStoryDisplayTitle(summary);
     const searchText = [
@@ -1789,7 +1831,7 @@ function buildStoryRowMarkup(summary, starredUserStoryId, activeWorkflowUsId) {
     ].join(" ");
     return `
     <div class="story-row story-row--shell story-row--status-${(0, htmlEscape_1.escapeHtmlAttr)(statusTone)}${isActiveWorkflow ? " story-row--selected" : ""}" data-story-search-text="${(0, htmlEscape_1.escapeHtmlAttr)(searchText)}">
-      <button class="story-card${shouldRenderPhaseRail(summary.status) ? ` story-card--active story-card--phase-${(0, htmlEscape_1.escapeHtmlAttr)(summary.currentPhase)} story-card--status-${(0, htmlEscape_1.escapeHtmlAttr)(phaseRailStatus(summary.status))}` : ""}" type="button" data-command="openWorkflow" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}">
+      <button class="story-card${shouldRenderPhaseRail(summary.status) ? ` story-card--active story-card--phase-${(0, htmlEscape_1.escapeHtmlAttr)(summary.currentPhase)} story-card--status-${(0, htmlEscape_1.escapeHtmlAttr)(phaseRailStatus(summary.status))}` : ""}" type="button" ${isDroppedView ? "disabled" : `data-command="openWorkflow" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}"`}>
         ${shouldRenderPhaseRail(summary.status)
         ? `
             <span class="story-card__phase-rail" aria-hidden="true">
@@ -1807,8 +1849,7 @@ function buildStoryRowMarkup(summary, starredUserStoryId, activeWorkflowUsId) {
         <button
           class="icon-action story-star${starredUserStoryId === summary.usId ? " story-star--active" : ""}"
           type="button"
-          data-command="toggleStarredUserStory"
-          data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}"
+          ${isDroppedView ? "disabled" : `data-command="toggleStarredUserStory" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}"`}
           title="${(0, htmlEscape_1.escapeHtmlAttr)(starredUserStoryId === summary.usId ? `Unstar ${summary.usId}` : `Star ${summary.usId}`)}"
           aria-label="${(0, htmlEscape_1.escapeHtmlAttr)(starredUserStoryId === summary.usId ? `Unstar ${summary.usId}` : `Star ${summary.usId}`)}">
           <span aria-hidden="true">${starredUserStoryId === summary.usId ? "★" : "☆"}</span>
@@ -1825,22 +1866,27 @@ function buildStoryRowMarkup(summary, starredUserStoryId, activeWorkflowUsId) {
             <span aria-hidden="true">☰</span>
           </button>
           <div class="action-menu__panel" data-action-menu-panel role="menu" hidden>
-            <button class="action-menu__item" type="button" data-command="openMainArtifact" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}" role="menuitem">
+            <button class="action-menu__item" type="button" ${isDroppedView ? "disabled" : `data-command="openMainArtifact" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}"`} role="menuitem">
               <span class="action-menu__item-icon" aria-hidden="true">✎</span>
               <span>Edit US info</span>
             </button>
-            <button class="action-menu__item" type="button" data-command="analyzeRepairUserStory" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}" role="menuitem">
-              <span class="action-menu__item-icon" aria-hidden="true">⌕</span>
-              <span>Analyze / Repair</span>
-            </button>
-            <button class="action-menu__item action-menu__item--danger" type="button" data-command="resetUserStoryToCapture" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}" role="menuitem">
-              <span class="action-menu__item-icon" aria-hidden="true">↤</span>
-              <span>Reset workflow</span>
-            </button>
-            <button class="action-menu__item action-menu__item--danger" type="button" data-command="dropUserStory" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}" role="menuitem">
-              <span class="action-menu__item-icon" aria-hidden="true">⊘</span>
-              <span>Drop US</span>
-            </button>
+            ${isDroppedView
+        ? `<button class="action-menu__item" type="button" data-command="recoverUserStory" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}" role="menuitem">
+                  <span class="action-menu__item-icon" aria-hidden="true">↩</span>
+                  <span>Recover US</span>
+                </button>`
+        : `<button class="action-menu__item" type="button" data-command="analyzeRepairUserStory" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}" role="menuitem">
+                  <span class="action-menu__item-icon" aria-hidden="true">⌕</span>
+                  <span>Analyze / Repair</span>
+                </button>
+                <button class="action-menu__item action-menu__item--danger" type="button" data-command="resetUserStoryToCapture" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}" role="menuitem">
+                  <span class="action-menu__item-icon" aria-hidden="true">↤</span>
+                  <span>Reset workflow</span>
+                </button>
+                <button class="action-menu__item action-menu__item--danger" type="button" data-command="dropUserStory" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}" role="menuitem">
+                  <span class="action-menu__item-icon" aria-hidden="true">⊘</span>
+                  <span>Drop US</span>
+                </button>`}
             <button class="action-menu__item action-menu__item--danger" type="button" data-command="deleteUserStory" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}" role="menuitem">
               <span class="action-menu__item-icon" aria-hidden="true">🗑</span>
               <span>Delete</span>
