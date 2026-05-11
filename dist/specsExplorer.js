@@ -44,7 +44,6 @@ exports.continuePhase = continuePhase;
 exports.approveCurrentPhase = approveCurrentPhase;
 exports.requestRegression = requestRegression;
 exports.restartUserStoryFromSource = restartUserStoryFromSource;
-exports.deleteUserStory = deleteUserStory;
 exports.getOrCreateBackendClient = getOrCreateBackendClient;
 exports.requestBackendClientReset = requestBackendClientReset;
 exports.applyPendingBackendClientReset = applyPendingBackendClientReset;
@@ -60,7 +59,6 @@ const outputChannel_1 = require("./outputChannel");
 const phaseCommitNotification_1 = require("./phaseCommitNotification");
 const utils_1 = require("./utils");
 const userActor_1 = require("./userActor");
-const workflowPanel_1 = require("./workflowPanel");
 const explorerModel_1 = require("./explorerModel");
 const repoPromptsStatus_1 = require("./repoPromptsStatus");
 const backendClients = new Map();
@@ -440,36 +438,6 @@ async function restartUserStoryFromSource(summary) {
             await openTextDocument(result.generatedArtifactPath);
         }
         void vscode.window.showInformationMessage(`${summary.usId} restarted from source at ${result.currentPhase} with status ${result.status}.`);
-    }
-    catch (error) {
-        void vscode.window.showErrorMessage((0, utils_1.asErrorMessage)(error));
-    }
-}
-async function deleteUserStory(summary) {
-    if (!summary) {
-        void vscode.window.showInformationMessage("Select a user story first.");
-        return;
-    }
-    const workspaceRoot = getWorkspaceRoot();
-    if (!workspaceRoot) {
-        void vscode.window.showWarningMessage("Open a workspace folder before deleting a user story.");
-        return;
-    }
-    const confirmLabel = "Delete User Story";
-    const selection = await vscode.window.showWarningMessage(`Delete ${summary.usId}? This removes its files and timeline from .specs/us.`, { modal: true, detail: summary.directoryPath }, confirmLabel);
-    if (selection !== confirmLabel) {
-        return;
-    }
-    const storiesRoot = path.join(workspaceRoot, ".specs", "us") + path.sep;
-    const targetPath = path.resolve(summary.directoryPath);
-    if (!targetPath.startsWith(storiesRoot)) {
-        void vscode.window.showErrorMessage(`Refusing to delete '${summary.usId}' because its path is outside .specs/us.`);
-        return;
-    }
-    try {
-        (0, workflowPanel_1.closeWorkflowView)(workspaceRoot, summary.usId);
-        await fs.promises.rm(targetPath, { recursive: true, force: false });
-        void vscode.window.showInformationMessage(`${summary.usId} deleted.`);
     }
     catch (error) {
         void vscode.window.showErrorMessage((0, utils_1.asErrorMessage)(error));

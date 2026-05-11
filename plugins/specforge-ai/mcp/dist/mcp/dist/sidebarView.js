@@ -152,12 +152,6 @@ class SidebarViewProvider {
                 }
                 await this.openMainArtifactAsync(message.usId);
                 return;
-            case "deleteUserStory":
-                if (!message.usId) {
-                    return;
-                }
-                await this.deleteUserStoryAsync(message.usId);
-                return;
             case "dropUserStory":
                 if (!message.usId) {
                     return;
@@ -274,19 +268,6 @@ class SidebarViewProvider {
         }
         const summary = await (0, specsExplorer_1.getOrCreateBackendClient)(workspaceRoot).getUserStorySummary(usId);
         await vscode.commands.executeCommand("specForge.openMainArtifact", summary);
-    }
-    async deleteUserStoryAsync(usId) {
-        const workspaceRoot = getWorkspaceRoot();
-        if (!workspaceRoot) {
-            return;
-        }
-        const summary = await (0, specsExplorer_1.getOrCreateBackendClient)(workspaceRoot).getUserStorySummary(usId);
-        await vscode.commands.executeCommand("specForge.deleteUserStory", summary);
-        const preferences = await (0, userWorkspacePreferences_1.readUserWorkspacePreferences)(workspaceRoot);
-        if (preferences.starredUserStoryId === usId) {
-            await (0, userWorkspacePreferences_1.setStarredUserStory)(workspaceRoot, null);
-        }
-        await this.onDidCreateUserStory();
     }
     async dropUserStoryAsync(usId) {
         const workspaceRoot = getWorkspaceRoot();

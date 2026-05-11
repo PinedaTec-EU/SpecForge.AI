@@ -271,7 +271,6 @@ function createExtensionActions(explorerProvider, sidebarProvider, workflowAudit
         approveCurrentPhase: specsExplorer_1.approveCurrentPhase,
         requestRegression: specsExplorer_1.requestRegression,
         restartUserStoryFromSource: specsExplorer_1.restartUserStoryFromSource,
-        deleteUserStory: specsExplorer_1.deleteUserStory,
         continuePhase: async (summary) => {
             const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
             if (workspaceRoot
