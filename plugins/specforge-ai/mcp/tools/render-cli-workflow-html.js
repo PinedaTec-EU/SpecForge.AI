@@ -277,7 +277,7 @@ function buildCliSidebarHtml(items, options) {
     starredUserStoryId: null,
     activeWorkflowUsId: workflow.usId,
     runtimeVersion: null,
-    viewMode: "phase",
+    viewMode: "category",
     showDroppedUserStories: options.showDroppedUserStories,
     showCompletedUserStories: options.showCompletedUserStories,
     showBlockedUserStories: options.showBlockedUserStories,
