@@ -8267,8 +8267,11 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
 }
 function buildWorkflowTagTokens(tags) {
     return tags
-        .map((tag) => `<span class="token token--tag">${(0, htmlEscape_1.escapeHtml)(tag)}</span>`)
+        .map((tag) => `<span class="token token--tag">${(0, htmlEscape_1.escapeHtml)(formatWorkflowTagLabel(tag))}</span>`)
         .join("");
+}
+function formatWorkflowTagLabel(tag) {
+    return `#${tag}`;
 }
 function buildPhaseGraph(workflow, state, selectedPhaseId, playbackState, effectiveExecutionPhaseId) {
     const executionPhaseId = playbackState === "playing" ? effectiveExecutionPhaseId : null;
