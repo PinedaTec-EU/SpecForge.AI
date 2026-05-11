@@ -190,7 +190,8 @@ public sealed class SpecForgeApplicationService
 
         foreach (var directory in directories.OrderBy(static directory => directory, StringComparer.Ordinal))
         {
-            if (!File.Exists(new UserStoryFilePaths(directory).StateFilePath))
+            var paths = new UserStoryFilePaths(directory);
+            if (!File.Exists(paths.StateFilePath) || File.Exists(paths.DroppedMarkerFilePath))
             {
                 continue;
             }
