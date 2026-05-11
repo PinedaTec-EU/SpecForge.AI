@@ -2,7 +2,7 @@
 
 ## Metadata
 - Kind: `feature`
-- Category: `workflow`
+- Category: `documentation`
 
 ## Objective
 As a SpecForge maintainer, I want documentation screenshots based on a realistic workflow state so readers can understand phase status, checkpoints, model routing, and playback without relying on stale synthetic images.

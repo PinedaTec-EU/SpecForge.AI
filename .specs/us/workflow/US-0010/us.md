@@ -2,7 +2,7 @@
 
 ## Metadata
 - Kind: `feature`
-- Category: `workflow`
+- Category: `integrations`
 
 ## Objective
 As a platform or engineering lead using SpecForge with AI coding agents, I want repository-local SpecForge workflow truth to connect to external issue and pull request systems, so chat does not become the only bridge between approved intent, generated code, review evidence, and delivery records.

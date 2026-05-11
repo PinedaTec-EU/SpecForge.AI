@@ -1,6 +1,6 @@
 ﻿usId: US-DOC-001
 kind: feature
-category: workflow
+category: documentation
 baseBranch: main
 workBranch: feature/us-doc-001-workflow-screenshots
 status: active

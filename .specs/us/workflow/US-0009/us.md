@@ -2,7 +2,7 @@
 
 ## Metadata
 - Kind: `feature`
-- Category: `workflow`
+- Category: `repositories`
 
 ## Objective
 # SpecForge · Managed repositories user story

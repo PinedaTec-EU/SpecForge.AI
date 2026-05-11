@@ -16,6 +16,11 @@ public sealed class RepositoryCategoryCatalogTests : IDisposable
 
         Assert.Contains("workflow", categories);
         Assert.Contains("branching", categories);
+        Assert.Contains("configuration", categories);
+        Assert.Contains("synchronization", categories);
+        Assert.Contains("user-stories", categories);
+        Assert.Contains("repositories", categories);
+        Assert.Contains("documentation", categories);
     }
 
     [Fact]

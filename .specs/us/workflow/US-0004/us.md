@@ -2,7 +2,7 @@
 
 ## Metadata
 - Kind: `feature`
-- Category: `workflow`
+- Category: `synchronization`
 
 ## Objective
 ## SpecForge Goal Intake

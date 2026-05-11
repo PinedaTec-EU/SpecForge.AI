@@ -165,6 +165,11 @@ public sealed class RepositoryPromptInitializer
         promptManifest: .specs/prompts/prompts.yaml
         categories:
           - workflow
+          - configuration
+          - synchronization
+          - user-stories
+          - repositories
+          - documentation
           - ux
           - prompts
           - mcp

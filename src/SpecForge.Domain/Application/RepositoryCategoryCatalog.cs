@@ -9,6 +9,11 @@ public sealed class RepositoryCategoryCatalog
     private static readonly IReadOnlyList<string> DefaultCategories =
     [
         "workflow",
+        "configuration",
+        "synchronization",
+        "user-stories",
+        "repositories",
+        "documentation",
         "ux",
         "prompts",
         "mcp",
