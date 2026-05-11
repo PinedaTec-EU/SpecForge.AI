@@ -573,6 +573,13 @@ static async Task<object> HandleSpecForgeActionAsync(
             GetRequired(parameters, "category"),
             GetOptional(parameters, "actor") ?? "user",
             GetOptionalStringArray(parameters, "tags")),
+        "update_user_story_info" => await applicationService.UpdateUserStoryInfoAsync(
+            workspaceRoot,
+            GetRequired(arguments, "usId"),
+            GetOptional(parameters, "title"),
+            GetOptional(parameters, "kind"),
+            GetOptional(parameters, "category"),
+            GetNullableStringArray(parameters, "tags")),
         "advance_phase" => await applicationService.GenerateNextPhaseAsync(
             workspaceRoot,
             GetRequired(arguments, "usId"),
@@ -739,6 +746,16 @@ static string[] GetOptionalStringArray(JsonObject arguments, string key)
     if (arguments[key] is null)
     {
         return [];
+    }
+
+    return GetStringArray(arguments, key);
+}
+
+static string[]? GetNullableStringArray(JsonObject arguments, string key)
+{
+    if (arguments[key] is null)
+    {
+        return null;
     }
 
     return GetStringArray(arguments, key);

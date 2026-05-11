@@ -13,7 +13,7 @@ test("MCP compact facades expose enum constrained operations", async () => {
   assert.match(source, /"query",\s*EnumProp\("Read operation\."/);
   assert.match(source, /"list_user_stories", "summary", "workflow", "current_phase", "runtime_status", "lineage", "files"/);
   assert.match(source, /"action",\s*EnumProp\("Mutation operation\./);
-  assert.match(source, /"create_user_story", "create_user_stories_from_goal", "import_user_story", "advance_phase"/);
+  assert.match(source, /"create_user_story", "create_user_stories_from_goal", "import_user_story", "update_user_story_info", "advance_phase"/);
   assert.match(source, /"operation",\s*EnumProp\("Prompt operation\.", "initialize_repo_prompts", "export_prompt_template"\)/);
   assert.match(source, /Tool\("open_workflow_portal"/);
   assert.match(packageJson, /dotnet publish src\/SpecForge\.Runner\.Cli\/SpecForge\.Runner\.Cli\.csproj/);

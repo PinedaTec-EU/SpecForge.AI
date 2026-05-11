@@ -8,6 +8,7 @@ public sealed class SpecForgeApplicationService
 {
     private const string DependencyBlockingReason = "dependency_not_completed";
     private const string MissingDependencyReason = "missing";
+    private const string MetadataHeading = "## Metadata";
 
     private static readonly Regex UserStoryIdRegex = new(
         pattern: "\\bUS-[A-Z0-9]+(?:-[A-Z0-9]+)*\\b",
@@ -189,6 +190,36 @@ public sealed class SpecForgeApplicationService
     {
         var sourceText = await File.ReadAllTextAsync(sourcePath, cancellationToken);
         return await CreateUserStoryAsync(workspaceRoot, usId, title, kind, category, sourceText, actor, tags, cancellationToken);
+    }
+
+    public async Task<UpdateUserStoryInfoResult> UpdateUserStoryInfoAsync(
+        string workspaceRoot,
+        string usId,
+        string? title = null,
+        string? kind = null,
+        string? category = null,
+        IReadOnlyCollection<string>? tags = null,
+        CancellationToken cancellationToken = default)
+    {
+        var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, usId);
+        var workflowRun = await fileStore.LoadAsync(paths.RootDirectory, cancellationToken);
+        var metadata = await WorkflowRunner.ReadUserStoryMetadataAsync(paths.MainArtifactPath, workflowRun.UsId, cancellationToken);
+        var nextTitle = NormalizeOptionalScalar(title) ?? metadata.Title;
+        var nextKind = NormalizeOptionalScalar(kind)?.ToLowerInvariant() ?? metadata.Kind;
+        var nextCategory = NormalizeOptionalScalar(category)?.ToLowerInvariant() ?? metadata.Category;
+        var nextTags = tags is null
+            ? metadata.Tags
+            : WorkflowRunner.NormalizeUserStoryTags(tags);
+
+        ValidateUserStoryKind(nextKind);
+        repositoryCategoryCatalog.EnsureCategoryIsAllowed(workspaceRoot, nextCategory);
+
+        var content = await File.ReadAllTextAsync(paths.MainArtifactPath, cancellationToken);
+        var updated = RewriteUserStoryInfo(content, workflowRun.UsId, nextTitle, nextKind, nextCategory, nextTags);
+        await File.WriteAllTextAsync(paths.MainArtifactPath, updated, cancellationToken);
+
+        var summary = await GetUserStorySummaryAsync(workspaceRoot, workflowRun.UsId, cancellationToken);
+        return new UpdateUserStoryInfoResult(workflowRun.UsId, paths.MainArtifactPath, summary);
     }
 
     public async Task<IReadOnlyCollection<UserStorySummary>> ListUserStoriesAsync(
@@ -1096,6 +1127,70 @@ public sealed class SpecForgeApplicationService
         IReadOnlyCollection<UserStoryDependencySummary> dependencies) =>
         workflowStatus != UserStoryStatus.Completed
         && dependencies.Any(static dependency => !dependency.IsSatisfied);
+
+    private static string? NormalizeOptionalScalar(string? value)
+    {
+        var normalized = value?.Trim();
+        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+    }
+
+    private static void ValidateUserStoryKind(string kind)
+    {
+        if (kind is not ("feature" or "bug" or "hotfix"))
+        {
+            throw new WorkflowDomainException($"Unsupported user story kind '{kind}'.");
+        }
+    }
+
+    private static string RewriteUserStoryInfo(
+        string markdown,
+        string usId,
+        string title,
+        string kind,
+        string category,
+        IReadOnlyCollection<string> tags)
+    {
+        var lines = markdown.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n').ToList();
+        if (lines.Count == 0 || !lines[0].StartsWith("# ", StringComparison.Ordinal))
+        {
+            throw new WorkflowDomainException("User story heading was not found.");
+        }
+
+        lines[0] = $"# {usId} · {title}";
+        var metadataIndex = lines.FindIndex(static line => line.Equals(MetadataHeading, StringComparison.OrdinalIgnoreCase));
+        if (metadataIndex < 0)
+        {
+            throw new WorkflowDomainException("User story metadata section was not found.");
+        }
+
+        var endIndex = lines.Count;
+        for (var index = metadataIndex + 1; index < lines.Count; index++)
+        {
+            if (lines[index].StartsWith("## ", StringComparison.Ordinal))
+            {
+                endIndex = index;
+                break;
+            }
+        }
+
+        var metadataLines = new List<string>
+        {
+            MetadataHeading,
+            $"- Kind: `{kind}`",
+            $"- Category: `{category}`"
+        };
+
+        if (tags.Count > 0)
+        {
+            metadataLines.Add($"- Tags: {string.Join(", ", tags.Select(static tag => $"`{tag}`"))}");
+        }
+
+        metadataLines.Add(string.Empty);
+        lines.RemoveRange(metadataIndex, endIndex - metadataIndex);
+        lines.InsertRange(metadataIndex, metadataLines);
+
+        return string.Join('\n', lines).TrimEnd() + Environment.NewLine;
+    }
 
     private static async Task<string> ReadTitleAsync(string filePath, CancellationToken cancellationToken)
     {

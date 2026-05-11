@@ -74,6 +74,7 @@ public sealed class McpToolRegistryTests
             .ToArray();
 
         Assert.Contains("create_user_stories_from_goal", actionEnum!);
+        Assert.Contains("update_user_story_info", actionEnum!);
     }
 
     [Fact]

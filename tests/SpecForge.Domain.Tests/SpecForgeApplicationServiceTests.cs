@@ -48,6 +48,40 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task UpdateUserStoryInfoAsync_RewritesMetadataAndPreservesBody()
+    {
+        var applicationService = new SpecForgeApplicationService();
+        await applicationService.CreateUserStoryAsync(
+            workspaceRoot,
+            "US-0001",
+            "Original story",
+            "feature",
+            "workflow",
+            "Initial source",
+            tags: ["workflow"]);
+
+        var result = await applicationService.UpdateUserStoryInfoAsync(
+            workspaceRoot,
+            "US-0001",
+            title: "Updated story",
+            kind: "bug",
+            category: "configuration",
+            tags: ["#sf-central", "configuration"]);
+
+        var usMarkdown = await File.ReadAllTextAsync(result.MainArtifactPath);
+
+        Assert.Equal("US-0001", result.UsId);
+        Assert.Equal("Updated story", result.Summary.Title.Replace("US-0001 · ", string.Empty, StringComparison.Ordinal));
+        Assert.Equal("configuration", result.Summary.Category);
+        Assert.Equal(["configuration", "sf-central"], result.Summary.Tags);
+        Assert.Contains("# US-0001 · Updated story", usMarkdown);
+        Assert.Contains("- Kind: `bug`", usMarkdown);
+        Assert.Contains("- Category: `configuration`", usMarkdown);
+        Assert.Contains("- Tags: `configuration`, `sf-central`", usMarkdown);
+        Assert.Contains("Initial source", usMarkdown);
+    }
+
+    [Fact]
     public async Task GetCurrentPhaseAsync_WithIncompleteDependency_BlocksWorkflowStart()
     {
         var applicationService = new SpecForgeApplicationService();

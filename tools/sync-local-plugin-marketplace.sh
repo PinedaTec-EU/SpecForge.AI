@@ -15,6 +15,19 @@ if [[ ! -f "$source_plugin/.codex-plugin/plugin.json" ]]; then
   exit 1
 fi
 
+python3 - "$repo_root/version_definition.json" "$source_plugin/.codex-plugin/plugin.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+version_definition_path = Path(sys.argv[1])
+plugin_manifest_path = Path(sys.argv[2])
+version_definition = json.loads(version_definition_path.read_text())
+plugin_manifest = json.loads(plugin_manifest_path.read_text())
+plugin_manifest["version"] = version_definition["currentVersion"]
+plugin_manifest_path.write_text(json.dumps(plugin_manifest, indent=2) + "\n")
+PY
+
 mkdir -p "$marketplace_root"
 rsync -a --delete "$source_plugin/" "$central_plugin/"
 
