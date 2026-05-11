@@ -225,6 +225,7 @@ static async Task HandleWorkflowPortalRequestAsync(
                         workspaceRoot,
                         requestUsId,
                         context.Request.QueryString["selectedPhaseId"],
+                        context.Request.QueryString["sidebarVisibility"],
                         context.Request.Url?.GetLeftPart(UriPartial.Authority) ?? "http://localhost:5128",
                         renderCache));
                 return;
@@ -259,7 +260,20 @@ static async Task HandleWorkflowPortalRequestAsync(
                 await WriteJsonResponseAsync(context.Response, await applicationService.GetUserStorySummaryAsync(workspaceRoot, requestUsId));
                 return;
             case ("GET", "/api/user-stories"):
-                await WriteJsonResponseAsync(context.Response, new { items = await applicationService.ListUserStoriesAsync(workspaceRoot) });
+                await WriteJsonResponseAsync(
+                    context.Response,
+                    new
+                    {
+                        items = await applicationService.ListUserStoriesAsync(
+                            workspaceRoot,
+                            context.Request.QueryString["visibility"] ?? "active")
+                    });
+                return;
+            case ("POST", "/api/drop-user-story"):
+                await HandleDropOrRecoverUserStoryAsync(context, workspaceRoot, drop: true);
+                return;
+            case ("POST", "/api/recover-user-story"):
+                await HandleDropOrRecoverUserStoryAsync(context, workspaceRoot, drop: false);
                 return;
             case ("POST", "/api/continue"):
                 await WriteJsonResponseAsync(
@@ -350,6 +364,7 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
     string workspaceRoot,
     string usId,
     string? selectedPhaseId,
+    string? sidebarVisibility,
     string workflowPortalOrigin,
     WorkflowPortalRenderCache renderCache)
 {
@@ -357,6 +372,13 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
     var resolvedSelectedPhaseId = ResolveSelectedWorkflowPhaseId(workflow, selectedPhaseId);
     var selectedPhase = ResolveSelectedWorkflowPhase(workflow, resolvedSelectedPhaseId);
     var userStories = await applicationService.ListUserStoriesAsync(workspaceRoot);
+    var normalizedSidebarVisibility = string.Equals(sidebarVisibility, "dropped", StringComparison.OrdinalIgnoreCase)
+        ? "dropped"
+        : "active";
+    var sidebarUserStories = await applicationService.ListUserStoriesAsync(workspaceRoot, normalizedSidebarVisibility);
+    var droppedUserStoryCount = normalizedSidebarVisibility == "dropped"
+        ? sidebarUserStories.Count
+        : (await applicationService.ListUserStoriesAsync(workspaceRoot, "dropped")).Count;
     var signature = BuildWorkflowSignature(workflow, userStories);
     if (renderCache.TryGet(signature, resolvedSelectedPhaseId, selectedPhase, out var cachedHtml))
     {
@@ -372,6 +394,9 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
             selectedOperationContent = await ReadFileContentOrNullAsync(selectedPhase?.OperationLogPath),
             runtimeVersion = workflow.LastRuntimeVersion ?? workflow.CreatedWithRuntimeVersion,
             userStories,
+            sidebarUserStories,
+            showDroppedUserStories = normalizedSidebarVisibility == "dropped",
+            droppedUserStoryCount,
             configurationPortalUrl = BuildConfigurationPortalUrl(workflowPortalOrigin),
             configurationProvidersUrl = BuildConfigurationPortalUrl(workflowPortalOrigin, "providers"),
             configurationAdvancedUrl = BuildConfigurationPortalUrl(workflowPortalOrigin, "advanced"),
@@ -395,6 +420,46 @@ static string ResolveWorkflowPortalUserStoryId(HttpListenerRequest request, stri
     var referer = request.UrlReferrer;
     var refererUsId = referer is null ? null : ParseQueryValue(referer.Query, "usId");
     return string.IsNullOrWhiteSpace(refererUsId) ? fallbackUsId : refererUsId;
+}
+
+static async Task HandleDropOrRecoverUserStoryAsync(
+    HttpListenerContext context,
+    string workspaceRoot,
+    bool drop)
+{
+    using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+    var payload = await reader.ReadToEndAsync();
+    var request = JsonSerializer.Deserialize<UserStoryVisibilityRequest>(
+        payload,
+        SpecForgePortalSettingsStore.JsonOptions)
+        ?? throw new InvalidOperationException("User story visibility payload could not be parsed.");
+    var paths = ResolveUserStoryDirectoryForPortal(workspaceRoot, request.UsId);
+    var droppedMarkerPath = Path.Combine(paths.RootDirectory, ".dropped");
+
+    if (drop)
+    {
+        await File.WriteAllTextAsync(droppedMarkerPath, $"Dropped at {DateTimeOffset.UtcNow:O} by cli-user.{Environment.NewLine}");
+    }
+    else if (File.Exists(droppedMarkerPath))
+    {
+        File.Delete(droppedMarkerPath);
+    }
+
+    await WriteJsonResponseAsync(context.Response, new { usId = request.UsId, dropped = drop });
+}
+
+static UserStoryFilePaths ResolveUserStoryDirectoryForPortal(string workspaceRoot, string usId)
+{
+    var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, usId);
+    var storiesRoot = Path.GetFullPath(Path.Combine(workspaceRoot, UserStoryFilePaths.SpecsDirectoryName, UserStoryFilePaths.UserStoriesDirectoryName))
+        + Path.DirectorySeparatorChar;
+    var targetPath = Path.GetFullPath(paths.RootDirectory);
+    if (!targetPath.StartsWith(storiesRoot, StringComparison.Ordinal))
+    {
+        throw new InvalidOperationException($"Refusing to update '{usId}' because its path is outside .specs/us.");
+    }
+
+    return paths;
 }
 
 static string? ParseQueryValue(string query, string key)
@@ -1166,3 +1231,5 @@ internal sealed record ApprovalAnswerSubmitRequest(string Question, string Answe
 internal sealed record RefinementAnswersSubmitRequest(IReadOnlyList<string> Answers, string? Actor);
 
 internal sealed record ApprovalSubmitRequest(string? BaseBranch, string? WorkBranch, string? Actor);
+
+internal sealed record UserStoryVisibilityRequest(string UsId);
