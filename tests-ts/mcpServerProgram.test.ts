@@ -8,12 +8,15 @@ const registryPath = path.join(process.cwd(), "src", "SpecForge.McpServer", "Mcp
 
 test("MCP compact facades expose enum constrained operations", async () => {
   const source = await fs.promises.readFile(registryPath, "utf8");
+  const packageJson = await fs.promises.readFile(path.join(process.cwd(), "package.json"), "utf8");
 
   assert.match(source, /"query",\s*EnumProp\("Read operation\."/);
   assert.match(source, /"list_user_stories", "summary", "workflow", "current_phase", "runtime_status", "lineage", "files"/);
   assert.match(source, /"action",\s*EnumProp\("Mutation operation\./);
   assert.match(source, /"create_user_story", "create_user_stories_from_goal", "import_user_story", "advance_phase"/);
   assert.match(source, /"operation",\s*EnumProp\("Prompt operation\.", "initialize_repo_prompts", "export_prompt_template"\)/);
+  assert.match(source, /Tool\("open_workflow_portal"/);
+  assert.match(packageJson, /dotnet publish src\/SpecForge\.Runner\.Cli\/SpecForge\.Runner\.Cli\.csproj/);
 });
 
 test("MCP schemas constrain common phase, kind, and reason values", async () => {
@@ -38,6 +41,8 @@ test("MCP annotates waiting approval results with portal attention metadata", as
   const source = await fs.promises.readFile(programPath, "utf8");
 
   assert.match(source, /AttachWorkflowAttentionAsync\(resultNode, toolName, arguments, applicationService\)/);
+  assert.match(source, /"open_workflow_portal" => HandleOpenWorkflowPortal\(arguments\)/);
+  assert.match(source, /ResolveWorkflowPortalRunner/);
   assert.match(source, /resultObject\["portalUrl"\] = portalUrl/);
   assert.match(source, /resultObject\["attentionKind"\] = "human-approval"/);
   assert.match(source, /SPECFORGE_MCP_OPEN_PORTAL_ON_WAITING_APPROVAL/);

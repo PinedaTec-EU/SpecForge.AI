@@ -36,6 +36,16 @@ public static class McpToolRegistry
                             ("promptPath",    Prop("string", "Template path for export_prompt_template.")),
                             ("overwrite",     Prop("boolean", "If true, overwrite existing prompt files. Defaults to false."))))),
 
+                Tool("open_workflow_portal", "Open the native SpecForge workflow portal for a user story. Starts the packaged CLI portal when available, then opens the portal URL.",
+                    Schema(
+                        required: ["workspaceRoot", "usId"],
+                        Props(
+                            ("workspaceRoot", Prop("string", "Absolute path to the workspace root.")),
+                            ("usId",          Prop("string", "User story identifier.")),
+                            ("url",           Prop("string", "Optional portal base URL. Defaults to SPECFORGE_WORKFLOW_PORTAL_URL or http://localhost:5128/.")),
+                            ("startPortal",   Prop("boolean", "Whether to start the packaged workflow portal process. Defaults to true.")),
+                            ("openBrowser",   Prop("boolean", "Whether to open the portal URL in the system browser. Defaults to true."))))),
+
                 Tool("create_us_from_chat", "Create a user story from free text.",
                     Schema(
                         required: ["workspaceRoot", "usId", "title", "kind", "category", "sourceText"],

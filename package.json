@@ -480,7 +480,7 @@
   "scripts": {
     "compile": "npm run compile:ts && npm run compile:mcp",
     "compile:ts": "node node_modules/typescript/lib/tsc.js -p ./",
-    "compile:mcp": "dotnet publish src/SpecForge.McpServer/SpecForge.McpServer.csproj -c Release -o dist/mcp --no-self-contained /p:DebugType=None /p:DebugSymbols=false",
+    "compile:mcp": "dotnet publish src/SpecForge.McpServer/SpecForge.McpServer.csproj -c Release -o dist/mcp --no-self-contained /p:DebugType=None /p:DebugSymbols=false && dotnet publish src/SpecForge.Runner.Cli/SpecForge.Runner.Cli.csproj -c Release -o dist/mcp --no-self-contained /p:DebugType=None /p:DebugSymbols=false",
     "watch": "node node_modules/typescript/lib/tsc.js -watch -p ./",
     "compile:tests": "node node_modules/typescript/lib/tsc.js -p tsconfig.tests.json",
     "test:ts": "npm run compile:tests && node --test dist-tests/tests-ts/*.test.js",

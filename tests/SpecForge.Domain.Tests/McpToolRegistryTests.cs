@@ -13,6 +13,7 @@ public sealed class McpToolRegistryTests
         Assert.Contains("specforge_query", toolNames);
         Assert.Contains("specforge_action", toolNames);
         Assert.Contains("specforge_prompts", toolNames);
+        Assert.Contains("open_workflow_portal", toolNames);
         Assert.Contains("create_us_from_chat", toolNames);
         Assert.Contains("generate_next_phase", toolNames);
         Assert.Contains("approve_phase", toolNames);
@@ -53,6 +54,15 @@ public sealed class McpToolRegistryTests
         var required = GetRequiredProperties(tool);
 
         Assert.Equal(["workspaceRoot", "operation"], required);
+    }
+
+    [Fact]
+    public void BuildToolsList_OpenWorkflowPortalRequiresWorkspaceRootAndUsId()
+    {
+        var tool = GetTool(McpToolRegistry.BuildToolsList(), "open_workflow_portal");
+        var required = GetRequiredProperties(tool);
+
+        Assert.Equal(["workspaceRoot", "usId"], required);
     }
 
     [Fact]

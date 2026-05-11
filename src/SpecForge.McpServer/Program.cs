@@ -108,6 +108,7 @@ static async Task<JsonNode> HandleToolCallAsync(
             "specforge_query" => await HandleSpecForgeQueryAsync(arguments, applicationService),
             "specforge_action" => await HandleSpecForgeActionAsync(arguments, applicationService),
             "specforge_prompts" => await HandleSpecForgePromptsAsync(arguments, applicationService),
+            "open_workflow_portal" => HandleOpenWorkflowPortal(arguments),
             "create_us_from_chat" => await applicationService.CreateUserStoryAsync(
                 workspaceRoot: GetRequired(arguments, "workspaceRoot"),
                 usId: GetRequired(arguments, "usId"),
@@ -297,7 +298,7 @@ static async Task AttachWorkflowAttentionAsync(
         return;
     }
 
-    var portalUrl = BuildWorkflowPortalUrl(usId, currentPhase.CurrentPhase);
+    var portalUrl = BuildWorkflowPortalUrl(ResolveWorkflowPortalBaseUrl(null), usId, currentPhase.CurrentPhase);
     var openAttempted = ShouldOpenPortalOnWaitingApproval();
     var openSucceeded = openAttempted && TryOpenBrowser(portalUrl);
 
@@ -333,14 +334,8 @@ static bool IsHumanApprovalGate(CurrentPhaseSummary currentPhase) =>
     currentPhase.RequiresApproval ||
     currentPhase.BlockingReason?.Contains("approval", StringComparison.OrdinalIgnoreCase) == true;
 
-static string BuildWorkflowPortalUrl(string usId, string currentPhase)
+static string BuildWorkflowPortalUrl(string baseUrl, string usId, string? currentPhase)
 {
-    var baseUrl = Environment.GetEnvironmentVariable("SPECFORGE_WORKFLOW_PORTAL_URL");
-    if (string.IsNullOrWhiteSpace(baseUrl))
-    {
-        baseUrl = "http://localhost:5128/";
-    }
-
     if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri))
     {
         uri = new Uri("http://localhost:5128/");
@@ -351,7 +346,10 @@ static string BuildWorkflowPortalUrl(string usId, string currentPhase)
         Path = string.IsNullOrWhiteSpace(uri.AbsolutePath) ? "/" : uri.AbsolutePath
     };
     var query = string.IsNullOrWhiteSpace(builder.Query) ? string.Empty : $"{builder.Query.TrimStart('&', '?')}&";
-    builder.Query = $"{query}usId={Uri.EscapeDataString(usId)}&selectedPhaseId={Uri.EscapeDataString(currentPhase)}";
+    var selectedPhaseQuery = string.IsNullOrWhiteSpace(currentPhase)
+        ? string.Empty
+        : $"&selectedPhaseId={Uri.EscapeDataString(currentPhase)}";
+    builder.Query = $"{query}usId={Uri.EscapeDataString(usId)}{selectedPhaseQuery}";
     return builder.Uri.ToString();
 }
 
@@ -378,6 +376,127 @@ static bool TryOpenBrowser(string url)
         return false;
     }
 }
+
+static object HandleOpenWorkflowPortal(JsonObject arguments)
+{
+    var workspaceRoot = GetRequired(arguments, "workspaceRoot");
+    var usId = GetRequired(arguments, "usId");
+    var portalBaseUrl = ResolveWorkflowPortalBaseUrl(GetOptional(arguments, "url"));
+    var portalUrl = BuildWorkflowPortalUrl(portalBaseUrl, usId, currentPhase: null);
+    var startPortal = GetOptionalBoolean(arguments, "startPortal", defaultValue: true);
+    var openBrowser = GetOptionalBoolean(arguments, "openBrowser", defaultValue: true);
+    var startAttempted = false;
+    var startSucceeded = false;
+    string? startCommand = null;
+    string? startError = null;
+
+    if (startPortal)
+    {
+        startAttempted = true;
+        var startResult = TryStartWorkflowPortal(workspaceRoot, usId, portalBaseUrl);
+        startSucceeded = startResult.Succeeded;
+        startCommand = startResult.Command;
+        startError = startResult.Error;
+    }
+
+    var browserOpenSucceeded = openBrowser && TryOpenBrowser(portalUrl);
+    SpecForgeDiagnostics.Log(
+        $"[mcp.open_workflow_portal] usId={usId} portalUrl={portalUrl} startAttempted={startAttempted} startSucceeded={startSucceeded} openBrowser={openBrowser} browserOpenSucceeded={browserOpenSucceeded}");
+
+    return new
+    {
+        usId,
+        portalUrl,
+        portalBaseUrl,
+        startAttempted,
+        startSucceeded,
+        startCommand,
+        startError,
+        browserOpenAttempted = openBrowser,
+        browserOpenSucceeded,
+        instruction = "Use this portal URL to inspect and operate the SpecForge workflow."
+    };
+}
+
+static (bool Succeeded, string? Command, string? Error) TryStartWorkflowPortal(
+    string workspaceRoot,
+    string usId,
+    string portalBaseUrl)
+{
+    try
+    {
+        var runner = ResolveWorkflowPortalRunner();
+        var processStart = new ProcessStartInfo
+        {
+            FileName = runner.FileName,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        foreach (var argument in runner.Arguments)
+        {
+            processStart.ArgumentList.Add(argument);
+        }
+
+        processStart.ArgumentList.Add("serve-workflow");
+        processStart.ArgumentList.Add(workspaceRoot);
+        processStart.ArgumentList.Add(usId);
+        processStart.ArgumentList.Add(portalBaseUrl);
+
+        Process.Start(processStart);
+        var command = $"{runner.FileName} {string.Join(' ', processStart.ArgumentList.Select(QuoteArgument))}";
+        return (true, command, null);
+    }
+    catch (Exception exception)
+    {
+        SpecForgeDiagnostics.Log($"[mcp.open_workflow_portal] portal start failed: {exception.Message}");
+        return (false, null, exception.Message);
+    }
+}
+
+static (string FileName, string[] Arguments) ResolveWorkflowPortalRunner()
+{
+    var baseDirectory = AppContext.BaseDirectory;
+    var executableName = OperatingSystem.IsWindows() ? "SpecForge.Runner.Cli.exe" : "SpecForge.Runner.Cli";
+    var packagedExecutable = Path.Combine(baseDirectory, executableName);
+    if (File.Exists(packagedExecutable))
+    {
+        return (packagedExecutable, []);
+    }
+
+    var packagedDll = Path.Combine(baseDirectory, "SpecForge.Runner.Cli.dll");
+    if (File.Exists(packagedDll))
+    {
+        return ("dotnet", [packagedDll]);
+    }
+
+    var projectPath = Path.Combine(Directory.GetCurrentDirectory(), "src", "SpecForge.Runner.Cli", "SpecForge.Runner.Cli.csproj");
+    if (File.Exists(projectPath))
+    {
+        return ("dotnet", ["run", "--project", projectPath, "--"]);
+    }
+
+    throw new InvalidOperationException(
+        $"SpecForge.Runner.Cli was not found next to the MCP server or under '{projectPath}'. Rebuild the packaged MCP artifacts.");
+}
+
+static string ResolveWorkflowPortalBaseUrl(string? requestedUrl)
+{
+    var value = requestedUrl;
+    if (string.IsNullOrWhiteSpace(value))
+    {
+        value = Environment.GetEnvironmentVariable("SPECFORGE_WORKFLOW_PORTAL_URL");
+    }
+
+    if (string.IsNullOrWhiteSpace(value))
+    {
+        value = "http://localhost:5128/";
+    }
+
+    return value.Trim().EndsWith("/", StringComparison.Ordinal) ? value.Trim() : $"{value.Trim()}/";
+}
+
+static string QuoteArgument(string argument) =>
+    argument.Contains(' ', StringComparison.Ordinal) ? $"\"{argument}\"" : argument;
 
 static async Task<object> HandleSpecForgeQueryAsync(
     JsonObject arguments,
