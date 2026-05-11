@@ -9,6 +9,8 @@ const payload = JSON.parse(fs.readFileSync(0, "utf8"));
 const workflow = payload.workflow;
 const userStories = Array.isArray(payload.userStories) ? payload.userStories : [];
 const configurationPortalUrl = payload.configurationPortalUrl || "http://localhost:5128/configuration";
+const configurationProvidersUrl = payload.configurationProvidersUrl || configurationPortalUrl;
+const configurationAdvancedUrl = payload.configurationAdvancedUrl || configurationPortalUrl;
 const state = {
   selectedPhaseId: payload.selectedPhaseId ?? workflow.currentPhase,
   selectedArtifactContent: payload.selectedArtifactContent ?? null,
@@ -266,9 +268,17 @@ const sidebarShell = `
   body.specforge-cli-sidebar-collapsed .specforge-cli-sidebar__frame,
   body.specforge-cli-sidebar-collapsed [data-cli-sidebar-collapse] { display: none; }
   body.specforge-cli-with-sidebar > .workflow-page { min-width: 0; height: 100vh; overflow: hidden; }
+  .specforge-cli-config-overlay { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 28px; background: rgba(3, 8, 12, 0.72); backdrop-filter: blur(8px); }
+  .specforge-cli-config-overlay[hidden] { display: none; }
+  .specforge-cli-config-dialog { width: min(1100px, 100%); height: min(820px, calc(100vh - 56px)); border: 1px solid rgba(114, 241, 184, 0.18); border-radius: 12px; background: #0f1720; box-shadow: 0 28px 90px rgba(0, 0, 0, 0.52); display: grid; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; }
+  .specforge-cli-config-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 14px; border-bottom: 1px solid rgba(114, 241, 184, 0.14); background: #080e14; color: rgba(255, 255, 255, 0.86); font: 800 0.82rem/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .specforge-cli-config-close { width: 34px; height: 34px; border-radius: 10px; border: 1px solid rgba(114, 241, 184, 0.2); background: rgba(255, 255, 255, 0.05); color: #72f1b8; font: 900 1.1rem/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; cursor: pointer; }
+  .specforge-cli-config-frame { width: 100%; height: 100%; border: 0; background: #0f1720; }
   @media (max-width: 860px) {
     body.specforge-cli-with-sidebar { grid-template-columns: 58px minmax(0, 1fr); }
     body.specforge-cli-with-sidebar:not(.specforge-cli-sidebar-collapsed) { grid-template-columns: minmax(280px, 86vw) minmax(0, 1fr); }
+    .specforge-cli-config-overlay { padding: 10px; }
+    .specforge-cli-config-dialog { height: calc(100vh - 20px); }
   }
 </style>
 <aside class="specforge-cli-sidebar" aria-label="SpecForge user stories">
@@ -280,12 +290,32 @@ const sidebarShell = `
   </div>
   <iframe class="specforge-cli-sidebar__frame" title="User stories" srcdoc="${escapeHtmlAttr(sidebarHtml)}"></iframe>
 </aside>
+<div class="specforge-cli-config-overlay" data-cli-config-overlay hidden>
+  <section class="specforge-cli-config-dialog" role="dialog" aria-modal="true" aria-labelledby="specforge-cli-config-title">
+    <div class="specforge-cli-config-head">
+      <span id="specforge-cli-config-title">SpecForge Configuration</span>
+      <button class="specforge-cli-config-close" type="button" data-cli-config-close aria-label="Close configuration">×</button>
+    </div>
+    <iframe class="specforge-cli-config-frame" title="SpecForge Configuration" data-cli-config-frame></iframe>
+  </section>
+</div>
 <script>
   (() => {
     document.body.classList.add("specforge-cli-with-sidebar");
     const collapsedKey = "specforge.cli.sidebar.collapsed";
     const starredUserStoryStorageKey = "specforge.cli.sidebar.starredUserStoryId";
+    const configOverlay = document.querySelector("[data-cli-config-overlay]");
+    const configFrame = document.querySelector("[data-cli-config-frame]");
     const sidebarFrame = document.querySelector('iframe[title="User stories"]');
+    const openConfiguration = (url) => {
+      if (configFrame) {
+        configFrame.setAttribute("src", url);
+      }
+      configOverlay?.removeAttribute("hidden");
+    };
+    const closeConfiguration = () => {
+      configOverlay?.setAttribute("hidden", "");
+    };
     const getStarredUserStoryId = () => {
       try { return localStorage.getItem(starredUserStoryStorageKey) || null; }
       catch { return null; }
@@ -319,10 +349,17 @@ const sidebarShell = `
     document.querySelector("[data-cli-sidebar-collapse]")?.addEventListener("click", () => applyCollapsed(true));
     document.querySelector("[data-cli-sidebar-stories]")?.addEventListener("click", () => applyCollapsed(false));
     document.querySelector("[data-cli-sidebar-settings]")?.addEventListener("click", () => {
-      window.open(${JSON.stringify(configurationPortalUrl)}, "_blank", "noopener");
+      openConfiguration(${JSON.stringify(configurationAdvancedUrl)});
     });
     sidebarFrame?.addEventListener("load", applySidebarStarredUserStory);
     applySidebarStarredUserStory();
+    document.querySelector("[data-cli-config-close]")?.addEventListener("click", closeConfiguration);
+    configOverlay?.addEventListener("click", event => {
+      if (event.target === configOverlay) closeConfiguration();
+    });
+    window.addEventListener("keydown", event => {
+      if (event.key === "Escape" && !configOverlay?.hasAttribute("hidden")) closeConfiguration();
+    });
     window.addEventListener("message", event => {
       if (event.data?.source !== "specforge-cli-sidebar") return;
       const message = event.data.message || {};
@@ -347,7 +384,7 @@ const sidebarShell = `
         return;
       }
       if (message.command === "openExecutionSettings") {
-        window.open(${JSON.stringify(configurationPortalUrl)}, "_blank", "noopener");
+        openConfiguration(${JSON.stringify(configurationProvidersUrl)});
       }
     });
   })();

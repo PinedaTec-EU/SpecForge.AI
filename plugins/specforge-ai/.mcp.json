@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "specforge-ai": {
-      "command": "../../dist/mcp/SpecForge.McpServer",
+      "command": "./mcp/SpecForge.McpServer",
       "args": [],
       "env": {}
     }
