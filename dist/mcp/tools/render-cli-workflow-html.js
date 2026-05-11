@@ -9,6 +9,8 @@ const payload = JSON.parse(fs.readFileSync(0, "utf8"));
 const workflow = payload.workflow;
 const userStories = Array.isArray(payload.userStories) ? payload.userStories : [];
 const sidebarUserStories = Array.isArray(payload.sidebarUserStories) ? payload.sidebarUserStories : userStories;
+const activeSidebarUserStories = Array.isArray(payload.activeSidebarUserStories) ? payload.activeSidebarUserStories : userStories;
+const droppedSidebarUserStories = Array.isArray(payload.droppedSidebarUserStories) ? payload.droppedSidebarUserStories : [];
 const showDroppedUserStories = payload.showDroppedUserStories === true;
 const droppedUserStoryCount = Number.isFinite(payload.droppedUserStoryCount) ? payload.droppedUserStoryCount : 0;
 const configurationPortalUrl = payload.configurationPortalUrl || "http://localhost:5128/configuration";
@@ -312,6 +314,8 @@ const sidebarShell = `
     const configOverlay = document.querySelector("[data-cli-config-overlay]");
     const configFrame = document.querySelector("[data-cli-config-frame]");
     const sidebarFrame = document.querySelector('iframe[title="User stories"]');
+    const activeSidebarUserStoryIds = ${JSON.stringify(activeSidebarUserStories.map(item => item.usId).filter(Boolean))};
+    const droppedSidebarUserStoryIds = ${JSON.stringify(droppedSidebarUserStories.map(item => item.usId).filter(Boolean))};
     const openConfiguration = (url) => {
       if (configFrame) {
         configFrame.setAttribute("src", url);
@@ -330,6 +334,10 @@ const sidebarShell = `
         if (usId) localStorage.setItem(starredUserStoryStorageKey, usId);
         else localStorage.removeItem(starredUserStoryStorageKey);
       } catch {}
+    };
+    const resolveTargetUserStoryId = (userStoryIds) => {
+      const starredUserStoryId = getStarredUserStoryId();
+      return userStoryIds.includes(starredUserStoryId) ? starredUserStoryId : userStoryIds[0] || null;
     };
     const applySidebarStarredUserStory = () => {
       const starredUserStoryId = getStarredUserStoryId();
@@ -392,9 +400,14 @@ const sidebarShell = `
         const url = new URL(window.location.href);
         if (url.searchParams.get("sidebarVisibility") === "dropped") {
           url.searchParams.delete("sidebarVisibility");
+          const targetUsId = resolveTargetUserStoryId(activeSidebarUserStoryIds);
+          if (targetUsId) url.searchParams.set("usId", targetUsId);
         } else {
           url.searchParams.set("sidebarVisibility", "dropped");
+          const targetUsId = resolveTargetUserStoryId(droppedSidebarUserStoryIds);
+          if (targetUsId) url.searchParams.set("usId", targetUsId);
         }
+        url.searchParams.delete("selectedPhaseId");
         window.location.href = url.toString();
         return;
       }
