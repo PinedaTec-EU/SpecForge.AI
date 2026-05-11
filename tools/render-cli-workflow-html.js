@@ -533,6 +533,9 @@ const sidebarShell = `
         return;
       }
       if ((message.command === "dropUserStory" || message.command === "recoverUserStory") && message.usId) {
+        if (message.command === "dropUserStory" && !window.confirm("Drop " + message.usId + "? It will be marked as deleted and hidden from the SpecForge panel.")) {
+          return;
+        }
         const endpoint = message.command === "dropUserStory" ? "/api/drop-user-story" : "/api/recover-user-story";
         fetch(endpoint, {
           method: "POST",

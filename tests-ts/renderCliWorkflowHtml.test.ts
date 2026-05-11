@@ -95,6 +95,13 @@ test("CLI workflow renderer handles sidebar starred story toggles locally", asyn
   }
 });
 
+test("CLI workflow renderer confirms before dropping user stories", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+
+  assert.match(script, /message\.command === "dropUserStory" && !window\.confirm\("Drop " \+ message\.usId \+ "\? It will be marked as deleted and hidden from the SpecForge panel\."\)/);
+  assert.match(script, /return;\s+\}\s+const endpoint = message\.command === "dropUserStory" \? "\/api\/drop-user-story" : "\/api\/recover-user-story"/);
+});
+
 test("CLI workflow renderer switches sidebar visibility without navigating the workflow", async () => {
   const script = await fs.promises.readFile(scriptPath, "utf8");
   const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
