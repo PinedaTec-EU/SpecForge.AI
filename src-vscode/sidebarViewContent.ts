@@ -426,7 +426,7 @@ function buildStorySearchMarkup(): string {
     <label class="story-search">
       <span class="story-search__label">Search user stories</span>
       <span class="story-search__control">
-        <input type="search" placeholder="Search by title, description, category, or tag" data-story-search />
+        <input type="search" placeholder="Search by title, description, category, or #tag" data-story-search />
         <span class="story-search__icon" aria-hidden="true">🔍</span>
       </span>
     </label>
@@ -1993,7 +1993,7 @@ function buildStoryRowMarkup(summary: UserStorySummary, starredUserStoryId: stri
     summary.title,
     summary.description ?? "",
     summary.category,
-    tags.join(" "),
+    tags.map(formatTagLabel).join(" "),
     summary.currentPhase,
     effectiveStatus,
     dependencySearchText
@@ -2071,7 +2071,11 @@ function buildStoryTagMarkup(tags: readonly string[]): string {
     return "";
   }
 
-  return `<span class="story-card__tags">${visibleTags.map((tag) => `<span class="story-card__tag">${escapeHtml(tag)}</span>`).join("")}</span>`;
+  return `<span class="story-card__tags">${visibleTags.map((tag) => `<span class="story-card__tag">${escapeHtml(formatTagLabel(tag))}</span>`).join("")}</span>`;
+}
+
+function formatTagLabel(tag: string): string {
+  return `#${tag}`;
 }
 
 function effectiveStoryStatus(summary: UserStorySummary): string {

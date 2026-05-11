@@ -107,7 +107,7 @@ test("buildSidebarHtml exposes a compact prompt customization action", () => {
   assert.match(html, /aria-label="Create new user story"/);
   assert.doesNotMatch(html, /aria-label="Configure execution providers"/);
   assert.match(html, /data-story-search/);
-  assert.match(html, /Search by title, description, category, or tag/);
+  assert.match(html, /Search by title, description, category, or #tag/);
   assert.doesNotMatch(html, /data-command="toggleViewMode"/);
   assert.doesNotMatch(html, /Repo prompts ready/);
 });
@@ -182,7 +182,7 @@ test("buildSidebarHtml includes user story descriptions in the local search inde
   assert.match(html, /data-story-search-text="[^"]*fast filtering[^"]*workflow/);
 });
 
-test("buildSidebarHtml renders up to two custom tags and includes every tag in search", () => {
+test("buildSidebarHtml renders up to two prefixed custom tags and includes every prefixed tag in search", () => {
   const html = buildSidebarHtml(model({
     categories: ["workflow"],
     userStories: [{
@@ -198,10 +198,10 @@ test("buildSidebarHtml renders up to two custom tags and includes every tag in s
     }],
   }));
 
-  assert.match(html, /<span class="story-card__tag">mcp<\/span>/);
-  assert.match(html, /<span class="story-card__tag">ux<\/span>/);
-  assert.doesNotMatch(html, /<span class="story-card__tag">search<\/span>/);
-  assert.match(html, /data-story-search-text="[^"]*mcp ux search/);
+  assert.match(html, /<span class="story-card__tag">#mcp<\/span>/);
+  assert.match(html, /<span class="story-card__tag">#ux<\/span>/);
+  assert.doesNotMatch(html, /<span class="story-card__tag">#search<\/span>/);
+  assert.match(html, /data-story-search-text="[^"]*#mcp #ux #search/);
 });
 
 test("buildSidebarHtml surfaces blocked dependency state in story rows", () => {

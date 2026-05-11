@@ -3982,6 +3982,58 @@ test("buildWorkflowHtml highlights waiting-user and runner paused hero tokens as
   assert.match(html, /token token--attention">runner:paused</);
 });
 
+test("buildWorkflowHtml renders custom tags as prefixed hero tokens", () => {
+  const html = buildWorkflowHtml({
+    usId: "US-0016",
+    title: "Tagged workflow",
+    category: "workflow",
+    tags: ["sf-central", "mcp"],
+    status: "active",
+    currentPhase: "capture",
+    directoryPath: "/tmp/us.US-0016",
+    workBranch: null,
+    mainArtifactPath: "/tmp/us.md",
+    timelinePath: "/tmp/timeline.md",
+    rawTimeline: "raw timeline",
+    phases: [
+      {
+        phaseId: "capture",
+        title: "Capture",
+        order: 0,
+        requiresApproval: false,
+        expectsHumanIntervention: false,
+        isApproved: false,
+        isCurrent: true,
+        state: "current",
+        artifactPath: null,
+        executePromptPath: null,
+        approvePromptPath: null
+      }
+    ],
+    controls: {
+      canContinue: false,
+      canApprove: false,
+      requiresApproval: false,
+      blockingReason: null,
+      canRestartFromSource: false,
+      regressionTargets: []
+    },
+    refinement: null,
+    events: [],
+    attachmentsDirectoryPath: "/tmp/attachments",
+    attachments: []
+  }, {
+    selectedPhaseId: "capture",
+    selectedArtifactContent: null,
+    contextSuggestions: [],
+    settingsConfigured: true,
+    settingsMessage: null
+  }, "idle");
+
+  assert.match(html, /token token--tag">#sf-central</);
+  assert.match(html, /token token--tag">#mcp</);
+});
+
 test("buildWorkflowHtml reuses sidebar status colors in graph nodes and hero tokens", () => {
   const html = buildWorkflowHtml({
     usId: "US-0012",

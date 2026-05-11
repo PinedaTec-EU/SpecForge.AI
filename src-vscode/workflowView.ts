@@ -8729,8 +8729,12 @@ export function buildWorkflowHtml(
 
 function buildWorkflowTagTokens(tags: readonly string[]): string {
   return tags
-    .map((tag) => `<span class="token token--tag">${escapeHtml(tag)}</span>`)
+    .map((tag) => `<span class="token token--tag">${escapeHtml(formatWorkflowTagLabel(tag))}</span>`)
     .join("");
+}
+
+function formatWorkflowTagLabel(tag: string): string {
+  return `#${tag}`;
 }
 
 function buildPhaseGraph(
