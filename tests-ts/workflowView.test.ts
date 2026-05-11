@@ -4032,6 +4032,7 @@ test("buildWorkflowHtml renders custom tags as prefixed hero tokens", () => {
 
   assert.match(html, /token token--tag">#sf-central</);
   assert.match(html, /token token--tag">#mcp</);
+  assert.match(html, /<div class="hero-meta__main">[\s\S]*<\/div>\s*<div class="hero-meta__tags">[\s\S]*#sf-central[\s\S]*#mcp[\s\S]*<\/div>/);
 });
 
 test("buildWorkflowHtml reuses sidebar status colors in graph nodes and hero tokens", () => {
@@ -4183,7 +4184,8 @@ test("buildWorkflowHtml gives dependency blocked nodes an amber lock marker", ()
   assert.match(html, /data-us-id="US-0001"/);
   assert.match(html, /Foundation workflow/);
   assert.match(html, /<div class="hero-secondary">[\s\S]*<div class="hero-meta">[\s\S]*class="dependency-block"/);
-  assert.match(html, /\.hero-meta \{[\s\S]*flex-wrap: nowrap;/);
+  assert.match(html, /\.hero-meta \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) auto;/);
+  assert.match(html, /\.hero-meta__tags \{[\s\S]*justify-self: end;/);
   assert.match(html, /\.dependency-block \{[\s\S]*width: 100%;/);
   assert.match(html, /\.dependency-block__icon svg \{[\s\S]*fill: currentColor;[\s\S]*drop-shadow/);
   assert.match(html, /\.token\.token--blocked \{[\s\S]*var\(--attention-egg-soft\)/);

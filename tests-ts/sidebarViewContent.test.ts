@@ -182,7 +182,7 @@ test("buildSidebarHtml includes user story descriptions in the local search inde
   assert.match(html, /data-story-search-text="[^"]*fast filtering[^"]*workflow/);
 });
 
-test("buildSidebarHtml renders up to two prefixed custom tags and includes every prefixed tag in search", () => {
+test("buildSidebarHtml renders one prefixed custom tag beside the id and includes every prefixed tag in search", () => {
   const html = buildSidebarHtml(model({
     categories: ["workflow"],
     userStories: [{
@@ -198,8 +198,8 @@ test("buildSidebarHtml renders up to two prefixed custom tags and includes every
     }],
   }));
 
-  assert.match(html, /<span class="story-card__tag">#mcp<\/span>/);
-  assert.match(html, /<span class="story-card__tag">#ux<\/span>/);
+  assert.match(html, /<span class="story-card__head">\s*<span class="story-card__id">US-0006<\/span>\s*<span class="story-card__tags"><span class="story-card__tag">#mcp<\/span><\/span>\s*<\/span>/);
+  assert.doesNotMatch(html, /<span class="story-card__tag">#ux<\/span>/);
   assert.doesNotMatch(html, /<span class="story-card__tag">#search<\/span>/);
   assert.match(html, /data-story-search-text="[^"]*#mcp #ux #search/);
 });
