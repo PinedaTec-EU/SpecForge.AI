@@ -630,6 +630,9 @@ The extension contributes these settings:
 - `specForge.features.autoPlayEnabled`
 - `specForge.features.destructiveRewindEnabled`
 - `specForge.features.pauseOnFailedReview`
+- `specForge.features.phaseSkillUsageReportingEnabled`
+
+`specForge.features.phaseSkillUsageReportingEnabled` defaults to `true`. When enabled, model-backed phase execution asks the selected agent to append a `## Skills Used` section to the generated phase artifact. SpecForge extracts the reported skills into execution metadata, records them in `timeline.md`, and shows them in phase detail as links that open the referenced skill or rule file for inspection.
 
 ### Execution settings view
 

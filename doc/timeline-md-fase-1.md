@@ -68,6 +68,12 @@ It should reference those artifacts when needed.
 - Actor: `system`
 - Phase: `spec`
 - Summary: The spec baseline was generated with `red-team` evaluation and `blue-team` reconstruction.
+- Execution:
+  - provider: `openai-compatible`
+  - model: `gpt-5.4`
+  - profile: `planner`
+  - skill: `.codex/skills/sdd-phase-agents/SKILL.md`
+  - skill: `../ai-skills-shared/.shared-skills/skills/terraform/SKILL.md`
 - Artifacts:
   - `.specs/us/us.US-0001/phases/01-spec.md`
 
@@ -127,7 +133,27 @@ It may optionally include:
 - reason
 - evidence
 - affected artifacts
+- execution metadata for generated phases
 - notes
+
+### Execution Metadata
+
+Generated phase events may include an `Execution` block.
+
+Supported fields:
+
+- `provider`
+- `model`
+- `profile`
+- `endpoint`
+- `runtime-version`
+- repeated `skill` entries
+
+Skill entries record the Codex skill, shared skill file, local skill file, AGENTS instruction file, or repository workflow skill file that the executing model reported using while it produced the phase artifact.
+
+When `specForge.features.phaseSkillUsageReportingEnabled` is enabled, model-backed providers ask the model to append a `## Skills Used` section to the generated artifact. The runner extracts that section into repeated timeline `skill` entries so phase detail screens can show the reported skills as inspectable links.
+
+If no skill applies, the model should report `none`; `none` is not persisted as a skill entry.
 
 ## Minimum Phase-1 Events
 

@@ -15,6 +15,7 @@ Includes:
 - persistence of artifacts and minimum state
 - creation of the work branch after the first approved spec baseline
 - optional phase-local subagent orchestration for `technical-design` and `review`
+- optional model-reported skill usage for each generated phase, enabled by default through configuration
 
 Does not include:
 
@@ -304,6 +305,9 @@ Checkpoint:
 - if a phase fails repeatedly without new information, the user story moves to `waiting-user`
 - if a user story is already `completed` and the user wants to change `us.md`, `spec`, or equivalent artifacts, the system should recommend creating a new user story
 - `us.md` is the source of truth only to start the flow, not to silently mutate an already started execution
+- when `specForge.features.phaseSkillUsageReportingEnabled` is enabled, model-backed phase prompts must ask the executing model to append a `## Skills Used` section to the phase artifact
+- reported skill usage must list Codex skills, shared skill files, local skill files, AGENTS instruction files, or repository workflow skill files that influenced the phase; if none apply, the artifact must explicitly report `none`
+- skill usage is treated as execution metadata for audit and operator visibility, not as workflow state that can approve, reject, or route a phase by itself
 
 ## Initial Escalation Policy
 
@@ -362,6 +366,7 @@ Location rule:
 - each user story lives under `.specs/us/<category>/<US-ID>/`
 - this convention prioritizes visibility at the workspace root and clear separation from product code
 - `timeline.md` is the mandatory audit trail for who acted, when it happened, and which phase was affected
+- phase detail surfaces may render reported skills as links to the referenced files so the operator can inspect the rules or skills that influenced the generated artifact
 
 ## Minimum `state.yaml` State
 
