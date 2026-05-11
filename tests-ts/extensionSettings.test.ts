@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildBackendEnvironment, getSpecForgeSettingsStatus, readSpecForgeSettings } from "../src-vscode/extensionSettings";
+import {
+  buildBackendEnvironment,
+  getSpecForgeSettingsStatus,
+  readSpecForgeSettings,
+  shouldBootstrapRecommendedAgentProfiles,
+  shouldBootstrapRecommendedPhaseAgentAssignments
+} from "../src-vscode/extensionSettings";
 
 type AssignmentShape = ReturnType<typeof emptyAssignments>;
 type EffectiveAssignmentShape = ReturnType<typeof emptyEffectiveAssignments>;
@@ -229,6 +235,48 @@ test("readSpecForgeSettings supplies recommended bootstrap agent profiles withou
     releaseApprovalAgentName: "release-preparer",
     prPreparationAgentName: "release-preparer"
   }));
+});
+
+test("shouldBootstrapRecommendedAgentProfiles detects missing or blank agent configuration", () => {
+  const noAgents = shouldBootstrapRecommendedAgentProfiles({
+    get<T>(_section: string, defaultValue?: T): T {
+      return defaultValue as T;
+    }
+  });
+  const blankAgents = shouldBootstrapRecommendedAgentProfiles({
+    get<T>(section: string, defaultValue?: T): T {
+      return (section === "execution.agentProfiles" ? [{}] : defaultValue) as T;
+    }
+  });
+  const configuredAgents = shouldBootstrapRecommendedAgentProfiles({
+    get<T>(section: string, defaultValue?: T): T {
+      return (section === "execution.agentProfiles"
+        ? [{ name: "planner", modelProfile: "codex-main", repositoryAccess: "read" }]
+        : defaultValue) as T;
+    }
+  });
+
+  assert.equal(noAgents, true);
+  assert.equal(blankAgents, true);
+  assert.equal(configuredAgents, false);
+});
+
+test("shouldBootstrapRecommendedPhaseAgentAssignments preserves existing phase routes", () => {
+  const noAssignments = shouldBootstrapRecommendedPhaseAgentAssignments({
+    get<T>(_section: string, defaultValue?: T): T {
+      return defaultValue as T;
+    }
+  });
+  const existingAssignment = shouldBootstrapRecommendedPhaseAgentAssignments({
+    get<T>(section: string, defaultValue?: T): T {
+      return (section === "execution.phaseAgents"
+        ? { implementationAgent: "implementer" }
+        : defaultValue) as T;
+    }
+  });
+
+  assert.equal(noAssignments, true);
+  assert.equal(existingAssignment, false);
 });
 
 test("readSpecForgeSettings defaults missing profile provider to openai-compatible", () => {

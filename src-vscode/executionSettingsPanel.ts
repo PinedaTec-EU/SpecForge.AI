@@ -3,6 +3,10 @@ import { escapeHtml, escapeHtmlAttr } from "./htmlEscape";
 import { requiresDefaultFallback, validatePhasePermissionAssignments } from "./executionSettingsModel";
 import {
   getSpecForgeSettings,
+  recommendedBootstrapAgentProfiles,
+  recommendedBootstrapPhaseAgentAssignments,
+  shouldBootstrapRecommendedAgentProfiles,
+  shouldBootstrapRecommendedPhaseAgentAssignments,
   type SpecForgeAgentProfile,
   type SpecForgeModelProfile,
   type SpecForgePhaseAgentAssignments
@@ -136,6 +140,7 @@ class ExecutionSettingsPanelController {
   }
 
   public async refreshAsync(): Promise<void> {
+    await ensureRecommendedAgentProfilesBootstrapAsync();
     const settings = getSpecForgeSettings();
     this.panel.webview.html = buildExecutionSettingsHtml({
       modelProfiles: settings.modelProfiles,
@@ -167,6 +172,25 @@ class ExecutionSettingsPanelController {
       completedUsLockOnCompleted: settings.completedUsLockOnCompleted,
       typographyCssVars: getEditorTypographyCssVars()
     });
+  }
+}
+
+async function ensureRecommendedAgentProfilesBootstrapAsync(): Promise<void> {
+  const configuration = vscode.workspace.getConfiguration("specForge");
+  if (!shouldBootstrapRecommendedAgentProfiles(configuration)) {
+    return;
+  }
+
+  await configuration.update(
+    "execution.agentProfiles",
+    recommendedBootstrapAgentProfiles,
+    vscode.ConfigurationTarget.Workspace);
+
+  if (shouldBootstrapRecommendedPhaseAgentAssignments(configuration)) {
+    await configuration.update(
+      "execution.phaseAgents",
+      recommendedBootstrapPhaseAgentAssignments,
+      vscode.ConfigurationTarget.Workspace);
   }
 }
 
