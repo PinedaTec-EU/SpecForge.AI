@@ -59,6 +59,7 @@ class SidebarViewProvider {
     busyMessage = null;
     activeWorkflowUsId = null;
     showDroppedUserStories = false;
+    showCompletedUserStories = false;
     createFileMode = "context";
     createFiles = [];
     createReferenceScanVersion = 0;
@@ -184,6 +185,10 @@ class SidebarViewProvider {
                 return;
             case "toggleDroppedUserStories":
                 this.showDroppedUserStories = !this.showDroppedUserStories;
+                await this.safeRenderAsync();
+                return;
+            case "toggleCompletedUserStories":
+                this.showCompletedUserStories = !this.showCompletedUserStories;
                 await this.safeRenderAsync();
                 return;
             case "initializeRepoPrompts":
@@ -520,6 +525,7 @@ class SidebarViewProvider {
                 runtimeVersion,
                 viewMode: settings.userStoryListViewMode ?? "category",
                 showDroppedUserStories: this.showDroppedUserStories,
+                showCompletedUserStories: this.showCompletedUserStories,
                 droppedUserStoryCount: 0,
                 createFileMode: this.createFileMode,
                 createFiles: this.createFiles,
@@ -564,6 +570,7 @@ class SidebarViewProvider {
             runtimeVersion,
             viewMode: settings.userStoryListViewMode ?? "category",
             showDroppedUserStories: this.showDroppedUserStories,
+            showCompletedUserStories: this.showCompletedUserStories,
             droppedUserStoryCount,
             createFileMode: this.createFileMode,
             createFiles: this.createFiles,
@@ -594,6 +601,7 @@ class SidebarViewProvider {
                 runtimeVersion: await (0, runtimeVersion_1.readRuntimeVersionAsync)(),
                 viewMode: (0, extensionSettings_1.getSpecForgeSettings)().userStoryListViewMode ?? "category",
                 showDroppedUserStories: this.showDroppedUserStories,
+                showCompletedUserStories: this.showCompletedUserStories,
                 droppedUserStoryCount: 0,
                 createFileMode: this.createFileMode,
                 createFiles: this.createFiles,
