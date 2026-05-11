@@ -3808,6 +3808,10 @@ export function buildWorkflowHtml(
       outline: 2px solid rgba(255, 120, 120, 0.46);
       outline-offset: 2px;
     }
+    .phase-node.phase-node--dependency-blocked.selected {
+      outline: 2px solid rgba(255, 213, 90, 0.72);
+      outline-offset: 2px;
+    }
     .phase-node.phase-tone-completed.selected {
       outline: 2px solid rgba(114, 241, 184, 0.52);
       outline-offset: 2px;
@@ -3900,6 +3904,30 @@ export function buildWorkflowHtml(
         0 10px 0 rgba(66, 20, 20, 0.56),
         0 0 0 1px rgba(255, 184, 184, 0.1),
         0 0 24px rgba(255, 120, 120, 0.12);
+    }
+    .phase-node.phase-node--dependency-blocked {
+      background:
+        radial-gradient(120% 120% at 16% 0%, rgba(255, 214, 109, 0.2), rgba(255, 194, 82, 0.1) 28%, transparent 34%),
+        radial-gradient(130% 130% at 100% 100%, rgba(132, 91, 18, 0.18), transparent 42%),
+        linear-gradient(180deg, rgba(63, 47, 17, 0.97), rgba(39, 29, 12, 0.99) 54%, rgba(24, 18, 8, 1));
+      border-color: rgba(255, 213, 90, 0.42);
+      box-shadow:
+        0 18px 30px rgba(132, 91, 18, 0.2),
+        0 8px 0 rgba(58, 39, 13, 0.52),
+        0 0 0 1px rgba(255, 230, 164, 0.12),
+        0 0 24px rgba(255, 213, 90, 0.1);
+    }
+    .phase-node.phase-node--dependency-blocked:hover {
+      border-color: rgba(255, 224, 136, 0.64);
+      background:
+        radial-gradient(120% 120% at 16% 0%, rgba(255, 224, 136, 0.24), rgba(255, 194, 82, 0.12) 28%, transparent 34%),
+        radial-gradient(130% 130% at 100% 100%, rgba(132, 91, 18, 0.22), transparent 42%),
+        linear-gradient(180deg, rgba(72, 53, 19, 0.98), rgba(44, 32, 13, 0.99) 54%, rgba(27, 20, 8, 1));
+      box-shadow:
+        0 22px 34px rgba(132, 91, 18, 0.24),
+        0 10px 0 rgba(58, 39, 13, 0.56),
+        0 0 0 1px rgba(255, 230, 164, 0.14),
+        0 0 28px rgba(255, 213, 90, 0.14);
     }
     .phase-node.phase-tone-completed {
       background:
@@ -4062,6 +4090,25 @@ export function buildWorkflowHtml(
       stroke-width: 2;
       stroke-linecap: round;
       stroke-linejoin: round;
+    }
+    .graph-phase-status-icon--dependency-blocked {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      color: rgba(255, 235, 164, 0.98);
+      border-color: rgba(255, 213, 90, 0.74);
+      background:
+        radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.32), transparent 34%),
+        linear-gradient(180deg, rgba(255, 213, 90, 0.28), rgba(96, 67, 16, 0.92));
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.28),
+        0 12px 22px rgba(83, 57, 9, 0.24),
+        0 0 0 6px rgba(255, 213, 90, 0.1),
+        0 0 24px rgba(255, 213, 90, 0.18);
+    }
+    .graph-phase-status-icon--dependency-blocked svg {
+      width: 26px;
+      height: 26px;
     }
     .phase-current-rail {
       position: absolute;
@@ -8566,6 +8613,7 @@ function buildPhaseGraph(
     const pauseArmed = pausedPhaseIds.has(phase.phaseId);
     const phaseIsCurrent = phase.phaseId === displayedCurrentPhaseId;
     const phaseIsSelected = phase.phaseId === selectedPhaseId;
+    const dependencyBlocked = phaseIsCurrent && isDependencyBlockedWorkflow(workflow);
     const phaseSelectTargetId = phase.phaseId;
     const phaseRoleIcon = phase.expectsHumanIntervention ? userPhaseIcon() : automationPhaseIcon();
     const phaseRoleModifier = phase.expectsHumanIntervention ? "user-enabled" : "model-automated";
@@ -8579,7 +8627,7 @@ function buildPhaseGraph(
     const phaseRoleBadge = `<span class="phase-role-badge phase-role-badge--${escapeHtmlAttribute(phaseRoleModifier)}" title="${escapeHtmlAttribute(phaseRoleLabel)}" aria-label="${escapeHtmlAttribute(phaseRoleLabel)}">${phaseRoleIcon}</span>`;
     return `
     <div
-      class="phase-node ${escapeHtmlAttribute(phase.phaseId)} phase-tone-${escapeHtmlAttribute(visualTone)}${phaseIsSelected ? " selected" : ""}${phaseIsCurrent ? " phase-node--current" : ""}${phase.phaseId === "completed" ? " phase-node--final" : ""}"
+      class="phase-node ${escapeHtmlAttribute(phase.phaseId)} phase-tone-${escapeHtmlAttribute(visualTone)}${phaseIsSelected ? " selected" : ""}${phaseIsCurrent ? " phase-node--current" : ""}${dependencyBlocked ? " phase-node--dependency-blocked" : ""}${phase.phaseId === "completed" ? " phase-node--final" : ""}"
       data-command="selectPhase"
       data-phase-id="${escapeHtmlAttribute(phaseSelectTargetId)}"
       role="button"
@@ -8593,6 +8641,8 @@ function buildPhaseGraph(
           <div class="phase-node-header-actions">
             ${phase.phaseId === "completed"
               ? `<span class="phase-role-badge graph-phase-status-icon" title="Completed workflow lock state" aria-label="Completed workflow lock state">${statusIcon || phaseRoleIcon}</span>`
+              : dependencyBlocked
+                ? `<span class="phase-role-badge graph-phase-status-icon graph-phase-status-icon--dependency-blocked" title="Blocked by user-story dependency" aria-label="Blocked by user-story dependency">${lockClosedIcon()}</span>`
               : phaseRoleBadge}
             ${canPausePhase
             ? `<button
@@ -8969,6 +9019,10 @@ function renderGraphLegend(usId: string): string {
       <div class="graph-legend__row"><span class="graph-legend__dot graph-legend__dot--final"></span><span>Final</span></div>
     </aside>
   `;
+}
+
+function isDependencyBlockedWorkflow(workflow: UserStoryWorkflowDetails): boolean {
+  return workflow.status === "blocked" && workflow.controls.blockingReason === "dependency_not_completed";
 }
 
 function renderGraphPhaseStatusIcon(

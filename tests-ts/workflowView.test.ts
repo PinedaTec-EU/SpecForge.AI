@@ -4051,6 +4051,72 @@ test("buildWorkflowHtml reuses sidebar status colors in graph nodes and hero tok
   assert.match(html, /phase-node capture phase-tone-completed/);
 });
 
+test("buildWorkflowHtml gives dependency blocked nodes an amber lock marker", () => {
+  const html = buildWorkflowHtml({
+    usId: "US-0013",
+    title: "Dependency blocked workflow",
+    category: "workflow",
+    status: "blocked",
+    currentPhase: "capture",
+    directoryPath: "/tmp/us.US-0013",
+    workBranch: null,
+    mainArtifactPath: "/tmp/us.md",
+    timelinePath: "/tmp/timeline.md",
+    rawTimeline: "raw timeline",
+    phases: [
+      {
+        phaseId: "capture",
+        title: "Capture",
+        order: 0,
+        requiresApproval: false,
+        expectsHumanIntervention: false,
+        isApproved: false,
+        isCurrent: true,
+        state: "current",
+        artifactPath: null,
+        executePromptPath: null,
+        approvePromptPath: null
+      },
+      {
+        phaseId: "refinement",
+        title: "Refinement",
+        order: 1,
+        requiresApproval: false,
+        expectsHumanIntervention: false,
+        isApproved: false,
+        isCurrent: false,
+        state: "pending",
+        artifactPath: null,
+        executePromptPath: null,
+        approvePromptPath: null
+      }
+    ],
+    controls: {
+      canContinue: false,
+      canApprove: false,
+      requiresApproval: false,
+      blockingReason: "dependency_not_completed",
+      canRestartFromSource: false,
+      regressionTargets: []
+    },
+    refinement: null,
+    events: [],
+    attachmentsDirectoryPath: "/tmp/attachments",
+    attachments: []
+  }, {
+    selectedPhaseId: "capture",
+    selectedArtifactContent: null,
+    contextSuggestions: [],
+    settingsConfigured: true,
+    settingsMessage: null
+  }, "idle");
+
+  assert.match(html, /phase-node capture phase-tone-blocked selected phase-node--current phase-node--dependency-blocked/);
+  assert.match(html, /graph-phase-status-icon--dependency-blocked/);
+  assert.match(html, /aria-label="Blocked by user-story dependency"/);
+  assert.match(html, /\.phase-node\.phase-node--dependency-blocked/);
+});
+
 test("buildWorkflowHtml marks a phase blocked when its model security precheck fails", () => {
   const html = buildWorkflowHtml({
     usId: "US-0099",

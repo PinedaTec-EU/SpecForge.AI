@@ -2075,7 +2075,7 @@ function phaseRailLabelFor(currentPhase: string, status: string): string {
   }
 
   if (status === "blocked") {
-    return "BLOCK";
+    return "🔒 BLOCK";
   }
 
   return isCompletedStatus(status) ? "DONE" : phaseLabelFor(currentPhase);
