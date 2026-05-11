@@ -6,7 +6,7 @@
 
 # SpecForge.AI
 
-SpecForge.AI is an early-stage developer tool for running structured SDD workflows inside VS Code.
+SpecForge.AI is an early-stage developer tool for running structured SDD workflows from VS Code, MCP-capable agents, or the self-contained browser workflow portal.
 
 The project focuses on governing how AI-assisted development happens, not only on generating code. It introduces explicit phases, persisted artifacts, human checkpoints, regressions, timeline tracking, and a minimal execution core that can evolve into a full MCP-backed workflow system.
 
@@ -26,7 +26,7 @@ Implemented today:
 - packaged Codex/MCP plugin bundle for repository-local installation
 - OpenAI-compatible phase provider infrastructure
 - native CLI provider routing for Codex, Claude, and Copilot profiles
-- CLI workflow portal for browser-based workflow inspection and operation
+- self-contained CLI workflow portal for browser-based workflow inspection, operation, and runtime configuration outside VS Code
 
 Not implemented yet:
 
@@ -76,7 +76,7 @@ Playback is intentionally theatrical enough to communicate that the workflow is 
 - VS Code extension for creating, importing, listing, opening, and operating user stories
 - CLI workflow portal via `serve-workflow`, with graph view, phase selection, browser actions, and cached HTML rendering
 - Context menu action to open the CLI workflow portal for a selected user story
-- Packaged Codex plugin under `plugins/specforge-ai/` with skills, MCP server, compiled webview assets, and quick prompts
+- Packaged Codex plugin under `plugins/specforge-ai/` with skills, MCP server, compiled webview assets, packaged CLI portal runtime, and quick prompts
 
 ## Repository Layout
 
@@ -119,7 +119,7 @@ The current design is intentionally split into layers:
   - optional launch from the VS Code user-story context menu
 - Codex plugin bundle:
   - skills that force SpecForge operations through the MCP boundary
-  - packaged MCP binaries and webview rendering assets for repository-local use
+  - packaged MCP binaries, CLI portal runtime, and webview rendering assets for repository-local use
   - quick prompts including opening the CLI workflow portal
 
 See the detailed design documents in:
@@ -190,6 +190,32 @@ dotnet run --project src/SpecForge.Runner.Cli/SpecForge.Runner.Cli.csproj -- ser
 
 From the VS Code extension, right-click a user story in the SpecForge.AI view and choose **Open CLI Workflow Portal** to start the same portal focused on that story.
 
+### Use SpecForge without VS Code
+
+SpecForge is not tied to the VS Code UI. The same workflow can be operated from any environment that can run a local process and talk to an MCP `stdio` server.
+
+For non-VS Code systems, use the packaged plugin bundle in `plugins/specforge-ai/`. It is intentionally self-contained for local agent clients:
+
+- `mcp/SpecForge.McpServer` exposes the authoritative MCP workflow facade.
+- `mcp/SpecForge.Runner.Cli` serves the browser workflow portal.
+- `mcp/tools/render-cli-workflow-html.js` and compiled webview assets render the same operational workflow surface used by the extension.
+- `skills/` teaches Codex-style agents to use MCP actions instead of editing `.specs/**` files directly.
+- `.mcp.json` points at the packaged MCP server with a relative command, so the bundle can live under a consumer repository's `.agents/plugins/specforge-ai/`.
+
+The MCP server exposes compact tools for external agents:
+
+- `specforge_query` for reads such as listing stories, workflow state, current phase, runtime status, lineage, and files.
+- `specforge_action` for mutations such as creating stories, advancing phases, approving gates, answering refinement questions, regressing, rewinding, reopening, and operating on artifacts.
+- `specforge_prompts` for repository prompt-template operations.
+- `open_workflow_portal` to start the packaged portal process and open the browser URL for a selected user story.
+
+This makes the expected non-VS Code flow:
+
+1. Install or copy `plugins/specforge-ai/` into the consumer repository as `.agents/plugins/specforge-ai/`.
+2. Configure the agent's MCP client to start `.agents/plugins/specforge-ai/mcp/SpecForge.McpServer`.
+3. Use MCP tools for all workflow state changes.
+4. Use `open_workflow_portal` or `SpecForge.Runner.Cli serve-workflow` when a human needs to inspect, approve, answer, regress, or configure execution.
+
 ### Packaged Codex/MCP plugin
 
 The repository includes a packaged local plugin at `plugins/specforge-ai/`. Consumer repositories can copy or install that bundle under `.agents/plugins/specforge-ai/` and point their MCP config at the local server:
@@ -207,6 +233,8 @@ The repository includes a packaged local plugin at `plugins/specforge-ai/`. Cons
 ```
 
 The bundle includes task-focused skills and quick prompts for common operations such as listing user stories, advancing phases, and opening the CLI workflow portal.
+
+The packaged MCP server can also start the portal itself through `open_workflow_portal`. By default it uses `http://localhost:5128/`; set `SPECFORGE_WORKFLOW_PORTAL_URL` or pass the tool's `url` argument when the client needs a different localhost port.
 
 ## Model Configuration
 
