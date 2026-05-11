@@ -104,3 +104,25 @@ test("CLI workflow renderer switches the selected story when toggling sidebar vi
     assert.match(content, /url\.searchParams\.delete\("selectedPhaseId"\)/);
   }
 });
+
+test("CLI workflow renderer polls the signature for the current portal query", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+  const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
+
+  for (const content of [script, packagedScript]) {
+    assert.match(content, /fetch\("\/api\/workflow-signature" \+ window\.location\.search, \{ cache: "no-store" \}\)/);
+    assert.doesNotMatch(content, /fetch\("\/api\/workflow-signature", \{ cache: "no-store" \}\)/);
+  }
+});
+
+test("CLI workflow renderer canonicalizes the URL to the rendered workflow story", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+  const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
+
+  for (const content of [script, packagedScript]) {
+    assert.match(content, /const renderedWorkflowUsId = \$\{JSON\.stringify\(workflow\.usId\)\}/);
+    assert.match(content, /url\.searchParams\.get\("usId"\) !== renderedWorkflowUsId/);
+    assert.match(content, /url\.searchParams\.set\("usId", renderedWorkflowUsId\)/);
+    assert.match(content, /window\.history\.replaceState\(window\.history\.state, "", url\.toString\(\)\)/);
+  }
+});

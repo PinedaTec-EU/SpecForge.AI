@@ -200,10 +200,18 @@ const browserShim = `
 const refreshShim = `
 <script>
   (() => {
+    const renderedWorkflowUsId = ${JSON.stringify(workflow.usId)};
+    try {
+      const url = new URL(window.location.href);
+      if (renderedWorkflowUsId && url.searchParams.get("usId") !== renderedWorkflowUsId) {
+        url.searchParams.set("usId", renderedWorkflowUsId);
+        window.history.replaceState(window.history.state, "", url.toString());
+      }
+    } catch {}
     let signature = ${JSON.stringify(payload.signature)};
     async function poll() {
       try {
-        const response = await fetch("/api/workflow-signature", { cache: "no-store" });
+        const response = await fetch("/api/workflow-signature" + window.location.search, { cache: "no-store" });
         if (!response.ok) return;
         const next = await response.text();
         if (signature && next && next !== signature) {

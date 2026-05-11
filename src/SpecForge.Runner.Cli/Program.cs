@@ -214,6 +214,7 @@ static async Task HandleWorkflowPortalRequestAsync(
         }
 
         var requestUsId = ResolveWorkflowPortalUserStoryId(context.Request, usId);
+        var requestSidebarVisibility = ResolveWorkflowPortalSidebarVisibility(context.Request);
 
         switch ((context.Request.HttpMethod, path))
         {
@@ -225,7 +226,7 @@ static async Task HandleWorkflowPortalRequestAsync(
                         workspaceRoot,
                         requestUsId,
                         context.Request.QueryString["selectedPhaseId"],
-                        context.Request.QueryString["sidebarVisibility"],
+                        requestSidebarVisibility,
                         context.Request.Url?.GetLeftPart(UriPartial.Authority) ?? "http://localhost:5128",
                         renderCache));
                 return;
@@ -235,7 +236,11 @@ static async Task HandleWorkflowPortalRequestAsync(
             case ("GET", "/api/workflow-signature"):
                 await WriteTextResponseAsync(
                     context.Response,
-                    await BuildWorkflowPortalSignatureAsync(applicationService, workspaceRoot, requestUsId),
+                    await BuildWorkflowPortalSignatureAsync(
+                        applicationService,
+                        workspaceRoot,
+                        requestUsId,
+                        requestSidebarVisibility),
                     "text/plain");
                 return;
             case ("GET", "/api/runtime-status"):
@@ -431,6 +436,18 @@ static string ResolveWorkflowPortalUserStoryId(HttpListenerRequest request, stri
     return string.IsNullOrWhiteSpace(refererUsId) ? fallbackUsId : refererUsId;
 }
 
+static string? ResolveWorkflowPortalSidebarVisibility(HttpListenerRequest request)
+{
+    var querySidebarVisibility = request.QueryString["sidebarVisibility"];
+    if (!string.IsNullOrWhiteSpace(querySidebarVisibility))
+    {
+        return querySidebarVisibility;
+    }
+
+    var referer = request.UrlReferrer;
+    return referer is null ? null : ParseQueryValue(referer.Query, "sidebarVisibility");
+}
+
 static async Task HandleDropOrRecoverUserStoryAsync(
     HttpListenerContext context,
     string workspaceRoot,
@@ -511,19 +528,26 @@ static string BuildConfigurationPortalUrl(string workflowPortalOrigin, string? f
 static async Task<string> BuildWorkflowPortalSignatureAsync(
     SpecForgeApplicationService applicationService,
     string workspaceRoot,
-    string usId)
+    string usId,
+    string? sidebarVisibility)
 {
-    var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, usId);
-    var userStories = await applicationService.ListUserStoriesAsync(workspaceRoot);
-    var sidebarUserStories = await applicationService.ListUserStoriesAsync(workspaceRoot, "active");
-    var droppedUserStoryCount = (await applicationService.ListUserStoriesAsync(workspaceRoot, "dropped")).Count;
+    var normalizedSidebarVisibility = string.Equals(sidebarVisibility, "dropped", StringComparison.OrdinalIgnoreCase)
+        ? "dropped"
+        : "active";
+    var activeSidebarUserStories = await applicationService.ListUserStoriesAsync(workspaceRoot);
+    var droppedSidebarUserStories = await applicationService.ListUserStoriesAsync(workspaceRoot, "dropped");
+    var sidebarUserStories = normalizedSidebarVisibility == "dropped"
+        ? droppedSidebarUserStories
+        : activeSidebarUserStories;
+    var resolvedUsId = ResolveSidebarVisibleUserStoryId(usId, sidebarUserStories);
+    var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, resolvedUsId);
 
     return BuildWorkflowSignature(
         workflow,
-        userStories,
-        "active",
+        activeSidebarUserStories,
+        normalizedSidebarVisibility,
         sidebarUserStories,
-        droppedUserStoryCount);
+        droppedSidebarUserStories.Count);
 }
 
 static async Task<string> RenderWorkflowHtmlWithNodeAsync(string payload)

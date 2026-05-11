@@ -84,6 +84,10 @@ test("CLI workflow portal payload includes sidebar stories and configuration URL
   assert.match(source, /configurationPortalUrl = BuildConfigurationPortalUrl\(workflowPortalOrigin\)/);
   assert.match(source, /configurationProvidersUrl = BuildConfigurationPortalUrl\(workflowPortalOrigin, "providers"\)/);
   assert.match(source, /configurationAdvancedUrl = BuildConfigurationPortalUrl\(workflowPortalOrigin, "advanced"\)/);
+  assert.match(source, /requestSidebarVisibility = ResolveWorkflowPortalSidebarVisibility\(context\.Request\)/);
+  assert.match(source, /BuildWorkflowPortalSignatureAsync\([\s\S]*?requestUsId,[\s\S]*?requestSidebarVisibility\)/);
+  assert.match(source, /static string\? ResolveWorkflowPortalSidebarVisibility\(HttpListenerRequest request\)/);
+  assert.match(source, /ParseQueryValue\(referer\.Query, "sidebarVisibility"\)/);
   assert.match(source, /case \("GET", "\/configuration"\):/);
   assert.match(source, /case \("GET", "\/api\/settings"\):/);
   assert.match(source, /case \("PUT", "\/api\/settings"\):/);
@@ -93,6 +97,17 @@ test("CLI workflow portal payload includes sidebar stories and configuration URL
   assert.match(source, /<section class="panel" id="providers">/);
   assert.match(source, /<section class="panel" id="advanced">/);
   assert.match(source, /ResolveWorkflowPortalUserStoryId\(context\.Request, usId\)/);
+});
+
+test("CLI workflow portal signature uses the current sidebar visibility", async () => {
+  const source = await fs.promises.readFile(programPath, "utf8");
+
+  assert.match(source, /BuildWorkflowPortalSignatureAsync\(\s*SpecForgeApplicationService applicationService,\s*string workspaceRoot,\s*string usId,\s*string\? sidebarVisibility\s*\)/);
+  assert.match(source, /normalizedSidebarVisibility = string\.Equals\(sidebarVisibility, "dropped", StringComparison\.OrdinalIgnoreCase\)/);
+  assert.match(source, /sidebarUserStories = normalizedSidebarVisibility == "dropped"[\s\S]*?\? droppedSidebarUserStories[\s\S]*?: activeSidebarUserStories/);
+  assert.match(source, /resolvedUsId = ResolveSidebarVisibleUserStoryId\(usId, sidebarUserStories\)/);
+  assert.match(source, /GetUserStoryWorkflowAsync\(workspaceRoot, resolvedUsId\)/);
+  assert.match(source, /BuildWorkflowSignature\([\s\S]*?activeSidebarUserStories,[\s\S]*?normalizedSidebarVisibility,[\s\S]*?sidebarUserStories,[\s\S]*?droppedSidebarUserStories\.Count\)/);
 });
 
 test("CLI writes JSON with web serializer options for record responses", async () => {
