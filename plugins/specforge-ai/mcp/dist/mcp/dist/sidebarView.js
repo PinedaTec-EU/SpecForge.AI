@@ -235,6 +235,7 @@ class SidebarViewProvider {
         const title = message.title?.trim();
         const kind = message.kind?.trim();
         const category = message.category?.trim();
+        const tags = parseCustomTags(message.tags);
         const intakeMode = message.intakeMode === "wizard" ? "wizard" : "freeform";
         const sourceText = intakeMode === "wizard"
             ? (0, userStoryIntake_1.buildWizardSourceText)(message.wizardDraft).trim()
@@ -253,7 +254,7 @@ class SidebarViewProvider {
         const backendClient = (0, specsExplorer_1.getOrCreateBackendClient)(workspaceRoot);
         const summaries = await backendClient.listUserStories();
         const usId = (0, explorerModel_1.nextUserStoryIdFromSummaries)(summaries);
-        const result = await backendClient.createUserStory(usId, title, kind, category, sourceText, (0, userActor_1.getCurrentActor)());
+        const result = await backendClient.createUserStory(usId, title, kind, category, sourceText, (0, userActor_1.getCurrentActor)(), tags);
         await this.materializeCreateFilesAsync(result.rootDirectory);
         this.showCreateForm = false;
         this.createFiles = [];
@@ -623,6 +624,12 @@ class SidebarViewProvider {
     }
 }
 exports.SidebarViewProvider = SidebarViewProvider;
+function parseCustomTags(value) {
+    return [...new Set((value ?? "")
+            .split(",")
+            .map((tag) => tag.trim().replace(/^#/, "").toLowerCase())
+            .filter((tag) => tag.length > 0))];
+}
 function serializeReferencedFile(file) {
     return {
         sourcePath: file.sourcePath,

@@ -135,7 +135,7 @@ class StdioMcpBackendClient {
             ...(actor && actor.trim().length > 0 ? { actor } : {})
         });
     }
-    async createUserStory(usId, title, kind, category, sourceText, actor) {
+    async createUserStory(usId, title, kind, category, sourceText, actor, tags) {
         return this.callTool("create_us_from_chat", {
             workspaceRoot: this.workspaceRoot,
             usId,
@@ -143,10 +143,11 @@ class StdioMcpBackendClient {
             kind,
             category,
             sourceText,
+            ...(tags && tags.length > 0 ? { tags } : {}),
             ...(actor && actor.trim().length > 0 ? { actor } : {})
         });
     }
-    async importUserStory(usId, sourcePath, title, kind, category, actor) {
+    async importUserStory(usId, sourcePath, title, kind, category, actor, tags) {
         return this.callTool("import_us_from_markdown", {
             workspaceRoot: this.workspaceRoot,
             usId,
@@ -154,6 +155,7 @@ class StdioMcpBackendClient {
             title,
             kind,
             category,
+            ...(tags && tags.length > 0 ? { tags } : {}),
             ...(actor && actor.trim().length > 0 ? { actor } : {})
         });
     }

@@ -197,6 +197,7 @@ async function createUserStoryFromInput() {
     if (!category) {
         return;
     }
+    const tags = await promptUserStoryTags();
     const sourceText = await vscode.window.showInputBox({
         prompt: "User story objective or initial source text",
         ignoreFocusOut: true,
@@ -206,7 +207,7 @@ async function createUserStoryFromInput() {
         return;
     }
     const usId = await nextUserStoryId(workspaceRoot);
-    const result = await getBackendClient(workspaceRoot).createUserStory(usId, title, kind, category, sourceText, (0, userActor_1.getCurrentActor)());
+    const result = await getBackendClient(workspaceRoot).createUserStory(usId, title, kind, category, sourceText, (0, userActor_1.getCurrentActor)(), tags);
     await openTextDocument(result.mainArtifactPath);
 }
 async function importUserStoryFromMarkdown() {
@@ -239,9 +240,20 @@ async function importUserStoryFromMarkdown() {
     if (!category) {
         return;
     }
+    const tags = await promptUserStoryTags();
     const usId = await nextUserStoryId(workspaceRoot);
-    const result = await getBackendClient(workspaceRoot).importUserStory(usId, sourceUri.fsPath, title, kind, category, (0, userActor_1.getCurrentActor)());
+    const result = await getBackendClient(workspaceRoot).importUserStory(usId, sourceUri.fsPath, title, kind, category, (0, userActor_1.getCurrentActor)(), tags);
     await openTextDocument(result.mainArtifactPath);
+}
+async function promptUserStoryTags() {
+    const value = await vscode.window.showInputBox({
+        prompt: "Custom tags (optional, comma-separated)",
+        ignoreFocusOut: true
+    });
+    return [...new Set((value ?? "")
+            .split(",")
+            .map((tag) => tag.trim().replace(/^#/, "").toLowerCase())
+            .filter((tag) => tag.length > 0))];
 }
 async function initializeRepoPrompts(overwrite = false) {
     const workspaceRoot = getWorkspaceRoot();
