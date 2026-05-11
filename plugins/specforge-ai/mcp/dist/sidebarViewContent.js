@@ -1233,6 +1233,13 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
       --story-rail-border: rgba(255, 193, 120, 0.22);
     }
     .story-row--status-blocked {
+      --story-selection-edge-solid: rgba(255, 221, 138, 0.94);
+      --story-selection-edge-glow: rgba(214, 153, 58, 0.28);
+      --story-rail-top: rgba(255, 198, 92, 0.28);
+      --story-rail-bottom: rgba(58, 39, 13, 0.94);
+      --story-rail-border: rgba(255, 198, 92, 0.26);
+    }
+    .story-row--status-error {
       --story-selection-edge-solid: rgba(255, 171, 171, 0.94);
       --story-selection-edge-glow: rgba(204, 86, 86, 0.28);
       --story-rail-top: rgba(255, 139, 139, 0.24);
@@ -1993,13 +2000,19 @@ function phaseLabelFor(currentPhase) {
     return phaseLabels[currentPhase] ?? "?";
 }
 function phaseRailLabelFor(currentPhase, status) {
-    return isErrorStatus(status) ? "ERROR" : isCompletedStatus(status) ? "DONE" : phaseLabelFor(currentPhase);
+    if (isErrorStatus(status)) {
+        return "ERROR";
+    }
+    if (status === "blocked") {
+        return "BLOCK";
+    }
+    return isCompletedStatus(status) ? "DONE" : phaseLabelFor(currentPhase);
 }
 function shouldRenderPhaseRail(status) {
     return status !== "superseded" && status !== "abandoned";
 }
 function isErrorStatus(status) {
-    return status === "failed" || status === "error" || status === "errored" || status === "invalid" || status === "blocked";
+    return status === "failed" || status === "error" || status === "errored" || status === "invalid";
 }
 function isCompletedStatus(status) {
     return status === "completed";
@@ -2024,7 +2037,7 @@ function phaseRailStatus(status) {
         case "error":
         case "errored":
         case "invalid":
-            return "blocked";
+            return "error";
         case "blocked":
             return "blocked";
         case "completed":
