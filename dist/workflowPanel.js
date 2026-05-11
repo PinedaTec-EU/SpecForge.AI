@@ -247,6 +247,12 @@ class WorkflowPanelController {
                 (0, outputChannel_1.appendSpecForgeLog)(`Workflow '${this.summary.usId}' snapshot copied to clipboard.${message.detail ? ` ${message.detail}` : ""}`);
                 void vscode.window.showInformationMessage(message.detail ?? "Workflow snapshot copied to clipboard.");
                 return;
+            case "openWorkflow":
+                if (message.usId) {
+                    const summary = await this.getBackendClient().getUserStorySummary(message.usId);
+                    await vscode.commands.executeCommand("specForge.openWorkflowView", summary);
+                }
+                return;
             case "selectPhase":
                 if (message.phaseId) {
                     this.selectedPhaseId = message.phaseId;

@@ -69,6 +69,14 @@ const browserShim = `
       catch {}
     },
     postMessage(message) {
+      if (message?.command === "openWorkflow" && message.usId) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("selectedPhaseId");
+        url.searchParams.set("usId", message.usId);
+        window.location.href = url.toString();
+        return;
+      }
+
       if (message?.command === "selectPhase" && message.phaseId) {
         const url = new URL(window.location.href);
         url.searchParams.set("selectedPhaseId", message.phaseId);
