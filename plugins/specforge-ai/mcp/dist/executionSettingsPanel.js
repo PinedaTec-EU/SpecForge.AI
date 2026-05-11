@@ -97,7 +97,7 @@ class ExecutionSettingsPanelController {
         const settings = (0, extensionSettings_1.getSpecForgeSettings)();
         this.panel.webview.html = buildExecutionSettingsHtml({
             modelProfiles: settings.modelProfiles,
-            agentProfiles: settings.agentProfiles ?? deriveAgentProfilesFromModels(settings.modelProfiles),
+            agentProfiles: settings.agentProfiles ?? [],
             phaseAgentAssignments: settings.phaseAgentAssignments,
             refinementTolerance: settings.refinementTolerance,
             mvpRigor: settings.mvpRigor ?? "medium",
@@ -126,16 +126,6 @@ class ExecutionSettingsPanelController {
             typographyCssVars: (0, webviewTypography_1.getEditorTypographyCssVars)()
         });
     }
-}
-function deriveAgentProfilesFromModels(modelProfiles) {
-    return modelProfiles.map((profile) => ({
-        name: profile.name,
-        role: profile.name,
-        modelProfile: profile.name,
-        instructions: "",
-        repositoryAccess: profile.repositoryAccess,
-        ...(profile.reasoningEffort ? { reasoningEffort: profile.reasoningEffort } : {})
-    }));
 }
 const executionPhases = [
     { key: "defaultAgent", label: "Default / fallback", phaseId: null, kind: "default" },
@@ -1710,7 +1700,9 @@ async function saveExecutionSettingsAsync(modelProfiles, agentProfiles, phaseAge
         prPreparationAgent: normalizeOptionalAssignment(phaseAgentAssignments.prPreparationAgent)
     };
     const modelNames = new Set(normalizedProfiles.map((profile) => profile.name));
-    const agentWithoutModel = normalizedAgents.find((agent) => !agent.modelProfile);
+    const agentWithoutModel = normalizedProfiles.length > 0
+        ? normalizedAgents.find((agent) => !agent.modelProfile)
+        : undefined;
     if (agentWithoutModel) {
         throw new Error(`Agent '${agentWithoutModel.name || "<unnamed>"}' must reference a model profile.`);
     }
