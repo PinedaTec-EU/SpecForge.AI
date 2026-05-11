@@ -4063,6 +4063,14 @@ test("buildWorkflowHtml gives dependency blocked nodes an amber lock marker", ()
     mainArtifactPath: "/tmp/us.md",
     timelinePath: "/tmp/timeline.md",
     rawTimeline: "raw timeline",
+    dependencies: [{
+      usId: "US-0001",
+      title: "Foundation workflow",
+      currentPhase: "review",
+      status: "active",
+      isSatisfied: false,
+      missingReason: "not completed"
+    }],
     phases: [
       {
         phaseId: "capture",
@@ -4115,6 +4123,14 @@ test("buildWorkflowHtml gives dependency blocked nodes an amber lock marker", ()
   assert.match(html, /graph-phase-status-icon--dependency-blocked/);
   assert.match(html, /aria-label="Blocked by user-story dependency"/);
   assert.match(html, /\.phase-node\.phase-node--dependency-blocked/);
+  assert.match(html, /class="dependency-block"/);
+  assert.match(html, /Blocked by user-story dependency/);
+  assert.match(html, /1 incomplete dependency/);
+  assert.match(html, /data-command="openWorkflow"/);
+  assert.match(html, /data-us-id="US-0001"/);
+  assert.match(html, /Foundation workflow/);
+  assert.match(html, /\.hero-meta \{[\s\S]*flex-wrap: nowrap;/);
+  assert.match(html, /\.token\.token--blocked \{[\s\S]*var\(--attention-egg-soft\)/);
 });
 
 test("buildWorkflowHtml marks a phase blocked when its model security precheck fails", () => {

@@ -32,6 +32,7 @@ type WorkflowPanelCommand =
   | { readonly command: "webviewClientError"; readonly detail?: string }
   | { readonly command: "webviewDispatch"; readonly detail?: string }
   | { readonly command: "workflowSnapshotCopied"; readonly detail?: string }
+  | { readonly command: "openWorkflow"; readonly usId?: string }
   | { readonly command: "selectPhase"; readonly phaseId?: string }
   | { readonly command: "selectIteration"; readonly iterationKey?: string }
   | { readonly command: "togglePhaseIterations"; readonly phaseId?: string }
@@ -315,6 +316,12 @@ class WorkflowPanelController {
           `Workflow '${this.summary.usId}' snapshot copied to clipboard.${message.detail ? ` ${message.detail}` : ""}`
         );
         void vscode.window.showInformationMessage(message.detail ?? "Workflow snapshot copied to clipboard.");
+        return;
+      case "openWorkflow":
+        if (message.usId) {
+          const summary = await this.getBackendClient().getUserStorySummary(message.usId);
+          await vscode.commands.executeCommand("specForge.openWorkflowView", summary);
+        }
         return;
       case "selectPhase":
         if (message.phaseId) {

@@ -1,4 +1,4 @@
-import type { PhaseExecutionReadiness, UserStoryWorkflowDetails, WorkflowPhaseDetails } from "./backendClient";
+import type { PhaseExecutionReadiness, UserStoryDependencySummary, UserStoryWorkflowDetails, WorkflowPhaseDetails } from "./backendClient";
 import { escapeHtml, escapeHtmlAttr as escapeHtmlAttribute } from "./htmlEscape";
 import { buildCapturePhaseSections } from "./workflow-view/capturePhaseView";
 import { extractArtifactQuestionBlock, type ArtifactQuestionBlock } from "./workflow-view/artifactQuestions";
@@ -55,6 +55,9 @@ interface ExecutionOverlayModel {
 }
 
 type PhaseVisualTone = "active" | "waiting-user" | "paused" | "blocked" | "completed" | "pending" | "disabled";
+type DependencyBlockState = {
+  readonly dependencies: readonly UserStoryDependencySummary[];
+};
 
 type PhaseGraphEdge = {
   readonly fromPhaseId: string;
@@ -1190,6 +1193,60 @@ function buildWorkflowHeroTitle(workflow: UserStoryWorkflowDetails): string {
   return `${workflow.usId} · ${normalizedTitle}`;
 }
 
+function resolveDependencyBlockState(workflow: UserStoryWorkflowDetails): DependencyBlockState | null {
+  if (!isDependencyBlockedWorkflow(workflow)) {
+    return null;
+  }
+
+  const dependencies = (workflow.dependencies ?? []).filter((dependency) => !dependency.isSatisfied);
+  return dependencies.length > 0 ? { dependencies } : null;
+}
+
+function buildDependencyBlockedHeroMarkup(blockState: DependencyBlockState | null): string {
+  if (!blockState) {
+    return "";
+  }
+
+  const dependencyLinks = blockState.dependencies.map((dependency) => {
+    const title = dependency.title?.trim();
+    const meta = [dependency.status, dependency.currentPhase]
+      .filter((item): item is string => Boolean(item?.trim()))
+      .join(" · ");
+    const missingReason = dependency.missingReason?.trim();
+    return `
+      <button
+        class="dependency-block__link"
+        type="button"
+        data-command="openWorkflow"
+        data-us-id="${escapeHtmlAttribute(dependency.usId)}"
+        title="Open ${escapeHtmlAttribute(dependency.usId)}">
+        <span class="dependency-block__link-id">${escapeHtml(dependency.usId)}</span>
+        <span class="dependency-block__link-title">${escapeHtml(title || "Open dependency")}</span>
+        ${meta ? `<span class="dependency-block__link-meta">${escapeHtml(meta)}</span>` : ""}
+        ${missingReason ? `<span class="dependency-block__link-meta">${escapeHtml(missingReason)}</span>` : ""}
+      </button>
+    `;
+  }).join("");
+  const countLabel = blockState.dependencies.length === 1
+    ? "1 incomplete dependency"
+    : `${blockState.dependencies.length} incomplete dependencies`;
+
+  return `
+    <section class="dependency-block" aria-label="Blocked user story dependencies">
+      <div class="dependency-block__icon" aria-hidden="true">${lockClosedIcon()}</div>
+      <div class="dependency-block__content">
+        <div class="dependency-block__summary">
+          <span class="dependency-block__eyebrow">Blocked by user-story dependency</span>
+          <strong>${escapeHtml(countLabel)}</strong>
+        </div>
+        <div class="dependency-block__links">
+          ${dependencyLinks}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function shouldRenderApprovalBranchEditor(
   workflow: UserStoryWorkflowDetails,
   selectedPhase: WorkflowPhaseDetails,
@@ -1784,6 +1841,8 @@ export function buildWorkflowHtml(
     : playbackState === "paused" && pausedExecutionPhaseId
       ? pausedExecutionPhaseId
     : workflow.currentPhase;
+  const dependencyBlockState = resolveDependencyBlockState(workflow);
+  const dependencyBlockedHeroMarkup = buildDependencyBlockedHeroMarkup(dependencyBlockState);
   const implementationReviewLimitReached = workflow.currentPhase === "implementation"
     && hasReachedImplementationReviewCycleLimit(workflow, state.maxImplementationReviewCycles);
   const implementationReviewLimitBanner = implementationReviewLimitReached
@@ -2677,8 +2736,14 @@ export function buildWorkflowHtml(
     }
     .hero-meta {
       margin-top: 14px;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding-bottom: 2px;
+      scrollbar-width: thin;
     }
     .token, .badge {
+      flex: 0 0 auto;
       border-radius: 999px;
       padding: 6px 12px;
       font-size: 0.86rem;
@@ -2782,9 +2847,106 @@ export function buildWorkflowHtml(
       border-color: rgba(179, 187, 198, 0.24);
     }
     .token.token--blocked {
-      background: rgba(255, 120, 120, 0.14);
-      color: #ffb0b0;
-      border-color: rgba(255, 120, 120, 0.26);
+      background: var(--attention-egg-soft);
+      color: #ffe17b;
+      border-color: var(--attention-egg-border);
+      box-shadow: 0 0 0 1px rgba(255, 213, 90, 0.06);
+    }
+    .dependency-block {
+      display: grid;
+      grid-template-columns: 70px minmax(0, 1fr);
+      gap: 16px;
+      align-items: center;
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 213, 90, 0.42);
+      background:
+        radial-gradient(circle at 36px 24px, rgba(255, 238, 158, 0.16), transparent 64px),
+        linear-gradient(180deg, rgba(63, 47, 17, 0.7), rgba(26, 20, 8, 0.88));
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 12px 28px rgba(83, 57, 9, 0.18);
+    }
+    .dependency-block__icon {
+      width: 62px;
+      height: 62px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: rgba(255, 235, 164, 0.98);
+      border: 1px solid rgba(255, 213, 90, 0.74);
+      background:
+        radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.32), transparent 34%),
+        linear-gradient(180deg, rgba(255, 213, 90, 0.3), rgba(96, 67, 16, 0.92));
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.28),
+        0 0 0 7px rgba(255, 213, 90, 0.1),
+        0 0 24px rgba(255, 213, 90, 0.18);
+    }
+    .dependency-block__icon svg {
+      width: 30px;
+      height: 30px;
+      stroke-width: 2.3;
+    }
+    .dependency-block__content {
+      min-width: 0;
+      display: grid;
+      gap: 10px;
+    }
+    .dependency-block__summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      align-items: baseline;
+      color: rgba(255, 247, 220, 0.94);
+    }
+    .dependency-block__eyebrow {
+      font-size: 0.74rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(255, 225, 123, 0.86);
+    }
+    .dependency-block__links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .dependency-block__link {
+      min-width: 0;
+      max-width: 100%;
+      display: inline-grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 4px 8px;
+      align-items: baseline;
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 213, 90, 0.28);
+      background: rgba(255, 255, 255, 0.055);
+      color: rgba(255, 249, 231, 0.94);
+      text-align: left;
+      cursor: pointer;
+    }
+    .dependency-block__link:hover {
+      border-color: rgba(255, 224, 136, 0.58);
+      background: rgba(255, 213, 90, 0.11);
+    }
+    .dependency-block__link-id {
+      font-weight: 800;
+      color: #ffe17b;
+      white-space: nowrap;
+    }
+    .dependency-block__link-title {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .dependency-block__link-meta {
+      grid-column: 1 / -1;
+      font-size: 0.76rem;
+      color: rgba(255, 247, 220, 0.7);
     }
     .control-strip {
       justify-self: end;
@@ -6082,6 +6244,7 @@ export function buildWorkflowHtml(
             <span class="token${heroTokenClass(`runner:${playbackState}`)}">runner:${escapeHtml(playbackState)}</span>
             ${rewindBlockedToken}
           </div>
+          ${dependencyBlockedHeroMarkup}
         </div>
         <div class="control-strip">
           ${pullRequestUrl
@@ -7112,6 +7275,7 @@ export function buildWorkflowHtml(
         vscode.postMessage({
           command: element.dataset.command,
           phaseId: element.dataset.phaseId,
+          usId: element.dataset.usId,
           iterationKey: element.dataset.iterationKey,
           path: element.dataset.path,
           url: element.dataset.url,
