@@ -232,8 +232,10 @@ test("buildSidebarHtml filters blocked user stories from the active sidebar by d
   assert.doesNotMatch(html, /<button class="story-card story-card--active/);
   assert.doesNotMatch(html, /<span class="story-card__phase-label">/);
   assert.match(html, /Only blocked user stories are hidden/);
-  assert.match(html, /Show blocked \(1\)/);
-  assert.match(html, /data-command="toggleBlockedUserStories"/);
+  assert.match(html, />Show blocked<\/span>/);
+  assert.doesNotMatch(html, /Show blocked \(1\)/);
+  assert.match(html, /data-command="toggleBlockedUserStories"[^>]*aria-checked="false"/);
+  assert.doesNotMatch(html, /data-command="toggleBlockedUserStories"[^>]*disabled/);
   assert.match(html, /aria-checked="false"/);
 });
 
@@ -255,7 +257,8 @@ test("buildSidebarHtml shows blocked user stories when enabled", () => {
 
   assert.match(html, /story-row--status-blocked/);
   assert.match(html, /<span class="story-card__phase-label">🔒 BLOCK<\/span>/);
-  assert.match(html, /Show blocked \(1\)/);
+  assert.match(html, />Show blocked<\/span>/);
+  assert.doesNotMatch(html, /Show blocked \(1\)/);
   assert.match(html, /aria-checked="true"/);
 });
 
@@ -334,7 +337,27 @@ test("buildSidebarHtml filters completed user stories from the active sidebar by
   assert.doesNotMatch(html, /<button class="story-card story-card--active/);
   assert.doesNotMatch(html, /<span class="story-card__phase-label">/);
   assert.match(html, /Only completed user stories are hidden/);
-  assert.match(html, /Show completed \(1\)/);
+  assert.match(html, />Show completed<\/span>/);
+  assert.doesNotMatch(html, /Show completed \(1\)/);
+});
+
+test("buildSidebarHtml disables sidebar filter options when there are no matching stories", () => {
+  const html = buildSidebarHtml(model({
+    categories: ["workflow"],
+    userStories: [{
+      usId: "US-0001",
+      title: "Active story",
+      category: "workflow",
+      currentPhase: "spec",
+      status: "active",
+      mainArtifactPath: "/tmp/us.md",
+      directoryPath: "/tmp/us.US-0001",
+      workBranch: null
+    }],
+  }));
+
+  assert.match(html, /data-command="toggleCompletedUserStories"[^>]*aria-checked="false"[^>]*disabled[\s\S]*Show completed/);
+  assert.match(html, /data-command="toggleBlockedUserStories"[^>]*aria-checked="false"[^>]*disabled[\s\S]*Show blocked/);
 });
 
 test("buildSidebarHtml shows completed user stories with a purple completed rail when enabled", () => {
