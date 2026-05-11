@@ -8,6 +8,11 @@ exports.nextUserStoryIdFromSummaries = nextUserStoryIdFromSummaries;
 exports.groupUserStoriesByCategory = groupUserStoriesByCategory;
 exports.DEFAULT_USER_STORY_CATEGORIES = [
     "workflow",
+    "configuration",
+    "synchronization",
+    "user-stories",
+    "repositories",
+    "documentation",
     "ux",
     "prompts",
     "mcp",
