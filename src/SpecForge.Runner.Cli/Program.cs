@@ -215,6 +215,10 @@ static async Task HandleWorkflowPortalRequestAsync(
 
         var requestUsId = ResolveWorkflowPortalUserStoryId(context.Request, usId);
         var requestSidebarVisibility = ResolveWorkflowPortalSidebarVisibility(context.Request);
+        var requestShowCompletedUserStories = string.Equals(
+            context.Request.QueryString["sidebarCompleted"],
+            "true",
+            StringComparison.OrdinalIgnoreCase);
 
         switch ((context.Request.HttpMethod, path))
         {
@@ -227,6 +231,7 @@ static async Task HandleWorkflowPortalRequestAsync(
                         requestUsId,
                         context.Request.QueryString["selectedPhaseId"],
                         requestSidebarVisibility,
+                        requestShowCompletedUserStories,
                         context.Request.Url?.GetLeftPart(UriPartial.Authority) ?? "http://localhost:5128",
                         renderCache));
                 return;
@@ -240,7 +245,8 @@ static async Task HandleWorkflowPortalRequestAsync(
                         applicationService,
                         workspaceRoot,
                         requestUsId,
-                        requestSidebarVisibility),
+                        requestSidebarVisibility,
+                        requestShowCompletedUserStories),
                     "text/plain");
                 return;
             case ("GET", "/api/runtime-status"):
@@ -370,6 +376,7 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
     string usId,
     string? selectedPhaseId,
     string? sidebarVisibility,
+    bool showCompletedUserStories,
     string workflowPortalOrigin,
     WorkflowPortalRenderCache renderCache)
 {
@@ -390,6 +397,7 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
         workflow,
         activeSidebarUserStories,
         normalizedSidebarVisibility,
+        showCompletedUserStories,
         sidebarUserStories,
         droppedUserStoryCount);
     if (renderCache.TryGet(signature, resolvedSelectedPhaseId, selectedPhase, out var cachedHtml))
@@ -410,6 +418,7 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
             activeSidebarUserStories,
             droppedSidebarUserStories,
             showDroppedUserStories = normalizedSidebarVisibility == "dropped",
+            showCompletedUserStories,
             droppedUserStoryCount,
             configurationPortalUrl = BuildConfigurationPortalUrl(workflowPortalOrigin),
             configurationProvidersUrl = BuildConfigurationPortalUrl(workflowPortalOrigin, "providers"),
@@ -529,7 +538,8 @@ static async Task<string> BuildWorkflowPortalSignatureAsync(
     SpecForgeApplicationService applicationService,
     string workspaceRoot,
     string usId,
-    string? sidebarVisibility)
+    string? sidebarVisibility,
+    bool showCompletedUserStories)
 {
     var normalizedSidebarVisibility = string.Equals(sidebarVisibility, "dropped", StringComparison.OrdinalIgnoreCase)
         ? "dropped"
@@ -546,6 +556,7 @@ static async Task<string> BuildWorkflowPortalSignatureAsync(
         workflow,
         activeSidebarUserStories,
         normalizedSidebarVisibility,
+        showCompletedUserStories,
         sidebarUserStories,
         droppedSidebarUserStories.Count);
 }
@@ -637,6 +648,7 @@ static string BuildWorkflowSignature(
     UserStoryWorkflowDetails workflow,
     IReadOnlyCollection<UserStorySummary> userStories,
     string sidebarVisibility,
+    bool showCompletedUserStories,
     IReadOnlyCollection<UserStorySummary> sidebarUserStories,
     int droppedUserStoryCount)
 {
@@ -652,6 +664,7 @@ static string BuildWorkflowSignature(
             eventCount = workflow.Events.Count,
             latestEvent = workflow.Events.LastOrDefault(),
             sidebarVisibility,
+            showCompletedUserStories,
             droppedUserStoryCount,
             userStories = userStories
                 .OrderBy(story => story.UsId, StringComparer.Ordinal)

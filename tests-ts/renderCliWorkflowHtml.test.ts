@@ -102,6 +102,22 @@ test("CLI workflow renderer switches the selected story when toggling sidebar vi
     assert.match(content, /resolveTargetUserStoryId\(droppedSidebarUserStoryIds\)/);
     assert.match(content, /resolveTargetUserStoryId\(activeSidebarUserStoryIds\)/);
     assert.match(content, /url\.searchParams\.delete\("selectedPhaseId"\)/);
+    assert.match(content, /url\.searchParams\.delete\("sidebarCompleted"\)/);
+    assert.match(content, /navigateTo\(url, true\)/);
+  }
+});
+
+test("CLI workflow renderer persists completed story visibility in the portal query", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+  const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
+
+  for (const content of [script, packagedScript]) {
+    assert.match(content, /showCompletedUserStories = payload\.showCompletedUserStories === true/);
+    assert.match(content, /showCompletedUserStories,/);
+    assert.match(content, /message\.command === "toggleCompletedUserStories"/);
+    assert.match(content, /url\.searchParams\.get\("sidebarCompleted"\) === "true"/);
+    assert.match(content, /url\.searchParams\.set\("sidebarCompleted", "true"\)/);
+    assert.match(content, /navigateTo\(url, true\)/);
   }
 });
 

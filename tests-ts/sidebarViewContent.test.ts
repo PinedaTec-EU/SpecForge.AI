@@ -104,7 +104,7 @@ test("buildSidebarHtml exposes a compact prompt customization action", () => {
   assert.match(html, /Export All Prompts/);
   assert.match(html, /Customize Prompt Templates/);
   assert.match(html, /aria-label="Create new user story"/);
-  assert.match(html, /aria-label="Configure execution providers"/);
+  assert.doesNotMatch(html, /aria-label="Configure execution providers"/);
   assert.match(html, /data-story-search/);
   assert.match(html, /Search by title, description, or category/);
   assert.doesNotMatch(html, /data-command="toggleViewMode"/);
