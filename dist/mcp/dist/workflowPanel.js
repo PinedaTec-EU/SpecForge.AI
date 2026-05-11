@@ -1442,7 +1442,10 @@ function isFailedReviewArtifact(content) {
     return /-\s*(Result|Final result):\s*`?fail`?/i.test(content);
 }
 async function openTextDocument(filePath) {
-    const document = await vscode.workspace.openTextDocument(filePath);
+    const resolvedPath = path.isAbsolute(filePath)
+        ? filePath
+        : path.join(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "", filePath);
+    const document = await vscode.workspace.openTextDocument(resolvedPath);
     await vscode.window.showTextDocument(document, { preview: false });
 }
 //# sourceMappingURL=workflowPanel.js.map

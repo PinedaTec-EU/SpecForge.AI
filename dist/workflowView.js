@@ -350,6 +350,31 @@ function findConfiguredModelForProfile(state, profileName) {
     const model = state.modelProfiles?.find((profile) => profile.name === profileName)?.model?.trim();
     return model && model.length > 0 ? model : null;
 }
+function buildUsedSkillsMarkup(usedSkills) {
+    const skills = [...new Set((usedSkills ?? [])
+            .map((skill) => skill.trim())
+            .filter((skill) => skill.length > 0 && skill.toLowerCase() !== "none"))];
+    if (skills.length === 0) {
+        return "";
+    }
+    return `
+    <div class="iteration-skills">
+      <h4>Skills Used</h4>
+      <div class="iteration-skills__links">
+        ${skills.map((skill) => `
+          <button
+            type="button"
+            class="skill-link"
+            data-command="openArtifact"
+            data-path="${(0, htmlEscape_1.escapeHtmlAttr)(skill)}"
+            title="${(0, htmlEscape_1.escapeHtmlAttr)(skill)}">
+            ${(0, htmlEscape_1.escapeHtml)(fileNameFromPath(skill))}
+          </button>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
 function buildPhaseSpecificSections(workflow, selectedPhase, state, artifactPreviewHtml, artifactQuestionBlock, specApprovalQuestions, unresolvedApprovalQuestionCount) {
     switch (selectedPhase.phaseId) {
         case "capture":
@@ -1762,6 +1787,7 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
         </div>
         ${selectedIteration.summary ? `<p class="panel-copy">${(0, htmlEscape_1.escapeHtml)(selectedIteration.summary)}</p>` : ""}
         ${selectedIteration.operationPrompt ? `<pre class="artifact-preview artifact-preview--raw-artifact">${(0, htmlEscape_1.escapeHtml)(selectedIteration.operationPrompt)}</pre>` : ""}
+        ${buildUsedSkillsMarkup(selectedIteration.execution?.usedSkills)}
         <div class="iteration-lineage-grid">
           <div class="iteration-lineage-card">
             <h4>Input Artifact</h4>
@@ -4732,6 +4758,32 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
     .iteration-lineage-card h4,
     .iteration-context-list h4 {
       margin: 0;
+    }
+    .iteration-skills {
+      display: grid;
+      gap: 10px;
+    }
+    .iteration-skills h4 {
+      margin: 0;
+    }
+    .iteration-skills__links {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .skill-link {
+      border: 1px solid rgba(92, 181, 255, 0.22);
+      border-radius: 999px;
+      padding: 7px 11px;
+      color: rgba(226, 241, 255, 0.94);
+      background: rgba(92, 181, 255, 0.1);
+      font: inherit;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+    .skill-link:hover {
+      border-color: rgba(92, 181, 255, 0.38);
+      background: rgba(92, 181, 255, 0.16);
     }
     .embedded-artifact-list {
       display: grid;
