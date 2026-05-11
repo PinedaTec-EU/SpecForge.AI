@@ -306,9 +306,17 @@ function buildBusyIndicatorMarkup(model) {
   `;
 }
 function buildRuntimeVersionMarkup(runtimeVersion) {
-    return runtimeVersion
-        ? `<span class="runtime-version">v.${(0, htmlEscape_1.escapeHtml)(runtimeVersion)}</span>`
+    const displayVersion = formatRuntimeVersion(runtimeVersion);
+    return displayVersion
+        ? `<span class="runtime-version">v.${(0, htmlEscape_1.escapeHtml)(displayVersion)}</span>`
         : "";
+}
+function formatRuntimeVersion(runtimeVersion) {
+    const version = runtimeVersion?.trim();
+    if (!version) {
+        return null;
+    }
+    return version.split("+", 1)[0] || version;
 }
 function buildCreateActionButton(enabled) {
     return `
@@ -1781,11 +1789,11 @@ function buildStoryRowMarkup(summary, starredUserStoryId, activeWorkflowUsId) {
     ].join(" ");
     return `
     <div class="story-row story-row--shell story-row--status-${(0, htmlEscape_1.escapeHtmlAttr)(statusTone)}${isActiveWorkflow ? " story-row--selected" : ""}" data-story-search-text="${(0, htmlEscape_1.escapeHtmlAttr)(searchText)}">
-      <button class="story-card${shouldRenderPhaseRail(summary.status) ? ` story-card--active story-card--phase-${(0, htmlEscape_1.escapeHtmlAttr)(summary.currentPhase)} story-card--status-${(0, htmlEscape_1.escapeHtmlAttr)(phaseRailStatus(summary.status))}` : ""}" data-command="openWorkflow" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}">
+      <button class="story-card${shouldRenderPhaseRail(summary.status) ? ` story-card--active story-card--phase-${(0, htmlEscape_1.escapeHtmlAttr)(summary.currentPhase)} story-card--status-${(0, htmlEscape_1.escapeHtmlAttr)(phaseRailStatus(summary.status))}` : ""}" type="button" data-command="openWorkflow" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}">
         ${shouldRenderPhaseRail(summary.status)
         ? `
             <span class="story-card__phase-rail" aria-hidden="true">
-              <span class="story-card__phase-label">${phaseLabelFor(summary.currentPhase)}</span>
+              <span class="story-card__phase-label">${phaseRailLabelFor(summary.currentPhase, summary.status)}</span>
             </span>
           `
         : ""}
@@ -1798,6 +1806,7 @@ function buildStoryRowMarkup(summary, starredUserStoryId, activeWorkflowUsId) {
       <div class="story-actions">
         <button
           class="icon-action story-star${starredUserStoryId === summary.usId ? " story-star--active" : ""}"
+          type="button"
           data-command="toggleStarredUserStory"
           data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}"
           title="${(0, htmlEscape_1.escapeHtmlAttr)(starredUserStoryId === summary.usId ? `Unstar ${summary.usId}` : `Star ${summary.usId}`)}"
@@ -1861,8 +1870,14 @@ function phaseLabelFor(currentPhase) {
     };
     return phaseLabels[currentPhase] ?? "?";
 }
+function phaseRailLabelFor(currentPhase, status) {
+    return isErrorStatus(status) ? "ERROR" : phaseLabelFor(currentPhase);
+}
 function shouldRenderPhaseRail(status) {
     return status !== "completed" && status !== "superseded" && status !== "abandoned";
+}
+function isErrorStatus(status) {
+    return status === "failed" || status === "error" || status === "errored" || status === "invalid" || status === "blocked";
 }
 function phaseRailStatus(status) {
     switch (status) {
