@@ -16,6 +16,7 @@ function model(overrides: Partial<SidebarViewModel>): SidebarViewModel {
     runtimeVersion: null,
     viewMode: "category",
     showDroppedUserStories: false,
+    showCompletedUserStories: false,
     droppedUserStoryCount: 0,
     categories: ["workflow"],
     userStories: [],
@@ -99,6 +100,7 @@ test("buildSidebarHtml exposes a compact prompt customization action", () => {
   }));
 
   assert.match(html, /aria-label="Prompt actions"/);
+  assert.match(html, /aria-label="Sidebar view options"/);
   assert.match(html, /Export All Prompts/);
   assert.match(html, /Customize Prompt Templates/);
   assert.match(html, /aria-label="Create new user story"/);
@@ -236,7 +238,7 @@ test("buildSidebarHtml labels error stories explicitly on the phase rail", () =>
   assert.match(html, /<span class="story-card__phase-label">ERROR<\/span>/);
 });
 
-test("buildSidebarHtml hides the phase rail for completed user stories", () => {
+test("buildSidebarHtml filters completed user stories from the active sidebar by default", () => {
   const html = buildSidebarHtml(model({
     categories: ["workflow"],
     userStories: [{
@@ -253,6 +255,31 @@ test("buildSidebarHtml hides the phase rail for completed user stories", () => {
 
   assert.doesNotMatch(html, /<button class="story-card story-card--active/);
   assert.doesNotMatch(html, /<span class="story-card__phase-label">/);
+  assert.match(html, /Only completed user stories are hidden/);
+  assert.match(html, /Show completed \(1\)/);
+});
+
+test("buildSidebarHtml shows completed user stories with a purple completed rail when enabled", () => {
+  const html = buildSidebarHtml(model({
+    showCompletedUserStories: true,
+    categories: ["workflow"],
+    userStories: [{
+      usId: "US-0003",
+      title: "Completed story",
+      category: "workflow",
+      currentPhase: "completed",
+      status: "completed",
+      mainArtifactPath: "/tmp/us.md",
+      directoryPath: "/tmp/us.US-0003",
+      workBranch: null
+    }],
+  }));
+
+  assert.match(html, /story-row--status-completed/);
+  assert.match(html, /story-card--active story-card--phase-completed story-card--status-completed/);
+  assert.match(html, /<span class="story-card__phase-label">DONE<\/span>/);
+  assert.match(html, /aria-checked="true"/);
+  assert.match(html, /rgba\(190, 136, 255/);
 });
 
 test("buildSidebarHtml shows prompt override guidance above the backlog when reported", () => {

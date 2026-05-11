@@ -68,9 +68,12 @@ function buildSidebarHtml(model) {
       </section>
     `, isBusy, model.createFormResetToken ?? 0, model.typographyCssVars ?? "");
     }
+    const visibleUserStories = model.showDroppedUserStories || model.showCompletedUserStories
+        ? model.userStories
+        : model.userStories.filter((summary) => !isCompletedStory(summary));
     const storySections = model.viewMode === "phase"
-        ? [{ heading: null, items: sortStoriesByPhase(model.userStories) }]
-        : groupStories(model.userStories).map((group) => ({ heading: group.category, items: group.items }));
+        ? [{ heading: null, items: sortStoriesByPhase(visibleUserStories) }]
+        : groupStories(visibleUserStories).map((group) => ({ heading: group.category, items: group.items }));
     const storiesMarkup = storySections.map((section) => `
     <section class="story-group${section.heading ? "" : " story-group--flat"}">
       ${section.heading ? `<div class="group-header">${(0, htmlEscape_1.escapeHtml)(section.heading)}</div>` : ""}
@@ -291,10 +294,19 @@ function buildSidebarHtml(model) {
         ${buildCompactActions(model)}
       </div>
       ${buildStorySearchMarkup()}
-      ${storiesMarkup || `<p class="copy story-list__empty">${model.showDroppedUserStories ? "No dropped user stories to recover." : "Create or import a user story to start the workflow."}</p>`}
+      ${storiesMarkup || `<p class="copy story-list__empty">${emptyStoryListMessage(model, visibleUserStories.length)}</p>`}
       <p class="copy story-list__empty" data-story-search-empty hidden>No user stories match this search.</p>
     </section>
   `, isBusy, model.createFormResetToken ?? 0, model.typographyCssVars ?? "");
+}
+function emptyStoryListMessage(model, visibleUserStoryCount) {
+    if (model.showDroppedUserStories) {
+        return "No dropped user stories to recover.";
+    }
+    if (!model.showCompletedUserStories && model.userStories.length > 0 && visibleUserStoryCount === 0) {
+        return "Only completed user stories are hidden. Use the view menu to show them.";
+    }
+    return "Create or import a user story to start the workflow.";
 }
 function buildSettingsWarningMarkup(model) {
     if (model.settingsConfigured || !model.settingsMessage) {
@@ -382,6 +394,38 @@ function buildPromptMenu(promptsInitialized) {
     </div>
   `;
 }
+function buildViewOptionsMenu(model) {
+    const completedCount = model.userStories.filter(isCompletedStory).length;
+    const label = completedCount > 0
+        ? `Show completed (${completedCount})`
+        : "Show completed";
+    return `
+    <div class="action-menu" data-action-menu>
+      <button
+        class="icon-action${model.showCompletedUserStories ? " icon-action--active" : ""}"
+        type="button"
+        data-action-menu-toggle
+        title="Sidebar view options"
+        aria-label="Sidebar view options"
+        aria-haspopup="menu"
+        aria-expanded="false">
+        <span aria-hidden="true">☷</span>
+      </button>
+      <div class="action-menu__panel" data-action-menu-panel role="menu" hidden>
+        <button
+          class="action-menu__item"
+          type="button"
+          data-command="toggleCompletedUserStories"
+          role="menuitemcheckbox"
+          aria-checked="${model.showCompletedUserStories ? "true" : "false"}"
+          ${model.showDroppedUserStories ? "disabled" : ""}>
+          <span class="action-menu__item-icon" aria-hidden="true">${model.showCompletedUserStories ? "✓" : ""}</span>
+          <span>${(0, htmlEscape_1.escapeHtml)(label)}</span>
+        </button>
+      </div>
+    </div>
+  `;
+}
 function buildExecutionSettingsActionButton() {
     return `
     <button
@@ -397,6 +441,7 @@ function buildCompactActions(model) {
     return `
     <div class="compact-actions">
       ${buildDroppedStoriesActionButton(model.showDroppedUserStories, model.droppedUserStoryCount)}
+      ${model.showDroppedUserStories ? "" : buildViewOptionsMenu(model)}
       ${model.showDroppedUserStories ? "" : buildCreateActionButton(model.promptsInitialized)}
       ${buildExecutionSettingsActionButton()}
       ${buildPromptMenu(model.promptsInitialized)}
@@ -1208,11 +1253,11 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
       --story-rail-border: rgba(255, 139, 139, 0.22);
     }
     .story-row--status-completed {
-      --story-selection-edge-solid: rgba(134, 255, 202, 0.94);
-      --story-selection-edge-glow: rgba(74, 191, 141, 0.28);
-      --story-rail-top: rgba(114, 241, 184, 0.24);
-      --story-rail-bottom: rgba(18, 46, 36, 0.92);
-      --story-rail-border: rgba(114, 241, 184, 0.22);
+      --story-selection-edge-solid: rgba(195, 150, 255, 0.94);
+      --story-selection-edge-glow: rgba(142, 91, 224, 0.3);
+      --story-rail-top: rgba(190, 136, 255, 0.3);
+      --story-rail-bottom: rgba(41, 24, 70, 0.94);
+      --story-rail-border: rgba(190, 136, 255, 0.28);
     }
     .story-card__content {
       display: grid;
@@ -1899,6 +1944,9 @@ function buildStoryRowMarkup(summary, starredUserStoryId, activeWorkflowUsId, is
     </div>
   `;
 }
+function isCompletedStory(summary) {
+    return summary.status === "completed" || summary.currentPhase === "completed";
+}
 function buildStoryDisplayTitle(summary) {
     const normalizedTitle = summary.title.trim();
     if (!normalizedTitle) {
@@ -1918,18 +1966,22 @@ function phaseLabelFor(currentPhase) {
         "implementation": "IMP",
         "review": "REV",
         "release-approval": "REL",
-        "pr-preparation": "PR"
+        "pr-preparation": "PR",
+        "completed": "DONE"
     };
     return phaseLabels[currentPhase] ?? "?";
 }
 function phaseRailLabelFor(currentPhase, status) {
-    return isErrorStatus(status) ? "ERROR" : phaseLabelFor(currentPhase);
+    return isErrorStatus(status) ? "ERROR" : isCompletedStatus(status) ? "DONE" : phaseLabelFor(currentPhase);
 }
 function shouldRenderPhaseRail(status) {
-    return status !== "completed" && status !== "superseded" && status !== "abandoned";
+    return status !== "superseded" && status !== "abandoned";
 }
 function isErrorStatus(status) {
     return status === "failed" || status === "error" || status === "errored" || status === "invalid" || status === "blocked";
+}
+function isCompletedStatus(status) {
+    return status === "completed";
 }
 function phaseRailStatus(status) {
     switch (status) {
@@ -1973,7 +2025,8 @@ function phaseSortOrder(phaseId) {
         "implementation": 4,
         "review": 5,
         "release-approval": 6,
-        "pr-preparation": 7
+        "pr-preparation": 7,
+        "completed": 8
     };
     return order[phaseId] ?? Number.MAX_SAFE_INTEGER;
 }
