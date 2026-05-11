@@ -2671,7 +2671,7 @@ test("buildWorkflowHtml embeds a broad rotating execution message catalog for lo
   assert.match(html, /Trying to keep the patch surgical instead of theatrical\./);
   assert.match(html, /Untangling edge cases before they untangle the plan\./);
   assert.match(html, /Math\.random/);
-  assert.match(html, /<div class="graph-stage graph-stage--overlay-active graph-stage--overlay-blocking" style=/);
+  assert.match(html, /<div class="graph-stage graph-stage--overlay-active graph-stage--overlay-blocking"[^>]*style=/);
   assert.match(
     html,
     /if \(overlayTone === "playing"\) {\s+clearExecutionOverlayDismissed\(dismissKey\);\s+}\s+if \(overlayTone !== "playing" && dismissible && isExecutionOverlayDismissed\(dismissKey\)\)/
@@ -2785,7 +2785,7 @@ test("buildWorkflowHtml shows paused execution overlay above the graph", () => {
   assert.doesNotMatch(html, /<span class="execution-overlay__elapsed"/);
   assert.match(html, /data-show-elapsed="false"/);
   assert.match(html, /data-anchor-phase-id="review"/);
-  assert.match(html, /<div class="graph-stage graph-stage--overlay-active" style=/);
+  assert.match(html, /<div class="graph-stage graph-stage--overlay-active"[^>]*style=/);
   assert.match(html, /\.graph-stage\.graph-stage--overlay-active \.phase-graph[\s\S]*filter: blur\(2px\) saturate\(0\.85\) brightness\(0\.78\);/);
   assert.match(html, /\.graph-stage\.graph-stage--overlay-blocking \.phase-graph[\s\S]*pointer-events: none;/);
   assert.doesNotMatch(html, /<div class="graph-stage graph-stage--overlay-active graph-stage--overlay-blocking">/);
@@ -2848,7 +2848,7 @@ test("buildWorkflowHtml shows pending execution settings as a dismissable overla
   assert.match(html, /SpecForge\.AI Configuration/);
   assert.match(html, /data-dismissible="true"/);
   assert.match(html, /Open SpecForge Configuration/);
-  assert.match(html, /<div class="graph-stage graph-stage--overlay-active" style=/);
+  assert.match(html, /<div class="graph-stage graph-stage--overlay-active"[^>]*style=/);
 });
 
 test("buildWorkflowHtml hides pending execution settings when there is no active execution context", () => {
@@ -4986,6 +4986,8 @@ test("buildWorkflowHtml renders the reference graph layout with canonical refine
   assert.match(html, /graph-links--desktop-vertical/);
   assert.match(html, /graph-links--mobile-horizontal/);
   assert.match(html, /graph-links--mobile-vertical/);
+  assert.match(html, /data-graph-layout-mode="vertical" style="[^"]*--graph-legend-top-desktop-vertical: 300px/);
+  assert.doesNotMatch(html, /--graph-legend-top-desktop-vertical: 1402px/);
 });
 
 test("buildWorkflowHtml renders completed phase reopen controls and lock state", () => {
