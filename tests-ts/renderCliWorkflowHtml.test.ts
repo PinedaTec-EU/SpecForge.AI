@@ -47,6 +47,13 @@ test("CLI workflow renderer embeds the reusable user-story sidebar with collapse
   assert.doesNotMatch(script, /window\.open\(/);
 });
 
+test("CLI workflow renderer groups sidebar stories by category", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+
+  assert.match(script, /viewMode: "category"/);
+  assert.doesNotMatch(script, /viewMode: "phase"/);
+});
+
 test("CLI workflow renderer falls back to the embedded workflow configuration route", async () => {
   const script = await fs.promises.readFile(scriptPath, "utf8");
   const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
