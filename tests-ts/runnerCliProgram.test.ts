@@ -85,8 +85,9 @@ test("CLI workflow portal payload includes sidebar stories and configuration URL
   assert.match(source, /configurationProvidersUrl = BuildConfigurationPortalUrl\(workflowPortalOrigin, "providers"\)/);
   assert.match(source, /configurationAdvancedUrl = BuildConfigurationPortalUrl\(workflowPortalOrigin, "advanced"\)/);
   assert.match(source, /requestSidebarVisibility = ResolveWorkflowPortalSidebarVisibility\(context\.Request\)/);
-  assert.match(source, /BuildWorkflowPortalSignatureAsync\([\s\S]*?requestUsId,[\s\S]*?requestSidebarVisibility,[\s\S]*?requestShowCompletedUserStories\)/);
+  assert.match(source, /BuildWorkflowPortalSignatureAsync\([\s\S]*?requestUsId,[\s\S]*?requestSidebarVisibility,[\s\S]*?requestShowCompletedUserStories,[\s\S]*?requestShowBlockedUserStories\)/);
   assert.match(source, /requestShowCompletedUserStories = string\.Equals\(/);
+  assert.match(source, /requestShowBlockedUserStories = string\.Equals\(/);
   assert.match(source, /context\.Request\.QueryString\["sidebarCompleted"\]/);
   assert.match(source, /static string\? ResolveWorkflowPortalSidebarVisibility\(HttpListenerRequest request\)/);
   assert.match(source, /ParseQueryValue\(referer\.Query, "sidebarVisibility"\)/);
@@ -104,7 +105,7 @@ test("CLI workflow portal payload includes sidebar stories and configuration URL
 test("CLI workflow portal signature ignores local sidebar visibility", async () => {
   const source = await fs.promises.readFile(programPath, "utf8");
 
-  assert.match(source, /BuildWorkflowPortalSignatureAsync\(\s*SpecForgeApplicationService applicationService,\s*string workspaceRoot,\s*string usId,\s*string\? sidebarVisibility,\s*bool showCompletedUserStories\s*\)/);
+  assert.match(source, /BuildWorkflowPortalSignatureAsync\(\s*SpecForgeApplicationService applicationService,\s*string workspaceRoot,\s*string usId,\s*string\? sidebarVisibility,\s*bool showCompletedUserStories,\s*bool showBlockedUserStories\s*\)/);
   assert.match(source, /GetUserStoryWorkflowAsync\(workspaceRoot, usId\)/);
   assert.doesNotMatch(source, /resolvedUsId = ResolveSidebarVisibleUserStoryId\(usId, sidebarUserStories\)/);
   assert.match(source, /BuildWorkflowSignature\([\s\S]*?activeSidebarUserStories,[\s\S]*?droppedSidebarUserStories\)/);

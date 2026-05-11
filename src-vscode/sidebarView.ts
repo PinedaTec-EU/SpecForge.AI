@@ -37,6 +37,7 @@ type SidebarMessage =
   | { readonly command: "toggleStarredUserStory"; readonly usId?: string }
   | { readonly command: "toggleDroppedUserStories" }
   | { readonly command: "toggleCompletedUserStories" }
+  | { readonly command: "toggleBlockedUserStories" }
   | { readonly command: "resetUserStoryToCapture"; readonly usId?: string }
   | { readonly command: "dropUserStory"; readonly usId?: string }
   | { readonly command: "recoverUserStory"; readonly usId?: string }
@@ -71,6 +72,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
   private activeWorkflowUsId: string | null = null;
   private showDroppedUserStories = false;
   private showCompletedUserStories = false;
+  private showBlockedUserStories = false;
   private createFileMode: "context" | "attachment" = "context";
   private createFiles: DraftCreateFile[] = [];
   private createReferenceScanVersion = 0;
@@ -221,6 +223,10 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
         return;
       case "toggleCompletedUserStories":
         this.showCompletedUserStories = !this.showCompletedUserStories;
+        await this.safeRenderAsync();
+        return;
+      case "toggleBlockedUserStories":
+        this.showBlockedUserStories = !this.showBlockedUserStories;
         await this.safeRenderAsync();
         return;
       case "initializeRepoPrompts":
@@ -657,6 +663,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
         viewMode: settings.userStoryListViewMode ?? "category",
         showDroppedUserStories: this.showDroppedUserStories,
         showCompletedUserStories: this.showCompletedUserStories,
+        showBlockedUserStories: this.showBlockedUserStories,
         droppedUserStoryCount: 0,
         createFileMode: this.createFileMode,
         createFiles: this.createFiles,
@@ -703,6 +710,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
       viewMode: settings.userStoryListViewMode ?? "category",
       showDroppedUserStories: this.showDroppedUserStories,
       showCompletedUserStories: this.showCompletedUserStories,
+      showBlockedUserStories: this.showBlockedUserStories,
       droppedUserStoryCount,
       createFileMode: this.createFileMode,
       createFiles: this.createFiles,
@@ -735,6 +743,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
         viewMode: getSpecForgeSettings().userStoryListViewMode ?? "category",
         showDroppedUserStories: this.showDroppedUserStories,
         showCompletedUserStories: this.showCompletedUserStories,
+        showBlockedUserStories: this.showBlockedUserStories,
         droppedUserStoryCount: 0,
         createFileMode: this.createFileMode,
         createFiles: this.createFiles,

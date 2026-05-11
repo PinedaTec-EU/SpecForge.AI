@@ -13,6 +13,7 @@ const activeSidebarUserStories = Array.isArray(payload.activeSidebarUserStories)
 const droppedSidebarUserStories = Array.isArray(payload.droppedSidebarUserStories) ? payload.droppedSidebarUserStories : [];
 const showDroppedUserStories = payload.showDroppedUserStories === true;
 const showCompletedUserStories = payload.showCompletedUserStories === true;
+const showBlockedUserStories = payload.showBlockedUserStories === true;
 const droppedUserStoryCount = Number.isFinite(payload.droppedUserStoryCount) ? payload.droppedUserStoryCount : 0;
 const configurationPortalUrl = payload.configurationPortalUrl || "http://localhost:5128/configuration";
 const configurationProvidersUrl = payload.configurationProvidersUrl || configurationPortalUrl;
@@ -271,6 +272,7 @@ function buildCliSidebarHtml(items, options) {
     viewMode: "phase",
     showDroppedUserStories: options.showDroppedUserStories,
     showCompletedUserStories: options.showCompletedUserStories,
+    showBlockedUserStories: options.showBlockedUserStories,
     droppedUserStoryCount,
     categories: [...new Set(items.map(item => item.category).filter(Boolean))],
     userStories: items
@@ -283,20 +285,37 @@ function safeScriptJson(value) {
 
 const activeSidebarHtml = buildCliSidebarHtml(activeSidebarUserStories, {
   showDroppedUserStories: false,
-  showCompletedUserStories: false
+  showCompletedUserStories: false,
+  showBlockedUserStories: false
 });
 const activeCompletedSidebarHtml = buildCliSidebarHtml(activeSidebarUserStories, {
   showDroppedUserStories: false,
-  showCompletedUserStories: true
+  showCompletedUserStories: true,
+  showBlockedUserStories: false
+});
+const activeBlockedSidebarHtml = buildCliSidebarHtml(activeSidebarUserStories, {
+  showDroppedUserStories: false,
+  showCompletedUserStories: false,
+  showBlockedUserStories: true
+});
+const activeCompletedBlockedSidebarHtml = buildCliSidebarHtml(activeSidebarUserStories, {
+  showDroppedUserStories: false,
+  showCompletedUserStories: true,
+  showBlockedUserStories: true
 });
 const droppedSidebarHtml = buildCliSidebarHtml(droppedSidebarUserStories, {
   showDroppedUserStories: true,
-  showCompletedUserStories: false
+  showCompletedUserStories: false,
+  showBlockedUserStories: false
 });
 const sidebarHtml = showDroppedUserStories
   ? droppedSidebarHtml
-  : showCompletedUserStories
+  : showCompletedUserStories && showBlockedUserStories
+    ? activeCompletedBlockedSidebarHtml
+    : showCompletedUserStories
     ? activeCompletedSidebarHtml
+    : showBlockedUserStories
+      ? activeBlockedSidebarHtml
     : activeSidebarHtml;
 
 const sidebarShell = `
@@ -362,10 +381,13 @@ const sidebarShell = `
     const sidebarHtmlByMode = {
       active: ${safeScriptJson(activeSidebarHtml)},
       activeCompleted: ${safeScriptJson(activeCompletedSidebarHtml)},
+      activeBlocked: ${safeScriptJson(activeBlockedSidebarHtml)},
+      activeCompletedBlocked: ${safeScriptJson(activeCompletedBlockedSidebarHtml)},
       dropped: ${safeScriptJson(droppedSidebarHtml)}
     };
     let sidebarShowsDropped = ${showDroppedUserStories ? "true" : "false"};
     let sidebarShowsCompleted = ${showCompletedUserStories ? "true" : "false"};
+    let sidebarShowsBlocked = ${showBlockedUserStories ? "true" : "false"};
     const openConfiguration = (url) => {
       if (configFrame) {
         configFrame.setAttribute("src", url);
@@ -389,8 +411,12 @@ const sidebarShell = `
       if (!sidebarFrame) return;
       sidebarFrame.srcdoc = sidebarShowsDropped
         ? sidebarHtmlByMode.dropped
+        : sidebarShowsCompleted && sidebarShowsBlocked
+          ? sidebarHtmlByMode.activeCompletedBlocked
         : sidebarShowsCompleted
           ? sidebarHtmlByMode.activeCompleted
+        : sidebarShowsBlocked
+          ? sidebarHtmlByMode.activeBlocked
           : sidebarHtmlByMode.active;
     };
     const replaceSidebarUrlState = () => {
@@ -398,12 +424,18 @@ const sidebarShell = `
       if (sidebarShowsDropped) {
         url.searchParams.set("sidebarVisibility", "dropped");
         url.searchParams.delete("sidebarCompleted");
+        url.searchParams.delete("sidebarBlocked");
       } else {
         url.searchParams.delete("sidebarVisibility");
         if (sidebarShowsCompleted) {
           url.searchParams.set("sidebarCompleted", "true");
         } else {
           url.searchParams.delete("sidebarCompleted");
+        }
+        if (sidebarShowsBlocked) {
+          url.searchParams.set("sidebarBlocked", "true");
+        } else {
+          url.searchParams.delete("sidebarBlocked");
         }
       }
       window.history.replaceState(window.history.state, "", url.toString());
@@ -473,6 +505,7 @@ const sidebarShell = `
       if (message.command === "toggleDroppedUserStories") {
         sidebarShowsDropped = !sidebarShowsDropped;
         sidebarShowsCompleted = false;
+        sidebarShowsBlocked = false;
         replaceSidebarUrlState();
         replaceSidebarFrame();
         return;
@@ -480,6 +513,13 @@ const sidebarShell = `
       if (message.command === "toggleCompletedUserStories") {
         sidebarShowsDropped = false;
         sidebarShowsCompleted = !sidebarShowsCompleted;
+        replaceSidebarUrlState();
+        replaceSidebarFrame();
+        return;
+      }
+      if (message.command === "toggleBlockedUserStories") {
+        sidebarShowsDropped = false;
+        sidebarShowsBlocked = !sidebarShowsBlocked;
         replaceSidebarUrlState();
         replaceSidebarFrame();
         return;

@@ -125,6 +125,21 @@ test("CLI workflow renderer persists completed story visibility in the portal qu
   }
 });
 
+test("CLI workflow renderer persists blocked story visibility in the portal query", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+  const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
+
+  for (const content of [script, packagedScript]) {
+    assert.match(content, /showBlockedUserStories = payload\.showBlockedUserStories === true/);
+    assert.match(content, /showBlockedUserStories,/);
+    assert.match(content, /message\.command === "toggleBlockedUserStories"/);
+    assert.match(content, /sidebarShowsBlocked = !sidebarShowsBlocked/);
+    assert.match(content, /url\.searchParams\.set\("sidebarBlocked", "true"\)/);
+    assert.match(content, /activeCompletedBlocked/);
+    assert.match(content, /replaceSidebarFrame\(\)/);
+  }
+});
+
 test("CLI workflow renderer polls the signature for the current portal query", async () => {
   const script = await fs.promises.readFile(scriptPath, "utf8");
   const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");

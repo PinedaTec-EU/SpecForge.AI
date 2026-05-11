@@ -219,6 +219,10 @@ static async Task HandleWorkflowPortalRequestAsync(
             context.Request.QueryString["sidebarCompleted"],
             "true",
             StringComparison.OrdinalIgnoreCase);
+        var requestShowBlockedUserStories = string.Equals(
+            context.Request.QueryString["sidebarBlocked"],
+            "true",
+            StringComparison.OrdinalIgnoreCase);
 
         switch ((context.Request.HttpMethod, path))
         {
@@ -232,6 +236,7 @@ static async Task HandleWorkflowPortalRequestAsync(
                         context.Request.QueryString["selectedPhaseId"],
                         requestSidebarVisibility,
                         requestShowCompletedUserStories,
+                        requestShowBlockedUserStories,
                         context.Request.Url?.GetLeftPart(UriPartial.Authority) ?? "http://localhost:5128",
                         renderCache));
                 return;
@@ -246,7 +251,8 @@ static async Task HandleWorkflowPortalRequestAsync(
                         workspaceRoot,
                         requestUsId,
                         requestSidebarVisibility,
-                        requestShowCompletedUserStories),
+                        requestShowCompletedUserStories,
+                        requestShowBlockedUserStories),
                     "text/plain");
                 return;
             case ("GET", "/api/runtime-status"):
@@ -377,6 +383,7 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
     string? selectedPhaseId,
     string? sidebarVisibility,
     bool showCompletedUserStories,
+    bool showBlockedUserStories,
     string workflowPortalOrigin,
     WorkflowPortalRenderCache renderCache)
 {
@@ -415,6 +422,7 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
             droppedSidebarUserStories,
             showDroppedUserStories = normalizedSidebarVisibility == "dropped",
             showCompletedUserStories,
+            showBlockedUserStories,
             droppedUserStoryCount,
             configurationPortalUrl = BuildConfigurationPortalUrl(workflowPortalOrigin),
             configurationProvidersUrl = BuildConfigurationPortalUrl(workflowPortalOrigin, "providers"),
@@ -540,7 +548,8 @@ static async Task<string> BuildWorkflowPortalSignatureAsync(
     string workspaceRoot,
     string usId,
     string? sidebarVisibility,
-    bool showCompletedUserStories)
+    bool showCompletedUserStories,
+    bool showBlockedUserStories)
 {
     var activeSidebarUserStories = await applicationService.ListUserStoriesAsync(workspaceRoot);
     var droppedSidebarUserStories = await applicationService.ListUserStoriesAsync(workspaceRoot, "dropped");

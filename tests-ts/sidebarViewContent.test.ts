@@ -17,6 +17,7 @@ function model(overrides: Partial<SidebarViewModel>): SidebarViewModel {
     viewMode: "category",
     showDroppedUserStories: false,
     showCompletedUserStories: false,
+    showBlockedUserStories: false,
     droppedUserStoryCount: 0,
     categories: ["workflow"],
     userStories: [],
@@ -183,6 +184,7 @@ test("buildSidebarHtml includes user story descriptions in the local search inde
 
 test("buildSidebarHtml surfaces blocked dependency state in story rows", () => {
   const html = buildSidebarHtml(model({
+    showBlockedUserStories: true,
     categories: ["workflow"],
     userStories: [{
       usId: "US-0002",
@@ -210,6 +212,51 @@ test("buildSidebarHtml surfaces blocked dependency state in story rows", () => {
   assert.match(html, /<span class="story-card__phase-label">🔒 BLOCK<\/span>/);
   assert.match(html, /blocked by US-0001/);
   assert.match(html, /data-story-search-text="[^"]*US-0001[^"]*First workflow/);
+});
+
+test("buildSidebarHtml filters blocked user stories from the active sidebar by default", () => {
+  const html = buildSidebarHtml(model({
+    categories: ["workflow"],
+    userStories: [{
+      usId: "US-0004",
+      title: "Blocked story",
+      category: "workflow",
+      currentPhase: "capture",
+      status: "blocked",
+      mainArtifactPath: "/tmp/us.md",
+      directoryPath: "/tmp/us.US-0004",
+      workBranch: null
+    }],
+  }));
+
+  assert.doesNotMatch(html, /<button class="story-card story-card--active/);
+  assert.doesNotMatch(html, /<span class="story-card__phase-label">/);
+  assert.match(html, /Only blocked user stories are hidden/);
+  assert.match(html, /Show blocked \(1\)/);
+  assert.match(html, /data-command="toggleBlockedUserStories"/);
+  assert.match(html, /aria-checked="false"/);
+});
+
+test("buildSidebarHtml shows blocked user stories when enabled", () => {
+  const html = buildSidebarHtml(model({
+    showBlockedUserStories: true,
+    categories: ["workflow"],
+    userStories: [{
+      usId: "US-0004",
+      title: "Blocked story",
+      category: "workflow",
+      currentPhase: "capture",
+      status: "blocked",
+      mainArtifactPath: "/tmp/us.md",
+      directoryPath: "/tmp/us.US-0004",
+      workBranch: null
+    }],
+  }));
+
+  assert.match(html, /story-row--status-blocked/);
+  assert.match(html, /<span class="story-card__phase-label">🔒 BLOCK<\/span>/);
+  assert.match(html, /Show blocked \(1\)/);
+  assert.match(html, /aria-checked="true"/);
 });
 
 test("buildSidebarHtml keeps the phase rail for user stories that are still in progress", () => {
