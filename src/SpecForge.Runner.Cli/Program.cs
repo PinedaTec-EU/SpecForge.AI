@@ -379,7 +379,12 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
     var droppedUserStoryCount = normalizedSidebarVisibility == "dropped"
         ? sidebarUserStories.Count
         : (await applicationService.ListUserStoriesAsync(workspaceRoot, "dropped")).Count;
-    var signature = BuildWorkflowSignature(workflow, userStories);
+    var signature = BuildWorkflowSignature(
+        workflow,
+        userStories,
+        normalizedSidebarVisibility,
+        sidebarUserStories,
+        droppedUserStoryCount);
     if (renderCache.TryGet(signature, resolvedSelectedPhaseId, selectedPhase, out var cachedHtml))
     {
         return cachedHtml;
@@ -506,7 +511,15 @@ static async Task<string> BuildWorkflowPortalSignatureAsync(
 {
     var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, usId);
     var userStories = await applicationService.ListUserStoriesAsync(workspaceRoot);
-    return BuildWorkflowSignature(workflow, userStories);
+    var sidebarUserStories = await applicationService.ListUserStoriesAsync(workspaceRoot, "active");
+    var droppedUserStoryCount = (await applicationService.ListUserStoriesAsync(workspaceRoot, "dropped")).Count;
+
+    return BuildWorkflowSignature(
+        workflow,
+        userStories,
+        "active",
+        sidebarUserStories,
+        droppedUserStoryCount);
 }
 
 static async Task<string> RenderWorkflowHtmlWithNodeAsync(string payload)
@@ -578,7 +591,10 @@ static async Task<string?> ReadFileContentOrNullAsync(string? path)
 
 static string BuildWorkflowSignature(
     UserStoryWorkflowDetails workflow,
-    IReadOnlyCollection<UserStorySummary> userStories)
+    IReadOnlyCollection<UserStorySummary> userStories,
+    string sidebarVisibility,
+    IReadOnlyCollection<UserStorySummary> sidebarUserStories,
+    int droppedUserStoryCount)
 {
     var payload = JsonSerializer.Serialize(
         new
@@ -591,7 +607,22 @@ static string BuildWorkflowSignature(
             workflow.Controls,
             eventCount = workflow.Events.Count,
             latestEvent = workflow.Events.LastOrDefault(),
+            sidebarVisibility,
+            droppedUserStoryCount,
             userStories = userStories
+                .OrderBy(story => story.UsId, StringComparer.Ordinal)
+                .Select(story => new
+                {
+                    story.UsId,
+                    story.Title,
+                    story.Description,
+                    story.Category,
+                    story.CurrentPhase,
+                    story.Status,
+                    story.WorkBranch
+                })
+                .ToArray(),
+            sidebarUserStories = sidebarUserStories
                 .OrderBy(story => story.UsId, StringComparer.Ordinal)
                 .Select(story => new
                 {

@@ -64,8 +64,11 @@ test("CLI workflow portal refresh signature includes workflow runtime versions",
 
   assert.match(source, /workflow\.CreatedWithRuntimeVersion/);
   assert.match(source, /workflow\.LastRuntimeVersion/);
-  assert.match(source, /BuildWorkflowSignature\(\s*UserStoryWorkflowDetails workflow,\s*IReadOnlyCollection<UserStorySummary> userStories\s*\)/);
+  assert.match(source, /BuildWorkflowSignature\(\s*UserStoryWorkflowDetails workflow,\s*IReadOnlyCollection<UserStorySummary> userStories,\s*string sidebarVisibility,\s*IReadOnlyCollection<UserStorySummary> sidebarUserStories,\s*int droppedUserStoryCount\s*\)/);
   assert.match(source, /userStories = userStories[\s\S]*?story\.CurrentPhase[\s\S]*?story\.Status/);
+  assert.match(source, /sidebarVisibility/);
+  assert.match(source, /droppedUserStoryCount/);
+  assert.match(source, /sidebarUserStories = sidebarUserStories[\s\S]*?story\.CurrentPhase[\s\S]*?story\.Status/);
 });
 
 test("CLI workflow portal payload includes sidebar stories and configuration URL", async () => {
