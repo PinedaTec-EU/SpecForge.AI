@@ -8,6 +8,9 @@ const { buildSidebarHtml } = require("../dist/sidebarViewContent");
 const payload = JSON.parse(fs.readFileSync(0, "utf8"));
 const workflow = payload.workflow;
 const userStories = Array.isArray(payload.userStories) ? payload.userStories : [];
+const sidebarUserStories = Array.isArray(payload.sidebarUserStories) ? payload.sidebarUserStories : userStories;
+const showDroppedUserStories = payload.showDroppedUserStories === true;
+const droppedUserStoryCount = Number.isFinite(payload.droppedUserStoryCount) ? payload.droppedUserStoryCount : 0;
 const configurationPortalUrl = payload.configurationPortalUrl || "http://localhost:5128/configuration";
 const configurationProvidersUrl = payload.configurationProvidersUrl || configurationPortalUrl;
 const configurationAdvancedUrl = payload.configurationAdvancedUrl || configurationPortalUrl;
@@ -248,8 +251,10 @@ const sidebarHtml = buildSidebarHtml({
   activeWorkflowUsId: workflow.usId,
   runtimeVersion: state.runtimeVersion,
   viewMode: "phase",
-  categories: [...new Set(userStories.map(item => item.category).filter(Boolean))],
-  userStories
+  showDroppedUserStories,
+  droppedUserStoryCount,
+  categories: [...new Set(sidebarUserStories.map(item => item.category).filter(Boolean))],
+  userStories: sidebarUserStories
 }).replace("<script>", `${sidebarApiShim}\n<script>`);
 
 const sidebarShell = `
@@ -381,6 +386,36 @@ const sidebarShell = `
         const current = getStarredUserStoryId();
         setStarredUserStoryId(current === message.usId ? null : message.usId);
         applySidebarStarredUserStory();
+        return;
+      }
+      if (message.command === "toggleDroppedUserStories") {
+        const url = new URL(window.location.href);
+        if (url.searchParams.get("sidebarVisibility") === "dropped") {
+          url.searchParams.delete("sidebarVisibility");
+        } else {
+          url.searchParams.set("sidebarVisibility", "dropped");
+        }
+        window.location.href = url.toString();
+        return;
+      }
+      if ((message.command === "dropUserStory" || message.command === "recoverUserStory") && message.usId) {
+        const endpoint = message.command === "dropUserStory" ? "/api/drop-user-story" : "/api/recover-user-story";
+        fetch(endpoint, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ usId: message.usId })
+        })
+          .then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))))
+          .then(() => {
+            const url = new URL(window.location.href);
+            if (message.command === "dropUserStory") {
+              url.searchParams.delete("sidebarVisibility");
+            }
+            window.location.href = url.toString();
+          })
+          .catch(error => {
+            window.alert(error instanceof Error ? error.message : String(error));
+          });
         return;
       }
       if (message.command === "openExecutionSettings") {
