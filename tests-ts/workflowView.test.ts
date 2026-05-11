@@ -4129,7 +4129,10 @@ test("buildWorkflowHtml gives dependency blocked nodes an amber lock marker", ()
   assert.match(html, /data-command="openWorkflow"/);
   assert.match(html, /data-us-id="US-0001"/);
   assert.match(html, /Foundation workflow/);
+  assert.match(html, /<div class="hero-secondary">[\s\S]*<div class="hero-meta">[\s\S]*class="dependency-block"/);
   assert.match(html, /\.hero-meta \{[\s\S]*flex-wrap: nowrap;/);
+  assert.match(html, /\.dependency-block \{[\s\S]*width: 100%;/);
+  assert.match(html, /\.dependency-block__icon svg \{[\s\S]*fill: currentColor;[\s\S]*drop-shadow/);
   assert.match(html, /\.token\.token--blocked \{[\s\S]*var\(--attention-egg-soft\)/);
 });
 
