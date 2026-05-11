@@ -1349,14 +1349,15 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
         : playbackState === "paused" && state.selectedPhaseId === workflow.currentPhase
             ? displayedCurrentPhaseId ?? state.selectedPhaseId
             : state.selectedPhaseId;
+    const graphLayoutMode = state.graphLayoutMode === "horizontal" ? "horizontal" : "vertical";
     const selectedPhase = workflow.phases.find((phase) => phase.phaseId === selectedPhaseId) ?? workflow.phases[0];
     const selectedPhaseIsCurrent = selectedPhase.phaseId === displayedCurrentPhaseId;
     const isRefinementDetail = selectedPhase.phaseId === "refinement" && workflow.refinement !== null;
     const phaseGraph = buildPhaseGraph(workflow, state, selectedPhase.phaseId, playbackState, effectiveExecutionPhaseId);
-    const graphStageDesktopHorizontalLegendPosition = (0, graphLayout_1.buildGraphLegendPosition)(state.workflowGraphLayout?.legend?.horizontal?.x ?? 28, state.workflowGraphLayout?.legend?.horizontal?.y ?? 748, false);
-    const graphStageDesktopVerticalLegendPosition = (0, graphLayout_1.buildGraphLegendPosition)(state.workflowGraphLayout?.legend?.vertical?.x ?? 28, state.workflowGraphLayout?.legend?.vertical?.y ?? 1402, false);
-    const graphStageMobileHorizontalLegendPosition = (0, graphLayout_1.buildGraphLegendPosition)(state.workflowGraphLayout?.legend?.horizontal?.x ?? 28, state.workflowGraphLayout?.legend?.horizontal?.y ?? 748, true);
-    const graphStageMobileVerticalLegendPosition = (0, graphLayout_1.buildGraphLegendPosition)(state.workflowGraphLayout?.legend?.vertical?.x ?? 28, state.workflowGraphLayout?.legend?.vertical?.y ?? 1402, true);
+    const graphStageDesktopHorizontalLegendPosition = (0, graphLayout_1.buildGraphLegendPosition)(state.workflowGraphLayout?.legend?.horizontal?.x ?? workflowGraphLayout_1.defaultWorkflowGraphLegendPositions.horizontal.x, state.workflowGraphLayout?.legend?.horizontal?.y ?? workflowGraphLayout_1.defaultWorkflowGraphLegendPositions.horizontal.y, false);
+    const graphStageDesktopVerticalLegendPosition = (0, graphLayout_1.buildGraphLegendPosition)(state.workflowGraphLayout?.legend?.vertical?.x ?? workflowGraphLayout_1.defaultWorkflowGraphLegendPositions.vertical.x, state.workflowGraphLayout?.legend?.vertical?.y ?? workflowGraphLayout_1.defaultWorkflowGraphLegendPositions.vertical.y, false);
+    const graphStageMobileHorizontalLegendPosition = (0, graphLayout_1.buildGraphLegendPosition)(state.workflowGraphLayout?.legend?.horizontal?.x ?? workflowGraphLayout_1.defaultWorkflowGraphLegendPositions.horizontal.x, state.workflowGraphLayout?.legend?.horizontal?.y ?? workflowGraphLayout_1.defaultWorkflowGraphLegendPositions.horizontal.y, true);
+    const graphStageMobileVerticalLegendPosition = (0, graphLayout_1.buildGraphLegendPosition)(state.workflowGraphLayout?.legend?.vertical?.x ?? workflowGraphLayout_1.defaultWorkflowGraphLegendPositions.vertical.x, state.workflowGraphLayout?.legend?.vertical?.y ?? workflowGraphLayout_1.defaultWorkflowGraphLegendPositions.vertical.y, true);
     const graphStageLegendStyle = `--graph-legend-left-desktop-horizontal: ${graphStageDesktopHorizontalLegendPosition.left}px; --graph-legend-top-desktop-horizontal: ${graphStageDesktopHorizontalLegendPosition.top}px; --graph-legend-left-desktop-vertical: ${graphStageDesktopVerticalLegendPosition.left}px; --graph-legend-top-desktop-vertical: ${graphStageDesktopVerticalLegendPosition.top}px; --graph-legend-left-mobile-horizontal: ${graphStageMobileHorizontalLegendPosition.left}px; --graph-legend-top-mobile-horizontal: ${graphStageMobileHorizontalLegendPosition.top}px; --graph-legend-left-mobile-vertical: ${graphStageMobileVerticalLegendPosition.left}px; --graph-legend-top-mobile-vertical: ${graphStageMobileVerticalLegendPosition.top}px;`;
     const executionOverlay = buildExecutionOverlay(workflow, state, playbackState);
     const selectedPhaseVisualTone = resolvePhaseVisualTone(workflow.status, workflow, playbackState, selectedPhase, false, playbackState === "playing" ? effectiveExecutionPhaseId : null, pausedExecutionPhaseId, new Set(state.completedPhaseIds ?? []));
@@ -3158,9 +3159,9 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
     .graph-legend[hidden] {
       display: none;
     }
-    .phase-graph[data-graph-layout-mode="horizontal"] .graph-legend {
-      left: var(--graph-legend-left-desktop-horizontal, 28px);
-      top: var(--graph-legend-top-desktop-horizontal, 748px);
+    .graph-stage[data-graph-layout-mode="horizontal"] .graph-legend {
+      left: var(--graph-legend-left-desktop-horizontal, 20px);
+      top: var(--graph-legend-top-desktop-horizontal, 300px);
     }
     .graph-legend__head {
       display: flex;
@@ -5426,9 +5427,9 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
         width: 188px;
         padding: 16px 16px 14px;
       }
-      .phase-graph[data-graph-layout-mode="horizontal"] .graph-legend {
-        left: var(--graph-legend-left-mobile-horizontal, 20px);
-        top: var(--graph-legend-top-mobile-horizontal, 539px);
+      .graph-stage[data-graph-layout-mode="horizontal"] .graph-legend {
+        left: var(--graph-legend-left-mobile-horizontal, 14px);
+        top: var(--graph-legend-top-mobile-horizontal, 216px);
       }
       .execution-overlay {
         left: 10px;
@@ -5649,7 +5650,7 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
             </div>
           </div>
           <div class="graph-panel__viewport" data-panel-scroll="graph">
-            <div class="graph-stage${executionOverlay ? " graph-stage--overlay-active" : ""}${playbackState === "playing" || playbackState === "stopping" ? " graph-stage--overlay-blocking" : ""}" style="${graphStageLegendStyle}">
+            <div class="graph-stage${executionOverlay ? " graph-stage--overlay-active" : ""}${playbackState === "playing" || playbackState === "stopping" ? " graph-stage--overlay-blocking" : ""}" data-graph-layout-mode="${(0, htmlEscape_1.escapeHtmlAttr)(graphLayoutMode)}" style="${graphStageLegendStyle}">
               <div class="graph-stage__canvas" data-graph-stage-canvas>
                 ${executionOverlay}
                 ${phaseGraph}
@@ -8009,10 +8010,10 @@ function buildPhaseGraph(workflow, state, selectedPhaseId, playbackState, effect
         expectsHumanIntervention: phase.expectsHumanIntervention
     }));
     const graphLayoutMode = state.graphLayoutMode === "horizontal" ? "horizontal" : "vertical";
-    const desktopHorizontalLegendPosition = (0, graphLayout_1.buildGraphLegendPosition)(state.workflowGraphLayout?.legend?.horizontal?.x ?? 28, state.workflowGraphLayout?.legend?.horizontal?.y ?? 748, false);
-    const desktopVerticalLegendPosition = (0, graphLayout_1.buildGraphLegendPosition)(state.workflowGraphLayout?.legend?.vertical?.x ?? 28, state.workflowGraphLayout?.legend?.vertical?.y ?? 1402, false);
-    const mobileHorizontalLegendPosition = (0, graphLayout_1.buildGraphLegendPosition)(state.workflowGraphLayout?.legend?.horizontal?.x ?? 28, state.workflowGraphLayout?.legend?.horizontal?.y ?? 748, true);
-    const mobileVerticalLegendPosition = (0, graphLayout_1.buildGraphLegendPosition)(state.workflowGraphLayout?.legend?.vertical?.x ?? 28, state.workflowGraphLayout?.legend?.vertical?.y ?? 1402, true);
+    const desktopHorizontalLegendPosition = (0, graphLayout_1.buildGraphLegendPosition)(state.workflowGraphLayout?.legend?.horizontal?.x ?? workflowGraphLayout_1.defaultWorkflowGraphLegendPositions.horizontal.x, state.workflowGraphLayout?.legend?.horizontal?.y ?? workflowGraphLayout_1.defaultWorkflowGraphLegendPositions.horizontal.y, false);
+    const desktopVerticalLegendPosition = (0, graphLayout_1.buildGraphLegendPosition)(state.workflowGraphLayout?.legend?.vertical?.x ?? workflowGraphLayout_1.defaultWorkflowGraphLegendPositions.vertical.x, state.workflowGraphLayout?.legend?.vertical?.y ?? workflowGraphLayout_1.defaultWorkflowGraphLegendPositions.vertical.y, false);
+    const mobileHorizontalLegendPosition = (0, graphLayout_1.buildGraphLegendPosition)(state.workflowGraphLayout?.legend?.horizontal?.x ?? workflowGraphLayout_1.defaultWorkflowGraphLegendPositions.horizontal.x, state.workflowGraphLayout?.legend?.horizontal?.y ?? workflowGraphLayout_1.defaultWorkflowGraphLegendPositions.horizontal.y, true);
+    const mobileVerticalLegendPosition = (0, graphLayout_1.buildGraphLegendPosition)(state.workflowGraphLayout?.legend?.vertical?.x ?? workflowGraphLayout_1.defaultWorkflowGraphLegendPositions.vertical.x, state.workflowGraphLayout?.legend?.vertical?.y ?? workflowGraphLayout_1.defaultWorkflowGraphLegendPositions.vertical.y, true);
     const desktopHorizontalLayout = (0, graphLayout_1.buildHorizontalPhaseLayout)(layoutPhases, phaseNodeWidth, false, state.workflowGraphLayout?.horizontal ?? workflowGraphLayout_1.defaultHorizontalWorkflowGraphPositions);
     const desktopVerticalLayout = (0, graphLayout_1.buildVerticalPhaseLayout)(layoutPhases, phaseNodeWidth, false, state.workflowGraphLayout?.vertical ?? workflowGraphLayout_1.defaultVerticalWorkflowGraphPositions);
     const mobileHorizontalLayout = (0, graphLayout_1.buildHorizontalPhaseLayout)(layoutPhases, mobilePhaseNodeWidth, true, state.workflowGraphLayout?.horizontal ?? workflowGraphLayout_1.defaultHorizontalWorkflowGraphPositions);
