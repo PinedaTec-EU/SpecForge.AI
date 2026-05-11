@@ -403,12 +403,8 @@ function buildPromptMenu(promptsInitialized) {
 function buildViewOptionsMenu(model) {
     const completedCount = model.userStories.filter(isCompletedStory).length;
     const blockedCount = model.userStories.filter(isBlockedStory).length;
-    const completedLabel = completedCount > 0
-        ? `Show completed (${completedCount})`
-        : "Show completed";
-    const blockedLabel = blockedCount > 0
-        ? `Show blocked (${blockedCount})`
-        : "Show blocked";
+    const completedDisabled = model.showDroppedUserStories || completedCount === 0;
+    const blockedDisabled = model.showDroppedUserStories || blockedCount === 0;
     const hasVisibleFilters = model.showCompletedUserStories || model.showBlockedUserStories;
     return `
     <div class="action-menu" data-action-menu>
@@ -429,9 +425,9 @@ function buildViewOptionsMenu(model) {
           data-command="toggleCompletedUserStories"
           role="menuitemcheckbox"
           aria-checked="${model.showCompletedUserStories ? "true" : "false"}"
-          ${model.showDroppedUserStories ? "disabled" : ""}>
+          ${completedDisabled ? "disabled" : ""}>
           <span class="action-menu__item-icon" aria-hidden="true">${model.showCompletedUserStories ? "✓" : ""}</span>
-          <span>${(0, htmlEscape_1.escapeHtml)(completedLabel)}</span>
+          <span>Show completed</span>
         </button>
         <button
           class="action-menu__item"
@@ -439,9 +435,9 @@ function buildViewOptionsMenu(model) {
           data-command="toggleBlockedUserStories"
           role="menuitemcheckbox"
           aria-checked="${model.showBlockedUserStories ? "true" : "false"}"
-          ${model.showDroppedUserStories ? "disabled" : ""}>
+          ${blockedDisabled ? "disabled" : ""}>
           <span class="action-menu__item-icon" aria-hidden="true">${model.showBlockedUserStories ? "✓" : ""}</span>
-          <span>${(0, htmlEscape_1.escapeHtml)(blockedLabel)}</span>
+          <span>Show blocked</span>
         </button>
       </div>
     </div>
