@@ -1279,6 +1279,14 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
       display: grid;
       gap: 4px;
       padding: 12px 14px;
+      min-width: 0;
+    }
+    .story-card__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-width: 0;
     }
     .story-card--active {
       grid-template-columns: 42px minmax(0, 1fr);
@@ -1367,6 +1375,7 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
       font-family: var(--specforge-mono-font-family);
       font-size: 0.76rem;
       color: rgba(255, 255, 255, 0.62);
+      min-width: 0;
     }
     .story-card__meta {
       font-size: 0.8rem;
@@ -1375,7 +1384,8 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
     .story-card__tags {
       display: flex;
       gap: 6px;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
+      justify-content: flex-end;
       min-width: 0;
     }
     .story-card__tag {
@@ -1948,10 +1958,12 @@ function buildStoryRowMarkup(summary, starredUserStoryId, activeWorkflowUsId, is
           `
         : ""}
         <span class="story-card__content">
-          <span class="story-card__id">${(0, htmlEscape_1.escapeHtml)(summary.usId)}</span>
+          <span class="story-card__head">
+            <span class="story-card__id">${(0, htmlEscape_1.escapeHtml)(summary.usId)}</span>
+            ${buildStoryTagMarkup(tags)}
+          </span>
           <strong>${(0, htmlEscape_1.escapeHtml)(displayTitle)}</strong>
           <span class="story-card__meta">${(0, htmlEscape_1.escapeHtml)(summary.currentPhase)} · ${(0, htmlEscape_1.escapeHtml)(effectiveStatus)}</span>
-          ${buildStoryTagMarkup(tags)}
           ${buildDependencyLineMarkup(dependencies)}
         </span>
       </button>
@@ -2004,7 +2016,7 @@ function buildStoryRowMarkup(summary, starredUserStoryId, activeWorkflowUsId, is
   `;
 }
 function buildStoryTagMarkup(tags) {
-    const visibleTags = tags.slice(0, 2);
+    const visibleTags = tags.slice(0, 1);
     if (visibleTags.length === 0) {
         return "";
     }

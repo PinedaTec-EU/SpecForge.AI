@@ -2055,6 +2055,14 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
       flex-wrap: wrap;
       align-items: center;
     }
+    .hero-meta__main,
+    .hero-meta__tags {
+      display: flex;
+      gap: 10px;
+      flex-wrap: nowrap;
+      align-items: center;
+      min-width: 0;
+    }
     .detail-metrics {
       display: grid;
       grid-template-columns: minmax(190px, 220px) minmax(0, 1fr);
@@ -2285,12 +2293,23 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
       color: rgba(244, 247, 251, 0.92);
     }
     .hero-meta {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
       width: 100%;
-      flex-wrap: nowrap;
       overflow-x: auto;
       overflow-y: hidden;
       padding-bottom: 2px;
       scrollbar-width: thin;
+    }
+    .hero-meta__main {
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: thin;
+    }
+    .hero-meta__tags {
+      justify-self: end;
     }
     .token, .badge {
       flex: 0 0 auto;
@@ -5552,6 +5571,12 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
         justify-self: stretch;
         justify-content: flex-start;
       }
+      .hero-meta {
+        grid-template-columns: 1fr;
+      }
+      .hero-meta__tags {
+        justify-self: end;
+      }
       .dependency-block {
         grid-template-columns: 1fr;
       }
@@ -5855,14 +5880,16 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
       </div>
       <div class="hero-secondary">
         <div class="hero-meta">
-          <span class="token accent">${(0, htmlEscape_1.escapeHtml)(workflow.category)}</span>
+          <div class="hero-meta__main">
+            <span class="token accent">${(0, htmlEscape_1.escapeHtml)(workflow.category)}</span>
+            <span class="token${heroTokenClass(workflow.status)}">${(0, htmlEscape_1.escapeHtml)(workflow.status)}</span>
+            <span class="token">${(0, htmlEscape_1.escapeHtml)(displayedPhaseId)}</span>
+            ${pendingRewindPhaseId ? `<span class="token token--attention">rewind:${(0, htmlEscape_1.escapeHtml)(pendingRewindPhaseId)}</span>` : ""}
+            <span class="token">${(0, htmlEscape_1.escapeHtml)(workflow.workBranch ?? "branch:not-created")}</span>
+            <span class="token${heroTokenClass(`runner:${playbackState}`)}">runner:${(0, htmlEscape_1.escapeHtml)(playbackState)}</span>
+            ${rewindBlockedToken}
+          </div>
           ${buildWorkflowTagTokens(workflow.tags ?? [])}
-          <span class="token${heroTokenClass(workflow.status)}">${(0, htmlEscape_1.escapeHtml)(workflow.status)}</span>
-          <span class="token">${(0, htmlEscape_1.escapeHtml)(displayedPhaseId)}</span>
-          ${pendingRewindPhaseId ? `<span class="token token--attention">rewind:${(0, htmlEscape_1.escapeHtml)(pendingRewindPhaseId)}</span>` : ""}
-          <span class="token">${(0, htmlEscape_1.escapeHtml)(workflow.workBranch ?? "branch:not-created")}</span>
-          <span class="token${heroTokenClass(`runner:${playbackState}`)}">runner:${(0, htmlEscape_1.escapeHtml)(playbackState)}</span>
-          ${rewindBlockedToken}
         </div>
         ${dependencyBlockedHeroMarkup}
       </div>
@@ -8266,9 +8293,10 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
 </html>`;
 }
 function buildWorkflowTagTokens(tags) {
-    return tags
+    const tagTokens = tags
         .map((tag) => `<span class="token token--tag">${(0, htmlEscape_1.escapeHtml)(formatWorkflowTagLabel(tag))}</span>`)
         .join("");
+    return tagTokens ? `<div class="hero-meta__tags">${tagTokens}</div>` : "";
 }
 function formatWorkflowTagLabel(tag) {
     return `#${tag}`;
