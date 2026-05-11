@@ -18,7 +18,6 @@ export interface ExtensionActions {
   approveCurrentPhase(summary: unknown): Promise<void>;
   requestRegression(summary: unknown): Promise<void>;
   restartUserStoryFromSource(summary: unknown): Promise<void>;
-  deleteUserStory(summary: unknown): Promise<void>;
   continuePhase(summary: unknown): Promise<void>;
   showOutput(): Promise<void>;
   disposeBackendClients(): void;
@@ -81,10 +80,6 @@ export function activateExtension(
     }),
     host.registerCommand("specForge.restartUserStoryFromSource", async (summary) => {
       await actions.restartUserStoryFromSource(summary);
-      explorerProvider.refresh();
-    }),
-    host.registerCommand("specForge.deleteUserStory", async (summary) => {
-      await actions.deleteUserStory(summary);
       explorerProvider.refresh();
     }),
     host.registerCommand("specForge.continuePhase", async (summary) => {

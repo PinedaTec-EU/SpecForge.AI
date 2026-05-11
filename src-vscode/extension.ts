@@ -32,8 +32,7 @@ import {
   openPromptTemplates,
   openMainArtifact,
   restartUserStoryFromSource,
-  requestRegression,
-  deleteUserStory
+  requestRegression
 } from "./specsExplorer";
 import { getUserWorkspacePreferencesPath, readUserWorkspacePreferences, setStarredUserStory } from "./userWorkspacePreferences";
 import type { UserStorySummary } from "./backendClient";
@@ -340,7 +339,6 @@ function createExtensionActions(
     approveCurrentPhase,
     requestRegression,
     restartUserStoryFromSource,
-    deleteUserStory,
     continuePhase: async (summary) => {
       const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
       if (

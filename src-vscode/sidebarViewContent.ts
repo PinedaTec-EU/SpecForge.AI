@@ -1947,10 +1947,6 @@ function buildStoryRowMarkup(summary: UserStorySummary, starredUserStoryId: stri
                   <span class="action-menu__item-icon" aria-hidden="true">⊘</span>
                   <span>Drop US</span>
                 </button>`}
-            <button class="action-menu__item action-menu__item--danger" type="button" data-command="deleteUserStory" data-us-id="${escapeHtmlAttr(summary.usId)}" role="menuitem">
-              <span class="action-menu__item-icon" aria-hidden="true">🗑</span>
-              <span>Delete</span>
-            </button>
           </div>
         </div>
       </div>

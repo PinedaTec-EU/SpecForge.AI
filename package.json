@@ -27,7 +27,6 @@
     "onCommand:specForge.approveCurrentPhase",
     "onCommand:specForge.requestRegression",
     "onCommand:specForge.restartUserStoryFromSource",
-    "onCommand:specForge.deleteUserStory",
     "onCommand:specForge.showUserStoryDetails",
     "onCommand:specForge.showOutput"
   ],
@@ -123,10 +122,6 @@
       {
         "command": "specForge.restartUserStoryFromSource",
         "title": "Restart User Story From Source"
-      },
-      {
-        "command": "specForge.deleteUserStory",
-        "title": "Delete User Story"
       },
       {
         "command": "specForge.showUserStoryDetails",

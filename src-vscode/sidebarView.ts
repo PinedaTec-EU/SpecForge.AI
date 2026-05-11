@@ -39,7 +39,6 @@ type SidebarMessage =
   | { readonly command: "resetUserStoryToCapture"; readonly usId?: string }
   | { readonly command: "dropUserStory"; readonly usId?: string }
   | { readonly command: "recoverUserStory"; readonly usId?: string }
-  | { readonly command: "deleteUserStory"; readonly usId?: string }
   | { readonly command: "analyzeRepairUserStory"; readonly usId?: string }
   | { readonly command: "setCreateFileMode"; readonly kind?: string }
   | { readonly command: "addCreateFiles"; readonly kind?: string }
@@ -179,13 +178,6 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 
         await this.openMainArtifactAsync(message.usId);
         return;
-      case "deleteUserStory":
-        if (!message.usId) {
-          return;
-        }
-
-        await this.deleteUserStoryAsync(message.usId);
-        return;
       case "dropUserStory":
         if (!message.usId) {
           return;
@@ -319,21 +311,6 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 
     const summary = await getOrCreateBackendClient(workspaceRoot).getUserStorySummary(usId);
     await vscode.commands.executeCommand("specForge.openMainArtifact", summary);
-  }
-
-  private async deleteUserStoryAsync(usId: string): Promise<void> {
-    const workspaceRoot = getWorkspaceRoot();
-    if (!workspaceRoot) {
-      return;
-    }
-
-    const summary = await getOrCreateBackendClient(workspaceRoot).getUserStorySummary(usId);
-    await vscode.commands.executeCommand("specForge.deleteUserStory", summary);
-    const preferences = await readUserWorkspacePreferences(workspaceRoot);
-    if (preferences.starredUserStoryId === usId) {
-      await setStarredUserStory(workspaceRoot, null);
-    }
-    await this.onDidCreateUserStory();
   }
 
   private async dropUserStoryAsync(usId: string): Promise<void> {

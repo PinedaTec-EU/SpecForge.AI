@@ -79,9 +79,6 @@ function createHarness() {
     async restartUserStoryFromSource(summary) {
       actionCalls.push(`restartUserStoryFromSource:${String(summary)}`);
     },
-    async deleteUserStory(summary) {
-      actionCalls.push(`deleteUserStory:${String(summary)}`);
-    },
     async continuePhase(summary) {
       actionCalls.push(`continuePhase:${String(summary)}`);
     },
@@ -115,7 +112,6 @@ test("activateExtension registers the tree provider and all expected commands", 
     "specForge.approveCurrentPhase",
     "specForge.continuePhase",
     "specForge.createUserStory",
-    "specForge.deleteUserStory",
     "specForge.importUserStory",
     "specForge.initializeRepoPrompts",
     "specForge.openCliWorkflowPortal",
@@ -128,7 +124,7 @@ test("activateExtension registers the tree provider and all expected commands", 
     "specForge.showOutput",
     "specForge.showUserStoryDetails"
   ]);
-  assert.equal(harness.context.subscriptions.length, 16);
+  assert.equal(harness.context.subscriptions.length, 15);
 });
 
 test("mutating commands refresh the explorer after the action completes", async () => {
@@ -141,7 +137,6 @@ test("mutating commands refresh the explorer after the action completes", async 
   await harness.registeredCommands.get("specForge.approveCurrentPhase")?.("US-0001");
   await harness.registeredCommands.get("specForge.requestRegression")?.("US-0001");
   await harness.registeredCommands.get("specForge.restartUserStoryFromSource")?.("US-0001");
-  await harness.registeredCommands.get("specForge.deleteUserStory")?.("US-0001");
   await harness.registeredCommands.get("specForge.continuePhase")?.("US-0001");
 
   assert.deepEqual(harness.actionCalls, [
@@ -151,10 +146,9 @@ test("mutating commands refresh the explorer after the action completes", async 
     "approveCurrentPhase:US-0001",
     "requestRegression:US-0001",
     "restartUserStoryFromSource:US-0001",
-    "deleteUserStory:US-0001",
     "continuePhase:US-0001"
   ]);
-  assert.equal(harness.getRefreshCount(), 8);
+  assert.equal(harness.getRefreshCount(), 7);
 });
 
 test("read-only commands do not refresh and forward the provided summary", async () => {
