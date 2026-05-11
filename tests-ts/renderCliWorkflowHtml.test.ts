@@ -89,3 +89,18 @@ test("CLI workflow renderer handles sidebar starred story toggles locally", asyn
     assert.match(content, /icon\.textContent = active \? "★" : "☆"/);
   }
 });
+
+test("CLI workflow renderer switches the selected story when toggling sidebar visibility", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+  const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
+
+  for (const content of [script, packagedScript]) {
+    assert.match(content, /activeSidebarUserStories = Array\.isArray\(payload\.activeSidebarUserStories\)/);
+    assert.match(content, /droppedSidebarUserStories = Array\.isArray\(payload\.droppedSidebarUserStories\)/);
+    assert.match(content, /const activeSidebarUserStoryIds = \$\{JSON\.stringify\(activeSidebarUserStories\.map\(item => item\.usId\)\.filter\(Boolean\)\)\}/);
+    assert.match(content, /const droppedSidebarUserStoryIds = \$\{JSON\.stringify\(droppedSidebarUserStories\.map\(item => item\.usId\)\.filter\(Boolean\)\)\}/);
+    assert.match(content, /resolveTargetUserStoryId\(droppedSidebarUserStoryIds\)/);
+    assert.match(content, /resolveTargetUserStoryId\(activeSidebarUserStoryIds\)/);
+    assert.match(content, /url\.searchParams\.delete\("selectedPhaseId"\)/);
+  }
+});

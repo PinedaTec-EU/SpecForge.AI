@@ -74,7 +74,13 @@ test("CLI workflow portal refresh signature includes workflow runtime versions",
 test("CLI workflow portal payload includes sidebar stories and configuration URL", async () => {
   const source = await fs.promises.readFile(programPath, "utf8");
 
-  assert.match(source, /userStories = await applicationService\.ListUserStoriesAsync\(workspaceRoot\)/);
+  assert.match(source, /activeSidebarUserStories = await applicationService\.ListUserStoriesAsync\(workspaceRoot\)/);
+  assert.match(source, /droppedSidebarUserStories = await applicationService\.ListUserStoriesAsync\(workspaceRoot, "dropped"\)/);
+  assert.match(source, /resolvedUsId = ResolveSidebarVisibleUserStoryId\(usId, sidebarUserStories\)/);
+  assert.match(source, /GetUserStoryWorkflowAsync\(workspaceRoot, resolvedUsId\)/);
+  assert.match(source, /userStories = activeSidebarUserStories/);
+  assert.match(source, /activeSidebarUserStories/);
+  assert.match(source, /droppedSidebarUserStories/);
   assert.match(source, /configurationPortalUrl = BuildConfigurationPortalUrl\(workflowPortalOrigin\)/);
   assert.match(source, /configurationProvidersUrl = BuildConfigurationPortalUrl\(workflowPortalOrigin, "providers"\)/);
   assert.match(source, /configurationAdvancedUrl = BuildConfigurationPortalUrl\(workflowPortalOrigin, "advanced"\)/);

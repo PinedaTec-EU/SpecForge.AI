@@ -368,20 +368,22 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
     string workflowPortalOrigin,
     WorkflowPortalRenderCache renderCache)
 {
-    var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, usId);
-    var resolvedSelectedPhaseId = ResolveSelectedWorkflowPhaseId(workflow, selectedPhaseId);
-    var selectedPhase = ResolveSelectedWorkflowPhase(workflow, resolvedSelectedPhaseId);
-    var userStories = await applicationService.ListUserStoriesAsync(workspaceRoot);
     var normalizedSidebarVisibility = string.Equals(sidebarVisibility, "dropped", StringComparison.OrdinalIgnoreCase)
         ? "dropped"
         : "active";
-    var sidebarUserStories = await applicationService.ListUserStoriesAsync(workspaceRoot, normalizedSidebarVisibility);
-    var droppedUserStoryCount = normalizedSidebarVisibility == "dropped"
-        ? sidebarUserStories.Count
-        : (await applicationService.ListUserStoriesAsync(workspaceRoot, "dropped")).Count;
+    var activeSidebarUserStories = await applicationService.ListUserStoriesAsync(workspaceRoot);
+    var droppedSidebarUserStories = await applicationService.ListUserStoriesAsync(workspaceRoot, "dropped");
+    var sidebarUserStories = normalizedSidebarVisibility == "dropped"
+        ? droppedSidebarUserStories
+        : activeSidebarUserStories;
+    var resolvedUsId = ResolveSidebarVisibleUserStoryId(usId, sidebarUserStories);
+    var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, resolvedUsId);
+    var resolvedSelectedPhaseId = ResolveSelectedWorkflowPhaseId(workflow, selectedPhaseId);
+    var selectedPhase = ResolveSelectedWorkflowPhase(workflow, resolvedSelectedPhaseId);
+    var droppedUserStoryCount = droppedSidebarUserStories.Count;
     var signature = BuildWorkflowSignature(
         workflow,
-        userStories,
+        activeSidebarUserStories,
         normalizedSidebarVisibility,
         sidebarUserStories,
         droppedUserStoryCount);
@@ -398,8 +400,10 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
             selectedArtifactContent = await ReadFileContentOrNullAsync(selectedPhase?.ArtifactPath),
             selectedOperationContent = await ReadFileContentOrNullAsync(selectedPhase?.OperationLogPath),
             runtimeVersion = workflow.LastRuntimeVersion ?? workflow.CreatedWithRuntimeVersion,
-            userStories,
+            userStories = activeSidebarUserStories,
             sidebarUserStories,
+            activeSidebarUserStories,
+            droppedSidebarUserStories,
             showDroppedUserStories = normalizedSidebarVisibility == "dropped",
             droppedUserStoryCount,
             configurationPortalUrl = BuildConfigurationPortalUrl(workflowPortalOrigin),
@@ -577,6 +581,22 @@ static WorkflowPhaseDetails? ResolveSelectedWorkflowPhase(UserStoryWorkflowDetai
     return workflow.Phases.FirstOrDefault(phase => string.Equals(phase.PhaseId, selectedPhaseId, StringComparison.Ordinal))
         ?? workflow.Phases.FirstOrDefault(phase => phase.IsCurrent)
         ?? workflow.Phases.FirstOrDefault();
+}
+
+static string ResolveSidebarVisibleUserStoryId(
+    string requestedUsId,
+    IReadOnlyCollection<UserStorySummary> sidebarUserStories)
+{
+    if (sidebarUserStories.Any(story => string.Equals(story.UsId, requestedUsId, StringComparison.Ordinal)))
+    {
+        return requestedUsId;
+    }
+
+    return sidebarUserStories
+        .OrderBy(story => story.UsId, StringComparer.Ordinal)
+        .FirstOrDefault()
+        ?.UsId
+        ?? requestedUsId;
 }
 
 static async Task<string?> ReadFileContentOrNullAsync(string? path)
