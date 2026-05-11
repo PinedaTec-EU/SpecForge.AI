@@ -64,12 +64,9 @@ test("CLI workflow portal refresh signature includes workflow runtime versions",
 
   assert.match(source, /workflow\.CreatedWithRuntimeVersion/);
   assert.match(source, /workflow\.LastRuntimeVersion/);
-  assert.match(source, /BuildWorkflowSignature\(\s*UserStoryWorkflowDetails workflow,\s*IReadOnlyCollection<UserStorySummary> userStories,\s*string sidebarVisibility,\s*bool showCompletedUserStories,\s*IReadOnlyCollection<UserStorySummary> sidebarUserStories,\s*int droppedUserStoryCount\s*\)/);
+  assert.match(source, /BuildWorkflowSignature\(\s*UserStoryWorkflowDetails workflow,\s*IReadOnlyCollection<UserStorySummary> userStories,\s*IReadOnlyCollection<UserStorySummary> droppedUserStories\s*\)/);
   assert.match(source, /userStories = userStories[\s\S]*?story\.CurrentPhase[\s\S]*?story\.Status/);
-  assert.match(source, /sidebarVisibility/);
-  assert.match(source, /showCompletedUserStories/);
-  assert.match(source, /droppedUserStoryCount/);
-  assert.match(source, /sidebarUserStories = sidebarUserStories[\s\S]*?story\.CurrentPhase[\s\S]*?story\.Status/);
+  assert.match(source, /droppedUserStories = droppedUserStories[\s\S]*?story\.CurrentPhase[\s\S]*?story\.Status/);
 });
 
 test("CLI workflow portal payload includes sidebar stories and configuration URL", async () => {
@@ -77,8 +74,8 @@ test("CLI workflow portal payload includes sidebar stories and configuration URL
 
   assert.match(source, /activeSidebarUserStories = await applicationService\.ListUserStoriesAsync\(workspaceRoot\)/);
   assert.match(source, /droppedSidebarUserStories = await applicationService\.ListUserStoriesAsync\(workspaceRoot, "dropped"\)/);
-  assert.match(source, /resolvedUsId = ResolveSidebarVisibleUserStoryId\(usId, sidebarUserStories\)/);
-  assert.match(source, /GetUserStoryWorkflowAsync\(workspaceRoot, resolvedUsId\)/);
+  assert.match(source, /GetUserStoryWorkflowAsync\(workspaceRoot, usId\)/);
+  assert.doesNotMatch(source, /resolvedUsId = ResolveSidebarVisibleUserStoryId\(usId, sidebarUserStories\)/);
   assert.match(source, /userStories = activeSidebarUserStories/);
   assert.match(source, /activeSidebarUserStories/);
   assert.match(source, /droppedSidebarUserStories/);
@@ -102,16 +99,13 @@ test("CLI workflow portal payload includes sidebar stories and configuration URL
   assert.match(source, /ResolveWorkflowPortalUserStoryId\(context\.Request, usId\)/);
 });
 
-test("CLI workflow portal signature uses the current sidebar visibility", async () => {
+test("CLI workflow portal signature ignores local sidebar visibility", async () => {
   const source = await fs.promises.readFile(programPath, "utf8");
 
   assert.match(source, /BuildWorkflowPortalSignatureAsync\(\s*SpecForgeApplicationService applicationService,\s*string workspaceRoot,\s*string usId,\s*string\? sidebarVisibility,\s*bool showCompletedUserStories\s*\)/);
-  assert.match(source, /normalizedSidebarVisibility = string\.Equals\(sidebarVisibility, "dropped", StringComparison\.OrdinalIgnoreCase\)/);
-  assert.match(source, /sidebarUserStories = normalizedSidebarVisibility == "dropped"[\s\S]*?\? droppedSidebarUserStories[\s\S]*?: activeSidebarUserStories/);
-  assert.match(source, /resolvedUsId = ResolveSidebarVisibleUserStoryId\(usId, sidebarUserStories\)/);
-  assert.match(source, /GetUserStoryWorkflowAsync\(workspaceRoot, resolvedUsId\)/);
-  assert.match(source, /BuildWorkflowSignature\([\s\S]*?activeSidebarUserStories,[\s\S]*?normalizedSidebarVisibility,[\s\S]*?showCompletedUserStories,[\s\S]*?sidebarUserStories,[\s\S]*?droppedSidebarUserStories\.Count\)/);
-  assert.match(source, /showCompletedUserStories,/);
+  assert.match(source, /GetUserStoryWorkflowAsync\(workspaceRoot, usId\)/);
+  assert.doesNotMatch(source, /resolvedUsId = ResolveSidebarVisibleUserStoryId\(usId, sidebarUserStories\)/);
+  assert.match(source, /BuildWorkflowSignature\([\s\S]*?activeSidebarUserStories,[\s\S]*?droppedSidebarUserStories\)/);
 });
 
 test("CLI writes JSON with web serializer options for record responses", async () => {

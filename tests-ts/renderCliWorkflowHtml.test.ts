@@ -90,20 +90,19 @@ test("CLI workflow renderer handles sidebar starred story toggles locally", asyn
   }
 });
 
-test("CLI workflow renderer switches the selected story when toggling sidebar visibility", async () => {
+test("CLI workflow renderer switches sidebar visibility without navigating the workflow", async () => {
   const script = await fs.promises.readFile(scriptPath, "utf8");
   const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
 
   for (const content of [script, packagedScript]) {
     assert.match(content, /activeSidebarUserStories = Array\.isArray\(payload\.activeSidebarUserStories\)/);
     assert.match(content, /droppedSidebarUserStories = Array\.isArray\(payload\.droppedSidebarUserStories\)/);
-    assert.match(content, /const activeSidebarUserStoryIds = \$\{JSON\.stringify\(activeSidebarUserStories\.map\(item => item\.usId\)\.filter\(Boolean\)\)\}/);
-    assert.match(content, /const droppedSidebarUserStoryIds = \$\{JSON\.stringify\(droppedSidebarUserStories\.map\(item => item\.usId\)\.filter\(Boolean\)\)\}/);
-    assert.match(content, /resolveTargetUserStoryId\(droppedSidebarUserStoryIds\)/);
-    assert.match(content, /resolveTargetUserStoryId\(activeSidebarUserStoryIds\)/);
-    assert.match(content, /url\.searchParams\.delete\("selectedPhaseId"\)/);
-    assert.match(content, /url\.searchParams\.delete\("sidebarCompleted"\)/);
-    assert.match(content, /navigateTo\(url, true\)/);
+    assert.match(content, /activeSidebarHtml = buildCliSidebarHtml\(activeSidebarUserStories/);
+    assert.match(content, /droppedSidebarHtml = buildCliSidebarHtml\(droppedSidebarUserStories/);
+    assert.match(content, /sidebarFrame\.srcdoc = sidebarShowsDropped/);
+    assert.match(content, /window\.history\.replaceState\(window\.history\.state, "", url\.toString\(\)\)/);
+    assert.doesNotMatch(content, /resolveTargetUserStoryId/);
+    assert.doesNotMatch(content, /navigateTo\(url, true\)/);
   }
 });
 
@@ -115,9 +114,9 @@ test("CLI workflow renderer persists completed story visibility in the portal qu
     assert.match(content, /showCompletedUserStories = payload\.showCompletedUserStories === true/);
     assert.match(content, /showCompletedUserStories,/);
     assert.match(content, /message\.command === "toggleCompletedUserStories"/);
-    assert.match(content, /url\.searchParams\.get\("sidebarCompleted"\) === "true"/);
+    assert.match(content, /sidebarShowsCompleted = !sidebarShowsCompleted/);
     assert.match(content, /url\.searchParams\.set\("sidebarCompleted", "true"\)/);
-    assert.match(content, /navigateTo\(url, true\)/);
+    assert.match(content, /replaceSidebarFrame\(\)/);
   }
 });
 
