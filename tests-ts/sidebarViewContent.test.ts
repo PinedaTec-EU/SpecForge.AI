@@ -543,7 +543,7 @@ test("buildSidebarHtml keeps dropped story cards selectable", () => {
   assert.doesNotMatch(html, /<button class="story-card[^"]*" type="button" disabled>/);
 });
 
-test("buildSidebarHtml scrolls the selected user story row into view", () => {
+test("buildSidebarHtml scrolls the selected user story row as high as possible", () => {
   const html = buildSidebarHtml(model({
     activeWorkflowUsId: "US-0011",
     categories: ["workflow"],
@@ -562,7 +562,7 @@ test("buildSidebarHtml scrolls the selected user story row into view", () => {
   assert.match(html, /story-row--selected/);
   assert.match(html, /function keepSelectedStoryVisible\(\)/);
   assert.match(html, /querySelector\("\.story-row--selected"\)/);
-  assert.match(html, /scrollIntoView\(\{ block: "nearest" \}\)/);
+  assert.match(html, /scrollIntoView\(\{ block: "start" \}\)/);
   assert.match(html, /requestAnimationFrame\(keepSelectedStoryVisible\)/);
 });
 
