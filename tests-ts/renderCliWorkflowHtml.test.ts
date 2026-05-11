@@ -22,11 +22,12 @@ test("CLI workflow shim rejects malformed refinement answer commands locally", a
   assert.doesNotMatch(script, /submitRefinementAnswers" && message\.answers/);
 });
 
-test("CLI workflow renderer passes runtime version into workflow state", async () => {
+test("CLI workflow renderer shows runtime version only in the sidebar header", async () => {
   const script = await fs.promises.readFile(scriptPath, "utf8");
 
   assert.match(script, /displayRuntimeVersion = formatRuntimeVersion\(payload\.runtimeVersion \?\? workflow\.lastRuntimeVersion \?\? workflow\.createdWithRuntimeVersion \?\? null\)/);
-  assert.match(script, /runtimeVersion: payload\.runtimeVersion \?\? workflow\.lastRuntimeVersion \?\? workflow\.createdWithRuntimeVersion \?\? null/);
+  assert.match(script, /runtimeVersion: null/);
+  assert.doesNotMatch(script, /runtimeVersion: payload\.runtimeVersion \?\? workflow\.lastRuntimeVersion \?\? workflow\.createdWithRuntimeVersion \?\? null/);
 });
 
 test("CLI workflow renderer embeds the reusable user-story sidebar with collapsed actions", async () => {
