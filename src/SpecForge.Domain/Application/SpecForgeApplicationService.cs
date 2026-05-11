@@ -6,6 +6,13 @@ namespace SpecForge.Domain.Application;
 
 public sealed class SpecForgeApplicationService
 {
+    private const string DependencyBlockingReason = "dependency_not_completed";
+    private const string MissingDependencyReason = "missing";
+
+    private static readonly Regex UserStoryIdRegex = new(
+        pattern: "\\bUS-[A-Z0-9]+(?:-[A-Z0-9]+)*\\b",
+        options: RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+
     private readonly UserStoryFileStore fileStore;
     private readonly WorkflowRunner workflowRunner;
     private readonly RepositoryPromptInitializer repositoryPromptInitializer;
@@ -369,6 +376,11 @@ public sealed class SpecForgeApplicationService
             : string.Empty;
         var refinement = await ReadRefinementSessionAsync(paths, cancellationToken);
         var approvalQuestions = await ReadApprovalQuestionsAsync(paths, cancellationToken);
+        var dependencies = await GetDependencySummariesAsync(
+            workspaceRoot,
+            paths.MainArtifactPath,
+            workflowRun.UsId,
+            cancellationToken);
         var currentPhase = await GetCurrentPhaseAsync(workspaceRoot, usId, cancellationToken);
 
         var timelineEvents = TimelineMarkdownParser.ParseEvents(rawTimeline);
@@ -377,7 +389,7 @@ public sealed class SpecForgeApplicationService
             title,
             metadata.Kind,
             metadata.Category,
-            WorkflowPresentation.ToStatusSlug(workflowRun.Status),
+            ResolveOperationalStatus(workflowRun.Status, dependencies),
             WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase),
             paths.RootDirectory,
             workflowRun.Branch?.WorkBranchName,
@@ -386,6 +398,7 @@ public sealed class SpecForgeApplicationService
             rawTimeline,
             workflowRun.CreatedWithRuntimeVersion,
             workflowRun.LastRuntimeVersion,
+            dependencies,
             workflowRun.Branch?.PullRequest is null || workflowRun.Branch.PullRequest.Status is "superseded" or "close_pending"
                 ? null
                 : new PullRequestDetails(
@@ -454,6 +467,11 @@ public sealed class SpecForgeApplicationService
         var title = ReadTitle(mainArtifact, Path.GetFileName(Path.GetDirectoryName(mainArtifactPath) ?? mainArtifactPath));
         var description = ReadObjectiveSummary(mainArtifact);
         var metadata = await WorkflowRunner.ReadUserStoryMetadataAsync(mainArtifactPath, workflowRun.UsId, cancellationToken);
+        var dependencies = await GetDependencySummariesAsync(
+            FindWorkspaceRoot(new UserStoryFilePaths(directory)),
+            mainArtifactPath,
+            workflowRun.UsId,
+            cancellationToken);
 
         return new UserStorySummary(
             workflowRun.UsId,
@@ -463,8 +481,9 @@ public sealed class SpecForgeApplicationService
             directory,
             mainArtifactPath,
             WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase),
-            WorkflowPresentation.ToStatusSlug(workflowRun.Status),
-            workflowRun.Branch?.WorkBranchName);
+            ResolveOperationalStatus(workflowRun.Status, dependencies),
+            workflowRun.Branch?.WorkBranchName,
+            dependencies);
     }
 
     public async Task<CurrentPhaseSummary> GetCurrentPhaseAsync(
@@ -517,6 +536,23 @@ public sealed class SpecForgeApplicationService
                 CanApprove: false,
                 RequiresApproval: false,
                 BlockingReason: "workflow_completed");
+        }
+
+        var dependencies = await GetDependencySummariesAsync(
+            workspaceRoot,
+            paths.MainArtifactPath,
+            workflowRun.UsId,
+            cancellationToken);
+        if (HasBlockingDependencies(workflowRun.Status, dependencies))
+        {
+            return new CurrentPhaseSummary(
+                workflowRun.UsId,
+                WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase),
+                "blocked",
+                CanAdvance: false,
+                CanApprove: false,
+                RequiresApproval: false,
+                DependencyBlockingReason);
         }
 
         var requiresApproval = workflowRun.Definition.RequiresApproval(workflowRun.CurrentPhase);
@@ -911,6 +947,137 @@ public sealed class SpecForgeApplicationService
         File.Move(normalizedFilePath, targetPath);
         return await ListUserStoryFilesAsync(workspaceRoot, usId, cancellationToken);
     }
+
+    private async Task<IReadOnlyCollection<UserStoryDependencySummary>> GetDependencySummariesAsync(
+        string workspaceRoot,
+        string mainArtifactPath,
+        string currentUsId,
+        CancellationToken cancellationToken)
+    {
+        var dependencyIds = await ReadDependencyIdsAsync(mainArtifactPath, currentUsId, cancellationToken);
+        var dependencies = new List<UserStoryDependencySummary>(dependencyIds.Count);
+
+        foreach (var dependencyId in dependencyIds)
+        {
+            dependencies.Add(await ResolveDependencySummaryAsync(workspaceRoot, dependencyId, cancellationToken));
+        }
+
+        return dependencies;
+    }
+
+    private async Task<UserStoryDependencySummary> ResolveDependencySummaryAsync(
+        string workspaceRoot,
+        string dependencyId,
+        CancellationToken cancellationToken)
+    {
+        UserStoryFilePaths paths;
+        try
+        {
+            paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, dependencyId);
+        }
+        catch (DirectoryNotFoundException)
+        {
+            return new UserStoryDependencySummary(
+                dependencyId,
+                Title: null,
+                CurrentPhase: null,
+                Status: null,
+                IsSatisfied: false,
+                MissingReason: MissingDependencyReason);
+        }
+
+        if (File.Exists(paths.DroppedMarkerFilePath))
+        {
+            return new UserStoryDependencySummary(
+                dependencyId,
+                Title: null,
+                CurrentPhase: null,
+                Status: null,
+                IsSatisfied: false,
+                MissingReason: "dropped");
+        }
+
+        var workflowRun = await fileStore.LoadAsync(paths.RootDirectory, cancellationToken);
+        var mainArtifact = await File.ReadAllTextAsync(paths.MainArtifactPath, cancellationToken);
+        var status = WorkflowPresentation.ToStatusSlug(workflowRun.Status);
+
+        return new UserStoryDependencySummary(
+            workflowRun.UsId,
+            ReadTitle(mainArtifact, dependencyId),
+            WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase),
+            status,
+            IsSatisfied: workflowRun.Status == UserStoryStatus.Completed,
+            MissingReason: null);
+    }
+
+    private static async Task<IReadOnlyList<string>> ReadDependencyIdsAsync(
+        string mainArtifactPath,
+        string currentUsId,
+        CancellationToken cancellationToken)
+    {
+        if (!File.Exists(mainArtifactPath))
+        {
+            return [];
+        }
+
+        var content = await File.ReadAllTextAsync(mainArtifactPath, cancellationToken);
+
+        return ParseDependencyIds(content, currentUsId);
+    }
+
+    private static IReadOnlyList<string> ParseDependencyIds(string content, string currentUsId)
+    {
+        var lines = content.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        var dependencies = new List<string>();
+        var insideDependencies = false;
+
+        foreach (var rawLine in lines)
+        {
+            var line = rawLine.Trim();
+            if (line.Equals("## Dependencies", StringComparison.OrdinalIgnoreCase))
+            {
+                insideDependencies = true;
+                continue;
+            }
+
+            if (insideDependencies && line.StartsWith("## ", StringComparison.Ordinal))
+            {
+                break;
+            }
+
+            if (!insideDependencies || !line.StartsWith("- ", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            foreach (Match match in UserStoryIdRegex.Matches(line))
+            {
+                var dependencyId = match.Value.ToUpperInvariant();
+                if (!dependencyId.Equals(currentUsId, StringComparison.OrdinalIgnoreCase))
+                {
+                    dependencies.Add(dependencyId);
+                }
+            }
+        }
+
+        return dependencies
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static value => value, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static string ResolveOperationalStatus(
+        UserStoryStatus workflowStatus,
+        IReadOnlyCollection<UserStoryDependencySummary> dependencies) =>
+        HasBlockingDependencies(workflowStatus, dependencies)
+            ? "blocked"
+            : WorkflowPresentation.ToStatusSlug(workflowStatus);
+
+    private static bool HasBlockingDependencies(
+        UserStoryStatus workflowStatus,
+        IReadOnlyCollection<UserStoryDependencySummary> dependencies) =>
+        workflowStatus != UserStoryStatus.Completed
+        && dependencies.Any(static dependency => !dependency.IsSatisfied);
 
     private static async Task<string> ReadTitleAsync(string filePath, CancellationToken cancellationToken)
     {

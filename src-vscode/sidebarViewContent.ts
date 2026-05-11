@@ -1,4 +1,4 @@
-import type { UserStorySummary } from "./backendClient";
+import type { UserStoryDependencySummary, UserStorySummary } from "./backendClient";
 import { escapeHtml, escapeHtmlAttr } from "./htmlEscape";
 import { buildWebviewTypographyRootCss } from "./webviewTypography";
 
@@ -1397,6 +1397,14 @@ function wrapHtml(content: string, busy: boolean, createFormResetToken: number, 
       font-size: 0.8rem;
       color: rgba(255, 255, 255, 0.62);
     }
+    .story-card__dependency {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 0.76rem;
+      color: rgba(255, 213, 90, 0.88);
+    }
     @keyframes spin {
       to {
         transform: rotate(360deg);
@@ -1916,30 +1924,37 @@ function sortStoriesByPhase(items: readonly UserStorySummary[]): UserStorySummar
 
 function buildStoryRowMarkup(summary: UserStorySummary, starredUserStoryId: string | null, activeWorkflowUsId: string | null, isDroppedView: boolean): string {
   const isActiveWorkflow = activeWorkflowUsId === summary.usId;
-  const statusTone = phaseRailStatus(summary.status);
+  const effectiveStatus = effectiveStoryStatus(summary);
+  const statusTone = phaseRailStatus(effectiveStatus);
   const displayTitle = buildStoryDisplayTitle(summary);
+  const dependencies = summary.dependencies ?? [];
+  const dependencySearchText = dependencies
+    .map((dependency) => `${dependency.usId} ${dependency.title ?? ""} ${dependency.status ?? ""} ${dependency.currentPhase ?? ""}`)
+    .join(" ");
   const searchText = [
     summary.usId,
     summary.title,
     summary.description ?? "",
     summary.category,
     summary.currentPhase,
-    summary.status
+    effectiveStatus,
+    dependencySearchText
   ].join(" ");
   return `
     <div class="story-row story-row--shell story-row--status-${escapeHtmlAttr(statusTone)}${isActiveWorkflow ? " story-row--selected" : ""}" data-story-search-text="${escapeHtmlAttr(searchText)}">
-      <button class="story-card${shouldRenderPhaseRail(summary.status) ? ` story-card--active story-card--phase-${escapeHtmlAttr(summary.currentPhase)} story-card--status-${escapeHtmlAttr(phaseRailStatus(summary.status))}` : ""}" type="button" data-command="openWorkflow" data-us-id="${escapeHtmlAttr(summary.usId)}">
-        ${shouldRenderPhaseRail(summary.status)
+      <button class="story-card${shouldRenderPhaseRail(effectiveStatus) ? ` story-card--active story-card--phase-${escapeHtmlAttr(summary.currentPhase)} story-card--status-${escapeHtmlAttr(phaseRailStatus(effectiveStatus))}` : ""}" type="button" data-command="openWorkflow" data-us-id="${escapeHtmlAttr(summary.usId)}">
+        ${shouldRenderPhaseRail(effectiveStatus)
           ? `
             <span class="story-card__phase-rail" aria-hidden="true">
-              <span class="story-card__phase-label">${phaseRailLabelFor(summary.currentPhase, summary.status)}</span>
+              <span class="story-card__phase-label">${phaseRailLabelFor(summary.currentPhase, effectiveStatus)}</span>
             </span>
           `
           : ""}
         <span class="story-card__content">
           <span class="story-card__id">${escapeHtml(summary.usId)}</span>
           <strong>${escapeHtml(displayTitle)}</strong>
-          <span class="story-card__meta">${escapeHtml(summary.currentPhase)} · ${escapeHtml(summary.status)}</span>
+          <span class="story-card__meta">${escapeHtml(summary.currentPhase)} · ${escapeHtml(effectiveStatus)}</span>
+          ${buildDependencyLineMarkup(dependencies)}
         </span>
       </button>
       <div class="story-actions">
@@ -1989,6 +2004,30 @@ function buildStoryRowMarkup(summary: UserStorySummary, starredUserStoryId: stri
       </div>
     </div>
   `;
+}
+
+function effectiveStoryStatus(summary: UserStorySummary): string {
+  return hasBlockingDependencies(summary.dependencies ?? [])
+    ? "blocked"
+    : summary.status;
+}
+
+function hasBlockingDependencies(dependencies: readonly UserStoryDependencySummary[]): boolean {
+  return dependencies.some((dependency) => !dependency.isSatisfied);
+}
+
+function buildDependencyLineMarkup(dependencies: readonly UserStoryDependencySummary[]): string {
+  if (dependencies.length === 0) {
+    return "";
+  }
+
+  const blockingDependencies = dependencies.filter((dependency) => !dependency.isSatisfied);
+  const dependencyIds = (blockingDependencies.length > 0 ? blockingDependencies : dependencies)
+    .map((dependency) => dependency.usId)
+    .join(", ");
+  const label = blockingDependencies.length > 0 ? "blocked by" : "depends on";
+
+  return `<span class="story-card__dependency">${escapeHtml(label)} ${escapeHtml(dependencyIds)}</span>`;
 }
 
 function isCompletedStory(summary: UserStorySummary): boolean {

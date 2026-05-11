@@ -181,6 +181,36 @@ test("buildSidebarHtml includes user story descriptions in the local search inde
   assert.match(html, /data-story-search-text="[^"]*fast filtering[^"]*workflow/);
 });
 
+test("buildSidebarHtml surfaces blocked dependency state in story rows", () => {
+  const html = buildSidebarHtml(model({
+    categories: ["workflow"],
+    userStories: [{
+      usId: "US-0002",
+      title: "Dependent workflow",
+      category: "workflow",
+      currentPhase: "capture",
+      status: "active",
+      mainArtifactPath: "/tmp/us.md",
+      directoryPath: "/tmp/us.US-0002",
+      workBranch: null,
+      dependencies: [{
+        usId: "US-0001",
+        title: "First workflow",
+        currentPhase: "capture",
+        status: "active",
+        isSatisfied: false,
+        missingReason: null
+      }]
+    }],
+  }));
+
+  assert.match(html, /story-row--status-blocked/);
+  assert.match(html, /story-card--status-blocked/);
+  assert.match(html, /capture · blocked/);
+  assert.match(html, /blocked by US-0001/);
+  assert.match(html, /data-story-search-text="[^"]*US-0001[^"]*First workflow/);
+});
+
 test("buildSidebarHtml keeps the phase rail for user stories that are still in progress", () => {
   const html = buildSidebarHtml(model({
     categories: ["workflow"],

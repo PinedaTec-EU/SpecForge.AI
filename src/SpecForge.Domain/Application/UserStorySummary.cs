@@ -9,4 +9,13 @@ public sealed record UserStorySummary(
     string MainArtifactPath,
     string CurrentPhase,
     string Status,
-    string? WorkBranch);
+    string? WorkBranch,
+    IReadOnlyCollection<UserStoryDependencySummary> Dependencies);
+
+public sealed record UserStoryDependencySummary(
+    string UsId,
+    string? Title,
+    string? CurrentPhase,
+    string? Status,
+    bool IsSatisfied,
+    string? MissingReason);
