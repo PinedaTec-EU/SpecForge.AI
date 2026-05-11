@@ -67,9 +67,10 @@ function buildSidebarHtml(model) {
       </section>
     `, isBusy, model.createFormResetToken ?? 0, model.typographyCssVars ?? "");
     }
-    const visibleUserStories = model.showDroppedUserStories || model.showCompletedUserStories
+    const visibleUserStories = model.showDroppedUserStories
         ? model.userStories
-        : model.userStories.filter((summary) => !isCompletedStory(summary));
+        : model.userStories.filter((summary) => (model.showCompletedUserStories || !isCompletedStory(summary))
+            && (model.showBlockedUserStories || !isBlockedStory(summary)));
     const storySections = model.viewMode === "phase"
         ? [{ heading: null, items: sortStoriesByPhase(visibleUserStories) }]
         : groupStories(visibleUserStories).map((group) => ({ heading: group.category, items: group.items }));
@@ -302,8 +303,14 @@ function emptyStoryListMessage(model, visibleUserStoryCount) {
     if (model.showDroppedUserStories) {
         return "No dropped user stories to recover.";
     }
-    if (!model.showCompletedUserStories && model.userStories.length > 0 && visibleUserStoryCount === 0) {
-        return "Only completed user stories are hidden. Use the view menu to show them.";
+    if (model.userStories.length > 0 && visibleUserStoryCount === 0) {
+        const hiddenTypes = [
+            !model.showCompletedUserStories && model.userStories.some(isCompletedStory) ? "completed" : null,
+            !model.showBlockedUserStories && model.userStories.some(isBlockedStory) ? "blocked" : null
+        ].filter((item) => item !== null);
+        if (hiddenTypes.length > 0) {
+            return `Only ${formatList(hiddenTypes)} user stories are hidden. Use the view menu to show them.`;
+        }
     }
     return "Create or import a user story to start the workflow.";
 }
@@ -395,13 +402,18 @@ function buildPromptMenu(promptsInitialized) {
 }
 function buildViewOptionsMenu(model) {
     const completedCount = model.userStories.filter(isCompletedStory).length;
-    const label = completedCount > 0
+    const blockedCount = model.userStories.filter(isBlockedStory).length;
+    const completedLabel = completedCount > 0
         ? `Show completed (${completedCount})`
         : "Show completed";
+    const blockedLabel = blockedCount > 0
+        ? `Show blocked (${blockedCount})`
+        : "Show blocked";
+    const hasVisibleFilters = model.showCompletedUserStories || model.showBlockedUserStories;
     return `
     <div class="action-menu" data-action-menu>
       <button
-        class="icon-action${model.showCompletedUserStories ? " icon-action--active" : ""}"
+        class="icon-action${hasVisibleFilters ? " icon-action--active" : ""}"
         type="button"
         data-action-menu-toggle
         title="Sidebar view options"
@@ -419,7 +431,17 @@ function buildViewOptionsMenu(model) {
           aria-checked="${model.showCompletedUserStories ? "true" : "false"}"
           ${model.showDroppedUserStories ? "disabled" : ""}>
           <span class="action-menu__item-icon" aria-hidden="true">${model.showCompletedUserStories ? "✓" : ""}</span>
-          <span>${(0, htmlEscape_1.escapeHtml)(label)}</span>
+          <span>${(0, htmlEscape_1.escapeHtml)(completedLabel)}</span>
+        </button>
+        <button
+          class="action-menu__item"
+          type="button"
+          data-command="toggleBlockedUserStories"
+          role="menuitemcheckbox"
+          aria-checked="${model.showBlockedUserStories ? "true" : "false"}"
+          ${model.showDroppedUserStories ? "disabled" : ""}>
+          <span class="action-menu__item-icon" aria-hidden="true">${model.showBlockedUserStories ? "✓" : ""}</span>
+          <span>${(0, htmlEscape_1.escapeHtml)(blockedLabel)}</span>
         </button>
       </div>
     </div>
@@ -1974,6 +1996,15 @@ function buildDependencyLineMarkup(dependencies) {
 }
 function isCompletedStory(summary) {
     return summary.status === "completed" || summary.currentPhase === "completed";
+}
+function isBlockedStory(summary) {
+    return effectiveStoryStatus(summary) === "blocked";
+}
+function formatList(values) {
+    if (values.length <= 1) {
+        return values[0] ?? "";
+    }
+    return `${values.slice(0, -1).join(", ")} or ${values[values.length - 1]}`;
 }
 function buildStoryDisplayTitle(summary) {
     const normalizedTitle = summary.title.trim();
