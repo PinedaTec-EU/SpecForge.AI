@@ -1402,6 +1402,16 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
       font-weight: 700;
       line-height: 1.1;
     }
+    .story-card__tag--aggregate {
+      border-color: rgba(246, 211, 101, 0.42);
+      background: rgba(246, 211, 101, 0.12);
+      color: #f6d365;
+    }
+    .story-card__tag--child {
+      border-color: rgba(114, 196, 241, 0.42);
+      background: rgba(114, 196, 241, 0.12);
+      color: #9bd3ff;
+    }
     .story-card__dependency {
       min-width: 0;
       overflow: hidden;
@@ -1932,6 +1942,7 @@ function buildStoryRowMarkup(summary, starredUserStoryId, activeWorkflowUsId, is
     const effectiveStatus = effectiveStoryStatus(summary);
     const statusTone = phaseRailStatus(effectiveStatus);
     const displayTitle = buildStoryDisplayTitle(summary);
+    const isAggregate = summary.workflowKind === "aggregate";
     const dependencies = summary.dependencies ?? [];
     const tags = summary.tags ?? [];
     const dependencySearchText = dependencies
@@ -1945,6 +1956,8 @@ function buildStoryRowMarkup(summary, starredUserStoryId, activeWorkflowUsId, is
         tags.map(formatTagLabel).join(" "),
         summary.currentPhase,
         effectiveStatus,
+        isAggregate ? "aggregate parent grouping children" : "",
+        summary.parentUsId ?? "",
         dependencySearchText
     ].join(" ");
     return `
@@ -1960,10 +1973,12 @@ function buildStoryRowMarkup(summary, starredUserStoryId, activeWorkflowUsId, is
         <span class="story-card__content">
           <span class="story-card__head">
             <span class="story-card__id">${(0, htmlEscape_1.escapeHtml)(summary.usId)}</span>
+            ${isAggregate ? `<span class="story-card__tag story-card__tag--aggregate">AGG</span>` : ""}
+            ${summary.parentUsId ? `<span class="story-card__tag story-card__tag--child">CHILD</span>` : ""}
             ${buildStoryTagMarkup(tags)}
           </span>
           <strong>${(0, htmlEscape_1.escapeHtml)(displayTitle)}</strong>
-          <span class="story-card__meta">${(0, htmlEscape_1.escapeHtml)(summary.currentPhase)} · ${(0, htmlEscape_1.escapeHtml)(effectiveStatus)}</span>
+          <span class="story-card__meta">${(0, htmlEscape_1.escapeHtml)(summary.currentPhase)} · ${(0, htmlEscape_1.escapeHtml)(effectiveStatus)}${isAggregate ? ` · ${(0, htmlEscape_1.escapeHtml)(String(summary.childUsIds?.length ?? 0))} children` : ""}${summary.parentUsId ? ` · parent ${(0, htmlEscape_1.escapeHtml)(summary.parentUsId)}` : ""}</span>
           ${buildDependencyLineMarkup(dependencies)}
         </span>
       </button>

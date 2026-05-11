@@ -27,6 +27,9 @@ export interface UserStorySummary {
   readonly status: string;
   readonly workBranch: string | null;
   readonly dependencies?: readonly UserStoryDependencySummary[];
+  readonly workflowKind?: string;
+  readonly parentUsId?: string | null;
+  readonly childUsIds?: readonly string[] | null;
 }
 
 export interface UserStoryDependencySummary {
@@ -275,6 +278,25 @@ export interface ApprovalQuestionDetails {
   readonly answeredAtUtc: string | null;
 }
 
+export interface DecompositionChildDraft {
+  readonly title: string;
+  readonly objective: string;
+  readonly acceptanceCriteria: readonly string[];
+  readonly dependencies: readonly string[];
+}
+
+export interface DecompositionDetails {
+  readonly state: string;
+  readonly decision: string;
+  readonly complexityScore: number;
+  readonly threshold: number;
+  readonly tolerance: number;
+  readonly rationale: string;
+  readonly artifactPath: string | null;
+  readonly proposedChildren: readonly DecompositionChildDraft[];
+  readonly createdChildUsIds: readonly string[];
+}
+
 export interface CurrentPhaseControls {
   readonly canContinue: boolean;
   readonly canApprove: boolean;
@@ -346,6 +368,10 @@ export interface UserStoryWorkflowDetails {
   readonly timelinePath: string;
   readonly rawTimeline: string;
   readonly dependencies?: readonly UserStoryDependencySummary[];
+  readonly workflowKind?: string;
+  readonly parentUsId?: string | null;
+  readonly childUserStories?: readonly UserStorySummary[];
+  readonly decomposition?: DecompositionDetails | null;
   readonly pullRequest?: PullRequestDetails | null;
   readonly phases: readonly WorkflowPhaseDetails[];
   readonly controls: CurrentPhaseControls;

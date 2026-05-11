@@ -33,6 +33,7 @@ public sealed class WorkflowRunner
     private readonly string reviewEvidencePolicy;
     private readonly string? runtimeVersion;
     private readonly bool completedUsLockOnCompleted;
+    private readonly UserStoryDecompositionOptions decompositionOptions;
 
     public WorkflowRunner()
         : this(new UserStoryFileStore(), new DeterministicPhaseExecutionProvider(), new RepositoryCategoryCatalog(), new GitWorkBranchManager(), new GitHubPullRequestPublisher(), null, null)
@@ -41,6 +42,14 @@ public sealed class WorkflowRunner
 
     public WorkflowRunner(IPhaseExecutionProvider phaseExecutionProvider, string refinementTolerance = "balanced")
         : this(new UserStoryFileStore(), phaseExecutionProvider, new RepositoryCategoryCatalog(), new GitWorkBranchManager(), new GitHubPullRequestPublisher(), null, null, refinementTolerance)
+    {
+    }
+
+    public WorkflowRunner(
+        IPhaseExecutionProvider phaseExecutionProvider,
+        string refinementTolerance,
+        UserStoryDecompositionOptions decompositionOptions)
+        : this(new UserStoryFileStore(), phaseExecutionProvider, new RepositoryCategoryCatalog(), new GitWorkBranchManager(), new GitHubPullRequestPublisher(), null, null, refinementTolerance, decompositionOptions: decompositionOptions)
     {
     }
 
@@ -54,8 +63,9 @@ public sealed class WorkflowRunner
         string? runtimeVersion,
         string refinementTolerance,
         bool completedUsLockOnCompleted,
-        string reviewEvidencePolicy = "balanced")
-        : this(new UserStoryFileStore(), phaseExecutionProvider, new RepositoryCategoryCatalog(), new GitWorkBranchManager(), new GitHubPullRequestPublisher(), null, runtimeVersion, refinementTolerance, completedUsLockOnCompleted, reviewEvidencePolicy)
+        string reviewEvidencePolicy = "balanced",
+        UserStoryDecompositionOptions? decompositionOptions = null)
+        : this(new UserStoryFileStore(), phaseExecutionProvider, new RepositoryCategoryCatalog(), new GitWorkBranchManager(), new GitHubPullRequestPublisher(), null, runtimeVersion, refinementTolerance, completedUsLockOnCompleted, reviewEvidencePolicy, decompositionOptions)
     {
     }
 
@@ -69,7 +79,8 @@ public sealed class WorkflowRunner
         string? runtimeVersion = null,
         string refinementTolerance = "balanced",
         bool completedUsLockOnCompleted = true,
-        string reviewEvidencePolicy = "balanced")
+        string reviewEvidencePolicy = "balanced",
+        UserStoryDecompositionOptions? decompositionOptions = null)
     {
         this.fileStore = fileStore ?? throw new ArgumentNullException(nameof(fileStore));
         this.phaseExecutionProvider = phaseExecutionProvider ?? throw new ArgumentNullException(nameof(phaseExecutionProvider));
@@ -83,6 +94,7 @@ public sealed class WorkflowRunner
         this.refinementTolerance = refinementTolerance is "strict" or "balanced" or "inferential" ? refinementTolerance : "balanced";
         this.reviewEvidencePolicy = ReviewEvidencePolicy.Normalize(reviewEvidencePolicy);
         this.completedUsLockOnCompleted = completedUsLockOnCompleted;
+        this.decompositionOptions = (decompositionOptions ?? UserStoryDecompositionOptions.Default).Normalize();
     }
 
     public PhaseExecutionReadiness GetPhaseExecutionReadiness(PhaseId phaseId) =>
@@ -131,6 +143,11 @@ public sealed class WorkflowRunner
     {
         var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, usId);
         var workflowRun = await fileStore.LoadAsync(paths.RootDirectory, cancellationToken);
+        if (await HasPendingDecompositionApprovalAsync(paths, cancellationToken))
+        {
+            throw new WorkflowDomainException("The spec cannot be approved before the pending decomposition proposal is approved or rejected.");
+        }
+
         await TrackRuntimeVersionChangeAsync(paths, workflowRun, NormalizeActor(actor), workflowRun.CurrentPhase, cancellationToken);
         var branchWasMissing = workflowRun.Branch is null;
         await EnsureCurrentPhaseIsApprovableAsync(paths, workflowRun.CurrentPhase, cancellationToken);
@@ -254,6 +271,106 @@ public sealed class WorkflowRunner
             WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase),
             WorkflowPresentation.ToStatusSlug(workflowRun.Status),
             generatedArtifactPath);
+    }
+
+    public async Task<UserStoryDecompositionApprovalResult> ApproveDecompositionAsync(
+        string workspaceRoot,
+        string usId,
+        string actor = "user",
+        CancellationToken cancellationToken = default)
+    {
+        var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, usId);
+        var workflowRun = await fileStore.LoadAsync(paths.RootDirectory, cancellationToken);
+        if (workflowRun.CurrentPhase != PhaseId.Spec)
+        {
+            throw new WorkflowDomainException("Decomposition can only be approved while the workflow is in the spec phase.");
+        }
+
+        var document = await ReadPendingDecompositionDocumentAsync(paths, cancellationToken);
+        var metadata = await ReadUserStoryMetadataAsync(paths.MainArtifactPath, usId, cancellationToken);
+        var existingIds = Directory.Exists(Path.Combine(workspaceRoot, ".specs", "us"))
+            ? Directory.GetDirectories(Path.Combine(workspaceRoot, ".specs", "us"), "US-*", SearchOption.TopDirectoryOnly)
+                .Select(Path.GetFileName)
+                .Where(static item => !string.IsNullOrWhiteSpace(item))
+                .Cast<string>()
+                .ToHashSet(StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var nextNumber = existingIds
+            .Select(static id => Regex.Match(id, "^US-([0-9]+)$", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase))
+            .Where(static match => match.Success)
+            .Select(static match => int.Parse(match.Groups[1].Value))
+            .DefaultIfEmpty(0)
+            .Max() + 1;
+        var createdChildIds = new List<string>();
+
+        foreach (var child in document.ProposedChildren)
+        {
+            var childUsId = NextAvailableChildUserStoryId(existingIds, ref nextNumber);
+            var childRoot = await CreateUserStoryAsync(
+                workspaceRoot,
+                childUsId,
+                child.Title,
+                metadata.Kind,
+                metadata.Category,
+                BuildChildUserStorySource(workflowRun.UsId, child),
+                actor,
+                metadata.Tags,
+                cancellationToken);
+            var childRun = await fileStore.LoadAsync(childRoot, cancellationToken);
+            childRun.LinkToParent(workflowRun.UsId);
+            await fileStore.SaveAsync(childRun, childRoot, cancellationToken);
+            createdChildIds.Add(childUsId);
+        }
+
+        var approvedDocument = document with
+        {
+            State = UserStoryDecomposition.StateApproved,
+            CreatedChildUsIds = createdChildIds
+        };
+        await PersistDecompositionDocumentAsync(paths, workflowRun.UsId, approvedDocument, cancellationToken);
+        workflowRun.ConvertToAggregate(createdChildIds);
+        await fileStore.SaveAsync(workflowRun, paths.RootDirectory, cancellationToken);
+        await AppendTimelineEventAsync(
+            paths.TimelineFilePath,
+            "decomposition_approved",
+            NormalizeActor(actor),
+            workflowRun.CurrentPhase,
+            $"Approved decomposition and created {createdChildIds.Count} child user story/stories: {string.Join(", ", createdChildIds.Select(static child => $"`{child}`"))}.",
+            cancellationToken,
+            [paths.DecompositionMarkdownPath, paths.DecompositionJsonPath]);
+
+        return new UserStoryDecompositionApprovalResult(
+            workflowRun.UsId,
+            WorkflowPresentation.ToStatusSlug(workflowRun.Status),
+            WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase),
+            createdChildIds);
+    }
+
+    public async Task<UserStoryDecompositionApprovalResult> RejectDecompositionAsync(
+        string workspaceRoot,
+        string usId,
+        string actor = "user",
+        CancellationToken cancellationToken = default)
+    {
+        var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, usId);
+        var workflowRun = await fileStore.LoadAsync(paths.RootDirectory, cancellationToken);
+        var document = await ReadPendingDecompositionDocumentAsync(paths, cancellationToken);
+        var rejectedDocument = document with { State = UserStoryDecomposition.StateRejected };
+        await PersistDecompositionDocumentAsync(paths, workflowRun.UsId, rejectedDocument, cancellationToken);
+        await AppendTimelineEventAsync(
+            paths.TimelineFilePath,
+            "decomposition_rejected",
+            NormalizeActor(actor),
+            workflowRun.CurrentPhase,
+            "Rejected the decomposition proposal; the spec remains pending normal approval.",
+            cancellationToken,
+            [paths.DecompositionMarkdownPath, paths.DecompositionJsonPath]);
+
+        return new UserStoryDecompositionApprovalResult(
+            workflowRun.UsId,
+            WorkflowPresentation.ToStatusSlug(workflowRun.Status),
+            WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase),
+            []);
     }
 
     public async Task<ApprovalAnswerSuggestionResult> SuggestApprovalAnswerAsync(
@@ -1310,6 +1427,7 @@ public sealed class WorkflowRunner
 
         workflowRun.GenerateNextPhase();
         var specGeneration = await MaterializePhaseArtifactAsync(workspaceRoot, paths, workflowRun, currentArtifactPath: null, operationPrompt: null, includeReviewArtifactInContext: true, cancellationToken);
+        await EvaluateSpecDecompositionAsync(workspaceRoot, paths, workflowRun, specGeneration.ArtifactPath, actor, cancellationToken);
         await AppendTimelineEventAsync(
             paths.TimelineFilePath,
             "phase_completed",
@@ -1446,6 +1564,7 @@ public sealed class WorkflowRunner
 
         workflowRun.GenerateNextPhase();
         var specGeneration = await MaterializePhaseArtifactAsync(workspaceRoot, paths, workflowRun, currentArtifactPath: null, operationPrompt: null, includeReviewArtifactInContext: true, cancellationToken);
+        await EvaluateSpecDecompositionAsync(workspaceRoot, paths, workflowRun, specGeneration.ArtifactPath, actor, cancellationToken);
         await AppendTimelineEventAsync(
             paths.TimelineFilePath,
             "phase_completed",
@@ -1660,6 +1779,180 @@ public sealed class WorkflowRunner
             receiptPath,
             generatedFiles.Distinct(StringComparer.Ordinal).ToArray(),
             repositoryEvidencePaths);
+    }
+
+    private async Task EvaluateSpecDecompositionAsync(
+        string workspaceRoot,
+        UserStoryFilePaths paths,
+        WorkflowRun workflowRun,
+        string specArtifactPath,
+        string actor,
+        CancellationToken cancellationToken)
+    {
+        if (!decompositionOptions.Enabled)
+        {
+            SpecForgeDiagnostics.Log(
+                $"[runner.decomposition] usId={workflowRun.UsId} enabled=false threshold={decompositionOptions.Threshold:0.00} tolerance={decompositionOptions.Tolerance:0.00}");
+            return;
+        }
+
+        var specMarkdown = await File.ReadAllTextAsync(specArtifactPath, cancellationToken);
+        var context = new PhaseExecutionContext(
+            workspaceRoot,
+            workflowRun.UsId,
+            PhaseId.Spec,
+            paths.MainArtifactPath,
+            BuildPreviousArtifactMap(paths, PhaseId.Spec, includeReviewArtifactInContext: true),
+            BuildContextFilePaths(paths, PhaseId.Spec),
+            specArtifactPath,
+            null);
+        UserStoryDecompositionEvaluationResult evaluation;
+        try
+        {
+            evaluation = await phaseExecutionProvider.EvaluateSpecDecompositionAsync(
+                context,
+                specMarkdown,
+                decompositionOptions,
+                cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            SpecForgeDiagnostics.Log(
+                $"[runner.decomposition] usId={workflowRun.UsId} evaluation failed; assuming normal complexity. error={exception.Message}");
+            await AppendTimelineEventAsync(
+                paths.TimelineFilePath,
+                "decomposition_evaluation_failed",
+                "system",
+                PhaseId.Spec,
+                $"Spec decomposition evaluation failed and normal complexity was assumed for compatibility. Reason: {exception.Message}",
+                cancellationToken,
+                specArtifactPath);
+            return;
+        }
+
+        var document = UserStoryDecomposition.Normalize(evaluation, decompositionOptions);
+        SpecForgeDiagnostics.Log(
+            $"[runner.decomposition] usId={workflowRun.UsId} score={document.ComplexityScore:0.00} threshold={document.Threshold:0.00} tolerance={document.Tolerance:0.00} decision={document.Decision} children={document.ProposedChildren.Count}");
+
+        if (document.Decision == UserStoryDecomposition.DecisionNone)
+        {
+            return;
+        }
+
+        await PersistDecompositionDocumentAsync(paths, workflowRun.UsId, document, cancellationToken);
+        await AppendTimelineEventAsync(
+            paths.TimelineFilePath,
+            "decomposition_proposed",
+            NormalizeActor(actor),
+            PhaseId.Spec,
+            $"Spec decomposition is `{document.Decision}` with complexity `{document.ComplexityScore:0.00}` against threshold `{document.Threshold:0.00}` and tolerance `{document.Tolerance:0.00}`.",
+            cancellationToken,
+            [paths.DecompositionMarkdownPath, paths.DecompositionJsonPath],
+            evaluation.Usage,
+            durationMs: null,
+            evaluation.Execution);
+    }
+
+    private static async Task PersistDecompositionDocumentAsync(
+        UserStoryFilePaths paths,
+        string usId,
+        UserStoryDecompositionDocument document,
+        CancellationToken cancellationToken)
+    {
+        Directory.CreateDirectory(paths.PhasesDirectoryPath);
+        await File.WriteAllTextAsync(
+            paths.DecompositionJsonPath,
+            UserStoryDecomposition.Serialize(document),
+            cancellationToken);
+        await File.WriteAllTextAsync(
+            paths.DecompositionMarkdownPath,
+            UserStoryDecomposition.RenderMarkdown(usId, document),
+            cancellationToken);
+    }
+
+    private static async Task<bool> HasPendingDecompositionApprovalAsync(
+        UserStoryFilePaths paths,
+        CancellationToken cancellationToken)
+    {
+        if (!File.Exists(paths.DecompositionJsonPath))
+        {
+            return false;
+        }
+
+        var document = UserStoryDecomposition.Deserialize(
+            await File.ReadAllTextAsync(paths.DecompositionJsonPath, cancellationToken));
+        return document.State == UserStoryDecomposition.StatePendingApproval
+            && document.Decision != UserStoryDecomposition.DecisionNone;
+    }
+
+    private static async Task<UserStoryDecompositionDocument> ReadPendingDecompositionDocumentAsync(
+        UserStoryFilePaths paths,
+        CancellationToken cancellationToken)
+    {
+        if (!File.Exists(paths.DecompositionJsonPath))
+        {
+            throw new WorkflowDomainException("The user story does not have a pending decomposition proposal.");
+        }
+
+        var document = UserStoryDecomposition.Deserialize(
+            await File.ReadAllTextAsync(paths.DecompositionJsonPath, cancellationToken));
+        if (document.State != UserStoryDecomposition.StatePendingApproval)
+        {
+            throw new WorkflowDomainException("The decomposition proposal is not pending approval.");
+        }
+
+        return document;
+    }
+
+    private static string NextAvailableChildUserStoryId(ISet<string> reservedIds, ref int nextNumber)
+    {
+        while (true)
+        {
+            var candidate = $"US-{nextNumber:0000}";
+            nextNumber++;
+
+            if (reservedIds.Add(candidate))
+            {
+                return candidate;
+            }
+        }
+    }
+
+    private static string BuildChildUserStorySource(string parentUsId, UserStoryDecompositionChildDraft child)
+    {
+        var builder = new StringBuilder()
+            .AppendLine($"Child user story split from `{parentUsId}`.")
+            .AppendLine()
+            .AppendLine("## Objective")
+            .AppendLine()
+            .AppendLine(child.Objective.Trim())
+            .AppendLine()
+            .AppendLine("## Acceptance Criteria");
+
+        foreach (var criterion in child.AcceptanceCriteria.DefaultIfEmpty("The child scope is implemented and reviewable against the parent spec."))
+        {
+            builder.AppendLine($"- {criterion}");
+        }
+
+        builder
+            .AppendLine()
+            .AppendLine("## Parent Link")
+            .AppendLine()
+            .AppendLine($"- Parent US: `{parentUsId}`")
+            .AppendLine("- The parent spec is the decision record for this split.");
+
+        if (child.Dependencies.Count > 0)
+        {
+            builder.AppendLine();
+            builder.AppendLine("## Dependencies");
+
+            foreach (var dependency in child.Dependencies)
+            {
+                builder.AppendLine($"- {dependency}");
+            }
+        }
+
+        return builder.ToString();
     }
 
     private static string BuildExecutionId(PhaseId phaseId) =>

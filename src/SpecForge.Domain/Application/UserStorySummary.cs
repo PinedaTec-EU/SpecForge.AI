@@ -11,7 +11,10 @@ public sealed record UserStorySummary(
     string CurrentPhase,
     string Status,
     string? WorkBranch,
-    IReadOnlyCollection<UserStoryDependencySummary> Dependencies);
+    IReadOnlyCollection<UserStoryDependencySummary> Dependencies,
+    string WorkflowKind = "normal",
+    string? ParentUsId = null,
+    IReadOnlyCollection<string>? ChildUsIds = null);
 
 public sealed record UserStoryDependencySummary(
     string UsId,

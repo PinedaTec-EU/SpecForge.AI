@@ -15,8 +15,24 @@ internal static class StateYamlSerializer
             $"sourceHash: {workflowRun.SourceHash}",
             $"createdWithRuntimeVersion: {workflowRun.CreatedWithRuntimeVersion ?? string.Empty}",
             $"lastRuntimeVersion: {workflowRun.LastRuntimeVersion ?? string.Empty}",
-            "approvedPhases:"
+            $"workflowKind: {workflowRun.WorkflowKind}",
+            $"parentUsId: {workflowRun.ParentUsId ?? string.Empty}",
+            "childUsIds:"
         };
+
+        foreach (var childUsId in workflowRun.ChildUsIds)
+        {
+            lines.Add($"  - {childUsId}");
+        }
+
+        if (workflowRun.ChildUsIds.Count == 0)
+        {
+            lines.Add("  []");
+        }
+
+        lines.AddRange([
+            "approvedPhases:"
+        ]);
 
         foreach (var approvedPhase in workflowRun.ApprovedPhases)
         {
@@ -35,6 +51,7 @@ internal static class StateYamlSerializer
     {
         var values = YamlMapParser.ParseTopLevelMappings(yaml);
         var approvedPhases = ParseSequence(yaml, "approvedPhases").Select(ParsePhaseId).ToArray();
+        var childUsIds = ParseSequence(yaml, "childUsIds").ToArray();
 
         return new StateDocument(
             YamlMapParser.GetRequired(values, "usId"),
@@ -44,7 +61,10 @@ internal static class StateYamlSerializer
             YamlMapParser.GetRequired(values, "sourceHash"),
             approvedPhases,
             YamlMapParser.GetOptional(values, "createdWithRuntimeVersion"),
-            YamlMapParser.GetOptional(values, "lastRuntimeVersion"));
+            YamlMapParser.GetOptional(values, "lastRuntimeVersion"),
+            YamlMapParser.GetOptional(values, "workflowKind") ?? "normal",
+            YamlMapParser.GetOptional(values, "parentUsId"),
+            childUsIds);
     }
 
     private static IReadOnlyList<string> ParseSequence(string yaml, string key)
@@ -112,6 +132,7 @@ internal static class StateYamlSerializer
         UserStoryStatus.WaitingUser => "waiting-user",
         UserStoryStatus.Blocked => "blocked",
         UserStoryStatus.Completed => "completed",
+        UserStoryStatus.WaitingChildren => "waiting-children",
         _ => throw new ArgumentOutOfRangeException(nameof(status), status, null)
     };
 
@@ -136,6 +157,7 @@ internal static class StateYamlSerializer
         "waiting-user" => UserStoryStatus.WaitingUser,
         "blocked" => UserStoryStatus.Blocked,
         "completed" => UserStoryStatus.Completed,
+        "waiting-children" => UserStoryStatus.WaitingChildren,
         _ => throw new InvalidDataException($"Unknown status '{value}'.")
     };
 }
@@ -148,4 +170,7 @@ internal sealed record StateDocument(
     string SourceHash,
     IReadOnlyCollection<PhaseId> ApprovedPhases,
     string? CreatedWithRuntimeVersion,
-    string? LastRuntimeVersion);
+    string? LastRuntimeVersion,
+    string WorkflowKind,
+    string? ParentUsId,
+    IReadOnlyCollection<string> ChildUsIds);

@@ -198,6 +198,43 @@ const browserShim = `
         return;
       }
 
+      if (message?.command === "approveDecomposition" || message?.command === "rejectDecomposition") {
+        fetch("/api/decomposition-approval", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            decision: message.command === "approveDecomposition" ? "approve" : "reject",
+            actor: "cli-user"
+          })
+        })
+          .then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))))
+          .then((result) => {
+            if (message.command === "approveDecomposition" && Array.isArray(result.childUsIds) && result.childUsIds.length > 0) {
+              const url = new URL(window.location.href);
+              url.searchParams.set("selectedPhaseId", "spec");
+              window.location.href = url.toString();
+              return;
+            }
+            window.location.reload();
+          })
+          .catch(error => {
+            window.postMessage({
+              command: "workflowActionFailed",
+              action: message.command,
+              detail: error instanceof Error ? error.message : String(error)
+            }, "*");
+          });
+        return;
+      }
+
+      if (message?.command === "openWorkflowTab" && message.usId) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("selectedPhaseId");
+        url.searchParams.set("usId", message.usId);
+        window.open(url.toString(), "_blank", "noopener");
+        return;
+      }
+
       window.dispatchEvent(new CustomEvent("specforge-cli-command", { detail: message }));
     }
   };

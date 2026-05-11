@@ -45,6 +45,14 @@ public sealed class WorkflowRun
 
     public string? LastRuntimeVersion { get; private set; }
 
+    public string WorkflowKind { get; private set; } = "normal";
+
+    public string? ParentUsId { get; private set; }
+
+    public IReadOnlyCollection<string> ChildUsIds => childUsIds.Order(StringComparer.Ordinal).ToArray();
+
+    private readonly HashSet<string> childUsIds = new(StringComparer.OrdinalIgnoreCase);
+
     public bool IsPhaseApproved(PhaseId phaseId) => approvedPhases.Contains(phaseId);
 
     public IReadOnlyCollection<PhaseId> ApprovedPhases => approvedPhases.OrderBy(static phase => phase).ToArray();
@@ -158,6 +166,55 @@ public sealed class WorkflowRun
 
         EnsureNotCompleted();
         Status = UserStoryStatus.Completed;
+    }
+
+    public void ConvertToAggregate(IReadOnlyCollection<string> children)
+    {
+        EnsureNotCompleted();
+        WorkflowKind = "aggregate";
+        childUsIds.Clear();
+
+        foreach (var child in children.Where(static item => !string.IsNullOrWhiteSpace(item)))
+        {
+            childUsIds.Add(child.Trim().ToUpperInvariant());
+        }
+
+        Status = childUsIds.Count == 0 ? UserStoryStatus.Completed : UserStoryStatus.WaitingChildren;
+    }
+
+    public void CompleteAggregate()
+    {
+        if (!string.Equals(WorkflowKind, "aggregate", StringComparison.Ordinal))
+        {
+            throw new WorkflowDomainException("Only aggregate user stories can complete from child status.");
+        }
+
+        Status = UserStoryStatus.Completed;
+    }
+
+    public void RestoreHierarchy(string workflowKind, string? parentUsId, IReadOnlyCollection<string>? children)
+    {
+        WorkflowKind = string.IsNullOrWhiteSpace(workflowKind) ? "normal" : workflowKind.Trim();
+        ParentUsId = string.IsNullOrWhiteSpace(parentUsId) ? null : parentUsId.Trim().ToUpperInvariant();
+        childUsIds.Clear();
+
+        foreach (var child in children ?? Array.Empty<string>())
+        {
+            if (!string.IsNullOrWhiteSpace(child))
+            {
+                childUsIds.Add(child.Trim().ToUpperInvariant());
+            }
+        }
+    }
+
+    public void LinkToParent(string parentUsId)
+    {
+        if (string.IsNullOrWhiteSpace(parentUsId))
+        {
+            throw new ArgumentException("Parent US id is required.", nameof(parentUsId));
+        }
+
+        ParentUsId = parentUsId.Trim().ToUpperInvariant();
     }
 
     public void RewindToPhase(PhaseId targetPhase)

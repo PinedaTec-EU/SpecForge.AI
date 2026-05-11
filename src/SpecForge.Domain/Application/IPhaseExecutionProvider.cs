@@ -21,4 +21,15 @@ public interface IPhaseExecutionProvider
         string question,
         CancellationToken cancellationToken = default) =>
         Task.FromResult(new ApprovalAnswerSuggestionProviderResult(null));
+
+    Task<UserStoryDecompositionEvaluationResult> EvaluateSpecDecompositionAsync(
+        PhaseExecutionContext context,
+        string specMarkdown,
+        UserStoryDecompositionOptions options,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(new UserStoryDecompositionEvaluationResult(
+            ComplexityScore: 0,
+            Decision: UserStoryDecomposition.DecisionNone,
+            Rationale: "Decomposition evaluation is not implemented by this provider.",
+            ProposedChildren: []));
 }

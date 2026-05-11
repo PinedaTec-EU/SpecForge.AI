@@ -303,7 +303,105 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
                 AgentName: modelSelection.AgentName,
                 AgentRole: modelSelection.AgentRole,
                 InputSha256: inputSha256,
-                OutputSha256: outputSha256));
+            OutputSha256: outputSha256));
+    }
+
+    public async Task<UserStoryDecompositionEvaluationResult> EvaluateSpecDecompositionAsync(
+        PhaseExecutionContext context,
+        string specMarkdown,
+        UserStoryDecompositionOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        var modelSelection = ResolveModelSelection(PhaseId.Spec);
+        var normalizedOptions = options.Normalize();
+        const string systemPrompt = """
+            You evaluate whether a SpecForge user story spec is too complex and should be split into child user stories.
+            Return only JSON. Do not include Markdown, prose, or code fences.
+            Estimate complexityScore from 0.0 to 1.0. The caller will enforce the configured threshold and tolerance.
+            Proposed children must be independently specifiable, implementable, and reviewable.
+            """;
+        var userStory = await File.ReadAllTextAsync(context.UserStoryPath, cancellationToken);
+        var userPrompt = new StringBuilder()
+            .AppendLine("# Decomposition Configuration")
+            .AppendLine()
+            .AppendLine($"- Threshold for required split: {normalizedOptions.Threshold:0.00}")
+            .AppendLine($"- Tolerance for suggested split: {normalizedOptions.Tolerance:0.00}")
+            .AppendLine($"- Suggested split floor: {normalizedOptions.SuggestedFloor:0.00}")
+            .AppendLine($"- Max children: {normalizedOptions.MaxChildren}")
+            .AppendLine()
+            .AppendLine("# Required JSON Shape")
+            .AppendLine()
+            .AppendLine("""
+                {
+                  "complexityScore": 0.0,
+                  "rationale": "short evidence-based reason",
+                  "proposedChildren": [
+                    {
+                      "title": "child title",
+                      "objective": "bounded objective",
+                      "acceptanceCriteria": ["criterion"],
+                      "dependencies": ["optional dependency label"]
+                    }
+                  ]
+                }
+                """)
+            .AppendLine()
+            .AppendLine("# User Story")
+            .AppendLine()
+            .AppendLine(userStory)
+            .AppendLine()
+            .AppendLine("# Generated Spec")
+            .AppendLine()
+            .AppendLine(specMarkdown)
+            .ToString();
+
+        if (ShouldUseNativeCli(modelSelection))
+        {
+            var nativePrompt = NativeCliPromptBuilder.BuildStandaloneMarkdownPrompt(
+                modelSelection.ProviderKind,
+                "SpecForge Spec Decomposition Evaluation",
+                new EffectivePrompt(systemPrompt, userPrompt));
+            var nativeResult = await ExecuteStructuredNativeAsync(
+                context.WorkspaceRoot,
+                nativePrompt,
+                modelSelection,
+                sandboxMode: "read-only",
+                cancellationToken);
+            var parsedNative = ParseDecompositionEvaluation(nativeResult.Content, normalizedOptions);
+            return parsedNative with
+            {
+                Usage = nativeResult.Usage,
+                Execution = new PhaseExecutionMetadata(
+                    ProviderKind: modelSelection.ProviderKind,
+                    Model: string.IsNullOrWhiteSpace(modelSelection.Model) ? "default" : modelSelection.Model,
+                    ProfileName: modelSelection.ProfileName,
+                    AgentName: modelSelection.AgentName,
+                    AgentRole: modelSelection.AgentRole,
+                    InputSha256: ComputeSha256(nativePrompt),
+                    OutputSha256: ComputeSha256(nativeResult.Content))
+            };
+        }
+
+        var (content, usage, inputSha256, outputSha256) = await ExecuteStructuredHttpAsync(
+            modelSelection,
+            systemPrompt,
+            userPrompt,
+            temperature: 0.1,
+            cancellationToken);
+        var parsed = ParseDecompositionEvaluation(content, normalizedOptions);
+        return parsed with
+        {
+            Usage = usage,
+            Execution = new PhaseExecutionMetadata(
+                ProviderKind: modelSelection.ProviderKind,
+                Model: modelSelection.Model,
+                ProfileName: modelSelection.ProfileName,
+                BaseUrl: modelSelection.BaseUrl,
+                AgentName: modelSelection.AgentName,
+                AgentRole: modelSelection.AgentRole,
+                InputSha256: inputSha256,
+                OutputSha256: outputSha256)
+        };
     }
 
     private async Task<PhaseExecutionResult> ExecuteSinglePhaseAsync(
@@ -2058,6 +2156,87 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
     {
         var normalized = content.Trim().Trim('`').Trim();
         return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+    }
+
+    private static UserStoryDecompositionEvaluationResult ParseDecompositionEvaluation(
+        string content,
+        UserStoryDecompositionOptions options)
+    {
+        string json;
+        try
+        {
+            json = ExtractJsonObject(content);
+        }
+        catch (InvalidOperationException)
+        {
+            return new UserStoryDecompositionEvaluationResult(
+                ComplexityScore: 0,
+                Decision: UserStoryDecomposition.DecisionNone,
+                Rationale: "The provider did not return a structured decomposition evaluation, so SpecForge assumed normal complexity for compatibility.",
+                ProposedChildren: []);
+        }
+
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        var score = root.TryGetProperty("complexityScore", out var scoreElement) && scoreElement.TryGetDouble(out var parsedScore)
+            ? parsedScore
+            : 0;
+        var rationale = root.TryGetProperty("rationale", out var rationaleElement)
+            ? rationaleElement.GetString() ?? string.Empty
+            : string.Empty;
+        var children = new List<UserStoryDecompositionChildDraft>();
+
+        if (root.TryGetProperty("proposedChildren", out var childrenElement) &&
+            childrenElement.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var childElement in childrenElement.EnumerateArray())
+            {
+                children.Add(new UserStoryDecompositionChildDraft(
+                    ReadStringProperty(childElement, "title"),
+                    ReadStringProperty(childElement, "objective"),
+                    ReadStringArrayProperty(childElement, "acceptanceCriteria"),
+                    ReadStringArrayProperty(childElement, "dependencies")));
+            }
+        }
+
+        return new UserStoryDecompositionEvaluationResult(
+            Math.Clamp(score, 0, 1),
+            UserStoryDecomposition.ResolveDecision(score, options),
+            rationale,
+            children);
+    }
+
+    private static string ExtractJsonObject(string content)
+    {
+        var trimmed = content.Trim();
+        var start = trimmed.IndexOf('{', StringComparison.Ordinal);
+        var end = trimmed.LastIndexOf('}');
+        if (start < 0 || end <= start)
+        {
+            throw new InvalidOperationException("Decomposition evaluation did not return a JSON object.");
+        }
+
+        return trimmed[start..(end + 1)];
+    }
+
+    private static string ReadStringProperty(JsonElement element, string propertyName) =>
+        element.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.String
+            ? property.GetString() ?? string.Empty
+            : string.Empty;
+
+    private static IReadOnlyList<string> ReadStringArrayProperty(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var property) || property.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        return property.EnumerateArray()
+            .Where(static item => item.ValueKind == JsonValueKind.String)
+            .Select(static item => item.GetString())
+            .Where(static item => !string.IsNullOrWhiteSpace(item))
+            .Select(static item => item!.Trim())
+            .ToArray();
     }
 
     private static bool HasExplicitAgentsForAllModelDrivenPhases(OpenAiCompatiblePhaseAgentAssignments? assignments) =>

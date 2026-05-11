@@ -24,6 +24,8 @@ public sealed class UserStoryFilePaths
         DroppedMarkerFilePath = Path.Combine(rootDirectory, ".dropped");
         PhasesDirectoryPath = Path.Combine(rootDirectory, "phases");
         BranchFilePath = Path.Combine(rootDirectory, "branch.yaml");
+        DecompositionJsonPath = Path.Combine(PhasesDirectoryPath, "01-spec.decomposition.json");
+        DecompositionMarkdownPath = Path.Combine(PhasesDirectoryPath, "01-spec.decomposition.md");
         RestartsDirectoryPath = Path.Combine(rootDirectory, "restarts");
         ExecutionReceiptsDirectoryPath = Path.Combine(rootDirectory, "execution-receipts");
         ContextDirectoryPath = Path.Combine(rootDirectory, "context");
@@ -185,6 +187,10 @@ public sealed class UserStoryFilePaths
     public string PhasesDirectoryPath { get; }
 
     public string BranchFilePath { get; }
+
+    public string DecompositionJsonPath { get; }
+
+    public string DecompositionMarkdownPath { get; }
 
     public string RestartsDirectoryPath { get; }
 

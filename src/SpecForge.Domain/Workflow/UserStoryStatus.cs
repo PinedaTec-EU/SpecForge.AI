@@ -6,5 +6,6 @@ public enum UserStoryStatus
     Active = 1,
     WaitingUser = 2,
     Blocked = 3,
-    Completed = 4
+    Completed = 4,
+    WaitingChildren = 5
 }

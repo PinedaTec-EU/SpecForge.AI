@@ -21,11 +21,12 @@ public static class WorkflowPresentation
     {
         UserStoryStatus.Draft => "draft",
         UserStoryStatus.Active => "active",
-        UserStoryStatus.WaitingUser => "waiting-user",
-        UserStoryStatus.Blocked => "blocked",
-        UserStoryStatus.Completed => "completed",
-        _ => throw new ArgumentOutOfRangeException(nameof(status), status, null)
-    };
+            UserStoryStatus.WaitingUser => "waiting-user",
+            UserStoryStatus.Blocked => "blocked",
+            UserStoryStatus.Completed => "completed",
+            UserStoryStatus.WaitingChildren => "waiting-children",
+            _ => throw new ArgumentOutOfRangeException(nameof(status), status, null)
+        };
 
     public static PhaseId ParsePhaseSlug(string phaseSlug) => phaseSlug switch
     {

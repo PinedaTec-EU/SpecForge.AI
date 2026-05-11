@@ -16,6 +16,10 @@ public sealed record UserStoryWorkflowDetails(
     string? CreatedWithRuntimeVersion,
     string? LastRuntimeVersion,
     IReadOnlyCollection<UserStoryDependencySummary> Dependencies,
+    string WorkflowKind,
+    string? ParentUsId,
+    IReadOnlyCollection<UserStorySummary> ChildUserStories,
+    DecompositionDetails? Decomposition,
     PullRequestDetails? PullRequest,
     IReadOnlyCollection<WorkflowPhaseDetails> Phases,
     CurrentPhaseControls Controls,
@@ -55,6 +59,17 @@ public sealed record CurrentPhaseControls(
     IReadOnlyCollection<string> RewindTargets,
     string? ExecutionPhase = null,
     PhaseExecutionReadiness? ExecutionReadiness = null);
+
+public sealed record DecompositionDetails(
+    string State,
+    string Decision,
+    double ComplexityScore,
+    double Threshold,
+    double Tolerance,
+    string Rationale,
+    string? ArtifactPath,
+    IReadOnlyCollection<UserStoryDecompositionChildDraft> ProposedChildren,
+    IReadOnlyCollection<string> CreatedChildUsIds);
 
 public sealed record TimelineEventDetails(
     string TimestampUtc,

@@ -47,6 +47,80 @@ public sealed class WorkflowRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task ContinuePhaseAsync_WhenSpecRequiresDecomposition_BlocksSpecApprovalUntilSplitDecision()
+    {
+        var fileStore = new UserStoryFileStore();
+        var runner = new WorkflowRunner(
+            fileStore,
+            new DeterministicPhaseExecutionProvider(),
+            new RepositoryCategoryCatalog(),
+            new NoOpWorkBranchManager(),
+            decompositionOptions: new UserStoryDecompositionOptions(Enabled: true));
+        var service = new SpecForgeApplicationService(fileStore, runner);
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Complex parent", "feature", "workflow", "Initial source text requires decomposition");
+
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var currentPhase = await service.GetCurrentPhaseAsync(workspaceRoot, "US-0001");
+        var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0001");
+
+        Assert.Equal("decomposition_pending_user_approval", currentPhase.BlockingReason);
+        Assert.False(currentPhase.CanApprove);
+        Assert.True(File.Exists(paths.DecompositionJsonPath));
+        await Assert.ThrowsAsync<WorkflowDomainException>(() =>
+            runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main"));
+    }
+
+    [Fact]
+    public async Task ApproveDecompositionAsync_CreatesChildrenAndConvertsParentToAggregate()
+    {
+        var fileStore = new UserStoryFileStore();
+        var runner = new WorkflowRunner(
+            fileStore,
+            new DeterministicPhaseExecutionProvider(),
+            new RepositoryCategoryCatalog(),
+            new NoOpWorkBranchManager(),
+            decompositionOptions: new UserStoryDecompositionOptions(Enabled: true));
+        var service = new SpecForgeApplicationService(fileStore, runner);
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Complex parent", "feature", "workflow", "Initial source text requires decomposition");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var result = await runner.ApproveDecompositionAsync(workspaceRoot, "US-0001", "tester");
+        var parent = await service.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+
+        Assert.Equal("waiting-children", result.Status);
+        Assert.Equal("aggregate", parent.WorkflowKind);
+        Assert.Equal("aggregate_waiting_children", parent.Controls.BlockingReason);
+        Assert.Equal(2, result.ChildUsIds.Count);
+        Assert.Equal(2, parent.ChildUserStories.Count);
+        foreach (var childUsId in result.ChildUsIds)
+        {
+            var child = await service.GetUserStoryWorkflowAsync(workspaceRoot, childUsId);
+            Assert.Equal("US-0001", child.ParentUsId);
+        }
+    }
+
+    [Fact]
+    public async Task RejectDecompositionAsync_ReturnsSpecToNormalApprovalGate()
+    {
+        var fileStore = new UserStoryFileStore();
+        var runner = new WorkflowRunner(
+            fileStore,
+            new DeterministicPhaseExecutionProvider(),
+            new RepositoryCategoryCatalog(),
+            new NoOpWorkBranchManager(),
+            decompositionOptions: new UserStoryDecompositionOptions(Enabled: true));
+        var service = new SpecForgeApplicationService(fileStore, runner);
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Complex parent", "feature", "workflow", "Initial source text suggest decomposition");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        await runner.RejectDecompositionAsync(workspaceRoot, "US-0001", "tester");
+        var currentPhase = await service.GetCurrentPhaseAsync(workspaceRoot, "US-0001");
+
+        Assert.Equal("spec_pending_user_approval", currentPhase.BlockingReason);
+    }
+
+    [Fact]
     public async Task ContinuePhaseAsync_FromCapture_TreatsReadyStateWithNoQuestionsAsReadyForSpec()
     {
         var runner = new WorkflowRunner(new ReadyStateRefinementPhaseExecutionProvider());

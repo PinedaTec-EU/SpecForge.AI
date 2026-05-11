@@ -87,6 +87,44 @@ public sealed class DeterministicPhaseExecutionProvider : IPhaseExecutionProvide
             Execution: new PhaseExecutionMetadata("deterministic", "deterministic")));
     }
 
+    public Task<UserStoryDecompositionEvaluationResult> EvaluateSpecDecompositionAsync(
+        PhaseExecutionContext context,
+        string specMarkdown,
+        UserStoryDecompositionOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        var source = File.Exists(context.UserStoryPath)
+            ? File.ReadAllText(context.UserStoryPath)
+            : string.Empty;
+        var score = source.Contains("requires decomposition", StringComparison.OrdinalIgnoreCase)
+            ? options.Threshold
+            : source.Contains("suggest decomposition", StringComparison.OrdinalIgnoreCase)
+                ? options.SuggestedFloor
+                : 0.20;
+        var children = score >= options.SuggestedFloor
+            ? new[]
+            {
+                new UserStoryDecompositionChildDraft(
+                    "Deliver first decomposed slice",
+                    "Implement the first bounded child slice from the parent spec.",
+                    ["The first child slice is independently specified and reviewable."],
+                    []),
+                new UserStoryDecompositionChildDraft(
+                    "Deliver second decomposed slice",
+                    "Implement the second bounded child slice from the parent spec.",
+                    ["The second child slice is independently specified and reviewable."],
+                    ["Deliver first decomposed slice"])
+            }
+            : [];
+
+        return Task.FromResult(new UserStoryDecompositionEvaluationResult(
+            score,
+            UserStoryDecomposition.ResolveDecision(score, options),
+            "Deterministic complexity evaluation derived from source markers.",
+            children,
+            Execution: new PhaseExecutionMetadata("deterministic", "deterministic")));
+    }
+
     private static async Task<string> ComposeRefinementAsync(
         PhaseExecutionContext context,
         CancellationToken cancellationToken)

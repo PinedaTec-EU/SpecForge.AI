@@ -20,7 +20,11 @@ internal sealed record SpecForgePortalSettings(
     bool PauseOnFailedReview,
     bool ReviewLearningEnabled,
     string ReviewLearningSkillPath,
-    bool CompletedUsLockOnCompleted)
+    bool CompletedUsLockOnCompleted,
+    bool DecompositionEnabled,
+    double DecompositionThreshold,
+    double DecompositionTolerance,
+    int DecompositionMaxChildren)
 {
     public IReadOnlyList<OpenAiCompatibleAgentProfile> ResolveAgentProfiles() =>
         AgentProfiles.Count > 0
@@ -96,6 +100,26 @@ internal static class SpecForgePortalSettingsStore
             settings = settings with { AutoReviewEnabled = true };
         }
 
+        if (!document.RootElement.TryGetProperty("decompositionEnabled", out _))
+        {
+            settings = settings with { DecompositionEnabled = true };
+        }
+
+        if (!document.RootElement.TryGetProperty("decompositionThreshold", out _) || settings.DecompositionThreshold <= 0)
+        {
+            settings = settings with { DecompositionThreshold = 0.60 };
+        }
+
+        if (!document.RootElement.TryGetProperty("decompositionTolerance", out _) || settings.DecompositionTolerance < 0)
+        {
+            settings = settings with { DecompositionTolerance = 0.10 };
+        }
+
+        if (!document.RootElement.TryGetProperty("decompositionMaxChildren", out _) || settings.DecompositionMaxChildren <= 0)
+        {
+            settings = settings with { DecompositionMaxChildren = 5 };
+        }
+
         return settings;
     }
 
@@ -126,7 +150,11 @@ internal static class SpecForgePortalSettingsStore
             PauseOnFailedReview: true,
             ReviewLearningEnabled: true,
             ReviewLearningSkillPath: ".codex/skills/sdd-phase-agents/SKILL.md",
-            CompletedUsLockOnCompleted: false);
+            CompletedUsLockOnCompleted: false,
+            DecompositionEnabled: true,
+            DecompositionThreshold: 0.60,
+            DecompositionTolerance: 0.10,
+            DecompositionMaxChildren: 5);
 
     private static string GetSettingsPath(string workspaceRoot) =>
         Path.Combine(workspaceRoot, SettingsPath);

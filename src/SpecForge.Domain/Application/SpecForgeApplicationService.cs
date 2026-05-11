@@ -447,6 +447,10 @@ public sealed class SpecForgeApplicationService
             workflowRun.CreatedWithRuntimeVersion,
             workflowRun.LastRuntimeVersion,
             dependencies,
+            workflowRun.WorkflowKind,
+            workflowRun.ParentUsId,
+            await BuildChildStorySummariesAsync(workspaceRoot, workflowRun, cancellationToken),
+            await ReadDecompositionDetailsAsync(paths, cancellationToken),
             workflowRun.Branch?.PullRequest is null || workflowRun.Branch.PullRequest.Status is "superseded" or "close_pending"
                 ? null
                 : new PullRequestDetails(
@@ -532,7 +536,10 @@ public sealed class SpecForgeApplicationService
             WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase),
             ResolveOperationalStatus(workflowRun.Status, dependencies),
             workflowRun.Branch?.WorkBranchName,
-            dependencies);
+            dependencies,
+            workflowRun.WorkflowKind,
+            workflowRun.ParentUsId,
+            workflowRun.ChildUsIds);
     }
 
     public async Task<CurrentPhaseSummary> GetCurrentPhaseAsync(
@@ -587,6 +594,35 @@ public sealed class SpecForgeApplicationService
                 BlockingReason: "workflow_completed");
         }
 
+        if (workflowRun.Status == UserStoryStatus.WaitingChildren ||
+            string.Equals(workflowRun.WorkflowKind, "aggregate", StringComparison.Ordinal))
+        {
+            var childSummaries = await BuildChildStorySummariesAsync(workspaceRoot, workflowRun, cancellationToken);
+            if (childSummaries.Count > 0 && childSummaries.All(static child => child.Status == "completed"))
+            {
+                workflowRun.CompleteAggregate();
+                await fileStore.SaveAsync(workflowRun, paths.RootDirectory, cancellationToken);
+
+                return new CurrentPhaseSummary(
+                    workflowRun.UsId,
+                    WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase),
+                    WorkflowPresentation.ToStatusSlug(workflowRun.Status),
+                    CanAdvance: false,
+                    CanApprove: false,
+                    RequiresApproval: false,
+                    BlockingReason: "workflow_completed");
+            }
+
+            return new CurrentPhaseSummary(
+                workflowRun.UsId,
+                WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase),
+                WorkflowPresentation.ToStatusSlug(UserStoryStatus.WaitingChildren),
+                CanAdvance: false,
+                CanApprove: false,
+                RequiresApproval: false,
+                BlockingReason: "aggregate_waiting_children");
+        }
+
         var dependencies = await GetDependencySummariesAsync(
             workspaceRoot,
             paths.MainArtifactPath,
@@ -612,14 +648,21 @@ public sealed class SpecForgeApplicationService
         PhaseExecutionReadiness? executionReadiness = null;
         if (canApprove && workflowRun.CurrentPhase == Workflow.PhaseId.Spec)
         {
+            var decomposition = await ReadDecompositionDetailsAsync(paths, cancellationToken);
+            if (decomposition?.State == UserStoryDecomposition.StatePendingApproval)
+            {
+                canApprove = false;
+                blockingReason = "decomposition_pending_user_approval";
+            }
+
             var specPath = paths.GetLatestExistingPhaseArtifactPath(Workflow.PhaseId.Spec);
-            if (string.IsNullOrWhiteSpace(specPath) || !File.Exists(specPath))
+            if (blockingReason is null && (string.IsNullOrWhiteSpace(specPath) || !File.Exists(specPath)))
             {
                 canApprove = false;
             }
-            else
+            else if (blockingReason is null)
             {
-                var specMarkdown = await File.ReadAllTextAsync(specPath, cancellationToken);
+                var specMarkdown = await File.ReadAllTextAsync(specPath!, cancellationToken);
                 canApprove = SpecBaselineSchemaValidator.Validate(specMarkdown).IsValid;
                 if (canApprove)
                 {
@@ -816,6 +859,20 @@ public sealed class SpecForgeApplicationService
         var summary = await GetUserStorySummaryAsync(workspaceRoot, usId, cancellationToken);
         return new ApprovalResult(summary.UsId, summary.Status, summary.CurrentPhase, baseBranch, summary.WorkBranch);
     }
+
+    public Task<UserStoryDecompositionApprovalResult> ApproveDecompositionAsync(
+        string workspaceRoot,
+        string usId,
+        string actor = "user",
+        CancellationToken cancellationToken = default) =>
+        workflowRunner.ApproveDecompositionAsync(workspaceRoot, usId, actor, cancellationToken);
+
+    public Task<UserStoryDecompositionApprovalResult> RejectDecompositionAsync(
+        string workspaceRoot,
+        string usId,
+        string actor = "user",
+        CancellationToken cancellationToken = default) =>
+        workflowRunner.RejectDecompositionAsync(workspaceRoot, usId, actor, cancellationToken);
 
     public Task<RequestRegressionResult> RequestRegressionAsync(
         string workspaceRoot,
@@ -1307,6 +1364,66 @@ public sealed class SpecForgeApplicationService
         }
 
         return materializedPhases;
+    }
+
+    private async Task<IReadOnlyCollection<UserStorySummary>> BuildChildStorySummariesAsync(
+        string workspaceRoot,
+        WorkflowRun workflowRun,
+        CancellationToken cancellationToken)
+    {
+        if (workflowRun.ChildUsIds.Count == 0)
+        {
+            return [];
+        }
+
+        var children = new List<UserStorySummary>();
+        foreach (var childUsId in workflowRun.ChildUsIds)
+        {
+            try
+            {
+                children.Add(await GetUserStorySummaryAsync(workspaceRoot, childUsId, cancellationToken));
+            }
+            catch (DirectoryNotFoundException)
+            {
+                children.Add(new UserStorySummary(
+                    childUsId,
+                    childUsId,
+                    "Missing child user story.",
+                    string.Empty,
+                    [],
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    "missing",
+                    null,
+                    []));
+            }
+        }
+
+        return children;
+    }
+
+    private static async Task<DecompositionDetails?> ReadDecompositionDetailsAsync(
+        UserStoryFilePaths paths,
+        CancellationToken cancellationToken)
+    {
+        if (!File.Exists(paths.DecompositionJsonPath))
+        {
+            return null;
+        }
+
+        var document = UserStoryDecomposition.Deserialize(
+            await File.ReadAllTextAsync(paths.DecompositionJsonPath, cancellationToken));
+        return new DecompositionDetails(
+            document.State,
+            document.Decision,
+            document.ComplexityScore,
+            document.Threshold,
+            document.Tolerance,
+            document.Rationale,
+            File.Exists(paths.DecompositionMarkdownPath) ? paths.DecompositionMarkdownPath : null,
+            document.ProposedChildren,
+            document.CreatedChildUsIds);
     }
 
     private static IReadOnlyCollection<UserStoryFileDetails> BuildFileDetails(string directoryPath)

@@ -19,9 +19,14 @@ var completedUsLockOnCompleted = string.Equals(
     Environment.GetEnvironmentVariable("SPECFORGE_COMPLETED_US_LOCK_ON_COMPLETED")?.Trim(),
     "true",
     StringComparison.OrdinalIgnoreCase);
+var decompositionOptions = new UserStoryDecompositionOptions(
+    Enabled: !string.Equals(Environment.GetEnvironmentVariable("SPECFORGE_DECOMPOSITION_ENABLED")?.Trim(), "false", StringComparison.OrdinalIgnoreCase),
+    Threshold: ReadDoubleEnvironment("SPECFORGE_DECOMPOSITION_THRESHOLD", 0.60),
+    Tolerance: ReadDoubleEnvironment("SPECFORGE_DECOMPOSITION_TOLERANCE", 0.10),
+    MaxChildren: ReadIntEnvironment("SPECFORGE_DECOMPOSITION_MAX_CHILDREN", 5));
 
 var phaseExecutionProvider = PhaseExecutionProviderFactory.Create();
-var workflowRunner = new WorkflowRunner(phaseExecutionProvider, serverVersion, refinementTolerance, completedUsLockOnCompleted, reviewEvidencePolicy);
+var workflowRunner = new WorkflowRunner(phaseExecutionProvider, serverVersion, refinementTolerance, completedUsLockOnCompleted, reviewEvidencePolicy, decompositionOptions);
 var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), workflowRunner, runtimeVersion: serverVersion, completedUsLockOnCompleted: completedUsLockOnCompleted);
 var serializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 var stdin = Console.OpenStandardInput();
@@ -86,6 +91,18 @@ static async Task<JsonNode?> HandleAsync(
         "tools/call" => await HandleToolCallAsync(payload, applicationService, serializerOptions),
         _ => BuildErrorResponse(payload["id"], code: -32601, $"Method '{method}' was not found.")
     };
+}
+
+static double ReadDoubleEnvironment(string key, double fallback)
+{
+    var raw = Environment.GetEnvironmentVariable(key);
+    return double.TryParse(raw, out var value) ? value : fallback;
+}
+
+static int ReadIntEnvironment(string key, int fallback)
+{
+    var raw = Environment.GetEnvironmentVariable(key);
+    return int.TryParse(raw, out var value) ? value : fallback;
 }
 
 static async Task<JsonNode> HandleToolCallAsync(
@@ -173,6 +190,14 @@ static async Task<JsonNode> HandleToolCallAsync(
                 usId: GetRequired(arguments, "usId"),
                 baseBranch: GetOptional(arguments, "baseBranch"),
                 workBranch: GetOptional(arguments, "workBranch"),
+                actor: GetOptional(arguments, "actor") ?? "user"),
+            "approve_decomposition" => await applicationService.ApproveDecompositionAsync(
+                workspaceRoot: GetRequired(arguments, "workspaceRoot"),
+                usId: GetRequired(arguments, "usId"),
+                actor: GetOptional(arguments, "actor") ?? "user"),
+            "reject_decomposition" => await applicationService.RejectDecompositionAsync(
+                workspaceRoot: GetRequired(arguments, "workspaceRoot"),
+                usId: GetRequired(arguments, "usId"),
                 actor: GetOptional(arguments, "actor") ?? "user"),
             "request_regression" => await applicationService.RequestRegressionAsync(
                 workspaceRoot: GetRequired(arguments, "workspaceRoot"),
@@ -589,6 +614,14 @@ static async Task<object> HandleSpecForgeActionAsync(
             GetRequired(arguments, "usId"),
             GetOptional(parameters, "baseBranch"),
             GetOptional(parameters, "workBranch"),
+            GetOptional(parameters, "actor") ?? "user"),
+        "approve_decomposition" => await applicationService.ApproveDecompositionAsync(
+            workspaceRoot,
+            GetRequired(arguments, "usId"),
+            GetOptional(parameters, "actor") ?? "user"),
+        "reject_decomposition" => await applicationService.RejectDecompositionAsync(
+            workspaceRoot,
+            GetRequired(arguments, "usId"),
             GetOptional(parameters, "actor") ?? "user"),
         "approve_review_anyway" => await applicationService.ApproveReviewAnywayAsync(
             workspaceRoot,

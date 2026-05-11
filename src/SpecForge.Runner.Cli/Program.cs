@@ -350,6 +350,21 @@ static async Task HandleWorkflowPortalRequestAsync(
                         request.Actor ?? "cli-user"));
                 return;
             }
+            case ("POST", "/api/decomposition-approval"):
+            {
+                using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var payload = await reader.ReadToEndAsync();
+                var request = JsonSerializer.Deserialize<DecompositionApprovalSubmitRequest>(
+                    payload,
+                    SpecForgePortalSettingsStore.JsonOptions)
+                    ?? throw new InvalidOperationException("Decomposition approval payload could not be parsed.");
+                await WriteJsonResponseAsync(
+                    context.Response,
+                    string.Equals(request.Decision, "approve", StringComparison.OrdinalIgnoreCase)
+                        ? await applicationService.ApproveDecompositionAsync(workspaceRoot, requestUsId, request.Actor ?? "cli-user")
+                        : await applicationService.RejectDecompositionAsync(workspaceRoot, requestUsId, request.Actor ?? "cli-user"));
+                return;
+            }
             case ("POST", "/api/suggest-approval-answer"):
             {
                 using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
@@ -749,7 +764,17 @@ static int ExitWithError(string message)
 static SpecForgeApplicationService CreateApplicationService(IReadOnlyList<string> args)
 {
     var workspaceRoot = args.Count > 1 ? args[1] : null;
-    var runner = new WorkflowRunner(CreatePhaseExecutionProvider(workspaceRoot));
+    var portalSettings = string.IsNullOrWhiteSpace(workspaceRoot)
+        ? null
+        : SpecForgePortalSettingsStore.LoadOrDefault(workspaceRoot);
+    var runner = new WorkflowRunner(
+        CreatePhaseExecutionProvider(workspaceRoot),
+        refinementTolerance: portalSettings?.RefinementTolerance ?? "balanced",
+        decompositionOptions: new UserStoryDecompositionOptions(
+            Enabled: portalSettings?.DecompositionEnabled ?? true,
+            Threshold: portalSettings?.DecompositionThreshold ?? 0.60,
+            Tolerance: portalSettings?.DecompositionTolerance ?? 0.10,
+            MaxChildren: portalSettings?.DecompositionMaxChildren ?? 5));
 
     return new SpecForgeApplicationService(new UserStoryFileStore(), runner);
 }
@@ -877,6 +902,9 @@ static string BuildConfigurationPortalHtml() =>
               <label><span class="field-label">Auto-refinement agent</span><span class="field-control"><select id="autoRefinementAnswersProfile"></select><button class="help-button" type="button" aria-label="Auto-refinement agent details" aria-expanded="false" data-help="Agent used to answer refinement questions automatically before the workflow hands the phase back to the user.">?</button></span></label>
               <label><span class="field-label">Review learning skill path</span><span class="field-control"><input id="reviewLearningSkillPath"><button class="help-button" type="button" aria-label="Review learning skill path details" aria-expanded="false" data-help="Workspace-relative skill file where generalized lessons from failed reviews can be persisted.">?</button></span></label>
               <label><span class="field-label">Max implementation/review cycles</span><span class="field-control"><input id="maxImplementationReviewCycles" type="number" min="1"><button class="help-button" type="button" aria-label="Max implementation/review cycles details" aria-expanded="false" data-help="Maximum implementation attempts allowed in the implementation/review loop before automatic continuation stops.">?</button></span></label>
+              <label><span class="field-label">Decomposition threshold</span><span class="field-control"><input id="decompositionThreshold" type="number" min="0" max="1" step="0.01"><button class="help-button" type="button" aria-label="Decomposition threshold details" aria-expanded="false" data-help="Complexity score at or above this value requires splitting the spec into child user stories. Default is 0.60.">?</button></span></label>
+              <label><span class="field-label">Decomposition tolerance</span><span class="field-control"><input id="decompositionTolerance" type="number" min="0" max="1" step="0.01"><button class="help-button" type="button" aria-label="Decomposition tolerance details" aria-expanded="false" data-help="Tolerance below the threshold where SpecForge suggests, but does not require, splitting. With 0.60 and 0.10, suggested starts at 0.50.">?</button></span></label>
+              <label><span class="field-label">Max decomposition children</span><span class="field-control"><input id="decompositionMaxChildren" type="number" min="1"><button class="help-button" type="button" aria-label="Max decomposition children details" aria-expanded="false" data-help="Maximum child user stories a decomposition proposal may create.">?</button></span></label>
             </div>
             <div class="toggles" id="toggles"></div>
           </section>
@@ -908,7 +936,8 @@ static string BuildConfigurationPortalHtml() =>
           ["destructiveRewindEnabled", "Destructive rewind"],
           ["pauseOnFailedReview", "Pause on failed review"],
           ["reviewLearningEnabled", "Review learning"],
-          ["completedUsLockOnCompleted", "Lock completed user stories"]
+          ["completedUsLockOnCompleted", "Lock completed user stories"],
+          ["decompositionEnabled", "Complexity decomposition"]
         ];
         const helpDescriptions = {
           "model.name": "Stable profile name used by agent routing and phase assignments.",
@@ -941,7 +970,8 @@ static string BuildConfigurationPortalHtml() =>
           "destructiveRewindEnabled": "When enabled, rewinds and regressions delete later derived artifacts and branch metadata.",
           "pauseOnFailedReview": "Automatically pauses workflow playback when review fails so the developer can inspect the result.",
           "reviewLearningEnabled": "Allows implementation retries after failed review to persist generalized lessons into local skills or prompt guardrails.",
-          "completedUsLockOnCompleted": "Keeps completed user stories locked against direct rewind or artifact modification unless explicitly reopened."
+          "completedUsLockOnCompleted": "Keeps completed user stories locked against direct rewind or artifact modification unless explicitly reopened.",
+          "decompositionEnabled": "Evaluates generated specs for complexity and can propose or require child user stories before normal spec approval."
         };
         let state = null;
 
@@ -1008,7 +1038,7 @@ static string BuildConfigurationPortalHtml() =>
         }
 
         function renderBehavior() {
-          for (const id of ["refinementTolerance", "mvpRigor", "reviewTolerance", "reviewEvidencePolicy", "autoRefinementAnswersProfile", "reviewLearningSkillPath", "maxImplementationReviewCycles"]) {
+          for (const id of ["refinementTolerance", "mvpRigor", "reviewTolerance", "reviewEvidencePolicy", "autoRefinementAnswersProfile", "reviewLearningSkillPath", "maxImplementationReviewCycles", "decompositionThreshold", "decompositionTolerance", "decompositionMaxChildren"]) {
             const element = document.getElementById(id);
             if (!element) continue;
             if (id === "autoRefinementAnswersProfile") {
@@ -1056,6 +1086,9 @@ static string BuildConfigurationPortalHtml() =>
             if (element) state[id] = element.value || null;
           }
           state.maxImplementationReviewCycles = Number(document.getElementById("maxImplementationReviewCycles")?.value) || 5;
+          state.decompositionThreshold = Number(document.getElementById("decompositionThreshold")?.value) || 0.60;
+          state.decompositionTolerance = Number(document.getElementById("decompositionTolerance")?.value) || 0.10;
+          state.decompositionMaxChildren = Number(document.getElementById("decompositionMaxChildren")?.value) || 5;
           document.querySelectorAll("[data-toggle]").forEach(element => state[element.dataset.toggle] = element.checked);
           normalizeConfigurationReferences();
         }
@@ -1216,6 +1249,14 @@ static string BuildConfigurationPortalHtml() =>
           if (typeof state.autoReviewEnabled !== "boolean") {
             state.autoReviewEnabled = true;
           }
+
+          if (typeof state.decompositionEnabled !== "boolean") {
+            state.decompositionEnabled = true;
+          }
+
+          state.decompositionThreshold ||= 0.60;
+          state.decompositionTolerance ??= 0.10;
+          state.decompositionMaxChildren ||= 5;
         }
 
         function normalizeConfigurationReferences() {
@@ -1297,5 +1338,7 @@ internal sealed record ApprovalAnswerSubmitRequest(string Question, string Answe
 internal sealed record RefinementAnswersSubmitRequest(IReadOnlyList<string> Answers, string? Actor);
 
 internal sealed record ApprovalSubmitRequest(string? BaseBranch, string? WorkBranch, string? Actor);
+
+internal sealed record DecompositionApprovalSubmitRequest(string Decision, string? Actor);
 
 internal sealed record UserStoryVisibilityRequest(string UsId);
