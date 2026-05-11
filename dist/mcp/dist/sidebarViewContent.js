@@ -1743,7 +1743,7 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
     function keepSelectedStoryVisible() {
       const selectedStoryRow = document.querySelector(".story-row--selected");
       if (selectedStoryRow instanceof HTMLElement) {
-        selectedStoryRow.scrollIntoView({ block: "nearest" });
+        selectedStoryRow.scrollIntoView({ block: "start" });
       }
     }
     window.requestAnimationFrame(keepSelectedStoryVisible);
