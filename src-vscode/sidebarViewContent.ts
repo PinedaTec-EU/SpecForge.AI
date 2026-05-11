@@ -1796,6 +1796,13 @@ function wrapHtml(content: string, busy: boolean, createFormResetToken: number, 
       storySearch.addEventListener("input", applyStorySearch);
       applyStorySearch();
     }
+    function keepSelectedStoryVisible() {
+      const selectedStoryRow = document.querySelector(".story-row--selected");
+      if (selectedStoryRow instanceof HTMLElement) {
+        selectedStoryRow.scrollIntoView({ block: "nearest" });
+      }
+    }
+    window.requestAnimationFrame(keepSelectedStoryVisible);
     const form = document.getElementById("create-user-story-form");
     if (form) {
       window.addEventListener("message", (event) => {
