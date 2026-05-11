@@ -96,6 +96,7 @@ public sealed class WorkflowRunner
         string category,
         string sourceText,
         string actor = "user",
+        IReadOnlyCollection<string>? tags = null,
         CancellationToken cancellationToken = default)
     {
         ValidateRequired(workspaceRoot, nameof(workspaceRoot));
@@ -114,7 +115,7 @@ public sealed class WorkflowRunner
 
         var workflowRun = new WorkflowRun(usId, ComputeSourceHash(sourceText), WorkflowDefinition.CanonicalV1, runtimeVersion);
 
-        await File.WriteAllTextAsync(paths.MainArtifactPath, BuildUserStoryMarkdown(usId, title, kind, category, sourceText), cancellationToken);
+        await File.WriteAllTextAsync(paths.MainArtifactPath, BuildUserStoryMarkdown(usId, title, kind, category, sourceText, tags), cancellationToken);
         await File.WriteAllTextAsync(paths.TimelineFilePath, BuildInitialTimeline(usId, title, actor, runtimeVersion), cancellationToken);
         await fileStore.SaveAsync(workflowRun, paths.RootDirectory, cancellationToken);
         return paths.RootDirectory;
@@ -3047,28 +3048,43 @@ public sealed class WorkflowRunner
         throw new WorkflowDomainException(builder.ToString());
     }
 
-    private static string BuildUserStoryMarkdown(string usId, string title, string kind, string category, string sourceText)
+    private static string BuildUserStoryMarkdown(
+        string usId,
+        string title,
+        string kind,
+        string category,
+        string sourceText,
+        IReadOnlyCollection<string>? tags)
     {
-        return string.Join(
-                   Environment.NewLine,
-                   new[]
-                   {
-                       $"# {usId} · {title}",
-                       string.Empty,
-                       "## Metadata",
-                       $"- Kind: `{kind}`",
-                       $"- Category: `{category}`",
-                       string.Empty,
-                       "## Objective",
-                       sourceText,
-                       string.Empty,
-                       "## Initial Scope",
-                       "- Includes:",
-                       "  - ...",
-                       "- Excludes:",
-                       "  - ..."
-                   }) +
-               Environment.NewLine;
+        var normalizedTags = NormalizeUserStoryTags(tags);
+        var lines = new List<string>
+        {
+            $"# {usId} · {title}",
+            string.Empty,
+            "## Metadata",
+            $"- Kind: `{kind}`",
+            $"- Category: `{category}`"
+        };
+
+        if (normalizedTags.Count > 0)
+        {
+            lines.Add($"- Tags: {string.Join(", ", normalizedTags.Select(static tag => $"`{tag}`"))}");
+        }
+
+        lines.AddRange(
+            [
+                string.Empty,
+                "## Objective",
+                sourceText,
+                string.Empty,
+                "## Initial Scope",
+                "- Includes:",
+                "  - ...",
+                "- Excludes:",
+                "  - ..."
+            ]);
+
+        return string.Join(Environment.NewLine, lines) + Environment.NewLine;
     }
 
     internal static async Task<UserStoryMetadata> ReadUserStoryMetadataAsync(
@@ -3083,8 +3099,9 @@ public sealed class WorkflowRunner
             .Trim();
         var kind = ReadUserStoryKind(userStory);
         var category = ReadUserStoryCategory(userStory);
+        var tags = ReadUserStoryTags(userStory);
         ValidateUserStoryKind(kind);
-        return new UserStoryMetadata(normalizedTitle, kind, category);
+        return new UserStoryMetadata(normalizedTitle, kind, category, tags);
     }
 
     private static string ComputeSourceHash(string sourceText)
@@ -3393,6 +3410,55 @@ public sealed class WorkflowRunner
         return "uncategorized";
     }
 
+    private static IReadOnlyList<string> ReadUserStoryTags(string markdown)
+    {
+        using var reader = new StringReader(markdown);
+        string? line;
+        while ((line = reader.ReadLine()) is not null)
+        {
+            var trimmed = line.Trim();
+            if (!trimmed.StartsWith("- Tags:", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var value = trimmed["- Tags:".Length..].Trim();
+            return NormalizeUserStoryTags(SplitUserStoryTags(value));
+        }
+
+        return [];
+    }
+
+    private static IReadOnlyList<string> SplitUserStoryTags(string value)
+    {
+        var normalized = value.Trim().Trim('[', ']');
+        if (string.IsNullOrWhiteSpace(normalized) || normalized == "[]")
+        {
+            return [];
+        }
+
+        return normalized
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Select(static tag => tag.Trim().Trim('`'))
+            .ToArray();
+    }
+
+    internal static IReadOnlyList<string> NormalizeUserStoryTags(IReadOnlyCollection<string>? tags)
+    {
+        if (tags is null || tags.Count == 0)
+        {
+            return [];
+        }
+
+        return tags
+            .Select(static tag => tag.Trim().Trim('`').TrimStart('#').ToLowerInvariant())
+            .Select(static tag => Regex.Replace(tag, "\\s+", "-"))
+            .Where(static tag => !string.IsNullOrWhiteSpace(tag))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static tag => tag, StringComparer.Ordinal)
+            .ToArray();
+    }
+
     private static string BuildWorkBranchName(string usId, string title, string kind)
     {
         var normalizedUsId = usId.ToLowerInvariant();
@@ -3456,5 +3522,5 @@ public sealed class WorkflowRunner
         return ascii.Length <= 48 ? ascii : ascii[..48].Trim('-');
     }
 
-    internal sealed record UserStoryMetadata(string Title, string Kind, string Category);
+    internal sealed record UserStoryMetadata(string Title, string Kind, string Category, IReadOnlyList<string> Tags);
 }

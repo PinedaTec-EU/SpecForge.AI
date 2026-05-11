@@ -5,6 +5,7 @@ public sealed record UserStorySummary(
     string Title,
     string Description,
     string Category,
+    IReadOnlyCollection<string> Tags,
     string DirectoryPath,
     string MainArtifactPath,
     string CurrentPhase,

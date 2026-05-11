@@ -107,7 +107,7 @@ test("buildSidebarHtml exposes a compact prompt customization action", () => {
   assert.match(html, /aria-label="Create new user story"/);
   assert.doesNotMatch(html, /aria-label="Configure execution providers"/);
   assert.match(html, /data-story-search/);
-  assert.match(html, /Search by title, description, or category/);
+  assert.match(html, /Search by title, description, category, or tag/);
   assert.doesNotMatch(html, /data-command="toggleViewMode"/);
   assert.doesNotMatch(html, /Repo prompts ready/);
 });
@@ -180,6 +180,28 @@ test("buildSidebarHtml includes user story descriptions in the local search inde
   }));
 
   assert.match(html, /data-story-search-text="[^"]*fast filtering[^"]*workflow/);
+});
+
+test("buildSidebarHtml renders up to two custom tags and includes every tag in search", () => {
+  const html = buildSidebarHtml(model({
+    categories: ["workflow"],
+    userStories: [{
+      usId: "US-0006",
+      title: "Tagged cards",
+      category: "workflow",
+      tags: ["mcp", "ux", "search"],
+      currentPhase: "spec",
+      status: "active",
+      mainArtifactPath: "/tmp/us.md",
+      directoryPath: "/tmp/us.US-0006",
+      workBranch: null
+    }],
+  }));
+
+  assert.match(html, /<span class="story-card__tag">mcp<\/span>/);
+  assert.match(html, /<span class="story-card__tag">ux<\/span>/);
+  assert.doesNotMatch(html, /<span class="story-card__tag">search<\/span>/);
+  assert.match(html, /data-story-search-text="[^"]*mcp ux search/);
 });
 
 test("buildSidebarHtml surfaces blocked dependency state in story rows", () => {

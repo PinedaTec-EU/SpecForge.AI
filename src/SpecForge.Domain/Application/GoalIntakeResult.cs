@@ -6,6 +6,7 @@ public sealed record GoalUserStoryDraft(
     string? Kind,
     string? Category,
     string SourceText,
+    IReadOnlyList<string>? Tags = null,
     IReadOnlyList<string>? AcceptanceCriteria = null,
     IReadOnlyList<string>? Dependencies = null,
     IReadOnlyList<string>? ClarifiedAnswers = null,
@@ -18,6 +19,7 @@ public sealed record GoalUserStoryCreationResult(
     string Title,
     string Kind,
     string Category,
+    IReadOnlyList<string> Tags,
     int Sequence,
     string RootDirectory,
     string MainArtifactPath);

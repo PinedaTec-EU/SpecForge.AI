@@ -25,6 +25,29 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task CreateUserStoryAsync_PersistsCustomTagsInSummaryAndWorkflow()
+    {
+        var applicationService = new SpecForgeApplicationService();
+
+        await applicationService.CreateUserStoryAsync(
+            workspaceRoot,
+            "US-0001",
+            "Tagged story",
+            "feature",
+            "workflow",
+            "Initial source",
+            tags: ["UX", "mcp", "ux"]);
+
+        var summary = await applicationService.GetUserStorySummaryAsync(workspaceRoot, "US-0001");
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var usMarkdown = await File.ReadAllTextAsync(summary.MainArtifactPath);
+
+        Assert.Equal(["mcp", "ux"], summary.Tags);
+        Assert.Equal(["mcp", "ux"], workflow.Tags);
+        Assert.Contains("- Tags: `mcp`, `ux`", usMarkdown);
+    }
+
+    [Fact]
     public async Task GetCurrentPhaseAsync_WithIncompleteDependency_BlocksWorkflowStart()
     {
         var applicationService = new SpecForgeApplicationService();

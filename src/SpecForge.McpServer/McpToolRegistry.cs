@@ -56,6 +56,7 @@ public static class McpToolRegistry
                             ("title",         Prop("string", "Short descriptive title for the user story.")),
                             ("kind",          EnumProp("User story kind.", "feature", "bug", "hotfix")),
                             ("category",      Prop("string", "Category that groups the user story, e.g. core, ux, api.")),
+                            ("tags",          ArrayProp("string", "Optional custom tags for search and UI display.")),
                             ("sourceText",    Prop("string", "Free-text description of the user story intent. Vague stories are allowed at capture, but refinement will keep asking until the MVP slice is buildable.")),
                             ("actor",         Prop("string", "Actor performing the action. Defaults to 'user'."))))),
 
@@ -69,6 +70,7 @@ public static class McpToolRegistry
                             ("title",         Prop("string", "Short descriptive title for the user story.")),
                             ("kind",          EnumProp("User story kind.", "feature", "bug", "hotfix")),
                             ("category",      Prop("string", "Category that groups the user story.")),
+                            ("tags",          ArrayProp("string", "Optional custom tags for search and UI display.")),
                             ("actor",         Prop("string", "Actor performing the action. Defaults to 'user'."))))),
 
                 Tool("initialize_repo_prompts", "Export the repo prompt templates into .specs/prompts/ and SpecForge agent instructions into .specs/.",

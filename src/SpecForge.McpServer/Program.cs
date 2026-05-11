@@ -116,7 +116,8 @@ static async Task<JsonNode> HandleToolCallAsync(
                 kind: GetRequired(arguments, "kind"),
                 category: GetRequired(arguments, "category"),
                 sourceText: GetRequired(arguments, "sourceText"),
-                actor: GetOptional(arguments, "actor") ?? "user"),
+                actor: GetOptional(arguments, "actor") ?? "user",
+                tags: GetOptionalStringArray(arguments, "tags")),
             "import_us_from_markdown" => await applicationService.ImportUserStoryAsync(
                 workspaceRoot: GetRequired(arguments, "workspaceRoot"),
                 usId: GetRequired(arguments, "usId"),
@@ -124,7 +125,8 @@ static async Task<JsonNode> HandleToolCallAsync(
                 title: GetRequired(arguments, "title"),
                 kind: GetRequired(arguments, "kind"),
                 category: GetRequired(arguments, "category"),
-                actor: GetOptional(arguments, "actor") ?? "user"),
+                actor: GetOptional(arguments, "actor") ?? "user",
+                tags: GetOptionalStringArray(arguments, "tags")),
             "initialize_repo_prompts" => await applicationService.InitializeRepoPromptsAsync(
                 workspaceRoot: GetRequired(arguments, "workspaceRoot"),
                 overwrite: GetOptionalBoolean(arguments, "overwrite")),
@@ -553,7 +555,8 @@ static async Task<object> HandleSpecForgeActionAsync(
             GetRequired(parameters, "kind"),
             GetRequired(parameters, "category"),
             GetRequired(parameters, "sourceText"),
-            GetOptional(parameters, "actor") ?? "user"),
+            GetOptional(parameters, "actor") ?? "user",
+            GetOptionalStringArray(parameters, "tags")),
         "create_user_stories_from_goal" => await applicationService.CreateUserStoriesFromGoalAsync(
             workspaceRoot,
             GetRequired(parameters, "goalText"),
@@ -568,7 +571,8 @@ static async Task<object> HandleSpecForgeActionAsync(
             GetRequired(parameters, "title"),
             GetRequired(parameters, "kind"),
             GetRequired(parameters, "category"),
-            GetOptional(parameters, "actor") ?? "user"),
+            GetOptional(parameters, "actor") ?? "user",
+            GetOptionalStringArray(parameters, "tags")),
         "advance_phase" => await applicationService.GenerateNextPhaseAsync(
             workspaceRoot,
             GetRequired(arguments, "usId"),
@@ -728,6 +732,16 @@ static string[] GetStringArray(JsonObject arguments, string key)
     }
 
     return values;
+}
+
+static string[] GetOptionalStringArray(JsonObject arguments, string key)
+{
+    if (arguments[key] is null)
+    {
+        return [];
+    }
+
+    return GetStringArray(arguments, key);
 }
 
 static JsonObject BuildSuccessResponse(JsonNode? id, JsonNode result)

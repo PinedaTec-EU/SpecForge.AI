@@ -176,6 +176,10 @@ export function buildSidebarHtml(model: SidebarViewModel): string {
               ${model.categories.map((category) => `<option value="${escapeHtmlAttr(category)}">${escapeHtml(category)}</option>`).join("")}
             </select>
           </label>
+          <label>
+            <span>Tags</span>
+            <input name="tags" type="text" placeholder="mcp, ux, search" data-create-field="tags" />
+          </label>
           <section class="intake-panel intake-panel--active" data-intake-panel="freeform">
             <label>
               <span>Source</span>
@@ -422,7 +426,7 @@ function buildStorySearchMarkup(): string {
     <label class="story-search">
       <span class="story-search__label">Search user stories</span>
       <span class="story-search__control">
-        <input type="search" placeholder="Search by title, description, or category" data-story-search />
+        <input type="search" placeholder="Search by title, description, category, or tag" data-story-search />
         <span class="story-search__icon" aria-hidden="true">🔍</span>
       </span>
     </label>
@@ -1424,6 +1428,26 @@ function wrapHtml(content: string, busy: boolean, createFormResetToken: number, 
       font-size: 0.8rem;
       color: rgba(255, 255, 255, 0.62);
     }
+    .story-card__tags {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+    .story-card__tag {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      border-radius: 999px;
+      padding: 3px 7px;
+      border: 1px solid rgba(92, 181, 255, 0.2);
+      background: rgba(92, 181, 255, 0.1);
+      color: rgba(180, 222, 255, 0.92);
+      font-size: 0.68rem;
+      font-weight: 700;
+      line-height: 1.1;
+    }
     .story-card__dependency {
       min-width: 0;
       overflow: hidden;
@@ -1464,6 +1488,7 @@ function wrapHtml(content: string, busy: boolean, createFormResetToken: number, 
       title: "",
       kind: "feature",
       category: "",
+      tags: "",
       sourceText: "",
       wizard: {
         actor: "",
@@ -1606,6 +1631,7 @@ function wrapHtml(content: string, busy: boolean, createFormResetToken: number, 
       setInputValue("title", createState.title ?? "");
       setInputValue("kind", createState.kind ?? "feature");
       setInputValue("category", createState.category ?? "");
+      setInputValue("tags", createState.tags ?? "");
       setInputValue("sourceText", createState.sourceText ?? "");
 
       for (const [key, value] of Object.entries(createState.wizard)) {
@@ -1774,10 +1800,12 @@ function wrapHtml(content: string, busy: boolean, createFormResetToken: number, 
 
       const kindField = form.querySelector('[data-create-field="kind"]');
       const categoryField = form.querySelector('[data-create-field="category"]');
+      const tagsField = form.querySelector('[data-create-field="tags"]');
       const sourceField = form.querySelector('[data-create-field="sourceText"]');
       createState.title = createState.title ?? "";
       createState.kind = createState.kind || (kindField instanceof HTMLSelectElement ? kindField.value : "feature");
       createState.category = createState.category || (categoryField instanceof HTMLSelectElement ? categoryField.value : "");
+      createState.tags = createState.tags || (tagsField instanceof HTMLInputElement ? tagsField.value : "");
       createState.sourceText = createState.sourceText || (sourceField instanceof HTMLTextAreaElement ? sourceField.value : "");
       persistCreateState();
       for (const field of form.querySelectorAll("input, select, textarea, button")) {
@@ -1906,6 +1934,7 @@ function wrapHtml(content: string, busy: boolean, createFormResetToken: number, 
           title: String(data.get("title") ?? createState.title ?? ""),
           kind: String(data.get("kind") ?? createState.kind ?? "feature"),
           category: String(data.get("category") ?? createState.category ?? ""),
+          tags: String(data.get("tags") ?? createState.tags ?? ""),
           intakeMode,
           sourceText: intakeMode === "wizard"
             ? buildGuidedSourceText(createState)
@@ -1955,6 +1984,7 @@ function buildStoryRowMarkup(summary: UserStorySummary, starredUserStoryId: stri
   const statusTone = phaseRailStatus(effectiveStatus);
   const displayTitle = buildStoryDisplayTitle(summary);
   const dependencies = summary.dependencies ?? [];
+  const tags = summary.tags ?? [];
   const dependencySearchText = dependencies
     .map((dependency) => `${dependency.usId} ${dependency.title ?? ""} ${dependency.status ?? ""} ${dependency.currentPhase ?? ""}`)
     .join(" ");
@@ -1963,6 +1993,7 @@ function buildStoryRowMarkup(summary: UserStorySummary, starredUserStoryId: stri
     summary.title,
     summary.description ?? "",
     summary.category,
+    tags.join(" "),
     summary.currentPhase,
     effectiveStatus,
     dependencySearchText
@@ -1981,6 +2012,7 @@ function buildStoryRowMarkup(summary: UserStorySummary, starredUserStoryId: stri
           <span class="story-card__id">${escapeHtml(summary.usId)}</span>
           <strong>${escapeHtml(displayTitle)}</strong>
           <span class="story-card__meta">${escapeHtml(summary.currentPhase)} · ${escapeHtml(effectiveStatus)}</span>
+          ${buildStoryTagMarkup(tags)}
           ${buildDependencyLineMarkup(dependencies)}
         </span>
       </button>
@@ -2031,6 +2063,15 @@ function buildStoryRowMarkup(summary: UserStorySummary, starredUserStoryId: stri
       </div>
     </div>
   `;
+}
+
+function buildStoryTagMarkup(tags: readonly string[]): string {
+  const visibleTags = tags.slice(0, 2);
+  if (visibleTags.length === 0) {
+    return "";
+  }
+
+  return `<span class="story-card__tags">${visibleTags.map((tag) => `<span class="story-card__tag">${escapeHtml(tag)}</span>`).join("")}</span>`;
 }
 
 function effectiveStoryStatus(summary: UserStorySummary): string {

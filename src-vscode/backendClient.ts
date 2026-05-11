@@ -20,6 +20,7 @@ export interface UserStorySummary {
   readonly title: string;
   readonly description?: string;
   readonly category: string;
+  readonly tags?: readonly string[];
   readonly directoryPath: string;
   readonly mainArtifactPath: string;
   readonly currentPhase: string;
@@ -335,6 +336,7 @@ export interface UserStoryWorkflowDetails {
   readonly title: string;
   readonly kind?: string;
   readonly category: string;
+  readonly tags?: readonly string[];
   readonly status: string;
   readonly currentPhase: string;
   readonly directoryPath: string;
@@ -363,8 +365,8 @@ export interface SpecForgeBackendClient {
   getUserStoryRuntimeStatus(usId: string): Promise<UserStoryRuntimeStatus>;
   analyzeUserStoryLineage(usId: string): Promise<WorkflowLineageAnalysisResult>;
   repairUserStoryLineage(usId: string, actor?: string): Promise<WorkflowLineageRepairResult>;
-  createUserStory(usId: string, title: string, kind: string, category: string, sourceText: string, actor?: string): Promise<CreateOrImportUserStoryResult>;
-  importUserStory(usId: string, sourcePath: string, title: string, kind: string, category: string, actor?: string): Promise<CreateOrImportUserStoryResult>;
+  createUserStory(usId: string, title: string, kind: string, category: string, sourceText: string, actor?: string, tags?: readonly string[]): Promise<CreateOrImportUserStoryResult>;
+  importUserStory(usId: string, sourcePath: string, title: string, kind: string, category: string, actor?: string, tags?: readonly string[]): Promise<CreateOrImportUserStoryResult>;
   initializeRepoPrompts(overwrite?: boolean): Promise<InitializeRepoPromptsResult>;
   exportPromptTemplate(promptPath: string, overwrite?: boolean): Promise<InitializeRepoPromptsResult>;
   continuePhase(usId: string, actor?: string): Promise<ContinuePhaseResult>;
@@ -494,7 +496,7 @@ class StdioMcpBackendClient implements SpecForgeBackendClient {
     });
   }
 
-  public async createUserStory(usId: string, title: string, kind: string, category: string, sourceText: string, actor?: string): Promise<CreateOrImportUserStoryResult> {
+  public async createUserStory(usId: string, title: string, kind: string, category: string, sourceText: string, actor?: string, tags?: readonly string[]): Promise<CreateOrImportUserStoryResult> {
     return this.callTool<CreateOrImportUserStoryResult>("create_us_from_chat", {
       workspaceRoot: this.workspaceRoot,
       usId,
@@ -502,11 +504,12 @@ class StdioMcpBackendClient implements SpecForgeBackendClient {
       kind,
       category,
       sourceText,
+      ...(tags && tags.length > 0 ? { tags } : {}),
       ...(actor && actor.trim().length > 0 ? { actor } : {})
     });
   }
 
-  public async importUserStory(usId: string, sourcePath: string, title: string, kind: string, category: string, actor?: string): Promise<CreateOrImportUserStoryResult> {
+  public async importUserStory(usId: string, sourcePath: string, title: string, kind: string, category: string, actor?: string, tags?: readonly string[]): Promise<CreateOrImportUserStoryResult> {
     return this.callTool<CreateOrImportUserStoryResult>("import_us_from_markdown", {
       workspaceRoot: this.workspaceRoot,
       usId,
@@ -514,6 +517,7 @@ class StdioMcpBackendClient implements SpecForgeBackendClient {
       title,
       kind,
       category,
+      ...(tags && tags.length > 0 ? { tags } : {}),
       ...(actor && actor.trim().length > 0 ? { actor } : {})
     });
   }

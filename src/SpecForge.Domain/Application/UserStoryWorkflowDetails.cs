@@ -5,6 +5,7 @@ public sealed record UserStoryWorkflowDetails(
     string Title,
     string Kind,
     string Category,
+    IReadOnlyCollection<string> Tags,
     string Status,
     string CurrentPhase,
     string DirectoryPath,

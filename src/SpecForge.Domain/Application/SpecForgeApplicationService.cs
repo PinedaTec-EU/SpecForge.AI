@@ -65,10 +65,21 @@ public sealed class SpecForgeApplicationService
         string category,
         string sourceText,
         string actor = "user",
+        IReadOnlyCollection<string>? tags = null,
         CancellationToken cancellationToken = default)
     {
         repositoryCategoryCatalog.EnsureCategoryIsAllowed(workspaceRoot, category);
-        var rootDirectory = await workflowRunner.CreateUserStoryAsync(workspaceRoot, usId, title, kind, category, sourceText, actor, cancellationToken);
+        var normalizedTags = WorkflowRunner.NormalizeUserStoryTags(tags);
+        var rootDirectory = await workflowRunner.CreateUserStoryAsync(
+            workspaceRoot,
+            usId,
+            title,
+            kind,
+            category,
+            sourceText,
+            actor,
+            normalizedTags,
+            cancellationToken);
         return new CreateOrImportUserStoryResult(usId, rootDirectory, Path.Combine(rootDirectory, "us.md"));
     }
 
@@ -118,8 +129,9 @@ public sealed class SpecForgeApplicationService
             var kind = string.IsNullOrWhiteSpace(draft.Kind) ? "feature" : draft.Kind.Trim();
             var category = string.IsNullOrWhiteSpace(draft.Category) ? "workflow" : draft.Category.Trim();
             repositoryCategoryCatalog.EnsureCategoryIsAllowed(workspaceRoot, category);
+            var tags = WorkflowRunner.NormalizeUserStoryTags(draft.Tags);
             _ = RequireTrimmed(draft.SourceText, "User story source text is required.");
-            normalizedStories.Add(new NormalizedGoalUserStoryDraft(usId, title, kind, category, index + 1, draft));
+            normalizedStories.Add(new NormalizedGoalUserStoryDraft(usId, title, kind, category, tags, index + 1, draft));
         }
 
         var created = new List<GoalUserStoryCreationResult>(stories.Count);
@@ -142,6 +154,7 @@ public sealed class SpecForgeApplicationService
                 story.Category,
                 sourceText,
                 actor,
+                story.Tags,
                 cancellationToken);
 
             created.Add(new GoalUserStoryCreationResult(
@@ -149,6 +162,7 @@ public sealed class SpecForgeApplicationService
                 story.Title,
                 story.Kind,
                 story.Category,
+                story.Tags,
                 story.Sequence,
                 rootDirectory,
                 Path.Combine(rootDirectory, "us.md")));
@@ -170,10 +184,11 @@ public sealed class SpecForgeApplicationService
         string kind,
         string category,
         string actor = "user",
+        IReadOnlyCollection<string>? tags = null,
         CancellationToken cancellationToken = default)
     {
         var sourceText = await File.ReadAllTextAsync(sourcePath, cancellationToken);
-        return await CreateUserStoryAsync(workspaceRoot, usId, title, kind, category, sourceText, actor, cancellationToken);
+        return await CreateUserStoryAsync(workspaceRoot, usId, title, kind, category, sourceText, actor, tags, cancellationToken);
     }
 
     public async Task<IReadOnlyCollection<UserStorySummary>> ListUserStoriesAsync(
@@ -350,6 +365,7 @@ public sealed class SpecForgeApplicationService
         string Title,
         string Kind,
         string Category,
+        IReadOnlyList<string> Tags,
         int Sequence,
         GoalUserStoryDraft Draft);
 
@@ -389,6 +405,7 @@ public sealed class SpecForgeApplicationService
             title,
             metadata.Kind,
             metadata.Category,
+            metadata.Tags,
             ResolveOperationalStatus(workflowRun.Status, dependencies),
             WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase),
             paths.RootDirectory,
@@ -478,6 +495,7 @@ public sealed class SpecForgeApplicationService
             title,
             description,
             metadata.Category,
+            metadata.Tags,
             directory,
             mainArtifactPath,
             WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase),

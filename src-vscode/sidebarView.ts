@@ -54,6 +54,7 @@ type SidebarMessage =
     readonly title?: string;
     readonly kind?: string;
     readonly category?: string;
+    readonly tags?: string;
     readonly intakeMode?: CreateIntakeMode;
     readonly sourceText?: string;
     readonly wizardDraft?: Partial<UserStoryWizardDraft>;
@@ -271,6 +272,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
     const title = message.title?.trim();
     const kind = message.kind?.trim();
     const category = message.category?.trim();
+    const tags = parseCustomTags(message.tags);
     const intakeMode: CreateIntakeMode = message.intakeMode === "wizard" ? "wizard" : "freeform";
     const sourceText = intakeMode === "wizard"
       ? buildWizardSourceText(message.wizardDraft).trim()
@@ -294,7 +296,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
     const backendClient = getOrCreateBackendClient(workspaceRoot);
     const summaries = await backendClient.listUserStories();
     const usId = nextUserStoryIdFromSummaries(summaries);
-    const result = await backendClient.createUserStory(usId, title, kind, category, sourceText, getCurrentActor());
+    const result = await backendClient.createUserStory(usId, title, kind, category, sourceText, getCurrentActor(), tags);
     await this.materializeCreateFilesAsync(result.rootDirectory);
     this.showCreateForm = false;
     this.createFiles = [];
@@ -755,6 +757,15 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
       void vscode.window.showErrorMessage(`SpecForge sidebar failed to load: ${asErrorMessage(error)}`);
     }
   }
+}
+
+function parseCustomTags(value: string | undefined): readonly string[] {
+  return [...new Set(
+    (value ?? "")
+      .split(",")
+      .map((tag) => tag.trim().replace(/^#/, "").toLowerCase())
+      .filter((tag) => tag.length > 0)
+  )];
 }
 
 function serializeReferencedFile(file: ReferencedWorkspaceFile): ReferencedWorkspaceFile {

@@ -171,9 +171,13 @@ public sealed class McpToolRegistryTests
     public void BuildToolsList_ArrayPropertiesDeclareStringItems()
     {
         var submitRefinementAnswers = GetTool(McpToolRegistry.BuildToolsList(), "submit_refinement_answers");
+        var createFromChat = GetTool(McpToolRegistry.BuildToolsList(), "create_us_from_chat");
+        var importFromMarkdown = GetTool(McpToolRegistry.BuildToolsList(), "import_us_from_markdown");
         var addFiles = GetTool(McpToolRegistry.BuildToolsList(), "add_user_story_files");
 
         Assert.Equal("string", GetArrayItemType(submitRefinementAnswers, "answers"));
+        Assert.Equal("string", GetArrayItemType(createFromChat, "tags"));
+        Assert.Equal("string", GetArrayItemType(importFromMarkdown, "tags"));
         Assert.Equal("string", GetArrayItemType(addFiles, "sourcePaths"));
     }
 

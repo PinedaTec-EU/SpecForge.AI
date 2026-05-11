@@ -2852,6 +2852,11 @@ export function buildWorkflowHtml(
       color: #90d2ff;
       border-color: rgba(92, 181, 255, 0.28);
     }
+    .token.token--tag {
+      background: rgba(92, 181, 255, 0.1);
+      color: rgba(180, 222, 255, 0.94);
+      border-color: rgba(92, 181, 255, 0.24);
+    }
     .token.token--paused {
       background: rgba(179, 187, 198, 0.14);
       color: #d3d8df;
@@ -6312,6 +6317,7 @@ export function buildWorkflowHtml(
       <div class="hero-secondary">
         <div class="hero-meta">
           <span class="token accent">${escapeHtml(workflow.category)}</span>
+          ${buildWorkflowTagTokens(workflow.tags ?? [])}
           <span class="token${heroTokenClass(workflow.status)}">${escapeHtml(workflow.status)}</span>
           <span class="token">${escapeHtml(displayedPhaseId)}</span>
           ${pendingRewindPhaseId ? `<span class="token token--attention">rewind:${escapeHtml(pendingRewindPhaseId)}</span>` : ""}
@@ -8719,6 +8725,12 @@ export function buildWorkflowHtml(
   </script>
 </body>
 </html>`;
+}
+
+function buildWorkflowTagTokens(tags: readonly string[]): string {
+  return tags
+    .map((tag) => `<span class="token token--tag">${escapeHtml(tag)}</span>`)
+    .join("");
 }
 
 function buildPhaseGraph(
