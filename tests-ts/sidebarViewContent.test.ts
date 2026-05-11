@@ -207,6 +207,7 @@ test("buildSidebarHtml surfaces blocked dependency state in story rows", () => {
   assert.match(html, /story-row--status-blocked/);
   assert.match(html, /story-card--status-blocked/);
   assert.match(html, /capture · blocked/);
+  assert.match(html, /<span class="story-card__phase-label">BLOCK<\/span>/);
   assert.match(html, /blocked by US-0001/);
   assert.match(html, /data-story-search-text="[^"]*US-0001[^"]*First workflow/);
 });
@@ -264,7 +265,7 @@ test("buildSidebarHtml labels error stories explicitly on the phase rail", () =>
     }],
   }));
 
-  assert.match(html, /story-card--status-blocked/);
+  assert.match(html, /story-card--status-error/);
   assert.match(html, /<span class="story-card__phase-label">ERROR<\/span>/);
 });
 
