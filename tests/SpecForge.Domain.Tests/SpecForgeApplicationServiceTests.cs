@@ -25,6 +25,44 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetCurrentPhaseAsync_WithIncompleteDependency_BlocksWorkflowStart()
+    {
+        var applicationService = new SpecForgeApplicationService();
+        await applicationService.CreateUserStoriesFromGoalAsync(
+            workspaceRoot,
+            "/goals Build Central sync.",
+            [
+                new GoalUserStoryDraft(
+                    UsId: "US-0001",
+                    Title: "Configure Central connection",
+                    Kind: "feature",
+                    Category: "workflow",
+                    SourceText: "As an admin, I want to configure Central."),
+                new GoalUserStoryDraft(
+                    UsId: "US-0002",
+                    Title: "Sync Central configuration",
+                    Kind: "feature",
+                    Category: "workflow",
+                    SourceText: "As a developer, I want to sync Central configuration.",
+                    Dependencies: ["US-0001"])
+            ]);
+
+        var summary = await applicationService.GetUserStorySummaryAsync(workspaceRoot, "US-0002");
+        var currentPhase = await applicationService.GetCurrentPhaseAsync(workspaceRoot, "US-0002");
+        var exception = await Assert.ThrowsAsync<WorkflowDomainException>(
+            () => applicationService.GenerateNextPhaseAsync(workspaceRoot, "US-0002"));
+
+        var dependency = Assert.Single(summary.Dependencies);
+        Assert.Equal("US-0001", dependency.UsId);
+        Assert.False(dependency.IsSatisfied);
+        Assert.Equal("blocked", summary.Status);
+        Assert.Equal("blocked", currentPhase.Status);
+        Assert.False(currentPhase.CanAdvance);
+        Assert.Equal("dependency_not_completed", currentPhase.BlockingReason);
+        Assert.Contains("dependency_not_completed", exception.Message);
+    }
+
+    [Fact]
     public async Task ListUserStoriesAsync_IgnoresIncompleteUserStoryDirectories()
     {
         var runner = new WorkflowRunner();

@@ -14,6 +14,7 @@ public sealed record UserStoryWorkflowDetails(
     string RawTimeline,
     string? CreatedWithRuntimeVersion,
     string? LastRuntimeVersion,
+    IReadOnlyCollection<UserStoryDependencySummary> Dependencies,
     PullRequestDetails? PullRequest,
     IReadOnlyCollection<WorkflowPhaseDetails> Phases,
     CurrentPhaseControls Controls,

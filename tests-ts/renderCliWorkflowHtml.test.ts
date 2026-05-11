@@ -22,18 +22,23 @@ test("CLI workflow shim rejects malformed refinement answer commands locally", a
   assert.doesNotMatch(script, /submitRefinementAnswers" && message\.answers/);
 });
 
-test("CLI workflow renderer passes runtime version into workflow state", async () => {
+test("CLI workflow renderer shows runtime version only in the sidebar header", async () => {
   const script = await fs.promises.readFile(scriptPath, "utf8");
 
-  assert.match(script, /runtimeVersion: payload\.runtimeVersion \?\? workflow\.lastRuntimeVersion \?\? workflow\.createdWithRuntimeVersion \?\? null/);
+  assert.match(script, /displayRuntimeVersion = formatRuntimeVersion\(payload\.runtimeVersion \?\? workflow\.lastRuntimeVersion \?\? workflow\.createdWithRuntimeVersion \?\? null\)/);
+  assert.match(script, /runtimeVersion: null/);
+  assert.doesNotMatch(script, /runtimeVersion: payload\.runtimeVersion \?\? workflow\.lastRuntimeVersion \?\? workflow\.createdWithRuntimeVersion \?\? null/);
 });
 
 test("CLI workflow renderer embeds the reusable user-story sidebar with collapsed actions", async () => {
   const script = await fs.promises.readFile(scriptPath, "utf8");
 
   assert.match(script, /buildSidebarHtml/);
-  assert.match(script, /data-cli-sidebar-stories/);
+  assert.match(script, /SpecForge\.AI/);
+  assert.match(script, /data-cli-sidebar-pin/);
   assert.match(script, /data-cli-sidebar-settings/);
+  assert.match(script, /runtimeVersion: null/);
+  assert.match(script, /sidebarPin\.setAttribute\("aria-pressed", collapsed \? "false" : "true"\)/);
   assert.match(script, /configurationProvidersUrl = payload\.configurationProvidersUrl \|\| configurationPortalUrl/);
   assert.match(script, /configurationAdvancedUrl = payload\.configurationAdvancedUrl \|\| configurationPortalUrl/);
   assert.match(script, /data-cli-config-overlay/);
@@ -90,18 +95,48 @@ test("CLI workflow renderer handles sidebar starred story toggles locally", asyn
   }
 });
 
-test("CLI workflow renderer switches the selected story when toggling sidebar visibility", async () => {
+test("CLI workflow renderer switches sidebar visibility without navigating the workflow", async () => {
   const script = await fs.promises.readFile(scriptPath, "utf8");
   const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
 
   for (const content of [script, packagedScript]) {
     assert.match(content, /activeSidebarUserStories = Array\.isArray\(payload\.activeSidebarUserStories\)/);
     assert.match(content, /droppedSidebarUserStories = Array\.isArray\(payload\.droppedSidebarUserStories\)/);
-    assert.match(content, /const activeSidebarUserStoryIds = \$\{JSON\.stringify\(activeSidebarUserStories\.map\(item => item\.usId\)\.filter\(Boolean\)\)\}/);
-    assert.match(content, /const droppedSidebarUserStoryIds = \$\{JSON\.stringify\(droppedSidebarUserStories\.map\(item => item\.usId\)\.filter\(Boolean\)\)\}/);
-    assert.match(content, /resolveTargetUserStoryId\(droppedSidebarUserStoryIds\)/);
-    assert.match(content, /resolveTargetUserStoryId\(activeSidebarUserStoryIds\)/);
-    assert.match(content, /url\.searchParams\.delete\("selectedPhaseId"\)/);
+    assert.match(content, /activeSidebarHtml = buildCliSidebarHtml\(activeSidebarUserStories/);
+    assert.match(content, /droppedSidebarHtml = buildCliSidebarHtml\(droppedSidebarUserStories/);
+    assert.match(content, /sidebarFrame\.srcdoc = sidebarShowsDropped/);
+    assert.match(content, /window\.history\.replaceState\(window\.history\.state, "", url\.toString\(\)\)/);
+    assert.doesNotMatch(content, /resolveTargetUserStoryId/);
+    assert.doesNotMatch(content, /navigateTo\(url, true\)/);
+  }
+});
+
+test("CLI workflow renderer persists completed story visibility in the portal query", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+  const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
+
+  for (const content of [script, packagedScript]) {
+    assert.match(content, /showCompletedUserStories = payload\.showCompletedUserStories === true/);
+    assert.match(content, /showCompletedUserStories,/);
+    assert.match(content, /message\.command === "toggleCompletedUserStories"/);
+    assert.match(content, /sidebarShowsCompleted = !sidebarShowsCompleted/);
+    assert.match(content, /url\.searchParams\.set\("sidebarCompleted", "true"\)/);
+    assert.match(content, /replaceSidebarFrame\(\)/);
+  }
+});
+
+test("CLI workflow renderer persists blocked story visibility in the portal query", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+  const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
+
+  for (const content of [script, packagedScript]) {
+    assert.match(content, /showBlockedUserStories = payload\.showBlockedUserStories === true/);
+    assert.match(content, /showBlockedUserStories,/);
+    assert.match(content, /message\.command === "toggleBlockedUserStories"/);
+    assert.match(content, /sidebarShowsBlocked = !sidebarShowsBlocked/);
+    assert.match(content, /url\.searchParams\.set\("sidebarBlocked", "true"\)/);
+    assert.match(content, /activeCompletedBlocked/);
+    assert.match(content, /replaceSidebarFrame\(\)/);
   }
 });
 

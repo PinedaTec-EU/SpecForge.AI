@@ -1,4 +1,4 @@
-import type { UserStorySummary } from "./backendClient";
+import type { UserStoryDependencySummary, UserStorySummary } from "./backendClient";
 import { escapeHtml, escapeHtmlAttr } from "./htmlEscape";
 import { buildWebviewTypographyRootCss } from "./webviewTypography";
 
@@ -22,6 +22,7 @@ export interface SidebarViewModel {
   readonly viewMode: "category" | "phase";
   readonly showDroppedUserStories: boolean;
   readonly showCompletedUserStories: boolean;
+  readonly showBlockedUserStories: boolean;
   readonly droppedUserStoryCount: number;
   readonly createFileMode?: "context" | "attachment";
   readonly createFiles?: readonly DraftCreateFile[];
@@ -92,7 +93,6 @@ export function buildSidebarHtml(model: SidebarViewModel): string {
           </div>
           <div class="compact-actions">
             ${buildDroppedStoriesActionButton(model.showDroppedUserStories, model.droppedUserStoryCount)}
-            ${buildExecutionSettingsActionButton()}
           </div>
         </div>
         <p class="copy">No faded text-buttons, no scattered prompts. Start here and the sidebar opens the full intake form in place.</p>
@@ -101,9 +101,11 @@ export function buildSidebarHtml(model: SidebarViewModel): string {
     `, isBusy, model.createFormResetToken ?? 0, model.typographyCssVars ?? "");
   }
 
-  const visibleUserStories = model.showDroppedUserStories || model.showCompletedUserStories
+  const visibleUserStories = model.showDroppedUserStories
     ? model.userStories
-    : model.userStories.filter((summary) => !isCompletedStory(summary));
+    : model.userStories.filter((summary) =>
+        (model.showCompletedUserStories || !isCompletedStory(summary))
+        && (model.showBlockedUserStories || !isBlockedStory(summary)));
   const storySections = model.viewMode === "phase"
     ? [{ heading: null, items: sortStoriesByPhase(visibleUserStories) }]
     : groupStories(visibleUserStories).map((group) => ({ heading: group.category, items: group.items }));
@@ -340,8 +342,14 @@ function emptyStoryListMessage(model: SidebarViewModel, visibleUserStoryCount: n
     return "No dropped user stories to recover.";
   }
 
-  if (!model.showCompletedUserStories && model.userStories.length > 0 && visibleUserStoryCount === 0) {
-    return "Only completed user stories are hidden. Use the view menu to show them.";
+  if (model.userStories.length > 0 && visibleUserStoryCount === 0) {
+    const hiddenTypes = [
+      !model.showCompletedUserStories && model.userStories.some(isCompletedStory) ? "completed" : null,
+      !model.showBlockedUserStories && model.userStories.some(isBlockedStory) ? "blocked" : null
+    ].filter((item): item is string => item !== null);
+    if (hiddenTypes.length > 0) {
+      return `Only ${formatList(hiddenTypes)} user stories are hidden. Use the view menu to show them.`;
+    }
   }
 
   return "Create or import a user story to start the workflow.";
@@ -445,14 +453,19 @@ function buildPromptMenu(promptsInitialized: boolean): string {
 
 function buildViewOptionsMenu(model: SidebarViewModel): string {
   const completedCount = model.userStories.filter(isCompletedStory).length;
-  const label = completedCount > 0
+  const blockedCount = model.userStories.filter(isBlockedStory).length;
+  const completedLabel = completedCount > 0
     ? `Show completed (${completedCount})`
     : "Show completed";
+  const blockedLabel = blockedCount > 0
+    ? `Show blocked (${blockedCount})`
+    : "Show blocked";
+  const hasVisibleFilters = model.showCompletedUserStories || model.showBlockedUserStories;
 
   return `
     <div class="action-menu" data-action-menu>
       <button
-        class="icon-action${model.showCompletedUserStories ? " icon-action--active" : ""}"
+        class="icon-action${hasVisibleFilters ? " icon-action--active" : ""}"
         type="button"
         data-action-menu-toggle
         title="Sidebar view options"
@@ -470,22 +483,20 @@ function buildViewOptionsMenu(model: SidebarViewModel): string {
           aria-checked="${model.showCompletedUserStories ? "true" : "false"}"
           ${model.showDroppedUserStories ? "disabled" : ""}>
           <span class="action-menu__item-icon" aria-hidden="true">${model.showCompletedUserStories ? "✓" : ""}</span>
-          <span>${escapeHtml(label)}</span>
+          <span>${escapeHtml(completedLabel)}</span>
+        </button>
+        <button
+          class="action-menu__item"
+          type="button"
+          data-command="toggleBlockedUserStories"
+          role="menuitemcheckbox"
+          aria-checked="${model.showBlockedUserStories ? "true" : "false"}"
+          ${model.showDroppedUserStories ? "disabled" : ""}>
+          <span class="action-menu__item-icon" aria-hidden="true">${model.showBlockedUserStories ? "✓" : ""}</span>
+          <span>${escapeHtml(blockedLabel)}</span>
         </button>
       </div>
     </div>
-  `;
-}
-
-function buildExecutionSettingsActionButton(): string {
-  return `
-    <button
-      class="icon-action"
-      data-command="openExecutionSettings"
-      title="Configure execution providers"
-      aria-label="Configure execution providers">
-      <span aria-hidden="true">⚙</span>
-    </button>
   `;
 }
 
@@ -495,7 +506,6 @@ function buildCompactActions(model: SidebarViewModel): string {
       ${buildDroppedStoriesActionButton(model.showDroppedUserStories, model.droppedUserStoryCount)}
       ${model.showDroppedUserStories ? "" : buildViewOptionsMenu(model)}
       ${model.showDroppedUserStories ? "" : buildCreateActionButton(model.promptsInitialized)}
-      ${buildExecutionSettingsActionButton()}
       ${buildPromptMenu(model.promptsInitialized)}
     </div>
   `;
@@ -1301,6 +1311,13 @@ function wrapHtml(content: string, busy: boolean, createFormResetToken: number, 
       --story-rail-border: rgba(255, 193, 120, 0.22);
     }
     .story-row--status-blocked {
+      --story-selection-edge-solid: rgba(255, 221, 138, 0.94);
+      --story-selection-edge-glow: rgba(214, 153, 58, 0.28);
+      --story-rail-top: rgba(255, 198, 92, 0.28);
+      --story-rail-bottom: rgba(58, 39, 13, 0.94);
+      --story-rail-border: rgba(255, 198, 92, 0.26);
+    }
+    .story-row--status-error {
       --story-selection-edge-solid: rgba(255, 171, 171, 0.94);
       --story-selection-edge-glow: rgba(204, 86, 86, 0.28);
       --story-rail-top: rgba(255, 139, 139, 0.24);
@@ -1410,6 +1427,14 @@ function wrapHtml(content: string, busy: boolean, createFormResetToken: number, 
     .story-card__meta {
       font-size: 0.8rem;
       color: rgba(255, 255, 255, 0.62);
+    }
+    .story-card__dependency {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 0.76rem;
+      color: rgba(255, 213, 90, 0.88);
     }
     @keyframes spin {
       to {
@@ -1930,30 +1955,37 @@ function sortStoriesByPhase(items: readonly UserStorySummary[]): UserStorySummar
 
 function buildStoryRowMarkup(summary: UserStorySummary, starredUserStoryId: string | null, activeWorkflowUsId: string | null, isDroppedView: boolean): string {
   const isActiveWorkflow = activeWorkflowUsId === summary.usId;
-  const statusTone = phaseRailStatus(summary.status);
+  const effectiveStatus = effectiveStoryStatus(summary);
+  const statusTone = phaseRailStatus(effectiveStatus);
   const displayTitle = buildStoryDisplayTitle(summary);
+  const dependencies = summary.dependencies ?? [];
+  const dependencySearchText = dependencies
+    .map((dependency) => `${dependency.usId} ${dependency.title ?? ""} ${dependency.status ?? ""} ${dependency.currentPhase ?? ""}`)
+    .join(" ");
   const searchText = [
     summary.usId,
     summary.title,
     summary.description ?? "",
     summary.category,
     summary.currentPhase,
-    summary.status
+    effectiveStatus,
+    dependencySearchText
   ].join(" ");
   return `
     <div class="story-row story-row--shell story-row--status-${escapeHtmlAttr(statusTone)}${isActiveWorkflow ? " story-row--selected" : ""}" data-story-search-text="${escapeHtmlAttr(searchText)}">
-      <button class="story-card${shouldRenderPhaseRail(summary.status) ? ` story-card--active story-card--phase-${escapeHtmlAttr(summary.currentPhase)} story-card--status-${escapeHtmlAttr(phaseRailStatus(summary.status))}` : ""}" type="button" data-command="openWorkflow" data-us-id="${escapeHtmlAttr(summary.usId)}">
-        ${shouldRenderPhaseRail(summary.status)
+      <button class="story-card${shouldRenderPhaseRail(effectiveStatus) ? ` story-card--active story-card--phase-${escapeHtmlAttr(summary.currentPhase)} story-card--status-${escapeHtmlAttr(phaseRailStatus(effectiveStatus))}` : ""}" type="button" data-command="openWorkflow" data-us-id="${escapeHtmlAttr(summary.usId)}">
+        ${shouldRenderPhaseRail(effectiveStatus)
           ? `
             <span class="story-card__phase-rail" aria-hidden="true">
-              <span class="story-card__phase-label">${phaseRailLabelFor(summary.currentPhase, summary.status)}</span>
+              <span class="story-card__phase-label">${phaseRailLabelFor(summary.currentPhase, effectiveStatus)}</span>
             </span>
           `
           : ""}
         <span class="story-card__content">
           <span class="story-card__id">${escapeHtml(summary.usId)}</span>
           <strong>${escapeHtml(displayTitle)}</strong>
-          <span class="story-card__meta">${escapeHtml(summary.currentPhase)} · ${escapeHtml(summary.status)}</span>
+          <span class="story-card__meta">${escapeHtml(summary.currentPhase)} · ${escapeHtml(effectiveStatus)}</span>
+          ${buildDependencyLineMarkup(dependencies)}
         </span>
       </button>
       <div class="story-actions">
@@ -2005,8 +2037,44 @@ function buildStoryRowMarkup(summary: UserStorySummary, starredUserStoryId: stri
   `;
 }
 
+function effectiveStoryStatus(summary: UserStorySummary): string {
+  return hasBlockingDependencies(summary.dependencies ?? [])
+    ? "blocked"
+    : summary.status;
+}
+
+function hasBlockingDependencies(dependencies: readonly UserStoryDependencySummary[]): boolean {
+  return dependencies.some((dependency) => !dependency.isSatisfied);
+}
+
+function buildDependencyLineMarkup(dependencies: readonly UserStoryDependencySummary[]): string {
+  if (dependencies.length === 0) {
+    return "";
+  }
+
+  const blockingDependencies = dependencies.filter((dependency) => !dependency.isSatisfied);
+  const dependencyIds = (blockingDependencies.length > 0 ? blockingDependencies : dependencies)
+    .map((dependency) => dependency.usId)
+    .join(", ");
+  const label = blockingDependencies.length > 0 ? "blocked by" : "depends on";
+
+  return `<span class="story-card__dependency">${escapeHtml(label)} ${escapeHtml(dependencyIds)}</span>`;
+}
+
 function isCompletedStory(summary: UserStorySummary): boolean {
   return summary.status === "completed" || summary.currentPhase === "completed";
+}
+
+function isBlockedStory(summary: UserStorySummary): boolean {
+  return effectiveStoryStatus(summary) === "blocked";
+}
+
+function formatList(values: readonly string[]): string {
+  if (values.length <= 1) {
+    return values[0] ?? "";
+  }
+
+  return `${values.slice(0, -1).join(", ")} or ${values[values.length - 1]}`;
 }
 
 function buildStoryDisplayTitle(summary: UserStorySummary): string {
@@ -2038,7 +2106,15 @@ function phaseLabelFor(currentPhase: string): string {
 }
 
 function phaseRailLabelFor(currentPhase: string, status: string): string {
-  return isErrorStatus(status) ? "ERROR" : isCompletedStatus(status) ? "DONE" : phaseLabelFor(currentPhase);
+  if (isErrorStatus(status)) {
+    return "ERROR";
+  }
+
+  if (status === "blocked") {
+    return "🔒 BLOCK";
+  }
+
+  return isCompletedStatus(status) ? "DONE" : phaseLabelFor(currentPhase);
 }
 
 function shouldRenderPhaseRail(status: string): boolean {
@@ -2046,7 +2122,7 @@ function shouldRenderPhaseRail(status: string): boolean {
 }
 
 function isErrorStatus(status: string): boolean {
-  return status === "failed" || status === "error" || status === "errored" || status === "invalid" || status === "blocked";
+  return status === "failed" || status === "error" || status === "errored" || status === "invalid";
 }
 
 function isCompletedStatus(status: string): boolean {
@@ -2073,7 +2149,7 @@ function phaseRailStatus(status: string): string {
     case "error":
     case "errored":
     case "invalid":
-      return "blocked";
+      return "error";
     case "blocked":
       return "blocked";
     case "completed":

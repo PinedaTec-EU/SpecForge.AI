@@ -24,14 +24,32 @@ Non-responsibilities:
 Responsibilities:
 
 - govern the SDD workflow
+- expose the workflow to non-VS Code clients through a local `stdio` MCP boundary
 - expose managed-repository catalog operations for SpecForge Central
 - validate transitions and regressions
 - apply approval policies
 - invoke LLM providers through an abstraction
 - persist and recover technical state
 - emit traceable results and events
+- start the packaged browser workflow portal when an MCP client requests visual inspection
 
-### 3. SpecForge Central
+### 3. Self-Contained Workflow Portal
+
+Responsibilities:
+
+- provide a browser UI for user-story inspection and operation without requiring VS Code
+- render the workflow graph, current phase, artifacts, audit trail, runtime state, and available actions
+- collect human approval, refinement, regression, rewind, reopen, and configuration input
+- persist execution settings under `.specs/configuration/settings.json`
+- reuse the same domain/application services as the MCP server and VS Code extension
+
+Non-responsibilities:
+
+- replacing the MCP boundary for workflow mutations
+- storing separate workflow truth outside the repository-local `.specs/` tree
+- acting as a central multi-repository catalog in phase 1
+
+### 4. SpecForge Central
 
 Responsibilities:
 
@@ -46,7 +64,7 @@ Non-responsibilities:
 - deleting repositories or `.specs/` data when a catalog entry is removed
 - executing a single user story across several repositories in phase 1
 
-### 4. Repository As Source Of Truth
+### 5. Repository As Source Of Truth
 
 Responsibilities:
 
@@ -57,7 +75,29 @@ Responsibilities:
 
 ## Main Design Rule
 
-The extension and central portal orchestrate interaction. The MCP decides lifecycle. SpecForge Central selects and monitors repositories. Each repository preserves traceability for its own workflows.
+The extension, MCP clients, self-contained workflow portal, and central portal orchestrate interaction. The MCP/domain boundary decides lifecycle. SpecForge Central selects and monitors repositories. Each repository preserves traceability for its own workflows.
+
+## Non-VS Code Runtime
+
+The repository ships a packaged local plugin at `plugins/specforge-ai/` so agent environments that do not host the VS Code extension can still operate SpecForge.
+
+The packaged runtime contains:
+
+- the `SpecForge.McpServer` `stdio` server
+- the `SpecForge.Runner.Cli` workflow portal server
+- compiled workflow rendering assets
+- Codex-style skills that instruct agents to use MCP tools instead of editing `.specs/**` manually
+- a relative `.mcp.json` suitable for installation under `.agents/plugins/specforge-ai/`
+
+For non-VS Code clients, the operational contract is:
+
+1. The agent talks to `SpecForge.McpServer` over MCP.
+2. Reads go through `specforge_query`.
+3. Mutations go through `specforge_action`.
+4. Prompt-template operations go through `specforge_prompts`.
+5. Human visual inspection goes through `open_workflow_portal`, which starts `SpecForge.Runner.Cli serve-workflow` from the packaged runtime when possible.
+
+This keeps `.specs/**` as repository truth while allowing Codex, terminal agents, or other MCP-capable tools to use the same workflow without VS Code.
 
 ## Initial Canonical Workflow
 

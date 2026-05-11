@@ -25,6 +25,16 @@ export interface UserStorySummary {
   readonly currentPhase: string;
   readonly status: string;
   readonly workBranch: string | null;
+  readonly dependencies?: readonly UserStoryDependencySummary[];
+}
+
+export interface UserStoryDependencySummary {
+  readonly usId: string;
+  readonly title: string | null;
+  readonly currentPhase: string | null;
+  readonly status: string | null;
+  readonly isSatisfied: boolean;
+  readonly missingReason: string | null;
 }
 
 export interface UserStoryRuntimeStatus {
@@ -332,6 +342,7 @@ export interface UserStoryWorkflowDetails {
   readonly mainArtifactPath: string;
   readonly timelinePath: string;
   readonly rawTimeline: string;
+  readonly dependencies?: readonly UserStoryDependencySummary[];
   readonly pullRequest?: PullRequestDetails | null;
   readonly phases: readonly WorkflowPhaseDetails[];
   readonly controls: CurrentPhaseControls;

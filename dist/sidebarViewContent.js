@@ -60,7 +60,6 @@ function buildSidebarHtml(model) {
           </div>
           <div class="compact-actions">
             ${buildDroppedStoriesActionButton(model.showDroppedUserStories, model.droppedUserStoryCount)}
-            ${buildExecutionSettingsActionButton()}
           </div>
         </div>
         <p class="copy">No faded text-buttons, no scattered prompts. Start here and the sidebar opens the full intake form in place.</p>
@@ -68,9 +67,10 @@ function buildSidebarHtml(model) {
       </section>
     `, isBusy, model.createFormResetToken ?? 0, model.typographyCssVars ?? "");
     }
-    const visibleUserStories = model.showDroppedUserStories || model.showCompletedUserStories
+    const visibleUserStories = model.showDroppedUserStories
         ? model.userStories
-        : model.userStories.filter((summary) => !isCompletedStory(summary));
+        : model.userStories.filter((summary) => (model.showCompletedUserStories || !isCompletedStory(summary))
+            && (model.showBlockedUserStories || !isBlockedStory(summary)));
     const storySections = model.viewMode === "phase"
         ? [{ heading: null, items: sortStoriesByPhase(visibleUserStories) }]
         : groupStories(visibleUserStories).map((group) => ({ heading: group.category, items: group.items }));
@@ -303,8 +303,14 @@ function emptyStoryListMessage(model, visibleUserStoryCount) {
     if (model.showDroppedUserStories) {
         return "No dropped user stories to recover.";
     }
-    if (!model.showCompletedUserStories && model.userStories.length > 0 && visibleUserStoryCount === 0) {
-        return "Only completed user stories are hidden. Use the view menu to show them.";
+    if (model.userStories.length > 0 && visibleUserStoryCount === 0) {
+        const hiddenTypes = [
+            !model.showCompletedUserStories && model.userStories.some(isCompletedStory) ? "completed" : null,
+            !model.showBlockedUserStories && model.userStories.some(isBlockedStory) ? "blocked" : null
+        ].filter((item) => item !== null);
+        if (hiddenTypes.length > 0) {
+            return `Only ${formatList(hiddenTypes)} user stories are hidden. Use the view menu to show them.`;
+        }
     }
     return "Create or import a user story to start the workflow.";
 }
@@ -396,13 +402,18 @@ function buildPromptMenu(promptsInitialized) {
 }
 function buildViewOptionsMenu(model) {
     const completedCount = model.userStories.filter(isCompletedStory).length;
-    const label = completedCount > 0
+    const blockedCount = model.userStories.filter(isBlockedStory).length;
+    const completedLabel = completedCount > 0
         ? `Show completed (${completedCount})`
         : "Show completed";
+    const blockedLabel = blockedCount > 0
+        ? `Show blocked (${blockedCount})`
+        : "Show blocked";
+    const hasVisibleFilters = model.showCompletedUserStories || model.showBlockedUserStories;
     return `
     <div class="action-menu" data-action-menu>
       <button
-        class="icon-action${model.showCompletedUserStories ? " icon-action--active" : ""}"
+        class="icon-action${hasVisibleFilters ? " icon-action--active" : ""}"
         type="button"
         data-action-menu-toggle
         title="Sidebar view options"
@@ -420,21 +431,20 @@ function buildViewOptionsMenu(model) {
           aria-checked="${model.showCompletedUserStories ? "true" : "false"}"
           ${model.showDroppedUserStories ? "disabled" : ""}>
           <span class="action-menu__item-icon" aria-hidden="true">${model.showCompletedUserStories ? "✓" : ""}</span>
-          <span>${(0, htmlEscape_1.escapeHtml)(label)}</span>
+          <span>${(0, htmlEscape_1.escapeHtml)(completedLabel)}</span>
+        </button>
+        <button
+          class="action-menu__item"
+          type="button"
+          data-command="toggleBlockedUserStories"
+          role="menuitemcheckbox"
+          aria-checked="${model.showBlockedUserStories ? "true" : "false"}"
+          ${model.showDroppedUserStories ? "disabled" : ""}>
+          <span class="action-menu__item-icon" aria-hidden="true">${model.showBlockedUserStories ? "✓" : ""}</span>
+          <span>${(0, htmlEscape_1.escapeHtml)(blockedLabel)}</span>
         </button>
       </div>
     </div>
-  `;
-}
-function buildExecutionSettingsActionButton() {
-    return `
-    <button
-      class="icon-action"
-      data-command="openExecutionSettings"
-      title="Configure execution providers"
-      aria-label="Configure execution providers">
-      <span aria-hidden="true">⚙</span>
-    </button>
   `;
 }
 function buildCompactActions(model) {
@@ -443,7 +453,6 @@ function buildCompactActions(model) {
       ${buildDroppedStoriesActionButton(model.showDroppedUserStories, model.droppedUserStoryCount)}
       ${model.showDroppedUserStories ? "" : buildViewOptionsMenu(model)}
       ${model.showDroppedUserStories ? "" : buildCreateActionButton(model.promptsInitialized)}
-      ${buildExecutionSettingsActionButton()}
       ${buildPromptMenu(model.promptsInitialized)}
     </div>
   `;
@@ -1246,6 +1255,13 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
       --story-rail-border: rgba(255, 193, 120, 0.22);
     }
     .story-row--status-blocked {
+      --story-selection-edge-solid: rgba(255, 221, 138, 0.94);
+      --story-selection-edge-glow: rgba(214, 153, 58, 0.28);
+      --story-rail-top: rgba(255, 198, 92, 0.28);
+      --story-rail-bottom: rgba(58, 39, 13, 0.94);
+      --story-rail-border: rgba(255, 198, 92, 0.26);
+    }
+    .story-row--status-error {
       --story-selection-edge-solid: rgba(255, 171, 171, 0.94);
       --story-selection-edge-glow: rgba(204, 86, 86, 0.28);
       --story-rail-top: rgba(255, 139, 139, 0.24);
@@ -1355,6 +1371,14 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
     .story-card__meta {
       font-size: 0.8rem;
       color: rgba(255, 255, 255, 0.62);
+    }
+    .story-card__dependency {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 0.76rem;
+      color: rgba(255, 213, 90, 0.88);
     }
     @keyframes spin {
       to {
@@ -1870,30 +1894,37 @@ function sortStoriesByPhase(items) {
 }
 function buildStoryRowMarkup(summary, starredUserStoryId, activeWorkflowUsId, isDroppedView) {
     const isActiveWorkflow = activeWorkflowUsId === summary.usId;
-    const statusTone = phaseRailStatus(summary.status);
+    const effectiveStatus = effectiveStoryStatus(summary);
+    const statusTone = phaseRailStatus(effectiveStatus);
     const displayTitle = buildStoryDisplayTitle(summary);
+    const dependencies = summary.dependencies ?? [];
+    const dependencySearchText = dependencies
+        .map((dependency) => `${dependency.usId} ${dependency.title ?? ""} ${dependency.status ?? ""} ${dependency.currentPhase ?? ""}`)
+        .join(" ");
     const searchText = [
         summary.usId,
         summary.title,
         summary.description ?? "",
         summary.category,
         summary.currentPhase,
-        summary.status
+        effectiveStatus,
+        dependencySearchText
     ].join(" ");
     return `
     <div class="story-row story-row--shell story-row--status-${(0, htmlEscape_1.escapeHtmlAttr)(statusTone)}${isActiveWorkflow ? " story-row--selected" : ""}" data-story-search-text="${(0, htmlEscape_1.escapeHtmlAttr)(searchText)}">
-      <button class="story-card${shouldRenderPhaseRail(summary.status) ? ` story-card--active story-card--phase-${(0, htmlEscape_1.escapeHtmlAttr)(summary.currentPhase)} story-card--status-${(0, htmlEscape_1.escapeHtmlAttr)(phaseRailStatus(summary.status))}` : ""}" type="button" data-command="openWorkflow" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}">
-        ${shouldRenderPhaseRail(summary.status)
+      <button class="story-card${shouldRenderPhaseRail(effectiveStatus) ? ` story-card--active story-card--phase-${(0, htmlEscape_1.escapeHtmlAttr)(summary.currentPhase)} story-card--status-${(0, htmlEscape_1.escapeHtmlAttr)(phaseRailStatus(effectiveStatus))}` : ""}" type="button" data-command="openWorkflow" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}">
+        ${shouldRenderPhaseRail(effectiveStatus)
         ? `
             <span class="story-card__phase-rail" aria-hidden="true">
-              <span class="story-card__phase-label">${phaseRailLabelFor(summary.currentPhase, summary.status)}</span>
+              <span class="story-card__phase-label">${phaseRailLabelFor(summary.currentPhase, effectiveStatus)}</span>
             </span>
           `
         : ""}
         <span class="story-card__content">
           <span class="story-card__id">${(0, htmlEscape_1.escapeHtml)(summary.usId)}</span>
           <strong>${(0, htmlEscape_1.escapeHtml)(displayTitle)}</strong>
-          <span class="story-card__meta">${(0, htmlEscape_1.escapeHtml)(summary.currentPhase)} · ${(0, htmlEscape_1.escapeHtml)(summary.status)}</span>
+          <span class="story-card__meta">${(0, htmlEscape_1.escapeHtml)(summary.currentPhase)} · ${(0, htmlEscape_1.escapeHtml)(effectiveStatus)}</span>
+          ${buildDependencyLineMarkup(dependencies)}
         </span>
       </button>
       <div class="story-actions">
@@ -1944,8 +1975,36 @@ function buildStoryRowMarkup(summary, starredUserStoryId, activeWorkflowUsId, is
     </div>
   `;
 }
+function effectiveStoryStatus(summary) {
+    return hasBlockingDependencies(summary.dependencies ?? [])
+        ? "blocked"
+        : summary.status;
+}
+function hasBlockingDependencies(dependencies) {
+    return dependencies.some((dependency) => !dependency.isSatisfied);
+}
+function buildDependencyLineMarkup(dependencies) {
+    if (dependencies.length === 0) {
+        return "";
+    }
+    const blockingDependencies = dependencies.filter((dependency) => !dependency.isSatisfied);
+    const dependencyIds = (blockingDependencies.length > 0 ? blockingDependencies : dependencies)
+        .map((dependency) => dependency.usId)
+        .join(", ");
+    const label = blockingDependencies.length > 0 ? "blocked by" : "depends on";
+    return `<span class="story-card__dependency">${(0, htmlEscape_1.escapeHtml)(label)} ${(0, htmlEscape_1.escapeHtml)(dependencyIds)}</span>`;
+}
 function isCompletedStory(summary) {
     return summary.status === "completed" || summary.currentPhase === "completed";
+}
+function isBlockedStory(summary) {
+    return effectiveStoryStatus(summary) === "blocked";
+}
+function formatList(values) {
+    if (values.length <= 1) {
+        return values[0] ?? "";
+    }
+    return `${values.slice(0, -1).join(", ")} or ${values[values.length - 1]}`;
 }
 function buildStoryDisplayTitle(summary) {
     const normalizedTitle = summary.title.trim();
@@ -1972,13 +2031,19 @@ function phaseLabelFor(currentPhase) {
     return phaseLabels[currentPhase] ?? "?";
 }
 function phaseRailLabelFor(currentPhase, status) {
-    return isErrorStatus(status) ? "ERROR" : isCompletedStatus(status) ? "DONE" : phaseLabelFor(currentPhase);
+    if (isErrorStatus(status)) {
+        return "ERROR";
+    }
+    if (status === "blocked") {
+        return "🔒 BLOCK";
+    }
+    return isCompletedStatus(status) ? "DONE" : phaseLabelFor(currentPhase);
 }
 function shouldRenderPhaseRail(status) {
     return status !== "superseded" && status !== "abandoned";
 }
 function isErrorStatus(status) {
-    return status === "failed" || status === "error" || status === "errored" || status === "invalid" || status === "blocked";
+    return status === "failed" || status === "error" || status === "errored" || status === "invalid";
 }
 function isCompletedStatus(status) {
     return status === "completed";
@@ -2003,7 +2068,7 @@ function phaseRailStatus(status) {
         case "error":
         case "errored":
         case "invalid":
-            return "blocked";
+            return "error";
         case "blocked":
             return "blocked";
         case "completed":

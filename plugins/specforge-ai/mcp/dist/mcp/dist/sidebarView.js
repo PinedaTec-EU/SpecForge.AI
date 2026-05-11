@@ -60,6 +60,7 @@ class SidebarViewProvider {
     activeWorkflowUsId = null;
     showDroppedUserStories = false;
     showCompletedUserStories = false;
+    showBlockedUserStories = false;
     createFileMode = "context";
     createFiles = [];
     createReferenceScanVersion = 0;
@@ -189,6 +190,10 @@ class SidebarViewProvider {
                 return;
             case "toggleCompletedUserStories":
                 this.showCompletedUserStories = !this.showCompletedUserStories;
+                await this.safeRenderAsync();
+                return;
+            case "toggleBlockedUserStories":
+                this.showBlockedUserStories = !this.showBlockedUserStories;
                 await this.safeRenderAsync();
                 return;
             case "initializeRepoPrompts":
@@ -526,6 +531,7 @@ class SidebarViewProvider {
                 viewMode: settings.userStoryListViewMode ?? "category",
                 showDroppedUserStories: this.showDroppedUserStories,
                 showCompletedUserStories: this.showCompletedUserStories,
+                showBlockedUserStories: this.showBlockedUserStories,
                 droppedUserStoryCount: 0,
                 createFileMode: this.createFileMode,
                 createFiles: this.createFiles,
@@ -571,6 +577,7 @@ class SidebarViewProvider {
             viewMode: settings.userStoryListViewMode ?? "category",
             showDroppedUserStories: this.showDroppedUserStories,
             showCompletedUserStories: this.showCompletedUserStories,
+            showBlockedUserStories: this.showBlockedUserStories,
             droppedUserStoryCount,
             createFileMode: this.createFileMode,
             createFiles: this.createFiles,
@@ -602,6 +609,7 @@ class SidebarViewProvider {
                 viewMode: (0, extensionSettings_1.getSpecForgeSettings)().userStoryListViewMode ?? "category",
                 showDroppedUserStories: this.showDroppedUserStories,
                 showCompletedUserStories: this.showCompletedUserStories,
+                showBlockedUserStories: this.showBlockedUserStories,
                 droppedUserStoryCount: 0,
                 createFileMode: this.createFileMode,
                 createFiles: this.createFiles,

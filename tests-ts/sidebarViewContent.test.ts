@@ -17,6 +17,7 @@ function model(overrides: Partial<SidebarViewModel>): SidebarViewModel {
     viewMode: "category",
     showDroppedUserStories: false,
     showCompletedUserStories: false,
+    showBlockedUserStories: false,
     droppedUserStoryCount: 0,
     categories: ["workflow"],
     userStories: [],
@@ -104,7 +105,7 @@ test("buildSidebarHtml exposes a compact prompt customization action", () => {
   assert.match(html, /Export All Prompts/);
   assert.match(html, /Customize Prompt Templates/);
   assert.match(html, /aria-label="Create new user story"/);
-  assert.match(html, /aria-label="Configure execution providers"/);
+  assert.doesNotMatch(html, /aria-label="Configure execution providers"/);
   assert.match(html, /data-story-search/);
   assert.match(html, /Search by title, description, or category/);
   assert.doesNotMatch(html, /data-command="toggleViewMode"/);
@@ -181,6 +182,83 @@ test("buildSidebarHtml includes user story descriptions in the local search inde
   assert.match(html, /data-story-search-text="[^"]*fast filtering[^"]*workflow/);
 });
 
+test("buildSidebarHtml surfaces blocked dependency state in story rows", () => {
+  const html = buildSidebarHtml(model({
+    showBlockedUserStories: true,
+    categories: ["workflow"],
+    userStories: [{
+      usId: "US-0002",
+      title: "Dependent workflow",
+      category: "workflow",
+      currentPhase: "capture",
+      status: "active",
+      mainArtifactPath: "/tmp/us.md",
+      directoryPath: "/tmp/us.US-0002",
+      workBranch: null,
+      dependencies: [{
+        usId: "US-0001",
+        title: "First workflow",
+        currentPhase: "capture",
+        status: "active",
+        isSatisfied: false,
+        missingReason: null
+      }]
+    }],
+  }));
+
+  assert.match(html, /story-row--status-blocked/);
+  assert.match(html, /story-card--status-blocked/);
+  assert.match(html, /capture · blocked/);
+  assert.match(html, /<span class="story-card__phase-label">🔒 BLOCK<\/span>/);
+  assert.match(html, /blocked by US-0001/);
+  assert.match(html, /data-story-search-text="[^"]*US-0001[^"]*First workflow/);
+});
+
+test("buildSidebarHtml filters blocked user stories from the active sidebar by default", () => {
+  const html = buildSidebarHtml(model({
+    categories: ["workflow"],
+    userStories: [{
+      usId: "US-0004",
+      title: "Blocked story",
+      category: "workflow",
+      currentPhase: "capture",
+      status: "blocked",
+      mainArtifactPath: "/tmp/us.md",
+      directoryPath: "/tmp/us.US-0004",
+      workBranch: null
+    }],
+  }));
+
+  assert.doesNotMatch(html, /<button class="story-card story-card--active/);
+  assert.doesNotMatch(html, /<span class="story-card__phase-label">/);
+  assert.match(html, /Only blocked user stories are hidden/);
+  assert.match(html, /Show blocked \(1\)/);
+  assert.match(html, /data-command="toggleBlockedUserStories"/);
+  assert.match(html, /aria-checked="false"/);
+});
+
+test("buildSidebarHtml shows blocked user stories when enabled", () => {
+  const html = buildSidebarHtml(model({
+    showBlockedUserStories: true,
+    categories: ["workflow"],
+    userStories: [{
+      usId: "US-0004",
+      title: "Blocked story",
+      category: "workflow",
+      currentPhase: "capture",
+      status: "blocked",
+      mainArtifactPath: "/tmp/us.md",
+      directoryPath: "/tmp/us.US-0004",
+      workBranch: null
+    }],
+  }));
+
+  assert.match(html, /story-row--status-blocked/);
+  assert.match(html, /<span class="story-card__phase-label">🔒 BLOCK<\/span>/);
+  assert.match(html, /Show blocked \(1\)/);
+  assert.match(html, /aria-checked="true"/);
+});
+
 test("buildSidebarHtml keeps the phase rail for user stories that are still in progress", () => {
   const html = buildSidebarHtml(model({
     categories: ["workflow"],
@@ -234,7 +312,7 @@ test("buildSidebarHtml labels error stories explicitly on the phase rail", () =>
     }],
   }));
 
-  assert.match(html, /story-card--status-blocked/);
+  assert.match(html, /story-card--status-error/);
   assert.match(html, /<span class="story-card__phase-label">ERROR<\/span>/);
 });
 

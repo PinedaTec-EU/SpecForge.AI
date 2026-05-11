@@ -4051,6 +4051,156 @@ test("buildWorkflowHtml reuses sidebar status colors in graph nodes and hero tok
   assert.match(html, /phase-node capture phase-tone-completed/);
 });
 
+test("buildWorkflowHtml gives dependency blocked nodes an amber lock marker", () => {
+  const html = buildWorkflowHtml({
+    usId: "US-0013",
+    title: "Dependency blocked workflow",
+    category: "workflow",
+    status: "blocked",
+    currentPhase: "capture",
+    directoryPath: "/tmp/us.US-0013",
+    workBranch: null,
+    mainArtifactPath: "/tmp/us.md",
+    timelinePath: "/tmp/timeline.md",
+    rawTimeline: "raw timeline",
+    dependencies: [{
+      usId: "US-0001",
+      title: "Foundation workflow",
+      currentPhase: "review",
+      status: "active",
+      isSatisfied: false,
+      missingReason: "not completed"
+    }],
+    phases: [
+      {
+        phaseId: "capture",
+        title: "Capture",
+        order: 0,
+        requiresApproval: false,
+        expectsHumanIntervention: false,
+        isApproved: false,
+        isCurrent: true,
+        state: "current",
+        artifactPath: null,
+        executePromptPath: null,
+        approvePromptPath: null
+      },
+      {
+        phaseId: "refinement",
+        title: "Refinement",
+        order: 1,
+        requiresApproval: false,
+        expectsHumanIntervention: false,
+        isApproved: false,
+        isCurrent: false,
+        state: "pending",
+        artifactPath: null,
+        executePromptPath: null,
+        approvePromptPath: null
+      }
+    ],
+    controls: {
+      canContinue: false,
+      canApprove: false,
+      requiresApproval: false,
+      blockingReason: "dependency_not_completed",
+      canRestartFromSource: false,
+      regressionTargets: []
+    },
+    refinement: null,
+    events: [],
+    attachmentsDirectoryPath: "/tmp/attachments",
+    attachments: []
+  }, {
+    selectedPhaseId: "capture",
+    selectedArtifactContent: null,
+    contextSuggestions: [],
+    settingsConfigured: true,
+    settingsMessage: null
+  }, "idle");
+
+  assert.match(html, /phase-node capture phase-tone-blocked selected phase-node--current phase-node--dependency-blocked/);
+  assert.match(html, /graph-phase-status-icon--dependency-blocked/);
+  assert.match(html, /aria-label="Blocked by user-story dependency"/);
+  assert.match(html, /\.phase-node\.phase-node--dependency-blocked/);
+  assert.match(html, /\.phase-node \.graph-phase-status-icon\.graph-phase-status-icon--dependency-blocked \{[\s\S]*color: #ffd75a;/);
+  assert.match(html, /class="dependency-block"/);
+  assert.match(html, /Blocked by user-story dependency/);
+  assert.match(html, /1 incomplete dependency/);
+  assert.match(html, /data-command="openWorkflow"/);
+  assert.match(html, /data-us-id="US-0001"/);
+  assert.match(html, /Foundation workflow/);
+  assert.match(html, /<div class="hero-secondary">[\s\S]*<div class="hero-meta">[\s\S]*class="dependency-block"/);
+  assert.match(html, /\.hero-meta \{[\s\S]*flex-wrap: nowrap;/);
+  assert.match(html, /\.dependency-block \{[\s\S]*width: 100%;/);
+  assert.match(html, /\.dependency-block__icon svg \{[\s\S]*fill: currentColor;[\s\S]*drop-shadow/);
+  assert.match(html, /\.token\.token--blocked \{[\s\S]*var\(--attention-egg-soft\)/);
+});
+
+test("buildWorkflowHtml renders pending phase visual icons in muted gray", () => {
+  const html = buildWorkflowHtml({
+    usId: "US-0144",
+    title: "Muted pending phase icons",
+    category: "workflow",
+    status: "active",
+    currentPhase: "capture",
+    directoryPath: "/tmp/us.US-0144",
+    workBranch: null,
+    mainArtifactPath: "/tmp/us.md",
+    timelinePath: "/tmp/timeline.md",
+    rawTimeline: "raw timeline",
+    phases: [
+      {
+        phaseId: "capture",
+        title: "Capture",
+        order: 0,
+        requiresApproval: false,
+        expectsHumanIntervention: false,
+        isApproved: false,
+        isCurrent: true,
+        state: "current",
+        artifactPath: null,
+        executePromptPath: null,
+        approvePromptPath: null
+      },
+      {
+        phaseId: "spec",
+        title: "Spec",
+        order: 1,
+        requiresApproval: true,
+        expectsHumanIntervention: true,
+        isApproved: false,
+        isCurrent: false,
+        state: "pending",
+        artifactPath: null,
+        executePromptPath: null,
+        approvePromptPath: null
+      }
+    ],
+    controls: {
+      canContinue: true,
+      canApprove: false,
+      requiresApproval: false,
+      blockingReason: null,
+      canRestartFromSource: false,
+      regressionTargets: []
+    },
+    refinement: null,
+    events: [],
+    attachmentsDirectoryPath: "/tmp/attachments",
+    attachments: []
+  }, {
+    selectedPhaseId: "capture",
+    selectedArtifactContent: null,
+    contextSuggestions: [],
+    settingsConfigured: true,
+    settingsMessage: null
+  }, "idle");
+
+  assert.match(html, /phase-node spec phase-tone-pending/);
+  assert.match(html, /\.phase-node\.phase-tone-pending \.phase-node-visual,[\s\S]*\.phase-node\.phase-tone-disabled \.phase-node-visual \{[\s\S]*linear-gradient\(145deg, rgba\(94, 103, 118, 0\.72\), rgba\(37, 43, 54, 0\.92\)\)/);
+});
+
 test("buildWorkflowHtml marks a phase blocked when its model security precheck fails", () => {
   const html = buildWorkflowHtml({
     usId: "US-0099",
