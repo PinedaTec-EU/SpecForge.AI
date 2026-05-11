@@ -408,7 +408,7 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
             selectedPhaseId = resolvedSelectedPhaseId,
             selectedArtifactContent = await ReadFileContentOrNullAsync(selectedPhase?.ArtifactPath),
             selectedOperationContent = await ReadFileContentOrNullAsync(selectedPhase?.OperationLogPath),
-            runtimeVersion = workflow.LastRuntimeVersion ?? workflow.CreatedWithRuntimeVersion,
+            runtimeVersion = GetRuntimeVersion() ?? workflow.LastRuntimeVersion ?? workflow.CreatedWithRuntimeVersion,
             userStories = activeSidebarUserStories,
             sidebarUserStories,
             activeSidebarUserStories,
@@ -510,6 +510,11 @@ static string? ParseQueryValue(string query, string key)
     }
 
     return null;
+}
+
+static string? GetRuntimeVersion()
+{
+    return typeof(SpecForgeApplicationService).Assembly.GetName().Version?.ToString();
 }
 
 static string BuildConfigurationPortalUrl(string workflowPortalOrigin, string? fragment = null)

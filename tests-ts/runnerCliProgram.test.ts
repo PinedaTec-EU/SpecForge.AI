@@ -64,6 +64,8 @@ test("CLI workflow portal refresh signature includes workflow runtime versions",
 
   assert.match(source, /workflow\.CreatedWithRuntimeVersion/);
   assert.match(source, /workflow\.LastRuntimeVersion/);
+  assert.match(source, /runtimeVersion = GetRuntimeVersion\(\) \?\? workflow\.LastRuntimeVersion \?\? workflow\.CreatedWithRuntimeVersion/);
+  assert.match(source, /typeof\(SpecForgeApplicationService\)\.Assembly\.GetName\(\)\.Version\?\.ToString\(\)/);
   assert.match(source, /BuildWorkflowSignature\(\s*UserStoryWorkflowDetails workflow,\s*IReadOnlyCollection<UserStorySummary> userStories,\s*IReadOnlyCollection<UserStorySummary> droppedUserStories\s*\)/);
   assert.match(source, /userStories = userStories[\s\S]*?story\.CurrentPhase[\s\S]*?story\.Status/);
   assert.match(source, /droppedUserStories = droppedUserStories[\s\S]*?story\.CurrentPhase[\s\S]*?story\.Status/);

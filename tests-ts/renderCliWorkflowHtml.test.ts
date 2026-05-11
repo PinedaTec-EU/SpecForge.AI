@@ -25,6 +25,7 @@ test("CLI workflow shim rejects malformed refinement answer commands locally", a
 test("CLI workflow renderer passes runtime version into workflow state", async () => {
   const script = await fs.promises.readFile(scriptPath, "utf8");
 
+  assert.match(script, /displayRuntimeVersion = formatRuntimeVersion\(payload\.runtimeVersion \?\? workflow\.lastRuntimeVersion \?\? workflow\.createdWithRuntimeVersion \?\? null\)/);
   assert.match(script, /runtimeVersion: payload\.runtimeVersion \?\? workflow\.lastRuntimeVersion \?\? workflow\.createdWithRuntimeVersion \?\? null/);
 });
 
@@ -32,8 +33,11 @@ test("CLI workflow renderer embeds the reusable user-story sidebar with collapse
   const script = await fs.promises.readFile(scriptPath, "utf8");
 
   assert.match(script, /buildSidebarHtml/);
-  assert.match(script, /data-cli-sidebar-stories/);
+  assert.match(script, /SpecForge\.AI/);
+  assert.match(script, /data-cli-sidebar-pin/);
   assert.match(script, /data-cli-sidebar-settings/);
+  assert.match(script, /runtimeVersion: null/);
+  assert.match(script, /sidebarPin\.setAttribute\("aria-pressed", collapsed \? "false" : "true"\)/);
   assert.match(script, /configurationProvidersUrl = payload\.configurationProvidersUrl \|\| configurationPortalUrl/);
   assert.match(script, /configurationAdvancedUrl = payload\.configurationAdvancedUrl \|\| configurationPortalUrl/);
   assert.match(script, /data-cli-config-overlay/);
