@@ -17,6 +17,7 @@ const droppedUserStoryCount = Number.isFinite(payload.droppedUserStoryCount) ? p
 const configurationPortalUrl = payload.configurationPortalUrl || "http://localhost:5128/configuration";
 const configurationProvidersUrl = payload.configurationProvidersUrl || configurationPortalUrl;
 const configurationAdvancedUrl = payload.configurationAdvancedUrl || configurationPortalUrl;
+const displayRuntimeVersion = formatRuntimeVersion(payload.runtimeVersion ?? workflow.lastRuntimeVersion ?? workflow.createdWithRuntimeVersion ?? null);
 const state = {
   selectedPhaseId: payload.selectedPhaseId ?? workflow.currentPhase,
   selectedArtifactContent: payload.selectedArtifactContent ?? null,
@@ -36,6 +37,11 @@ const state = {
   graphInitialZoomMode: "fit-width",
   workflowGraphLayout: null
 };
+
+function formatRuntimeVersion(runtimeVersion) {
+  const value = String(runtimeVersion ?? "").trim();
+  return value ? value.split("+", 1)[0] : null;
+}
 
 const browserShim = `
 <script>
@@ -261,7 +267,7 @@ function buildCliSidebarHtml(items, options) {
     settingsMessage: null,
     starredUserStoryId: null,
     activeWorkflowUsId: workflow.usId,
-    runtimeVersion: state.runtimeVersion,
+    runtimeVersion: null,
     viewMode: "phase",
     showDroppedUserStories: options.showDroppedUserStories,
     showCompletedUserStories: options.showCompletedUserStories,
@@ -298,16 +304,18 @@ const sidebarShell = `
   body.specforge-cli-with-sidebar { display: grid; grid-template-columns: minmax(300px, 360px) minmax(0, 1fr); min-height: 100vh; overflow: hidden; }
   body.specforge-cli-with-sidebar.specforge-cli-sidebar-collapsed { grid-template-columns: 58px minmax(0, 1fr); }
   .specforge-cli-sidebar { position: sticky; top: 0; height: 100vh; min-width: 0; border-right: 1px solid rgba(114, 241, 184, 0.16); background: #080e14; display: grid; grid-template-rows: auto minmax(0, 1fr); z-index: 50; }
-  .specforge-cli-sidebar__rail { display: flex; align-items: center; gap: 8px; padding: 10px; border-bottom: 1px solid rgba(114, 241, 184, 0.12); }
+  .specforge-cli-sidebar__rail { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 10px; border-bottom: 1px solid rgba(114, 241, 184, 0.12); }
   .specforge-cli-sidebar__button { width: 38px; height: 38px; border-radius: 12px; border: 1px solid rgba(114, 241, 184, 0.18); background: rgba(255, 255, 255, 0.04); color: #72f1b8; font: 700 1rem/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; cursor: pointer; display: inline-grid; place-items: center; }
   .specforge-cli-sidebar__button:hover { background: rgba(114, 241, 184, 0.12); border-color: rgba(114, 241, 184, 0.34); }
-  .specforge-cli-sidebar__title { min-width: 0; color: rgba(255, 255, 255, 0.78); font: 700 0.82rem/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .specforge-cli-sidebar__button--active { background: rgba(114, 241, 184, 0.14); border-color: rgba(114, 241, 184, 0.36); }
+  .specforge-cli-sidebar__brand { min-width: 0; display: flex; align-items: baseline; gap: 8px; white-space: nowrap; overflow: hidden; }
+  .specforge-cli-sidebar__title { min-width: 0; color: rgba(255, 255, 255, 0.86); font: 800 0.9rem/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow: hidden; text-overflow: ellipsis; }
+  .specforge-cli-sidebar__version { flex-shrink: 0; color: rgba(176, 180, 176, 0.76); font: 700 0.7rem/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
   .specforge-cli-sidebar__frame { width: 100%; height: 100%; border: 0; min-width: 0; background: transparent; }
   body.specforge-cli-sidebar-collapsed .specforge-cli-sidebar { grid-template-rows: 1fr; }
-  body.specforge-cli-sidebar-collapsed .specforge-cli-sidebar__rail { flex-direction: column; align-items: center; justify-content: flex-start; border-bottom: 0; padding-top: 12px; }
-  body.specforge-cli-sidebar-collapsed .specforge-cli-sidebar__title,
-  body.specforge-cli-sidebar-collapsed .specforge-cli-sidebar__frame,
-  body.specforge-cli-sidebar-collapsed [data-cli-sidebar-collapse] { display: none; }
+  body.specforge-cli-sidebar-collapsed .specforge-cli-sidebar__rail { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; border-bottom: 0; padding-top: 12px; }
+  body.specforge-cli-sidebar-collapsed .specforge-cli-sidebar__brand,
+  body.specforge-cli-sidebar-collapsed .specforge-cli-sidebar__frame { display: none; }
   body.specforge-cli-with-sidebar > .workflow-page { min-width: 0; height: 100vh; overflow: hidden; }
   .specforge-cli-config-overlay { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 28px; background: rgba(3, 8, 12, 0.72); backdrop-filter: blur(8px); }
   .specforge-cli-config-overlay[hidden] { display: none; }
@@ -324,10 +332,12 @@ const sidebarShell = `
 </style>
 <aside class="specforge-cli-sidebar" aria-label="SpecForge user stories">
   <div class="specforge-cli-sidebar__rail">
-    <button class="specforge-cli-sidebar__button" type="button" data-cli-sidebar-stories title="User stories" aria-label="User stories">☷</button>
+    <div class="specforge-cli-sidebar__brand">
+      <span class="specforge-cli-sidebar__title">SpecForge.AI</span>
+      ${displayRuntimeVersion ? `<span class="specforge-cli-sidebar__version">v.${escapeHtmlAttr(displayRuntimeVersion)}</span>` : ""}
+    </div>
     <button class="specforge-cli-sidebar__button" type="button" data-cli-sidebar-settings title="Advanced configuration" aria-label="Advanced configuration">⚙</button>
-    <span class="specforge-cli-sidebar__title">User Stories</span>
-    <button class="specforge-cli-sidebar__button" type="button" data-cli-sidebar-collapse title="Collapse sidebar" aria-label="Collapse sidebar">‹</button>
+    <button class="specforge-cli-sidebar__button specforge-cli-sidebar__button--active" type="button" data-cli-sidebar-pin title="Unpin sidebar" aria-label="Unpin sidebar" aria-pressed="true">📌</button>
   </div>
   <iframe class="specforge-cli-sidebar__frame" title="User stories" srcdoc="${escapeHtmlAttr(sidebarHtml)}"></iframe>
 </aside>
@@ -348,6 +358,7 @@ const sidebarShell = `
     const configOverlay = document.querySelector("[data-cli-config-overlay]");
     const configFrame = document.querySelector("[data-cli-config-frame]");
     const sidebarFrame = document.querySelector('iframe[title="User stories"]');
+    const sidebarPin = document.querySelector("[data-cli-sidebar-pin]");
     const sidebarHtmlByMode = {
       active: ${safeScriptJson(activeSidebarHtml)},
       activeCompleted: ${safeScriptJson(activeCompletedSidebarHtml)},
@@ -414,11 +425,16 @@ const sidebarShell = `
     };
     const applyCollapsed = (collapsed) => {
       document.body.classList.toggle("specforge-cli-sidebar-collapsed", collapsed);
+      if (sidebarPin) {
+        sidebarPin.classList.toggle("specforge-cli-sidebar__button--active", !collapsed);
+        sidebarPin.setAttribute("title", collapsed ? "Pin sidebar" : "Unpin sidebar");
+        sidebarPin.setAttribute("aria-label", collapsed ? "Pin sidebar" : "Unpin sidebar");
+        sidebarPin.setAttribute("aria-pressed", collapsed ? "false" : "true");
+      }
       try { localStorage.setItem(collapsedKey, collapsed ? "true" : "false"); } catch {}
     };
     applyCollapsed(localStorage.getItem(collapsedKey) === "true");
-    document.querySelector("[data-cli-sidebar-collapse]")?.addEventListener("click", () => applyCollapsed(true));
-    document.querySelector("[data-cli-sidebar-stories]")?.addEventListener("click", () => applyCollapsed(false));
+    sidebarPin?.addEventListener("click", () => applyCollapsed(!document.body.classList.contains("specforge-cli-sidebar-collapsed")));
     document.querySelector("[data-cli-sidebar-settings]")?.addEventListener("click", () => {
       openConfiguration(${JSON.stringify(configurationAdvancedUrl)});
     });
