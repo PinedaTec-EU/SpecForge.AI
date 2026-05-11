@@ -51,7 +51,6 @@ public sealed class UserStoryFilePaths
             workspaceRoot,
             SpecsDirectoryName,
             UserStoriesDirectoryName,
-            category.Trim().ToLowerInvariant(),
             usId.Trim().ToUpperInvariant());
 
         return new UserStoryFilePaths(userStoryDirectory);
@@ -71,21 +70,102 @@ public sealed class UserStoryFilePaths
 
         var specsRoot = Path.Combine(workspaceRoot, SpecsDirectoryName, UserStoriesDirectoryName);
         var normalizedUsId = usId.Trim().ToUpperInvariant();
+        EnsureFlatUserStoryLayout(workspaceRoot);
         if (!Directory.Exists(specsRoot))
         {
             throw new DirectoryNotFoundException($"User stories root '{specsRoot}' was not found.");
         }
 
-        foreach (var categoryDirectory in Directory.GetDirectories(specsRoot, "*", SearchOption.TopDirectoryOnly))
+        var flatCandidate = Path.Combine(specsRoot, normalizedUsId);
+        if (Directory.Exists(flatCandidate))
         {
-            var candidate = Path.Combine(categoryDirectory, normalizedUsId);
-            if (Directory.Exists(candidate))
-            {
-                return new UserStoryFilePaths(candidate);
-            }
+            return new UserStoryFilePaths(flatCandidate);
         }
 
         throw new DirectoryNotFoundException($"User story '{normalizedUsId}' was not found under '{specsRoot}'.");
+    }
+
+    public static void EnsureFlatUserStoryLayout(string workspaceRoot)
+    {
+        if (string.IsNullOrWhiteSpace(workspaceRoot))
+        {
+            throw new ArgumentException("Workspace root is required.", nameof(workspaceRoot));
+        }
+
+        var specsRoot = Path.Combine(workspaceRoot, SpecsDirectoryName, UserStoriesDirectoryName);
+        if (!Directory.Exists(specsRoot))
+        {
+            return;
+        }
+
+        foreach (var categoryDirectory in Directory.GetDirectories(specsRoot, "*", SearchOption.TopDirectoryOnly))
+        {
+            var directoryName = Path.GetFileName(categoryDirectory);
+            if (directoryName.StartsWith("US-", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            foreach (var legacyUserStoryDirectory in Directory.GetDirectories(categoryDirectory, "US-*", SearchOption.TopDirectoryOnly))
+            {
+                var userStoryDirectoryName = Path.GetFileName(legacyUserStoryDirectory);
+                var flatUserStoryDirectory = Path.Combine(specsRoot, userStoryDirectoryName);
+                if (Directory.Exists(flatUserStoryDirectory))
+                {
+                    throw new InvalidOperationException(
+                        $"Cannot migrate legacy user story directory '{legacyUserStoryDirectory}' because '{flatUserStoryDirectory}' already exists.");
+                }
+
+                Directory.Move(legacyUserStoryDirectory, flatUserStoryDirectory);
+                RewriteMovedUserStoryPathReferences(
+                    flatUserStoryDirectory,
+                    legacyUserStoryDirectory,
+                    flatUserStoryDirectory,
+                    Path.Combine(SpecsDirectoryName, UserStoriesDirectoryName, directoryName, userStoryDirectoryName),
+                    Path.Combine(SpecsDirectoryName, UserStoriesDirectoryName, userStoryDirectoryName));
+            }
+
+            if (!Directory.EnumerateFileSystemEntries(categoryDirectory).Any())
+            {
+                Directory.Delete(categoryDirectory);
+            }
+        }
+    }
+
+    private static void RewriteMovedUserStoryPathReferences(
+        string userStoryDirectory,
+        string oldAbsoluteDirectory,
+        string newAbsoluteDirectory,
+        string oldRelativeDirectory,
+        string newRelativeDirectory)
+    {
+        foreach (var filePath in Directory.EnumerateFiles(userStoryDirectory, "*", SearchOption.AllDirectories))
+        {
+            if (!ShouldRewritePathReferences(filePath))
+            {
+                continue;
+            }
+
+            var content = File.ReadAllText(filePath);
+            var updated = content
+                .Replace(oldAbsoluteDirectory, newAbsoluteDirectory, StringComparison.Ordinal)
+                .Replace(oldRelativeDirectory.Replace('\\', '/'), newRelativeDirectory.Replace('\\', '/'), StringComparison.Ordinal)
+                .Replace(oldRelativeDirectory.Replace('/', Path.DirectorySeparatorChar), newRelativeDirectory.Replace('/', Path.DirectorySeparatorChar), StringComparison.Ordinal);
+
+            if (!string.Equals(content, updated, StringComparison.Ordinal))
+            {
+                File.WriteAllText(filePath, updated);
+            }
+        }
+    }
+
+    private static bool ShouldRewritePathReferences(string filePath)
+    {
+        return Path.GetExtension(filePath).ToLowerInvariant() switch
+        {
+            ".md" or ".yaml" or ".yml" or ".json" or ".txt" => true,
+            _ => false
+        };
     }
 
     public string RootDirectory { get; }

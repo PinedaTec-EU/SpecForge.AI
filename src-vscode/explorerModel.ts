@@ -2,6 +2,11 @@ import type { UserStorySummary } from "./backendClient";
 
 export const DEFAULT_USER_STORY_CATEGORIES = [
   "workflow",
+  "configuration",
+  "synchronization",
+  "user-stories",
+  "repositories",
+  "documentation",
   "ux",
   "prompts",
   "mcp",

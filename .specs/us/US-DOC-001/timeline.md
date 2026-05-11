@@ -25,12 +25,12 @@
 - Phase: `refinement`
 - Summary: Refinement pre-flight passed. Advancing to spec.
 - Artifacts:
-  - `/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/workflow/US-DOC-001/phases/00-refinement.md`
+  - `/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/US-DOC-001/phases/00-refinement.md`
 - Execution:
   - provider: `deterministic`
   - model: `deterministic`
   - runtime-version: `0.1.4.415+71ff1a243f81f3eea815e2df4bcb1c39be185a98`
-<!-- specforge-execution-hashes input-sha256="" output-sha256="" structured-output-sha256="" receipt="/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/workflow/US-DOC-001/execution-receipts/20260508T180927911Z-refinement.json" -->
+<!-- specforge-execution-hashes input-sha256="" output-sha256="" structured-output-sha256="" receipt="/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/US-DOC-001/execution-receipts/20260508T180927911Z-refinement.json" -->
 - Duration: `2` ms
 
 ### 2026-05-08T18:09:27.9949480+00:00 · `phase_completed`
@@ -39,12 +39,12 @@
 - Phase: `spec`
 - Summary: Generated artifact for phase `spec` after refinement.
 - Artifacts:
-  - `/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/workflow/US-DOC-001/phases/01-spec.md`
+  - `/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/US-DOC-001/phases/01-spec.md`
 - Execution:
   - provider: `deterministic`
   - model: `deterministic`
   - runtime-version: `0.1.4.415+71ff1a243f81f3eea815e2df4bcb1c39be185a98`
-<!-- specforge-execution-hashes input-sha256="" output-sha256="" structured-output-sha256="" receipt="/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/workflow/US-DOC-001/execution-receipts/20260508T180927967Z-spec.json" -->
+<!-- specforge-execution-hashes input-sha256="" output-sha256="" structured-output-sha256="" receipt="/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/US-DOC-001/execution-receipts/20260508T180927967Z-spec.json" -->
 - Duration: `2` ms
 
 ### 2026-05-08T18:14:22.6230800+00:00 · `approval_answer_recorded`
@@ -53,7 +53,7 @@
 - Phase: `spec`
 - Summary: Recorded human approval answer for spec question `Is the scope precise enough to avoid a second interpretation pass during technical design?`.
 - Artifacts:
-  - `/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/workflow/US-DOC-001/phases/01-spec.v02.md`
+  - `/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/US-DOC-001/phases/01-spec.v02.md`
 
 ### 2026-05-08T18:14:22.6252200+00:00 · `approval_answer_recorded`
 
@@ -61,7 +61,7 @@
 - Phase: `spec`
 - Summary: Recorded human approval answer for spec question `Are any hidden business rules, exclusions, or edge cases still missing from the baseline?`.
 - Artifacts:
-  - `/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/workflow/US-DOC-001/phases/01-spec.v03.md`
+  - `/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/US-DOC-001/phases/01-spec.v03.md`
 
 ### 2026-05-08T18:14:22.8267390+00:00 · `phase_approved`
 
@@ -81,10 +81,10 @@
 - Phase: `technical-design`
 - Summary: Generated artifact for phase `technical-design`.
 - Artifacts:
-  - `/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/workflow/US-DOC-001/phases/02-technical-design.md`
+  - `/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/US-DOC-001/phases/02-technical-design.md`
 - Execution:
   - provider: `deterministic`
   - model: `deterministic`
   - runtime-version: `0.1.4.415+71ff1a243f81f3eea815e2df4bcb1c39be185a98`
-<!-- specforge-execution-hashes input-sha256="" output-sha256="" structured-output-sha256="" receipt="/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/workflow/US-DOC-001/execution-receipts/20260508T181519399Z-technical-design.json" -->
+<!-- specforge-execution-hashes input-sha256="" output-sha256="" structured-output-sha256="" receipt="/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/US-DOC-001/execution-receipts/20260508T181519399Z-technical-design.json" -->
 - Duration: `1` ms

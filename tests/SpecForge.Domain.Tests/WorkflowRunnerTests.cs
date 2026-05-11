@@ -16,7 +16,7 @@ public sealed class WorkflowRunnerTests : IDisposable
 
         var rootDirectory = await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Test story", "feature", "workflow", "Initial source text");
 
-        Assert.Equal(Path.Combine(workspaceRoot, ".specs", "us", "workflow", "US-0001"), rootDirectory);
+        Assert.Equal(Path.Combine(workspaceRoot, ".specs", "us", "US-0001"), rootDirectory);
         Assert.True(File.Exists(Path.Combine(rootDirectory, "us.md")));
         Assert.True(File.Exists(Path.Combine(rootDirectory, "state.yaml")));
         Assert.True(File.Exists(Path.Combine(rootDirectory, "timeline.md")));
@@ -515,14 +515,14 @@ public sealed class WorkflowRunnerTests : IDisposable
             - Phase: `implementation`
             - Summary: Second implementation pass.
             - Artifacts:
-              - `.specs/us/workflow/US-0001/phases/03-implementation.v02.md`
+              - `.specs/us/US-0001/phases/03-implementation.v02.md`
 
             ### 2026-04-27T09:20:00.0000000Z · `phase_completed`
             - Actor: `system`
             - Phase: `review`
             - Summary: Second review pass.
             - Artifacts:
-              - `.specs/us/workflow/US-0001/phases/04-review.v02.md`
+              - `.specs/us/US-0001/phases/04-review.v02.md`
             """);
 
         var error = await Assert.ThrowsAsync<WorkflowDomainException>(() =>
@@ -1096,7 +1096,7 @@ public sealed class WorkflowRunnerTests : IDisposable
 - Phase: `spec`
 - Summary: Phase `spec` approved.
 - Artifacts:
-  - .specs/us/workflow/US-0001/branch.yaml
+  - .specs/us/US-0001/branch.yaml
 """;
 
         var events = TimelineMarkdownParser.ParseEvents(timeline);
@@ -1108,7 +1108,7 @@ public sealed class WorkflowRunnerTests : IDisposable
         Assert.Equal("spec", timelineEvent.Phase);
         Assert.Equal("Phase `spec` approved.", timelineEvent.Summary);
         Assert.Single(timelineEvent.Artifacts);
-        Assert.Equal(".specs/us/workflow/US-0001/branch.yaml", timelineEvent.Artifacts.First());
+        Assert.Equal(".specs/us/US-0001/branch.yaml", timelineEvent.Artifacts.First());
     }
 
     [Fact]
@@ -1125,7 +1125,7 @@ public sealed class WorkflowRunnerTests : IDisposable
 - Phase: `spec`
 - Summary: Generated artifact for phase `spec`.
 - Artifacts:
-  - .specs/us/workflow/US-0001/phases/01-spec.md
+  - .specs/us/US-0001/phases/01-spec.md
 - Tokens:
   - input: `486`
   - output: `1644`
@@ -1142,7 +1142,7 @@ public sealed class WorkflowRunnerTests : IDisposable
 
         var timelineEvent = Assert.Single(events);
         Assert.Single(timelineEvent.Artifacts);
-        Assert.Equal(".specs/us/workflow/US-0001/phases/01-spec.md", timelineEvent.Artifacts.First());
+        Assert.Equal(".specs/us/US-0001/phases/01-spec.md", timelineEvent.Artifacts.First());
         Assert.NotNull(timelineEvent.Usage);
         Assert.Equal(486, timelineEvent.Usage!.InputTokens);
         Assert.Equal(1644, timelineEvent.Usage.OutputTokens);

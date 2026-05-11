@@ -1,4 +1,4 @@
-﻿usId: US-DOC-001
+usId: US-DOC-001
 kind: feature
 category: documentation
 baseBranch: main
@@ -8,7 +8,7 @@ createdAt: 2026-05-08T18:14:22.6307970+00:00
 createdFromPhase: spec
 strategy: single-branch-per-user-story
 titleSnapshot: Document visual workflow states with realistic screenshots
-sourceUsPath: /Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/workflow/US-DOC-001/us.md
+sourceUsPath: /Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/US-DOC-001/us.md
 pullRequestStatus: not_requested
 pullRequestTargetBaseBranch: main
 pullRequestTitle: 

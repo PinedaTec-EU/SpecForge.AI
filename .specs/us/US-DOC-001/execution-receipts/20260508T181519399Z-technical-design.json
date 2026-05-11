@@ -7,12 +7,12 @@
   "inputManifest": {
     "manifestSha256": "67159652c594fdd5487ce4b7a7179fa8c674a4253b78cbd823c7c6bfdeccabc9",
     "workspaceRoot": "/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI",
-    "userStoryPath": "/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/workflow/US-DOC-001/us.md",
+    "userStoryPath": "/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/US-DOC-001/us.md",
     "userStorySha256": "0ce9978107ca6d4027e3db8df5447d75e95a9a7e85373f7b36282cb613ac776d",
     "workspaceGitHeadSha": "71ff1a243f81f3eea815e2df4bcb1c39be185a98",
     "previousArtifacts": [
       {
-        "path": "/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/workflow/US-DOC-001/phases/01-spec.v03.md",
+        "path": "/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/US-DOC-001/phases/01-spec.v03.md",
         "sha256": "df8f048c785239b0a9ae0d636d9c23815dbe82e15f58495bb4b6845ba8f496aa",
         "phaseId": "spec"
       }
@@ -22,11 +22,11 @@
     "operationPromptSha256": null
   },
   "outputManifest": {
-    "resultArtifactPath": "/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/workflow/US-DOC-001/phases/02-technical-design.md",
+    "resultArtifactPath": "/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/US-DOC-001/phases/02-technical-design.md",
     "resultArtifactSha256": "5910a5c7ccc3d3722aefe4a4b005073ddd1335fb80b6372d6fc0b412a1014fa7",
     "generatedFiles": [
       {
-        "path": "/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/workflow/US-DOC-001/phases/02-technical-design.md",
+        "path": "/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/US-DOC-001/phases/02-technical-design.md",
         "sha256": "5910a5c7ccc3d3722aefe4a4b005073ddd1335fb80b6372d6fc0b412a1014fa7",
         "phaseId": null
       }

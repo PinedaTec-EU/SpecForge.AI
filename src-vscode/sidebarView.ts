@@ -797,18 +797,18 @@ async function hasPersistedUserStoriesAsync(workspaceRoot: string): Promise<bool
 
   const categoryEntries = await fs.promises.readdir(storiesRoot, { withFileTypes: true });
   for (const categoryEntry of categoryEntries) {
-    if (!categoryEntry.isDirectory()) {
+    if (!categoryEntry.isDirectory() || /^US-/i.test(categoryEntry.name)) {
       continue;
     }
 
     const categoryPath = path.join(storiesRoot, categoryEntry.name);
     const userStoryEntries = await fs.promises.readdir(categoryPath, { withFileTypes: true });
-    if (userStoryEntries.some((entry) => entry.isDirectory() && /^US-\d+$/i.test(entry.name))) {
+    if (userStoryEntries.some((entry) => entry.isDirectory() && /^US-/i.test(entry.name))) {
       return true;
     }
   }
 
-  return false;
+  return categoryEntries.some((entry) => entry.isDirectory() && /^US-/i.test(entry.name));
 }
 
 async function openTextDocument(filePath: string): Promise<void> {

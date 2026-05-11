@@ -48,7 +48,7 @@ public sealed class UserStoryFileStoreTests : IDisposable
                 Status: "draft",
                 TargetBaseBranch: "main",
                 Title: "US-0001: prepare draft PR",
-                ArtifactPath: ".specs/us/workflow/US-0001/phases/06-pr-preparation.md",
+                ArtifactPath: ".specs/us/US-0001/phases/06-pr-preparation.md",
                 IsDraft: true,
                 Number: 42,
                 Url: "https://github.com/acme/repo/pull/42",
@@ -111,7 +111,7 @@ public sealed class UserStoryFileStoreTests : IDisposable
             "feature",
             "workflow",
             "Test story",
-            ".specs/us/workflow/US-0001/us.md",
+            ".specs/us/US-0001/us.md",
             new DateTimeOffset(2026, 4, 18, 10, 0, 0, TimeSpan.Zero));
         return run;
     }

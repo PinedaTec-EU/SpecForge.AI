@@ -191,14 +191,14 @@ public sealed class SpecForgeApplicationService
             workspaceRoot,
             UserStoryFilePaths.SpecsDirectoryName,
             UserStoryFilePaths.UserStoriesDirectoryName);
+        UserStoryFilePaths.EnsureFlatUserStoryLayout(workspaceRoot);
 
         if (!Directory.Exists(specsRoot))
         {
             return [];
         }
 
-        var directories = Directory.GetDirectories(specsRoot, "*", SearchOption.TopDirectoryOnly)
-            .SelectMany(categoryDirectory => Directory.GetDirectories(categoryDirectory, "US-*", SearchOption.TopDirectoryOnly))
+        var directories = Directory.GetDirectories(specsRoot, "US-*", SearchOption.TopDirectoryOnly)
             .ToArray();
         var summaries = new List<UserStorySummary>(directories.Length);
 
@@ -1354,14 +1354,23 @@ public sealed class SpecForgeApplicationService
 
     private static string FindWorkspaceRoot(UserStoryFilePaths paths)
     {
-        var categoryRoot = Path.GetDirectoryName(paths.RootDirectory)
-            ?? throw new InvalidOperationException("User story directory root is invalid.");
-        var userStoriesRoot = Path.GetDirectoryName(categoryRoot)
-            ?? throw new InvalidOperationException("User stories root is invalid.");
-        var specsRoot = Path.GetDirectoryName(userStoriesRoot)
-            ?? throw new InvalidOperationException("Specs root is invalid.");
-        return Path.GetDirectoryName(specsRoot)
-            ?? throw new InvalidOperationException("Workspace root is invalid.");
+        var current = new DirectoryInfo(paths.RootDirectory);
+        while (current.Parent is not null)
+        {
+            var parent = current.Parent;
+            var grandParent = parent.Parent;
+            if (string.Equals(parent.Name, UserStoryFilePaths.UserStoriesDirectoryName, StringComparison.Ordinal)
+                && grandParent is not null
+                && string.Equals(grandParent.Name, UserStoryFilePaths.SpecsDirectoryName, StringComparison.Ordinal))
+            {
+                return grandParent.Parent?.FullName
+                    ?? throw new InvalidOperationException("Workspace root is invalid.");
+            }
+
+            current = parent;
+        }
+
+        throw new InvalidOperationException("User story directory root is invalid.");
     }
 
     private static IReadOnlyCollection<string> BuildRegressionTargets(Workflow.WorkflowRun workflowRun)
