@@ -1134,6 +1134,7 @@ public sealed class WorkflowRunnerTests : IDisposable
   - provider: `openai-compatible`
   - model: `gpt-4.1-mini`
   - profile: `light`
+  - skill: `.codex/skills/sdd-phase-agents/SKILL.md`
 <!-- specforge-execution-hashes input-sha256="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" output-sha256="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" structured-output-sha256="cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" -->
 - Duration: `18765` ms
 """;
@@ -1151,6 +1152,7 @@ public sealed class WorkflowRunnerTests : IDisposable
         Assert.Equal("openai-compatible", timelineEvent.Execution!.ProviderKind);
         Assert.Equal("gpt-4.1-mini", timelineEvent.Execution.Model);
         Assert.Equal("light", timelineEvent.Execution.ProfileName);
+        Assert.Equal(".codex/skills/sdd-phase-agents/SKILL.md", Assert.Single(timelineEvent.Execution.UsedSkills!));
         Assert.Equal("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", timelineEvent.Execution.InputSha256);
         Assert.Equal("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", timelineEvent.Execution.OutputSha256);
         Assert.Equal("cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", timelineEvent.Execution.StructuredOutputSha256);
@@ -1179,6 +1181,7 @@ public sealed class WorkflowRunnerTests : IDisposable
         Assert.Contains("- Execution:", timeline);
         Assert.Contains("model: `stub-model`", timeline);
         Assert.Contains("profile: `test-profile`", timeline);
+        Assert.Contains("skill: `.codex/skills/sdd-phase-agents/SKILL.md`", timeline);
         Assert.Contains("runtime-version: `0.1.3.224`", timeline);
         Assert.Contains("input-sha256=\"input-hash\"", timeline);
         Assert.Contains("output-sha256=\"output-hash\"", timeline);
@@ -1923,7 +1926,8 @@ public sealed class WorkflowRunnerTests : IDisposable
                         "http://stub.test/v1",
                         InputSha256: "input-hash",
                         OutputSha256: "output-hash",
-                        StructuredOutputSha256: "structured-hash")));
+                        StructuredOutputSha256: "structured-hash",
+                        UsedSkills: [".codex/skills/sdd-phase-agents/SKILL.md"])));
     }
 
     private sealed class ApprovalAnswerSuggestionCapturingProvider : IPhaseExecutionProvider

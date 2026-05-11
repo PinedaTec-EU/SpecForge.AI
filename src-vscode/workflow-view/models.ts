@@ -86,6 +86,7 @@ export interface PhaseIterationItem {
     readonly model: string;
     readonly profileName: string | null;
     readonly baseUrl: string | null;
+    readonly usedSkills?: readonly string[] | null;
   } | null;
 }
 

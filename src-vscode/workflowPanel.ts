@@ -1886,6 +1886,9 @@ function isFailedReviewArtifact(content: string | null): boolean {
 }
 
 async function openTextDocument(filePath: string): Promise<void> {
-  const document = await vscode.workspace.openTextDocument(filePath);
+  const resolvedPath = path.isAbsolute(filePath)
+    ? filePath
+    : path.join(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "", filePath);
+  const document = await vscode.workspace.openTextDocument(resolvedPath);
   await vscode.window.showTextDocument(document, { preview: false });
 }

@@ -87,6 +87,7 @@ export interface PhaseExecutionMetadata {
   readonly outputSha256?: string | null;
   readonly structuredOutputSha256?: string | null;
   readonly receiptPath?: string | null;
+  readonly usedSkills?: readonly string[] | null;
 }
 
 type ModelResponseListener = (diagnostic: ModelResponseDiagnostic) => void;

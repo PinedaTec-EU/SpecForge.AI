@@ -12,4 +12,5 @@ public sealed record PhaseExecutionMetadata(
     string? InputSha256 = null,
     string? OutputSha256 = null,
     string? StructuredOutputSha256 = null,
-    string? ReceiptPath = null);
+    string? ReceiptPath = null,
+    IReadOnlyCollection<string>? UsedSkills = null);

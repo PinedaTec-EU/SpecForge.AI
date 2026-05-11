@@ -334,6 +334,9 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
         }
 
         var normalizedContent = NormalizePhaseContent(context, content.Trim());
+        var usedSkills = options.PhaseSkillUsageReportingEnabled
+            ? ExtractUsedSkills(normalizedContent)
+            : null;
         return new PhaseExecutionResult(
             normalizedContent,
             ExecutionKind: "openai-compatible",
@@ -348,7 +351,8 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
                 Warnings: prompt.Warnings,
                 InputSha256: inputSha256,
                 OutputSha256: outputSha256,
-                StructuredOutputSha256: null));
+                StructuredOutputSha256: null,
+                UsedSkills: usedSkills));
     }
 
     private async Task<PhaseExecutionResult> ExecuteWithPhaseSubagentsAsync(
@@ -1042,6 +1046,18 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
                 .AppendLine("Do not return JSON.");
         }
 
+        if (options.PhaseSkillUsageReportingEnabled)
+        {
+            builder
+                .AppendLine()
+                .AppendLine("## Skill Usage Reporting")
+                .AppendLine()
+                .AppendLine("- Append a `## Skills Used` section to the returned phase artifact.")
+                .AppendLine("- List every Codex skill, shared skill file, local skill file, AGENTS instruction file, or repository workflow skill file you used or modified while producing this phase.")
+                .AppendLine("- Use one bullet per touched skill or rule file, preferably as a workspace-relative or absolute file path.")
+                .AppendLine("- If no skill applies, write exactly `- none` under `## Skills Used`.");
+        }
+
         return new EffectivePrompt(systemPrompt, builder.ToString().Trim(), warnings);
     }
 
@@ -1264,7 +1280,8 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
         var nativePrompt = NativeCliPromptBuilder.BuildPhasePrompt(
             context,
             prompt,
-            modelSelection.ProviderKind);
+            modelSelection.ProviderKind,
+            options.PhaseSkillUsageReportingEnabled);
         var sandboxMode = context.PhaseId is PhaseId.Implementation or PhaseId.Review
             ? "workspace-write"
             : "read-only";
@@ -1288,6 +1305,9 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
         }
 
         var normalizedContent = NormalizePhaseContent(context, response.Content.Trim());
+        var usedSkills = options.PhaseSkillUsageReportingEnabled
+            ? ExtractUsedSkills(normalizedContent)
+            : null;
 
         return new PhaseExecutionResult(
             normalizedContent,
@@ -1302,7 +1322,8 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
                 Warnings: prompt.Warnings,
                 InputSha256: ComputeSha256(nativePrompt),
                 OutputSha256: ComputeSha256(response.Content),
-                StructuredOutputSha256: null));
+                StructuredOutputSha256: null,
+                UsedSkills: usedSkills));
     }
 
     private static string? ComputeSha256(string? content)
@@ -1313,6 +1334,41 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
         }
 
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(content))).ToLowerInvariant();
+    }
+
+    private static IReadOnlyCollection<string>? ExtractUsedSkills(string markdown)
+    {
+        var section = TryReadMarkdownSection(markdown, "## Skills Used");
+        if (string.IsNullOrWhiteSpace(section))
+        {
+            return null;
+        }
+
+        var skills = section
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Split('\n')
+            .Select(static line => line.Trim())
+            .Where(static line => line.StartsWith("- ", StringComparison.Ordinal))
+            .Select(static line => NormalizeSkillUsageLine(line[2..]))
+            .Where(static skill => skill is not null)
+            .Select(static skill => skill!)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        return skills.Length == 0 ? null : skills;
+    }
+
+    private static string? NormalizeSkillUsageLine(string value)
+    {
+        var normalized = value.Trim().Trim('`').Trim();
+        if (string.IsNullOrWhiteSpace(normalized) ||
+            string.Equals(normalized, "none", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(normalized, "n/a", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return normalized;
     }
 
     private async Task<NativeCliExecutionResult> ExecuteStructuredNativeAsync(

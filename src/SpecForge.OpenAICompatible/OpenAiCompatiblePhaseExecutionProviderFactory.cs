@@ -19,6 +19,7 @@ public static class OpenAiCompatiblePhaseExecutionProviderFactory
     public const string LegacyAutoRefinementAnswersEnabledEnvVar = "SPECFORGE_AUTO_CLARIFICATION_ANSWERS_ENABLED";
     public const string AutoRefinementAnswersProfileEnvVar = "SPECFORGE_AUTO_REFINEMENT_ANSWERS_PROFILE";
     public const string LegacyAutoRefinementAnswersProfileEnvVar = "SPECFORGE_AUTO_CLARIFICATION_ANSWERS_PROFILE";
+    public const string PhaseSkillUsageReportingEnabledEnvVar = "SPECFORGE_PHASE_SKILL_USAGE_REPORTING_ENABLED";
     public const string ReviewLearningEnabledEnvVar = "SPECFORGE_REVIEW_LEARNING_ENABLED";
     public const string ReviewLearningSkillPathEnvVar = "SPECFORGE_REVIEW_LEARNING_SKILL_PATH";
     public const string SystemPromptEnvVar = "SPECFORGE_OPENAI_SYSTEM_PROMPT";
@@ -77,6 +78,10 @@ public static class OpenAiCompatiblePhaseExecutionProviderFactory
                 AutoRefinementAnswersProfile: NormalizeOptional(
                     ReadSetting(AutoRefinementAnswersProfileEnvVar, fallback)
                         ?? ReadSetting(LegacyAutoRefinementAnswersProfileEnvVar, fallback)),
+                PhaseSkillUsageReportingEnabled: !string.Equals(
+                    ReadSetting(PhaseSkillUsageReportingEnabledEnvVar, fallback),
+                    "false",
+                    StringComparison.OrdinalIgnoreCase),
                 ReviewLearningEnabled: !string.Equals(
                     ReadSetting(ReviewLearningEnabledEnvVar, fallback),
                     "false",

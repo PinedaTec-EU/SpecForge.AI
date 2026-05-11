@@ -39,6 +39,7 @@ public sealed record OpenAiCompatibleProviderOptions(
     string ReviewEvidencePolicy = "balanced",
     bool AutoRefinementAnswersEnabled = false,
     string? AutoRefinementAnswersProfile = null,
+    bool PhaseSkillUsageReportingEnabled = true,
     bool ReviewLearningEnabled = true,
     string ReviewLearningSkillPath = ".codex/skills/sdd-phase-agents/SKILL.md",
     IReadOnlyList<OpenAiCompatibleModelProfile>? ModelProfiles = null,

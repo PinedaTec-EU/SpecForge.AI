@@ -2497,6 +2497,14 @@ public sealed class WorkflowRunner
                 builder.AppendLine($"  - runtime-version: `{executionRuntimeVersion}`");
             }
 
+            if (execution.UsedSkills is { Count: > 0 })
+            {
+                foreach (var skill in execution.UsedSkills.Where(static value => !string.IsNullOrWhiteSpace(value)).Distinct(StringComparer.Ordinal))
+                {
+                    builder.AppendLine($"  - skill: `{skill}`");
+                }
+            }
+
             if (execution.Warnings is { Count: > 0 })
             {
                 foreach (var warning in execution.Warnings)

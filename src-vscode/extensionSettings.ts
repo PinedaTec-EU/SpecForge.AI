@@ -21,6 +21,7 @@ export interface SpecForgeSettings {
   readonly contextSuggestionsEnabled: boolean;
   readonly requireExplicitApprovalBranchAcceptance: boolean;
   readonly autoRefinementAnswersEnabled: boolean;
+  readonly phaseSkillUsageReportingEnabled: boolean;
   readonly autoPlayEnabled: boolean;
   readonly autoReviewEnabled: boolean;
   readonly maxImplementationReviewCycles: number | null;
@@ -167,6 +168,7 @@ export function readSpecForgeSettings(configuration: ConfigurationReader): SpecF
     contextSuggestionsEnabled: configuration.get<boolean>("features.enableContextSuggestions", true),
     requireExplicitApprovalBranchAcceptance: configuration.get<boolean>("features.requireApprovalBranchAcceptance", false),
     autoRefinementAnswersEnabled: configuration.get<boolean>("features.autoRefinementAnswersEnabled", false),
+    phaseSkillUsageReportingEnabled: configuration.get<boolean>("features.phaseSkillUsageReportingEnabled", true),
     autoPlayEnabled: configuration.get<boolean>("features.autoPlayEnabled", false),
     autoReviewEnabled: configuration.get<boolean>("features.autoReviewEnabled", false),
     maxImplementationReviewCycles: normalizeOptionalPositiveInteger(configuration.get<unknown>("features.maxImplementationReviewCycles", 5)),
@@ -194,6 +196,7 @@ export function buildBackendEnvironment(settings: SpecForgeSettings): NodeJS.Pro
   env.SPECFORGE_TECHNICAL_DESIGN_SUBAGENTS_ENABLED = settings.technicalDesignSubagentsEnabled === true ? "true" : "false";
   env.SPECFORGE_REVIEW_SUBAGENTS_ENABLED = settings.reviewSubagentsEnabled === true ? "true" : "false";
   env.SPECFORGE_AUTO_REFINEMENT_ANSWERS_ENABLED = settings.autoRefinementAnswersEnabled ? "true" : "false";
+  env.SPECFORGE_PHASE_SKILL_USAGE_REPORTING_ENABLED = settings.phaseSkillUsageReportingEnabled === false ? "false" : "true";
   env.SPECFORGE_REVIEW_LEARNING_ENABLED = settings.reviewLearningEnabled === false ? "false" : "true";
   env.SPECFORGE_REVIEW_LEARNING_SKILL_PATH =
     settings.reviewLearningSkillPath ?? ".codex/skills/sdd-phase-agents/SKILL.md";
@@ -447,6 +450,7 @@ function buildSettingsDiagnostics(settings: SpecForgeSettings): string {
     `mvpRigor=${settings.mvpRigor ?? "medium"}`,
     `autoRefinementAnswers.enabled=${settings.autoRefinementAnswersEnabled}`,
     `autoRefinementAnswers.agent=${settings.autoRefinementAnswersProfile ?? "<unset>"}`,
+    `phaseSkillUsageReporting.enabled=${settings.phaseSkillUsageReportingEnabled !== false}`,
     `autoReviewEnabled=${settings.autoReviewEnabled}`,
     `maxImplementationReviewCycles=${settings.maxImplementationReviewCycles ?? "<unset>"}`,
     `pauseOnFailedReview=${settings.pauseOnFailedReview}`,

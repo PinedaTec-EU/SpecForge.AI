@@ -9,7 +9,8 @@ internal static class NativeCliPromptBuilder
     public static string BuildPhasePrompt(
         PhaseExecutionContext context,
         EffectivePrompt prompt,
-        string providerKind)
+        string providerKind,
+        bool includeSkillUsageReport)
     {
         var providerLabel = ResolveProviderLabel(providerKind);
         var builder = new StringBuilder()
@@ -63,6 +64,17 @@ internal static class NativeCliPromptBuilder
             .AppendLine()
             .AppendLine("Return the final answer as the complete Markdown artifact for this phase.")
             .AppendLine("Do not wrap the artifact in markdown fences and do not add prose outside the artifact.");
+
+        if (includeSkillUsageReport)
+        {
+            builder
+                .AppendLine()
+                .AppendLine("## Skill Usage Report")
+                .AppendLine()
+                .AppendLine("If you used any Codex skills, shared skill files, local skill files, AGENTS instructions, or repository workflow skill files while working, append a `## Skills Used` section to the phase artifact.")
+                .AppendLine("Use one bullet per touched skill or rule file, preferably as a workspace-relative or absolute file path.")
+                .AppendLine("If no skill applies, append `## Skills Used` with a single `- none` bullet.");
+        }
 
         return builder.ToString().Trim();
     }

@@ -639,7 +639,11 @@ test("buildWorkflowHtml renders iteration lineage with input and output artifact
           providerKind: "openai-compatible",
           model: "gpt-4.1-mini",
           profileName: "light",
-          baseUrl: "https://api.example.test/v1"
+          baseUrl: "https://api.example.test/v1",
+          usedSkills: [
+            ".codex/skills/sdd-phase-agents/SKILL.md",
+            "../ai-skills-shared/.shared-skills/skills/dotnet/SKILL.md"
+          ]
         }
       }
     ],
@@ -682,6 +686,9 @@ test("buildWorkflowHtml renders iteration lineage with input and output artifact
   assert.match(html, /04-review\.md/);
   assert.match(html, /Fix the empty state\./);
   assert.match(html, /Apply the failed review corrections\./);
+  assert.match(html, /Skills Used/);
+  assert.match(html, /data-path="\.codex\/skills\/sdd-phase-agents\/SKILL\.md"/);
+  assert.match(html, /dotnet\/SKILL\.md/);
 });
 
 test("buildWorkflowHtml expands phase iteration tree when the phase is opened", () => {

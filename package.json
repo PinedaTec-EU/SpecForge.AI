@@ -419,6 +419,11 @@
           "default": false,
           "description": "When refinement blocks spec, let the selected model try to answer the pending questions once with the full workflow context before handing the phase to the user."
         },
+        "specForge.features.phaseSkillUsageReportingEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "When enabled, phase model prompts ask the invoked model to report any Codex or repository skills used so the phase detail can show them."
+        },
         "specForge.features.autoPlayEnabled": {
           "type": "boolean",
           "default": false,

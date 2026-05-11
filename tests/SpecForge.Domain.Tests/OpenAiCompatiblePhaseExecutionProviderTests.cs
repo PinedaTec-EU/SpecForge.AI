@@ -62,7 +62,47 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
         Assert.False(OpenAiCompatibleRequestJson.HasResponseFormat(handler.LastBody));
         Assert.Contains("Role: spec analyst.", handler.LastBody);
         Assert.Contains("Initial text", handler.LastBody);
+        Assert.Contains("## Skill Usage Reporting", handler.LastBody);
         Assert.Contains("This is the system prompt for the spec execute template.", OpenAiCompatibleRequestJson.ReadSystemPrompt(handler.LastBody));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenSkillUsageReported_ReturnsUsedSkillsMetadata()
+    {
+        await PrepareInitializedWorkspaceAsync();
+        const string response = """
+            # Spec · US-0001 · v01
+
+            ## Spec Summary
+            Generated with skill metadata.
+
+            ## Skills Used
+            - `.codex/skills/sdd-phase-agents/SKILL.md`
+            - ../ai-skills-shared/.shared-skills/skills/dotnet/SKILL.md
+            """;
+        var handler = new CapturingFakeHttpMessageHandler(response);
+        var provider = new OpenAiCompatiblePhaseExecutionProvider(
+            new HttpClient(handler),
+            CreateOptions(
+                model: "llama3.1",
+                apiKey: "ollama-local"));
+        var context = new PhaseExecutionContext(
+            WorkspaceRoot: workspaceRoot,
+            UsId: "US-0001",
+            PhaseId: PhaseId.Spec,
+            UserStoryPath: Path.Combine(workspaceRoot, ".specs", "us", "US-0001", "us.md"),
+            PreviousArtifactPaths: new Dictionary<PhaseId, string>(),
+            ContextFilePaths: []);
+
+        var result = await provider.ExecuteAsync(context);
+
+        Assert.NotNull(result.Execution);
+        Assert.Equal(
+            [
+                ".codex/skills/sdd-phase-agents/SKILL.md",
+                "../ai-skills-shared/.shared-skills/skills/dotnet/SKILL.md"
+            ],
+            result.Execution!.UsedSkills);
     }
 
     [Fact]

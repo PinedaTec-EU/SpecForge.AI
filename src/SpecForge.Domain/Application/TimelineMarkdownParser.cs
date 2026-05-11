@@ -270,6 +270,7 @@ public static partial class TimelineMarkdownParser
             "agent-role" => execution with { AgentRole = value },
             "base-url" => execution with { BaseUrl = value },
             "runtime-version" => execution with { RuntimeVersion = value },
+            "skill" => execution with { UsedSkills = AppendSkill(execution.UsedSkills, value) },
             "warning" => execution with { Warnings = AppendWarning(execution.Warnings, value) },
             _ => execution
         };
@@ -283,7 +284,19 @@ public static partial class TimelineMarkdownParser
         line.StartsWith("agent-role:", StringComparison.Ordinal) ||
         line.StartsWith("base-url:", StringComparison.Ordinal) ||
         line.StartsWith("runtime-version:", StringComparison.Ordinal) ||
+        line.StartsWith("skill:", StringComparison.Ordinal) ||
         line.StartsWith("warning:", StringComparison.Ordinal);
+
+    private static IReadOnlyCollection<string> AppendSkill(IReadOnlyCollection<string>? skills, string skill)
+    {
+        var values = skills?.ToList() ?? [];
+        if (!string.IsNullOrWhiteSpace(skill))
+        {
+            values.Add(skill.Trim());
+        }
+
+        return values;
+    }
 
     private static IReadOnlyCollection<string> AppendWarning(IReadOnlyCollection<string>? warnings, string warning)
     {
