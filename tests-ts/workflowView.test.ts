@@ -4123,6 +4123,7 @@ test("buildWorkflowHtml gives dependency blocked nodes an amber lock marker", ()
   assert.match(html, /graph-phase-status-icon--dependency-blocked/);
   assert.match(html, /aria-label="Blocked by user-story dependency"/);
   assert.match(html, /\.phase-node\.phase-node--dependency-blocked/);
+  assert.match(html, /\.phase-node \.graph-phase-status-icon\.graph-phase-status-icon--dependency-blocked \{[\s\S]*color: #ffd75a;/);
   assert.match(html, /class="dependency-block"/);
   assert.match(html, /Blocked by user-story dependency/);
   assert.match(html, /1 incomplete dependency/);
