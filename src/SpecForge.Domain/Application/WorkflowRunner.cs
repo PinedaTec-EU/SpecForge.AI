@@ -723,6 +723,7 @@ public sealed class WorkflowRunner
         var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, usId);
         var workflowRun = await fileStore.LoadAsync(paths.RootDirectory, cancellationToken);
         var normalizedActor = NormalizeActor(actor);
+        await EnsureRecordedWorkBranchIsActiveAsync(workspaceRoot, paths, workflowRun, normalizedActor, cancellationToken);
         await TrackRuntimeVersionChangeAsync(paths, workflowRun, normalizedActor, workflowRun.CurrentPhase, cancellationToken);
         SpecForgeDiagnostics.Log(
             $"[runner.continue_phase] usId={usId} loaded phase={WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)} status={WorkflowPresentation.ToStatusSlug(workflowRun.Status)}");
@@ -992,6 +993,46 @@ public sealed class WorkflowRunner
         return artifactPath;
     }
 
+    private async Task EnsureRecordedWorkBranchIsActiveAsync(
+        string workspaceRoot,
+        UserStoryFilePaths paths,
+        WorkflowRun workflowRun,
+        string actor,
+        CancellationToken cancellationToken)
+    {
+        if (workflowRun.Branch is null)
+        {
+            return;
+        }
+
+        SpecForgeDiagnostics.Log(
+            $"[runner.branch_guard] usId={workflowRun.UsId} ensuring active branch is '{workflowRun.Branch.WorkBranchName}' before phase execution.");
+        var activation = await workBranchManager.EnsureActiveWorkBranchAsync(
+            workspaceRoot,
+            workflowRun.UsId,
+            workflowRun.Branch.WorkBranchName,
+            paths.RootDirectory,
+            cancellationToken);
+        SpecForgeDiagnostics.Log(
+            $"[runner.branch_guard] usId={workflowRun.UsId} gitWorkspace={activation.IsGitWorkspace} switched={activation.BranchSwitched} previous='{activation.PreviousBranch ?? "(none)"}' current='{activation.CurrentBranch ?? "(none)"}' stash='{activation.StashRef ?? "(none)"}'.");
+
+        if (!activation.IsGitWorkspace || !activation.BranchSwitched)
+        {
+            return;
+        }
+
+        var summary = activation.StashCreated
+            ? $"Activated recorded work branch `{workflowRun.Branch.WorkBranchName}` before phase execution. Created stash `{activation.StashRef}` with message: {activation.StashMessage}"
+            : $"Activated recorded work branch `{workflowRun.Branch.WorkBranchName}` before phase execution.";
+        await AppendTimelineEventAsync(
+            paths.TimelineFilePath,
+            "work_branch_activated",
+            actor,
+            workflowRun.CurrentPhase,
+            summary,
+            cancellationToken);
+    }
+
     private static void EnsurePullRequestPublicationSucceeded(PullRequestPublicationResult publication)
     {
         if (string.IsNullOrWhiteSpace(publication.RemoteBranch))
@@ -1145,13 +1186,14 @@ public sealed class WorkflowRunner
         var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, usId);
         var workflowRun = await fileStore.LoadAsync(paths.RootDirectory, cancellationToken);
         EnsureCompletedWorkflowIsUnlockedForDirectMutation(workflowRun, "Artifact operation");
-        await TrackRuntimeVersionChangeAsync(paths, workflowRun, NormalizeActor(actor), workflowRun.CurrentPhase, cancellationToken);
+        var normalizedActor = NormalizeActor(actor);
+        await EnsureRecordedWorkBranchIsActiveAsync(workspaceRoot, paths, workflowRun, normalizedActor, cancellationToken);
+        await TrackRuntimeVersionChangeAsync(paths, workflowRun, normalizedActor, workflowRun.CurrentPhase, cancellationToken);
         if (!HasArtifact(workflowRun.CurrentPhase))
         {
             throw new WorkflowDomainException($"Phase '{WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)}' does not support direct artifact operations.");
         }
 
-        var normalizedActor = NormalizeActor(actor);
         var sourceArtifactPath = paths.GetLatestExistingPhaseArtifactPath(workflowRun.CurrentPhase)
             ?? throw new WorkflowDomainException($"Phase '{WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)}' does not yet have a current artifact to operate on.");
         var operatedPhase = workflowRun.CurrentPhase;

@@ -1099,6 +1099,21 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
                 BranchCreated: false,
                 CurrentBranch: baseBranch,
                 UpstreamBranch: $"origin/{baseBranch}"));
+
+        public Task<WorkBranchActivationResult> EnsureActiveWorkBranchAsync(
+            string workspaceRoot,
+            string usId,
+            string workBranch,
+            string protectedUserStoryDirectory,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new WorkBranchActivationResult(
+                IsGitWorkspace: true,
+                BranchSwitched: false,
+                StashCreated: false,
+                PreviousBranch: workBranch,
+                CurrentBranch: workBranch,
+                StashRef: null,
+                StashMessage: null));
     }
 
     private sealed class RecordingPullRequestPublisher : IPullRequestPublisher

@@ -1834,6 +1834,56 @@ public sealed class WorkflowRunnerTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task ContinuePhaseAsync_WhenRecordedWorkBranchIsNotActive_StashesChangesAndSwitchesBeforeExecution()
+    {
+        await InitializeGitWorkspaceAsync(workspaceRoot);
+        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
+        await RunGitAsync(workspaceRoot, "add", "README.md");
+        await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
+
+        var remoteDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(remoteDirectory);
+        try
+        {
+            await RunGitAsync(remoteDirectory, "init", "--bare");
+            await RunGitAsync(workspaceRoot, "remote", "add", "origin", remoteDirectory);
+            await RunGitAsync(workspaceRoot, "push", "-u", "origin", "main");
+
+            var runner = new WorkflowRunner();
+            await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Branch activation", "feature", "workflow", "Initial source text");
+            await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+            await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+            await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+
+            await RunGitAsync(workspaceRoot, "switch", "main");
+            await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "dirty change on the wrong branch");
+
+            var result = await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+            var currentBranch = (await RunGitAsync(workspaceRoot, "branch", "--show-current")).Trim();
+            var latestStash = await RunGitAsync(workspaceRoot, "stash", "list", "--format=%gd %s", "-n", "1");
+            var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0001");
+            var timeline = await File.ReadAllTextAsync(paths.TimelineFilePath);
+
+            Assert.Equal(PhaseId.TechnicalDesign, result.CurrentPhase);
+            Assert.Equal("feature/us-0001-branch-activation", currentBranch);
+            Assert.Contains("stash@{0}", latestStash);
+            Assert.Contains("SpecForge branch guard for US-0001", latestStash);
+            Assert.Contains("user must review and accept this stash", latestStash);
+            Assert.Contains("`work_branch_activated`", timeline);
+            Assert.Contains("`stash@{0}`", timeline);
+        }
+        finally
+        {
+            if (Directory.Exists(remoteDirectory))
+            {
+                Directory.Delete(remoteDirectory, recursive: true);
+            }
+        }
+    }
+
     private static async Task InitializeGitWorkspaceAsync(string workingDirectory)
     {
         Directory.CreateDirectory(workingDirectory);
@@ -2431,6 +2481,21 @@ public sealed class WorkflowRunnerTests : IDisposable
                 BranchCreated: false,
                 CurrentBranch: baseBranch,
                 UpstreamBranch: $"origin/{baseBranch}"));
+
+        public Task<WorkBranchActivationResult> EnsureActiveWorkBranchAsync(
+            string workspaceRoot,
+            string usId,
+            string workBranch,
+            string protectedUserStoryDirectory,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new WorkBranchActivationResult(
+                IsGitWorkspace: true,
+                BranchSwitched: false,
+                StashCreated: false,
+                PreviousBranch: workBranch,
+                CurrentBranch: workBranch,
+                StashRef: null,
+                StashMessage: null));
     }
 
     private sealed class RecordingPullRequestPublisher : IPullRequestPublisher
