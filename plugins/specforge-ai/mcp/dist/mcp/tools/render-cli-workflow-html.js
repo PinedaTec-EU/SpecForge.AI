@@ -22,7 +22,7 @@ const state = {
   selectedPhaseId: payload.selectedPhaseId ?? workflow.currentPhase,
   selectedArtifactContent: payload.selectedArtifactContent ?? null,
   selectedOperationContent: payload.selectedOperationContent ?? null,
-  runtimeVersion: payload.runtimeVersion ?? workflow.lastRuntimeVersion ?? workflow.createdWithRuntimeVersion ?? null,
+  runtimeVersion: null,
   contextSuggestions: [],
   settingsConfigured: true,
   settingsMessage: null,
