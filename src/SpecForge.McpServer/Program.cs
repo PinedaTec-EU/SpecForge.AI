@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -234,9 +235,15 @@ static async Task<JsonNode> HandleToolCallAsync(
             _ => throw new InvalidOperationException($"Tool '{toolName}' is not supported.")
         };
 
+        await using var attentionDiagnostics = SpecForgeDiagnostics.StartProgressScope(
+            $"[mcp.attention] {toolName} requestId={toolRequestId}",
+            interval: TimeSpan.FromSeconds(15));
+        var resultNode = JsonSerializer.SerializeToNode(result, serializerOptions) ?? new JsonObject();
+        await AttachWorkflowAttentionAsync(resultNode, toolName, arguments, applicationService);
+        attentionDiagnostics.MarkCompleted();
         diagnostics.MarkCompleted();
 
-        var resultJson = JsonSerializer.Serialize(result, serializerOptions);
+        var resultJson = resultNode.ToJsonString(serializerOptions);
         return BuildSuccessResponse(
             payload["id"],
             new JsonObject
@@ -255,6 +262,120 @@ static async Task<JsonNode> HandleToolCallAsync(
     {
         diagnostics.MarkFailed(exception);
         throw;
+    }
+}
+
+static async Task AttachWorkflowAttentionAsync(
+    JsonNode resultNode,
+    string toolName,
+    JsonObject arguments,
+    SpecForgeApplicationService applicationService)
+{
+    if (resultNode is not JsonObject resultObject ||
+        !CanToolReachWaitingUserApproval(toolName, arguments))
+    {
+        return;
+    }
+
+    var status = resultObject["status"]?.GetValue<string>();
+    if (!string.Equals(status, "waiting-user", StringComparison.Ordinal))
+    {
+        return;
+    }
+
+    var workspaceRoot = GetOptional(arguments, "workspaceRoot");
+    var usId = resultObject["usId"]?.GetValue<string>() ?? GetOptional(arguments, "usId");
+
+    if (string.IsNullOrWhiteSpace(workspaceRoot) || string.IsNullOrWhiteSpace(usId))
+    {
+        return;
+    }
+
+    var currentPhase = await applicationService.GetCurrentPhaseAsync(workspaceRoot, usId);
+    if (!IsHumanApprovalGate(currentPhase))
+    {
+        return;
+    }
+
+    var portalUrl = BuildWorkflowPortalUrl(usId, currentPhase.CurrentPhase);
+    var openAttempted = ShouldOpenPortalOnWaitingApproval();
+    var openSucceeded = openAttempted && TryOpenBrowser(portalUrl);
+
+    resultObject["requiresUserAttention"] = true;
+    resultObject["attentionKind"] = "human-approval";
+    resultObject["attentionReason"] = currentPhase.BlockingReason ?? "pending_user_approval";
+    resultObject["portalUrl"] = portalUrl;
+    resultObject["browserOpenAttempted"] = openAttempted;
+    resultObject["browserOpenSucceeded"] = openSucceeded;
+    resultObject["approvalInstruction"] = "Inspect the user story in the SpecForge workflow portal before approving, rejecting, or answering this gate.";
+
+    SpecForgeDiagnostics.Log(
+        $"[mcp.attention] usId={usId} phase={currentPhase.CurrentPhase} reason={currentPhase.BlockingReason ?? "(none)"} portalUrl={portalUrl} openAttempted={openAttempted} openSucceeded={openSucceeded}");
+}
+
+static bool CanToolReachWaitingUserApproval(string toolName, JsonObject arguments)
+{
+    if (toolName is "generate_next_phase" or "approve_review_anyway")
+    {
+        return true;
+    }
+
+    if (toolName != "specforge_action")
+    {
+        return false;
+    }
+
+    var action = GetOptional(arguments, "action");
+    return action is "advance_phase" or "approve_review_anyway";
+}
+
+static bool IsHumanApprovalGate(CurrentPhaseSummary currentPhase) =>
+    currentPhase.RequiresApproval ||
+    currentPhase.BlockingReason?.Contains("approval", StringComparison.OrdinalIgnoreCase) == true;
+
+static string BuildWorkflowPortalUrl(string usId, string currentPhase)
+{
+    var baseUrl = Environment.GetEnvironmentVariable("SPECFORGE_WORKFLOW_PORTAL_URL");
+    if (string.IsNullOrWhiteSpace(baseUrl))
+    {
+        baseUrl = "http://localhost:5128/";
+    }
+
+    if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri))
+    {
+        uri = new Uri("http://localhost:5128/");
+    }
+
+    var builder = new UriBuilder(uri)
+    {
+        Path = string.IsNullOrWhiteSpace(uri.AbsolutePath) ? "/" : uri.AbsolutePath
+    };
+    var query = string.IsNullOrWhiteSpace(builder.Query) ? string.Empty : $"{builder.Query.TrimStart('&', '?')}&";
+    builder.Query = $"{query}usId={Uri.EscapeDataString(usId)}&selectedPhaseId={Uri.EscapeDataString(currentPhase)}";
+    return builder.Uri.ToString();
+}
+
+static bool ShouldOpenPortalOnWaitingApproval() =>
+    string.Equals(
+        Environment.GetEnvironmentVariable("SPECFORGE_MCP_OPEN_PORTAL_ON_WAITING_APPROVAL")?.Trim(),
+        "true",
+        StringComparison.OrdinalIgnoreCase);
+
+static bool TryOpenBrowser(string url)
+{
+    try
+    {
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = url,
+            UseShellExecute = true
+        });
+        return true;
+    }
+    catch (Exception exception)
+    {
+        SpecForgeDiagnostics.Log($"[mcp.attention] browser open failed: {exception.Message}");
+        return false;
     }
 }
 

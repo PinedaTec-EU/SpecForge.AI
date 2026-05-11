@@ -33,3 +33,13 @@ test("MCP required array arguments fail fast when missing or empty", async () =>
   assert.match(source, /Required array argument '\{key\}' must contain at least one non-empty value/);
   assert.doesNotMatch(source, /if \(arguments\[key\] is not JsonArray array\)\s*\{\s*return \[\];\s*\}/);
 });
+
+test("MCP annotates waiting approval results with portal attention metadata", async () => {
+  const source = await fs.promises.readFile(programPath, "utf8");
+
+  assert.match(source, /AttachWorkflowAttentionAsync\(resultNode, toolName, arguments, applicationService\)/);
+  assert.match(source, /resultObject\["portalUrl"\] = portalUrl/);
+  assert.match(source, /resultObject\["attentionKind"\] = "human-approval"/);
+  assert.match(source, /SPECFORGE_MCP_OPEN_PORTAL_ON_WAITING_APPROVAL/);
+  assert.match(source, /SPECFORGE_WORKFLOW_PORTAL_URL/);
+});
