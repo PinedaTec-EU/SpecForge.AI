@@ -1578,10 +1578,13 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
     const reviewRegressionActionDisabled = reviewRegressionRequiresPrompt && reviewRegressionDraft.length === 0;
     const shouldRenderApproveAction = selectedPhaseIsCurrent
         && selectedPhase.requiresApproval;
+    const shouldRenderDecompositionActions = selectedPhaseIsCurrent
+        && selectedPhase.phaseId === "spec"
+        && workflow.controls.blockingReason === "decomposition_pending_user_approval";
     const shouldRenderRerunReviewAction = canRerunCurrentReview(workflow, selectedPhase, playbackState);
     const shouldRenderReviewRegressionAction = selectedPhaseIsCurrent && selectedPhase.phaseId === "review";
     const shouldRenderApproveReviewAnywayAction = selectedPhaseIsCurrent && selectedPhase.phaseId === "review";
-    const detailActions = (selectedPhaseIsCurrent && (workflow.controls.canApprove || shouldRenderApproveAction || rejectPlan))
+    const detailActions = (selectedPhaseIsCurrent && (workflow.controls.canApprove || shouldRenderApproveAction || rejectPlan || shouldRenderDecompositionActions))
         || workflow.controls.canContinue
         || shouldRenderRerunReviewAction
         || shouldRenderReviewRegressionAction
@@ -1601,8 +1604,12 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
         ${shouldRenderRerunReviewAction
             ? `<button class="workflow-action-button workflow-action-button--progress" data-command="continue"${rerunReviewDisabled ? " disabled" : ""}>${rerunReviewActionLabel}</button>`
             : ""}
+        ${shouldRenderDecompositionActions
+            ? `<button class="workflow-action-button workflow-action-button--approve" data-command="approveDecomposition">Approve Split</button>
+               <button class="workflow-action-button workflow-action-button--danger" data-command="rejectDecomposition">Reject Split</button>`
+            : ""}
         ${shouldRenderApproveAction
-            ? `<button class="workflow-action-button workflow-action-button--approve" data-command="approve" data-approve-button data-pending-approval-count="${unresolvedApprovalQuestionCount}"${!workflow.controls.canApprove || shouldRenderApprovalBranchEditor(workflow, selectedPhase, selectedPhaseIsCurrent) && Boolean(state.requireExplicitApprovalBranchAcceptance) ? " disabled" : ""}>${approveActionLabel}</button>`
+            ? `<button class="workflow-action-button workflow-action-button--approve" data-command="approve" data-approve-button data-pending-approval-count="${unresolvedApprovalQuestionCount}"${shouldRenderDecompositionActions || !workflow.controls.canApprove || shouldRenderApprovalBranchEditor(workflow, selectedPhase, selectedPhaseIsCurrent) && Boolean(state.requireExplicitApprovalBranchAcceptance) ? " disabled" : ""}>${approveActionLabel}</button>`
             : ""}
         ${rejectPlan ? `<button class="workflow-action-button workflow-action-button--danger" type="button" data-open-reject-modal data-reject-target-phase="${(0, htmlEscape_1.escapeHtmlAttr)(rejectPlan.targetPhaseId)}" data-reject-mode="${(0, htmlEscape_1.escapeHtmlAttr)(rejectPlan.mode)}" data-reject-title="${(0, htmlEscape_1.escapeHtmlAttr)(rejectPlan.modalTitle)}" data-reject-prompt="${(0, htmlEscape_1.escapeHtmlAttr)(rejectPlan.modalPrompt)}" data-reject-helper="${(0, htmlEscape_1.escapeHtmlAttr)(rejectPlan.helperText)}" data-reject-confirm-label="${(0, htmlEscape_1.escapeHtmlAttr)(rejectPlan.confirmLabel)}">Reject</button>` : ""}
       </div>
@@ -3281,6 +3288,104 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
       width: var(--graph-width-desktop-vertical, ${desktopGraphWidth}px);
       min-width: var(--graph-width-desktop-vertical, ${desktopGraphWidth}px);
       min-height: var(--graph-height-desktop-vertical, ${desktopGraphHeight}px);
+    }
+    .phase-graph--aggregate {
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr);
+      gap: 18px;
+      width: min(960px, 100%);
+      min-width: 0;
+      height: auto;
+      min-height: 360px;
+      padding: 28px;
+    }
+    .aggregate-parent-node,
+    .aggregate-spec-node,
+    .aggregate-child-node {
+      border: 1px solid rgba(114, 241, 184, 0.18);
+      border-radius: 8px;
+      background: rgba(11, 18, 26, 0.88);
+      color: rgba(235, 244, 241, 0.94);
+      box-shadow: 0 18px 36px rgba(0, 0, 0, 0.24);
+    }
+    .aggregate-parent-node,
+    .aggregate-spec-node {
+      justify-self: center;
+      width: min(520px, 100%);
+      padding: 16px 18px;
+      text-align: center;
+    }
+    .aggregate-parent-node h3 {
+      margin: 8px 0 4px;
+      font-size: 1rem;
+    }
+    .aggregate-parent-node p,
+    .aggregate-spec-node span {
+      margin: 0;
+      color: rgba(204, 214, 211, 0.76);
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+    .aggregate-spec-node {
+      position: relative;
+      display: grid;
+      gap: 6px;
+    }
+    .aggregate-spec-node::before,
+    .aggregate-children-grid::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      width: 2px;
+      transform: translateX(-50%);
+      background: rgba(114, 241, 184, 0.24);
+    }
+    .aggregate-spec-node::before {
+      top: -18px;
+      height: 18px;
+    }
+    .aggregate-children-grid {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      padding-top: 22px;
+    }
+    .aggregate-children-grid::before {
+      top: 0;
+      height: 22px;
+    }
+    .aggregate-child-node {
+      display: grid;
+      gap: 6px;
+      min-height: 116px;
+      padding: 14px;
+      text-align: left;
+      cursor: pointer;
+      font: inherit;
+    }
+    .aggregate-child-node:hover {
+      border-color: rgba(114, 241, 184, 0.44);
+      background: rgba(16, 32, 42, 0.96);
+    }
+    .aggregate-child-node__id {
+      color: #72f1b8;
+      font-size: 0.74rem;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+    .aggregate-child-node span:last-child {
+      color: rgba(204, 214, 211, 0.72);
+      font-size: 0.76rem;
+      font-weight: 700;
+    }
+    .aggregate-child-node--completed {
+      border-color: rgba(114, 241, 184, 0.34);
+    }
+    .aggregate-child-node--empty {
+      display: block;
+      color: rgba(204, 214, 211, 0.72);
+      cursor: default;
     }
     .phase-graph[data-graph-layout-mode="horizontal"] {
       width: var(--graph-width-desktop-horizontal, ${desktopGraphWidth}px);
@@ -8353,7 +8458,44 @@ function buildWorkflowTagTokens(tags) {
 function formatWorkflowTagLabel(tag) {
     return `#${tag}`;
 }
+function buildAggregateWorkflowGraph(workflow) {
+    const children = workflow.childUserStories ?? [];
+    const childNodes = children.map((child, index) => `
+    <button
+      class="aggregate-child-node aggregate-child-node--${(0, htmlEscape_1.escapeHtmlAttr)(child.status)}"
+      type="button"
+      data-command="openWorkflowTab"
+      data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(child.usId)}"
+      style="--aggregate-child-index: ${index};">
+      <span class="aggregate-child-node__id">${(0, htmlEscape_1.escapeHtml)(child.usId)}</span>
+      <strong>${(0, htmlEscape_1.escapeHtml)(child.title)}</strong>
+      <span>${(0, htmlEscape_1.escapeHtml)(child.currentPhase)} · ${(0, htmlEscape_1.escapeHtml)(child.status)}</span>
+    </button>
+  `).join("");
+    const decision = workflow.decomposition?.decision ?? "approved";
+    const score = workflow.decomposition ? ` · ${Math.round(workflow.decomposition.complexityScore * 100)}%` : "";
+    return `
+    <div class="phase-graph phase-graph--aggregate" data-graph-layout-mode="vertical" aria-label="Aggregate user story graph">
+      <div class="aggregate-parent-node">
+        <span class="phase-tag approval">aggregate</span>
+        <h3>${(0, htmlEscape_1.escapeHtml)(workflow.usId)} · Parent spec</h3>
+        <p>${(0, htmlEscape_1.escapeHtml)(decision)} decomposition${(0, htmlEscape_1.escapeHtml)(score)}</p>
+      </div>
+      <div class="aggregate-spec-node">
+        <span class="phase-tag approval">spec decision</span>
+        <strong>${(0, htmlEscape_1.escapeHtml)(workflow.title)}</strong>
+        <span>${(0, htmlEscape_1.escapeHtml)(workflow.status)}</span>
+      </div>
+      <div class="aggregate-children-grid">
+        ${childNodes || `<div class="aggregate-child-node aggregate-child-node--empty">No child user stories were created.</div>`}
+      </div>
+    </div>
+  `;
+}
 function buildPhaseGraph(workflow, state, selectedPhaseId, playbackState, effectiveExecutionPhaseId) {
+    if (workflow.workflowKind === "aggregate") {
+        return buildAggregateWorkflowGraph(workflow);
+    }
     const executionPhaseId = playbackState === "playing" ? effectiveExecutionPhaseId : null;
     const pausedExecutionPhaseId = resolvePausedExecutionPhaseId(workflow, state, playbackState);
     const displayedCurrentPhaseId = resolveDisplayedCurrentPhaseId(workflow, state, effectiveExecutionPhaseId, pausedExecutionPhaseId, playbackState);
