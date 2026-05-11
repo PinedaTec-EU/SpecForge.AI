@@ -3995,6 +3995,29 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
         inset 0 -8px 18px rgba(0, 0, 0, 0.16),
         0 14px 24px rgba(96, 58, 182, 0.24);
     }
+    .phase-node.phase-tone-pending .phase-node-visual,
+    .phase-node.phase-tone-disabled .phase-node-visual {
+      color: rgba(224, 230, 239, 0.72);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04) 24%, rgba(255, 255, 255, 0) 100%),
+        linear-gradient(145deg, rgba(94, 103, 118, 0.72), rgba(37, 43, 54, 0.92));
+      border-color: rgba(188, 198, 214, 0.18);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        inset 0 -8px 18px rgba(0, 0, 0, 0.16),
+        0 12px 20px rgba(0, 0, 0, 0.16);
+      filter: saturate(0.25);
+    }
+    .phase-node.phase-tone-pending .phase-node-visual::before,
+    .phase-node.phase-tone-disabled .phase-node-visual::before {
+      background:
+        radial-gradient(circle at 30% 18%, rgba(255, 255, 255, 0.18), transparent 36%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 38%);
+    }
+    .phase-node.phase-tone-pending .phase-node-visual svg,
+    .phase-node.phase-tone-disabled .phase-node-visual svg {
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.12));
+    }
     .phase-node--reopen-target {
       border-color: rgba(255, 214, 109, 0.72);
       box-shadow:
