@@ -4137,6 +4137,70 @@ test("buildWorkflowHtml gives dependency blocked nodes an amber lock marker", ()
   assert.match(html, /\.token\.token--blocked \{[\s\S]*var\(--attention-egg-soft\)/);
 });
 
+test("buildWorkflowHtml renders pending phase visual icons in muted gray", () => {
+  const html = buildWorkflowHtml({
+    usId: "US-0144",
+    title: "Muted pending phase icons",
+    category: "workflow",
+    status: "active",
+    currentPhase: "capture",
+    directoryPath: "/tmp/us.US-0144",
+    workBranch: null,
+    mainArtifactPath: "/tmp/us.md",
+    timelinePath: "/tmp/timeline.md",
+    rawTimeline: "raw timeline",
+    phases: [
+      {
+        phaseId: "capture",
+        title: "Capture",
+        order: 0,
+        requiresApproval: false,
+        expectsHumanIntervention: false,
+        isApproved: false,
+        isCurrent: true,
+        state: "current",
+        artifactPath: null,
+        executePromptPath: null,
+        approvePromptPath: null
+      },
+      {
+        phaseId: "spec",
+        title: "Spec",
+        order: 1,
+        requiresApproval: true,
+        expectsHumanIntervention: true,
+        isApproved: false,
+        isCurrent: false,
+        state: "pending",
+        artifactPath: null,
+        executePromptPath: null,
+        approvePromptPath: null
+      }
+    ],
+    controls: {
+      canContinue: true,
+      canApprove: false,
+      requiresApproval: false,
+      blockingReason: null,
+      canRestartFromSource: false,
+      regressionTargets: []
+    },
+    refinement: null,
+    events: [],
+    attachmentsDirectoryPath: "/tmp/attachments",
+    attachments: []
+  }, {
+    selectedPhaseId: "capture",
+    selectedArtifactContent: null,
+    contextSuggestions: [],
+    settingsConfigured: true,
+    settingsMessage: null
+  }, "idle");
+
+  assert.match(html, /phase-node spec phase-tone-pending/);
+  assert.match(html, /\.phase-node\.phase-tone-pending \.phase-node-visual,[\s\S]*\.phase-node\.phase-tone-disabled \.phase-node-visual \{[\s\S]*linear-gradient\(145deg, rgba\(94, 103, 118, 0\.72\), rgba\(37, 43, 54, 0\.92\)\)/);
+});
+
 test("buildWorkflowHtml marks a phase blocked when its model security precheck fails", () => {
   const html = buildWorkflowHtml({
     usId: "US-0099",
