@@ -12,6 +12,7 @@ const sidebarUserStories = Array.isArray(payload.sidebarUserStories) ? payload.s
 const activeSidebarUserStories = Array.isArray(payload.activeSidebarUserStories) ? payload.activeSidebarUserStories : userStories;
 const droppedSidebarUserStories = Array.isArray(payload.droppedSidebarUserStories) ? payload.droppedSidebarUserStories : [];
 const showDroppedUserStories = payload.showDroppedUserStories === true;
+const showCompletedUserStories = payload.showCompletedUserStories === true;
 const droppedUserStoryCount = Number.isFinite(payload.droppedUserStoryCount) ? payload.droppedUserStoryCount : 0;
 const configurationPortalUrl = payload.configurationPortalUrl || "http://localhost:5128/configuration";
 const configurationProvidersUrl = payload.configurationProvidersUrl || configurationPortalUrl;
@@ -262,6 +263,7 @@ const sidebarHtml = buildSidebarHtml({
   runtimeVersion: state.runtimeVersion,
   viewMode: "phase",
   showDroppedUserStories,
+  showCompletedUserStories,
   droppedUserStoryCount,
   categories: [...new Set(sidebarUserStories.map(item => item.category).filter(Boolean))],
   userStories: sidebarUserStories
@@ -347,6 +349,14 @@ const sidebarShell = `
       const starredUserStoryId = getStarredUserStoryId();
       return userStoryIds.includes(starredUserStoryId) ? starredUserStoryId : userStoryIds[0] || null;
     };
+    const navigateTo = (url, replace) => {
+      if (url.toString() === window.location.href) return;
+      if (replace) {
+        window.location.replace(url.toString());
+        return;
+      }
+      window.location.href = url.toString();
+    };
     const applySidebarStarredUserStory = () => {
       const starredUserStoryId = getStarredUserStoryId();
       const doc = sidebarFrame?.contentDocument;
@@ -408,15 +418,28 @@ const sidebarShell = `
         const url = new URL(window.location.href);
         if (url.searchParams.get("sidebarVisibility") === "dropped") {
           url.searchParams.delete("sidebarVisibility");
+          url.searchParams.delete("sidebarCompleted");
           const targetUsId = resolveTargetUserStoryId(activeSidebarUserStoryIds);
           if (targetUsId) url.searchParams.set("usId", targetUsId);
         } else {
           url.searchParams.set("sidebarVisibility", "dropped");
+          url.searchParams.delete("sidebarCompleted");
           const targetUsId = resolveTargetUserStoryId(droppedSidebarUserStoryIds);
           if (targetUsId) url.searchParams.set("usId", targetUsId);
         }
         url.searchParams.delete("selectedPhaseId");
-        window.location.href = url.toString();
+        navigateTo(url, true);
+        return;
+      }
+      if (message.command === "toggleCompletedUserStories") {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("selectedPhaseId");
+        if (url.searchParams.get("sidebarCompleted") === "true") {
+          url.searchParams.delete("sidebarCompleted");
+        } else {
+          url.searchParams.set("sidebarCompleted", "true");
+        }
+        navigateTo(url, true);
         return;
       }
       if ((message.command === "dropUserStory" || message.command === "recoverUserStory") && message.usId) {

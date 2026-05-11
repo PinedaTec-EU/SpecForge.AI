@@ -60,7 +60,6 @@ function buildSidebarHtml(model) {
           </div>
           <div class="compact-actions">
             ${buildDroppedStoriesActionButton(model.showDroppedUserStories, model.droppedUserStoryCount)}
-            ${buildExecutionSettingsActionButton()}
           </div>
         </div>
         <p class="copy">No faded text-buttons, no scattered prompts. Start here and the sidebar opens the full intake form in place.</p>
@@ -426,24 +425,12 @@ function buildViewOptionsMenu(model) {
     </div>
   `;
 }
-function buildExecutionSettingsActionButton() {
-    return `
-    <button
-      class="icon-action"
-      data-command="openExecutionSettings"
-      title="Configure execution providers"
-      aria-label="Configure execution providers">
-      <span aria-hidden="true">⚙</span>
-    </button>
-  `;
-}
 function buildCompactActions(model) {
     return `
     <div class="compact-actions">
       ${buildDroppedStoriesActionButton(model.showDroppedUserStories, model.droppedUserStoryCount)}
       ${model.showDroppedUserStories ? "" : buildViewOptionsMenu(model)}
       ${model.showDroppedUserStories ? "" : buildCreateActionButton(model.promptsInitialized)}
-      ${buildExecutionSettingsActionButton()}
       ${buildPromptMenu(model.promptsInitialized)}
     </div>
   `;
