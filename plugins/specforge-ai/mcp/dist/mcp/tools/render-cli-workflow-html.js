@@ -250,24 +250,48 @@ const sidebarApiShim = `
   }));
 </script>`;
 
-const sidebarHtml = buildSidebarHtml({
-  hasWorkspace: true,
-  showCreateForm: false,
-  busyMessage: null,
-  promptsInitialized: true,
-  promptsMessage: null,
-  settingsConfigured: true,
-  settingsMessage: null,
-  starredUserStoryId: null,
-  activeWorkflowUsId: workflow.usId,
-  runtimeVersion: state.runtimeVersion,
-  viewMode: "phase",
-  showDroppedUserStories,
-  showCompletedUserStories,
-  droppedUserStoryCount,
-  categories: [...new Set(sidebarUserStories.map(item => item.category).filter(Boolean))],
-  userStories: sidebarUserStories
-}).replace("<script>", `${sidebarApiShim}\n<script>`);
+function buildCliSidebarHtml(items, options) {
+  return buildSidebarHtml({
+    hasWorkspace: true,
+    showCreateForm: false,
+    busyMessage: null,
+    promptsInitialized: true,
+    promptsMessage: null,
+    settingsConfigured: true,
+    settingsMessage: null,
+    starredUserStoryId: null,
+    activeWorkflowUsId: workflow.usId,
+    runtimeVersion: state.runtimeVersion,
+    viewMode: "phase",
+    showDroppedUserStories: options.showDroppedUserStories,
+    showCompletedUserStories: options.showCompletedUserStories,
+    droppedUserStoryCount,
+    categories: [...new Set(items.map(item => item.category).filter(Boolean))],
+    userStories: items
+  }).replace("<script>", `${sidebarApiShim}\n<script>`);
+}
+
+function safeScriptJson(value) {
+  return JSON.stringify(value).replaceAll("</", "<\\/");
+}
+
+const activeSidebarHtml = buildCliSidebarHtml(activeSidebarUserStories, {
+  showDroppedUserStories: false,
+  showCompletedUserStories: false
+});
+const activeCompletedSidebarHtml = buildCliSidebarHtml(activeSidebarUserStories, {
+  showDroppedUserStories: false,
+  showCompletedUserStories: true
+});
+const droppedSidebarHtml = buildCliSidebarHtml(droppedSidebarUserStories, {
+  showDroppedUserStories: true,
+  showCompletedUserStories: false
+});
+const sidebarHtml = showDroppedUserStories
+  ? droppedSidebarHtml
+  : showCompletedUserStories
+    ? activeCompletedSidebarHtml
+    : activeSidebarHtml;
 
 const sidebarShell = `
 <style>
@@ -324,8 +348,13 @@ const sidebarShell = `
     const configOverlay = document.querySelector("[data-cli-config-overlay]");
     const configFrame = document.querySelector("[data-cli-config-frame]");
     const sidebarFrame = document.querySelector('iframe[title="User stories"]');
-    const activeSidebarUserStoryIds = ${JSON.stringify(activeSidebarUserStories.map(item => item.usId).filter(Boolean))};
-    const droppedSidebarUserStoryIds = ${JSON.stringify(droppedSidebarUserStories.map(item => item.usId).filter(Boolean))};
+    const sidebarHtmlByMode = {
+      active: ${safeScriptJson(activeSidebarHtml)},
+      activeCompleted: ${safeScriptJson(activeCompletedSidebarHtml)},
+      dropped: ${safeScriptJson(droppedSidebarHtml)}
+    };
+    let sidebarShowsDropped = ${showDroppedUserStories ? "true" : "false"};
+    let sidebarShowsCompleted = ${showCompletedUserStories ? "true" : "false"};
     const openConfiguration = (url) => {
       if (configFrame) {
         configFrame.setAttribute("src", url);
@@ -345,17 +374,28 @@ const sidebarShell = `
         else localStorage.removeItem(starredUserStoryStorageKey);
       } catch {}
     };
-    const resolveTargetUserStoryId = (userStoryIds) => {
-      const starredUserStoryId = getStarredUserStoryId();
-      return userStoryIds.includes(starredUserStoryId) ? starredUserStoryId : userStoryIds[0] || null;
+    const replaceSidebarFrame = () => {
+      if (!sidebarFrame) return;
+      sidebarFrame.srcdoc = sidebarShowsDropped
+        ? sidebarHtmlByMode.dropped
+        : sidebarShowsCompleted
+          ? sidebarHtmlByMode.activeCompleted
+          : sidebarHtmlByMode.active;
     };
-    const navigateTo = (url, replace) => {
-      if (url.toString() === window.location.href) return;
-      if (replace) {
-        window.location.replace(url.toString());
-        return;
+    const replaceSidebarUrlState = () => {
+      const url = new URL(window.location.href);
+      if (sidebarShowsDropped) {
+        url.searchParams.set("sidebarVisibility", "dropped");
+        url.searchParams.delete("sidebarCompleted");
+      } else {
+        url.searchParams.delete("sidebarVisibility");
+        if (sidebarShowsCompleted) {
+          url.searchParams.set("sidebarCompleted", "true");
+        } else {
+          url.searchParams.delete("sidebarCompleted");
+        }
       }
-      window.location.href = url.toString();
+      window.history.replaceState(window.history.state, "", url.toString());
     };
     const applySidebarStarredUserStory = () => {
       const starredUserStoryId = getStarredUserStoryId();
@@ -415,31 +455,17 @@ const sidebarShell = `
         return;
       }
       if (message.command === "toggleDroppedUserStories") {
-        const url = new URL(window.location.href);
-        if (url.searchParams.get("sidebarVisibility") === "dropped") {
-          url.searchParams.delete("sidebarVisibility");
-          url.searchParams.delete("sidebarCompleted");
-          const targetUsId = resolveTargetUserStoryId(activeSidebarUserStoryIds);
-          if (targetUsId) url.searchParams.set("usId", targetUsId);
-        } else {
-          url.searchParams.set("sidebarVisibility", "dropped");
-          url.searchParams.delete("sidebarCompleted");
-          const targetUsId = resolveTargetUserStoryId(droppedSidebarUserStoryIds);
-          if (targetUsId) url.searchParams.set("usId", targetUsId);
-        }
-        url.searchParams.delete("selectedPhaseId");
-        navigateTo(url, true);
+        sidebarShowsDropped = !sidebarShowsDropped;
+        sidebarShowsCompleted = false;
+        replaceSidebarUrlState();
+        replaceSidebarFrame();
         return;
       }
       if (message.command === "toggleCompletedUserStories") {
-        const url = new URL(window.location.href);
-        url.searchParams.delete("selectedPhaseId");
-        if (url.searchParams.get("sidebarCompleted") === "true") {
-          url.searchParams.delete("sidebarCompleted");
-        } else {
-          url.searchParams.set("sidebarCompleted", "true");
-        }
-        navigateTo(url, true);
+        sidebarShowsDropped = false;
+        sidebarShowsCompleted = !sidebarShowsCompleted;
+        replaceSidebarUrlState();
+        replaceSidebarFrame();
         return;
       }
       if ((message.command === "dropUserStory" || message.command === "recoverUserStory") && message.usId) {
