@@ -135,7 +135,8 @@ static async Task<JsonNode> HandleToolCallAsync(
             "list_user_stories" => new
             {
                 items = await applicationService.ListUserStoriesAsync(
-                    workspaceRoot: GetRequired(arguments, "workspaceRoot"))
+                    workspaceRoot: GetRequired(arguments, "workspaceRoot"),
+                    visibility: GetOptional(arguments, "visibility") ?? "active")
             },
             "get_user_story_summary" => await applicationService.GetUserStorySummaryAsync(
                 workspaceRoot: GetRequired(arguments, "workspaceRoot"),
@@ -509,7 +510,9 @@ static async Task<object> HandleSpecForgeQueryAsync(
     {
         "list_user_stories" => new
         {
-            items = await applicationService.ListUserStoriesAsync(workspaceRoot)
+            items = await applicationService.ListUserStoriesAsync(
+                workspaceRoot,
+                GetOptional(arguments, "visibility") ?? "active")
         },
         "summary" => await applicationService.GetUserStorySummaryAsync(
             workspaceRoot,

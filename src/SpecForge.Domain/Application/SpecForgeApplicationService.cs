@@ -85,7 +85,7 @@ public sealed class SpecForgeApplicationService
         var normalizedStrategy = string.IsNullOrWhiteSpace(strategy)
             ? "small-user-stories"
             : strategy.Trim();
-        var existingIds = (await ListUserStoriesAsync(workspaceRoot, cancellationToken))
+        var existingIds = (await ListUserStoriesAsync(workspaceRoot, cancellationToken: cancellationToken))
             .Select(static story => story.UsId)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var nextNumber = NextUserStoryNumber(existingIds);
@@ -171,8 +171,15 @@ public sealed class SpecForgeApplicationService
 
     public async Task<IReadOnlyCollection<UserStorySummary>> ListUserStoriesAsync(
         string workspaceRoot,
+        string visibility = "active",
         CancellationToken cancellationToken = default)
     {
+        var normalizedVisibility = visibility.Trim().ToLowerInvariant();
+        if (normalizedVisibility is not "active" and not "dropped")
+        {
+            throw new ArgumentException("User story visibility must be active or dropped.", nameof(visibility));
+        }
+
         var specsRoot = Path.Combine(
             workspaceRoot,
             UserStoryFilePaths.SpecsDirectoryName,
@@ -191,7 +198,8 @@ public sealed class SpecForgeApplicationService
         foreach (var directory in directories.OrderBy(static directory => directory, StringComparer.Ordinal))
         {
             var paths = new UserStoryFilePaths(directory);
-            if (!File.Exists(paths.StateFilePath) || File.Exists(paths.DroppedMarkerFilePath))
+            var isDropped = File.Exists(paths.DroppedMarkerFilePath);
+            if (!File.Exists(paths.StateFilePath) || (normalizedVisibility == "active" && isDropped) || (normalizedVisibility == "dropped" && !isDropped))
             {
                 continue;
             }

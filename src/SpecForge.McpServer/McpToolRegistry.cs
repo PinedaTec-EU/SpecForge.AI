@@ -16,6 +16,7 @@ public static class McpToolRegistry
                         Props(
                             ("workspaceRoot", Prop("string", "Absolute path to the workspace root.")),
                             ("query",         EnumProp("Read operation.", "list_user_stories", "summary", "workflow", "current_phase", "runtime_status", "lineage", "files")),
+                            ("visibility",    EnumProp("User story visibility for list_user_stories. Defaults to active.", "active", "dropped")),
                             ("usId",          Prop("string", "User story identifier. Required for all queries except list_user_stories."))))),
 
                 Tool("specforge_action", "Compact SpecForge mutation facade for Codex clients. Use this instead of editing .specs files directly.",
@@ -85,8 +86,8 @@ public static class McpToolRegistry
                             ("promptPath",    Prop("string", "Known prompt template path, absolute or workspace-relative.")),
                             ("overwrite",     Prop("boolean", "If true, overwrite an existing prompt override. Defaults to false."))))),
 
-                Tool("list_user_stories", "List all user stories persisted in the workspace.",
-                    Schema(required: ["workspaceRoot"], Props(("workspaceRoot", Prop("string", "Absolute path to the workspace root."))))),
+                Tool("list_user_stories", "List user stories persisted in the workspace.",
+                    Schema(required: ["workspaceRoot"], Props(("workspaceRoot", Prop("string", "Absolute path to the workspace root.")), ("visibility", EnumProp("Which user stories to list. Defaults to active.", "active", "dropped"))))),
                 Tool("get_user_story_summary", "Get the operational summary of a user story.",
                     Schema(required: ["workspaceRoot", "usId"], Props(("workspaceRoot", Prop("string", "Absolute path to the workspace root.")), ("usId", Prop("string", "User story identifier."))))),
                 Tool("get_user_story_workflow", "Get workflow phases, controls, refinement session, and audit trail for a user story.",

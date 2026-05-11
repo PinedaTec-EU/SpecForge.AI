@@ -35,8 +35,10 @@ type SidebarMessage =
   | { readonly command: "openWorkflow"; readonly usId?: string }
   | { readonly command: "openMainArtifact"; readonly usId?: string }
   | { readonly command: "toggleStarredUserStory"; readonly usId?: string }
+  | { readonly command: "toggleDroppedUserStories" }
   | { readonly command: "resetUserStoryToCapture"; readonly usId?: string }
   | { readonly command: "dropUserStory"; readonly usId?: string }
+  | { readonly command: "recoverUserStory"; readonly usId?: string }
   | { readonly command: "deleteUserStory"; readonly usId?: string }
   | { readonly command: "analyzeRepairUserStory"; readonly usId?: string }
   | { readonly command: "setCreateFileMode"; readonly kind?: string }
@@ -67,6 +69,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
   private showCreateForm = false;
   private busyMessage: string | null = null;
   private activeWorkflowUsId: string | null = null;
+  private showDroppedUserStories = false;
   private createFileMode: "context" | "attachment" = "context";
   private createFiles: DraftCreateFile[] = [];
   private createReferenceScanVersion = 0;
@@ -190,6 +193,13 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 
         await this.dropUserStoryAsync(message.usId);
         return;
+      case "recoverUserStory":
+        if (!message.usId) {
+          return;
+        }
+
+        await this.recoverUserStoryAsync(message.usId);
+        return;
       case "resetUserStoryToCapture":
         if (!message.usId) {
           return;
@@ -210,6 +220,10 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
         }
 
         await this.toggleStarredUserStoryAsync(message.usId);
+        return;
+      case "toggleDroppedUserStories":
+        this.showDroppedUserStories = !this.showDroppedUserStories;
+        await this.safeRenderAsync();
         return;
       case "initializeRepoPrompts":
         await this.runBusyActionAsync("Exporting prompt templates...", async () => {
@@ -340,7 +354,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
       return;
     }
 
-    const storiesRoot = path.join(workspaceRoot, ".specs", "us") + path.sep;
+    const storiesRoot = path.resolve(workspaceRoot, ".specs", "us") + path.sep;
     const targetPath = path.resolve(summary.directoryPath);
     if (!targetPath.startsWith(storiesRoot)) {
       void vscode.window.showErrorMessage(`Refusing to drop '${usId}' because its path is outside .specs/us.`);
@@ -361,6 +375,38 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 
       await this.onDidCreateUserStory();
       void vscode.window.showInformationMessage(`${usId} dropped.`);
+    });
+  }
+
+  private async recoverUserStoryAsync(usId: string): Promise<void> {
+    const workspaceRoot = getWorkspaceRoot();
+    if (!workspaceRoot) {
+      return;
+    }
+
+    const summary = await getOrCreateBackendClient(workspaceRoot).getUserStorySummary(usId);
+    const confirmation = await vscode.window.showWarningMessage(
+      `Recover ${usId}? It will appear again in the active SpecForge panel.`,
+      { modal: true, detail: summary.directoryPath },
+      "Recover US"
+    );
+
+    if (confirmation !== "Recover US") {
+      appendSpecForgeLog(`Recover US for '${usId}' was cancelled by the user.`);
+      return;
+    }
+
+    const storiesRoot = path.resolve(workspaceRoot, ".specs", "us") + path.sep;
+    const targetPath = path.resolve(summary.directoryPath);
+    if (!targetPath.startsWith(storiesRoot)) {
+      void vscode.window.showErrorMessage(`Refusing to recover '${usId}' because its path is outside .specs/us.`);
+      return;
+    }
+
+    await this.runBusyActionAsync(`Recovering ${usId}...`, async () => {
+      await fs.promises.rm(path.join(targetPath, ".dropped"), { force: true });
+      await this.onDidCreateUserStory();
+      void vscode.window.showInformationMessage(`${usId} recovered.`);
     });
   }
 
@@ -626,6 +672,8 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
         activeWorkflowUsId: this.activeWorkflowUsId,
         runtimeVersion,
         viewMode: settings.userStoryListViewMode ?? "category",
+        showDroppedUserStories: this.showDroppedUserStories,
+        droppedUserStoryCount: 0,
         createFileMode: this.createFileMode,
         createFiles: this.createFiles,
         createFormResetToken: this.createFormResetToken,
@@ -638,9 +686,13 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 
     const hasPersistedStories = await hasPersistedUserStoriesAsync(workspaceRoot);
     appendSpecForgeLog(`Sidebar persisted user story probe for '${workspaceRoot}': ${hasPersistedStories}.`);
+    const backendClient = getOrCreateBackendClient(workspaceRoot);
     const userStories = hasPersistedStories
-      ? await getOrCreateBackendClient(workspaceRoot).listUserStories()
+      ? await backendClient.listUserStories(this.showDroppedUserStories ? "dropped" : "active")
       : [];
+    const droppedUserStoryCount = hasPersistedStories
+      ? (this.showDroppedUserStories ? userStories.length : (await backendClient.listUserStories("dropped")).length)
+      : 0;
     const categories = await getUserStoryCategoriesAsync(workspaceRoot);
     const promptsStatus = await getRepoPromptsStatusAsync(workspaceRoot);
     const settings = getSpecForgeSettings();
@@ -665,6 +717,8 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
       activeWorkflowUsId: this.activeWorkflowUsId,
       runtimeVersion,
       viewMode: settings.userStoryListViewMode ?? "category",
+      showDroppedUserStories: this.showDroppedUserStories,
+      droppedUserStoryCount,
       createFileMode: this.createFileMode,
       createFiles: this.createFiles,
       createFormResetToken: this.createFormResetToken,
@@ -694,6 +748,8 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
         activeWorkflowUsId: this.activeWorkflowUsId,
         runtimeVersion: await readRuntimeVersionAsync(),
         viewMode: getSpecForgeSettings().userStoryListViewMode ?? "category",
+        showDroppedUserStories: this.showDroppedUserStories,
+        droppedUserStoryCount: 0,
         createFileMode: this.createFileMode,
         createFiles: this.createFiles,
         createFormResetToken: this.createFormResetToken,

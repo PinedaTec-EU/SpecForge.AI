@@ -55,6 +55,22 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ListUserStoriesAsync_DroppedVisibilityReturnsOnlyDroppedUserStories()
+    {
+        var runner = new WorkflowRunner();
+        var applicationService = new SpecForgeApplicationService();
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0002", "Story two", "feature", "workflow", "Initial source");
+        var droppedPaths = UserStoryFilePaths.FromWorkspaceRoot(workspaceRoot, "workflow", "US-0001");
+        await File.WriteAllTextAsync(droppedPaths.DroppedMarkerFilePath, "Dropped by user.");
+
+        var items = await applicationService.ListUserStoriesAsync(workspaceRoot, "dropped");
+
+        var summary = Assert.Single(items);
+        Assert.Equal("US-0001", summary.UsId);
+    }
+
+    [Fact]
     public async Task GetUserStorySummaryAsync_ReturnsBranchNameWhenAvailable()
     {
         var runner = new WorkflowRunner();

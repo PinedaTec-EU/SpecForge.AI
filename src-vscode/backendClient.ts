@@ -346,7 +346,7 @@ export interface UserStoryWorkflowDetails {
 }
 
 export interface SpecForgeBackendClient {
-  listUserStories(): Promise<readonly UserStorySummary[]>;
+  listUserStories(visibility?: "active" | "dropped"): Promise<readonly UserStorySummary[]>;
   getUserStorySummary(usId: string): Promise<UserStorySummary>;
   getUserStoryWorkflow(usId: string): Promise<UserStoryWorkflowDetails>;
   getUserStoryRuntimeStatus(usId: string): Promise<UserStoryRuntimeStatus>;
@@ -435,13 +435,14 @@ class StdioMcpBackendClient implements SpecForgeBackendClient {
     });
   }
 
-  public async listUserStories(): Promise<readonly UserStorySummary[]> {
-    appendSpecForgeLog(`Listing user stories for workspace '${this.workspaceRoot}'.`);
+  public async listUserStories(visibility: "active" | "dropped" = "active"): Promise<readonly UserStorySummary[]> {
+    appendSpecForgeLog(`Listing ${visibility} user stories for workspace '${this.workspaceRoot}'.`);
     const result = await this.callTool<{ items: UserStorySummary[] }>("list_user_stories", {
-      workspaceRoot: this.workspaceRoot
+      workspaceRoot: this.workspaceRoot,
+      visibility
     });
     appendSpecForgeLog(
-      `list_user_stories returned ${result.items.length} item(s) for '${this.workspaceRoot}': ${result.items.map((item) => `${item.usId}@${item.category}`).join(", ") || "none"}.`
+      `list_user_stories(${visibility}) returned ${result.items.length} item(s) for '${this.workspaceRoot}': ${result.items.map((item) => `${item.usId}@${item.category}`).join(", ") || "none"}.`
     );
     return result.items;
   }
