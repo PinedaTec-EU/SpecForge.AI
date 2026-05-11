@@ -50,6 +50,7 @@ const userStoryIntake_1 = require("./userStoryIntake");
 const userWorkspacePreferences_1 = require("./userWorkspacePreferences");
 const utils_1 = require("./utils");
 const webviewTypography_1 = require("./webviewTypography");
+const workflowPanel_1 = require("./workflowPanel");
 class SidebarViewProvider {
     extensionUri;
     onDidCreateUserStory;
@@ -155,6 +156,12 @@ class SidebarViewProvider {
                     return;
                 }
                 await this.deleteUserStoryAsync(message.usId);
+                return;
+            case "dropUserStory":
+                if (!message.usId) {
+                    return;
+                }
+                await this.dropUserStoryAsync(message.usId);
                 return;
             case "resetUserStoryToCapture":
                 if (!message.usId) {
@@ -269,6 +276,34 @@ class SidebarViewProvider {
             await (0, userWorkspacePreferences_1.setStarredUserStory)(workspaceRoot, null);
         }
         await this.onDidCreateUserStory();
+    }
+    async dropUserStoryAsync(usId) {
+        const workspaceRoot = getWorkspaceRoot();
+        if (!workspaceRoot) {
+            return;
+        }
+        const summary = await (0, specsExplorer_1.getOrCreateBackendClient)(workspaceRoot).getUserStorySummary(usId);
+        const confirmation = await vscode.window.showWarningMessage(`Drop ${usId}? It will be marked as deleted and hidden from the SpecForge panel.`, { modal: true, detail: summary.directoryPath }, "Drop US");
+        if (confirmation !== "Drop US") {
+            (0, outputChannel_1.appendSpecForgeLog)(`Drop US for '${usId}' was cancelled by the user.`);
+            return;
+        }
+        const storiesRoot = path.join(workspaceRoot, ".specs", "us") + path.sep;
+        const targetPath = path.resolve(summary.directoryPath);
+        if (!targetPath.startsWith(storiesRoot)) {
+            void vscode.window.showErrorMessage(`Refusing to drop '${usId}' because its path is outside .specs/us.`);
+            return;
+        }
+        await this.runBusyActionAsync(`Dropping ${usId}...`, async () => {
+            (0, workflowPanel_1.closeWorkflowView)(workspaceRoot, usId);
+            await fs.promises.writeFile(path.join(targetPath, ".dropped"), `Dropped at ${new Date().toISOString()} by ${(0, userActor_1.getCurrentActor)()}.\n`, "utf8");
+            const preferences = await (0, userWorkspacePreferences_1.readUserWorkspacePreferences)(workspaceRoot);
+            if (preferences.starredUserStoryId === usId) {
+                await (0, userWorkspacePreferences_1.setStarredUserStory)(workspaceRoot, null);
+            }
+            await this.onDidCreateUserStory();
+            void vscode.window.showInformationMessage(`${usId} dropped.`);
+        });
     }
     async resetUserStoryToCaptureAsync(usId) {
         const workspaceRoot = getWorkspaceRoot();
