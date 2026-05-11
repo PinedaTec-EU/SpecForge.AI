@@ -189,6 +189,7 @@ public sealed class RepositoryPromptInitializer
         - Do not modify `.specs/**` workflow artifacts directly when an MCP tool exposes the corresponding workflow action.
         - Direct reads of `.specs/**` files are allowed for evidence, debugging, and technical inspection, but they must not replace MCP workflow state when both are available.
         - If the MCP is unavailable or does not expose the required information or action, state that limitation explicitly before relying on direct file inspection or manual edits.
+        - When a workflow reaches `waiting-user` for a human approval gate such as `spec_pending_user_approval`, open the user story in the browser-facing SpecForge workflow portal or provide the exact portal URL for the selected user story before asking the user to approve, reject, or answer the gate. The user must be able to inspect the rendered user story and phase artifact outside the chat before deciding.
 
         ## User Story Quality
 
