@@ -2010,6 +2010,15 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
     .hero-main {
       min-width: 0;
     }
+    .hero-secondary {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      min-width: 0;
+      margin-top: 18px;
+      display: grid;
+      gap: 18px;
+    }
     .eyebrow {
       margin: 0 0 10px;
       text-transform: uppercase;
@@ -2275,7 +2284,7 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
       color: rgba(244, 247, 251, 0.92);
     }
     .hero-meta {
-      margin-top: 14px;
+      width: 100%;
       flex-wrap: nowrap;
       overflow-x: auto;
       overflow-y: hidden;
@@ -2393,11 +2402,11 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
       box-shadow: 0 0 0 1px rgba(255, 213, 90, 0.06);
     }
     .dependency-block {
+      width: 100%;
       display: grid;
       grid-template-columns: 70px minmax(0, 1fr);
       gap: 16px;
       align-items: center;
-      margin-top: 18px;
       padding: 14px 16px;
       border-radius: 18px;
       border: 1px solid rgba(255, 213, 90, 0.42);
@@ -2414,7 +2423,7 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
       border-radius: 50%;
       display: grid;
       place-items: center;
-      color: rgba(255, 235, 164, 0.98);
+      color: #ffd75a;
       border: 1px solid rgba(255, 213, 90, 0.74);
       background:
         radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.32), transparent 34%),
@@ -2422,12 +2431,17 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
       box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.28),
         0 0 0 7px rgba(255, 213, 90, 0.1),
-        0 0 24px rgba(255, 213, 90, 0.18);
+        0 0 24px rgba(255, 213, 90, 0.18),
+        0 0 42px rgba(255, 213, 90, 0.2);
     }
     .dependency-block__icon svg {
       width: 30px;
       height: 30px;
+      fill: currentColor;
       stroke-width: 2.3;
+      filter:
+        drop-shadow(0 0 4px rgba(255, 213, 90, 0.42))
+        drop-shadow(0 0 12px rgba(255, 213, 90, 0.28));
     }
     .dependency-block__content {
       min-width: 0;
@@ -5491,6 +5505,12 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
         justify-self: stretch;
         justify-content: flex-start;
       }
+      .dependency-block {
+        grid-template-columns: 1fr;
+      }
+      .dependency-block__icon {
+        justify-self: start;
+      }
       .detail-metrics {
         grid-template-columns: 1fr;
       }
@@ -5775,16 +5795,6 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
             ${buildRuntimeVersionMarkup(state.runtimeVersion)}
           </div>
           <h1>${(0, htmlEscape_1.escapeHtml)(buildWorkflowHeroTitle(workflow))}</h1>
-          <div class="hero-meta">
-            <span class="token accent">${(0, htmlEscape_1.escapeHtml)(workflow.category)}</span>
-            <span class="token${heroTokenClass(workflow.status)}">${(0, htmlEscape_1.escapeHtml)(workflow.status)}</span>
-            <span class="token">${(0, htmlEscape_1.escapeHtml)(displayedPhaseId)}</span>
-            ${pendingRewindPhaseId ? `<span class="token token--attention">rewind:${(0, htmlEscape_1.escapeHtml)(pendingRewindPhaseId)}</span>` : ""}
-            <span class="token">${(0, htmlEscape_1.escapeHtml)(workflow.workBranch ?? "branch:not-created")}</span>
-            <span class="token${heroTokenClass(`runner:${playbackState}`)}">runner:${(0, htmlEscape_1.escapeHtml)(playbackState)}</span>
-            ${rewindBlockedToken}
-          </div>
-          ${dependencyBlockedHeroMarkup}
         </div>
         <div class="control-strip">
           ${pullRequestUrl
@@ -5795,6 +5805,18 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
             ${(0, icons_1.fileIcon)()}
           </button>
         </div>
+      </div>
+      <div class="hero-secondary">
+        <div class="hero-meta">
+          <span class="token accent">${(0, htmlEscape_1.escapeHtml)(workflow.category)}</span>
+          <span class="token${heroTokenClass(workflow.status)}">${(0, htmlEscape_1.escapeHtml)(workflow.status)}</span>
+          <span class="token">${(0, htmlEscape_1.escapeHtml)(displayedPhaseId)}</span>
+          ${pendingRewindPhaseId ? `<span class="token token--attention">rewind:${(0, htmlEscape_1.escapeHtml)(pendingRewindPhaseId)}</span>` : ""}
+          <span class="token">${(0, htmlEscape_1.escapeHtml)(workflow.workBranch ?? "branch:not-created")}</span>
+          <span class="token${heroTokenClass(`runner:${playbackState}`)}">runner:${(0, htmlEscape_1.escapeHtml)(playbackState)}</span>
+          ${rewindBlockedToken}
+        </div>
+        ${dependencyBlockedHeroMarkup}
       </div>
       ${implementationReviewLimitBanner}
     </section>
