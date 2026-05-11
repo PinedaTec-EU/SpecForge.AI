@@ -112,6 +112,22 @@ test("readSpecForgeSettings normalizes model profiles and preserves toggles", ()
         repositoryAccess: "read-write"
       }
     ],
+    agentProfiles: [
+      {
+        name: "light",
+        role: "light",
+        modelProfile: "light",
+        instructions: "",
+        repositoryAccess: "read"
+      },
+      {
+        name: "top",
+        role: "top",
+        modelProfile: "top",
+        instructions: "",
+        repositoryAccess: "read-write"
+      }
+    ],
     phaseAgentAssignments: assignments({
       defaultAgent: "light",
       implementationAgent: "top",
@@ -153,6 +169,64 @@ test("readSpecForgeSettings normalizes model profiles and preserves toggles", ()
     reviewLearningSkillPath: ".codex/skills/sdd-phase-agents/SKILL.md",
     completedUsLockOnCompleted: false
   });
+});
+
+test("readSpecForgeSettings supplies recommended bootstrap agent profiles without models", () => {
+  const settings = readSpecForgeSettings({
+    get<T>(_section: string, defaultValue?: T): T {
+      return defaultValue as T;
+    }
+  });
+
+  assert.equal(settings.modelProfiles.length, 0);
+  assert.deepEqual(settings.agentProfiles?.map((agent) => ({
+    name: agent.name,
+    modelProfile: agent.modelProfile,
+    repositoryAccess: agent.repositoryAccess
+  })), [
+    {
+      name: "planner",
+      modelProfile: "",
+      repositoryAccess: "read"
+    },
+    {
+      name: "implementer",
+      modelProfile: "",
+      repositoryAccess: "read-write"
+    },
+    {
+      name: "reviewer",
+      modelProfile: "",
+      repositoryAccess: "read-write"
+    },
+    {
+      name: "release-preparer",
+      modelProfile: "",
+      repositoryAccess: "read"
+    }
+  ]);
+  assert.deepEqual(settings.phaseAgentAssignments, assignments({
+    defaultAgent: "planner",
+    captureAgent: "planner",
+    refinementAgent: "planner",
+    specAgent: "planner",
+    technicalDesignAgent: "planner",
+    implementationAgent: "implementer",
+    reviewAgent: "reviewer",
+    releaseApprovalAgent: "release-preparer",
+    prPreparationAgent: "release-preparer"
+  }));
+  assert.deepEqual(settings.effectivePhaseAgentAssignments, effective({
+    defaultAgentName: "planner",
+    captureAgentName: "planner",
+    refinementAgentName: "planner",
+    specAgentName: "planner",
+    technicalDesignAgentName: "planner",
+    implementationAgentName: "implementer",
+    reviewAgentName: "reviewer",
+    releaseApprovalAgentName: "release-preparer",
+    prPreparationAgentName: "release-preparer"
+  }));
 });
 
 test("readSpecForgeSettings defaults missing profile provider to openai-compatible", () => {
@@ -869,5 +943,15 @@ test("readSpecForgeSettings falls back to balanced refinement tolerance for unsu
   assert.equal(settings.requireExplicitApprovalBranchAcceptance, false);
   assert.equal(settings.autoRefinementAnswersEnabled, false);
   assert.equal(settings.autoRefinementAnswersProfile, null);
-  assert.deepEqual(settings.phaseAgentAssignments, assignments());
+  assert.deepEqual(settings.phaseAgentAssignments, assignments({
+    defaultAgent: "planner",
+    captureAgent: "planner",
+    refinementAgent: "planner",
+    specAgent: "planner",
+    technicalDesignAgent: "planner",
+    implementationAgent: "implementer",
+    reviewAgent: "reviewer",
+    releaseApprovalAgent: "release-preparer",
+    prPreparationAgent: "release-preparer"
+  }));
 });

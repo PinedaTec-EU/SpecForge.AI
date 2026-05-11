@@ -68,6 +68,49 @@ export interface SpecForgePhaseAgentAssignments {
   readonly prPreparationAgent: string | null;
 }
 
+export const recommendedBootstrapAgentProfiles: readonly SpecForgeAgentProfile[] = [
+  {
+    name: "planner",
+    role: "planner",
+    modelProfile: "",
+    instructions: "Focus on requirements, workflow consistency, and repository-aware planning.",
+    repositoryAccess: "read"
+  },
+  {
+    name: "implementer",
+    role: "implementer",
+    modelProfile: "",
+    instructions: "Implement approved technical designs with focused code changes and matching tests.",
+    repositoryAccess: "read-write"
+  },
+  {
+    name: "reviewer",
+    role: "reviewer",
+    modelProfile: "",
+    instructions: "Review implementation changes for correctness, regressions, missing tests, and release risk.",
+    repositoryAccess: "read-write"
+  },
+  {
+    name: "release-preparer",
+    role: "release-preparer",
+    modelProfile: "",
+    instructions: "Prepare release and pull request artifacts from repository evidence.",
+    repositoryAccess: "read"
+  }
+];
+
+export const recommendedBootstrapPhaseAgentAssignments: SpecForgePhaseAgentAssignments = {
+  defaultAgent: "planner",
+  captureAgent: "planner",
+  refinementAgent: "planner",
+  specAgent: "planner",
+  technicalDesignAgent: "planner",
+  implementationAgent: "implementer",
+  reviewAgent: "reviewer",
+  releaseApprovalAgent: "release-preparer",
+  prPreparationAgent: "release-preparer"
+};
+
 export interface EffectiveSpecForgePhaseAgentAssignments {
   readonly defaultAgentName: string | null;
   readonly captureAgentName: string | null;
@@ -88,17 +131,11 @@ export function getSpecForgeSettings(): SpecForgeSettings {
 export function readSpecForgeSettings(configuration: ConfigurationReader): SpecForgeSettings {
   const modelProfiles = normalizeModelProfiles(configuration.get<unknown[]>("execution.modelProfiles", []));
   const configuredAgentProfiles = normalizeAgentProfiles(configuration.get<unknown[]>("execution.agentProfiles", []));
-  const effectiveAgentProfiles = configuredAgentProfiles.length > 0
-    ? configuredAgentProfiles
-    : modelProfiles.map((profile) => ({
-      name: profile.name,
-      role: profile.name,
-      modelProfile: profile.name,
-      instructions: "",
-      repositoryAccess: profile.repositoryAccess,
-      ...(profile.reasoningEffort ? { reasoningEffort: profile.reasoningEffort } : {})
-    }));
-  const phaseAgentAssignments = normalizePhaseAgentAssignments(configuration.get<unknown>("execution.phaseAgents"));
+  const effectiveAgentProfiles = resolveEffectiveAgentProfiles(configuredAgentProfiles, modelProfiles);
+  const configuredPhaseAgentAssignments = normalizePhaseAgentAssignments(configuration.get<unknown>("execution.phaseAgents"));
+  const phaseAgentAssignments = resolveEffectivePhaseAgentConfiguration(
+    configuredAgentProfiles,
+    configuredPhaseAgentAssignments);
   const autoRefinementAnswersProfile = normalizeUnknownOptional(
     configuration.get<unknown>("execution.autoRefinementAnswersProfile"));
   const reviewEvidencePolicy = normalizeReviewEvidencePolicy(configuration.get<string>("execution.reviewEvidencePolicy", "balanced"));
@@ -111,7 +148,7 @@ export function readSpecForgeSettings(configuration: ConfigurationReader): SpecF
 
   return {
     modelProfiles,
-    ...(configuredAgentProfiles.length > 0 ? { agentProfiles: configuredAgentProfiles } : {}),
+    agentProfiles: effectiveAgentProfiles,
     phaseAgentAssignments,
     effectivePhaseAgentAssignments: resolveEffectivePhaseAgentAssignments(effectiveAgentProfiles, phaseAgentAssignments),
     autoRefinementAnswersProfile,
@@ -306,7 +343,22 @@ function resolveConfiguredOrDerivedAgentProfiles(settings: SpecForgeSettings): r
     return settings.agentProfiles;
   }
 
-  return settings.modelProfiles.map((profile) => ({
+  return resolveEffectiveAgentProfiles([], settings.modelProfiles);
+}
+
+function resolveEffectiveAgentProfiles(
+  configuredAgentProfiles: readonly SpecForgeAgentProfile[],
+  modelProfiles: readonly SpecForgeModelProfile[]
+): readonly SpecForgeAgentProfile[] {
+  if (configuredAgentProfiles.length > 0) {
+    return configuredAgentProfiles;
+  }
+
+  if (modelProfiles.length === 0) {
+    return recommendedBootstrapAgentProfiles;
+  }
+
+  return modelProfiles.map((profile) => ({
     name: profile.name,
     role: profile.name,
     modelProfile: profile.name,
@@ -314,6 +366,30 @@ function resolveConfiguredOrDerivedAgentProfiles(settings: SpecForgeSettings): r
     repositoryAccess: profile.repositoryAccess,
     ...(profile.reasoningEffort ? { reasoningEffort: profile.reasoningEffort } : {})
   }));
+}
+
+function resolveEffectivePhaseAgentConfiguration(
+  configuredAgentProfiles: readonly SpecForgeAgentProfile[],
+  assignments: SpecForgePhaseAgentAssignments
+): SpecForgePhaseAgentAssignments {
+  if (configuredAgentProfiles.length > 0 || hasAnyPhaseAgentAssignment(assignments)) {
+    return assignments;
+  }
+
+  return recommendedBootstrapPhaseAgentAssignments;
+}
+
+function hasAnyPhaseAgentAssignment(assignments: SpecForgePhaseAgentAssignments): boolean {
+  return Boolean(
+    assignments.defaultAgent
+    || assignments.captureAgent
+    || assignments.refinementAgent
+    || assignments.specAgent
+    || assignments.technicalDesignAgent
+    || assignments.implementationAgent
+    || assignments.reviewAgent
+    || assignments.releaseApprovalAgent
+    || assignments.prPreparationAgent);
 }
 
 function hasExplicitAgentsForAllModelDrivenPhases(assignments: SpecForgePhaseAgentAssignments): boolean {

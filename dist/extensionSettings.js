@@ -1,10 +1,52 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.recommendedBootstrapPhaseAgentAssignments = exports.recommendedBootstrapAgentProfiles = void 0;
 exports.getSpecForgeSettings = getSpecForgeSettings;
 exports.readSpecForgeSettings = readSpecForgeSettings;
 exports.buildBackendEnvironment = buildBackendEnvironment;
 exports.getSpecForgeSettingsStatus = getSpecForgeSettingsStatus;
 const executionSettingsModel_1 = require("./executionSettingsModel");
+exports.recommendedBootstrapAgentProfiles = [
+    {
+        name: "planner",
+        role: "planner",
+        modelProfile: "",
+        instructions: "Focus on requirements, workflow consistency, and repository-aware planning.",
+        repositoryAccess: "read"
+    },
+    {
+        name: "implementer",
+        role: "implementer",
+        modelProfile: "",
+        instructions: "Implement approved technical designs with focused code changes and matching tests.",
+        repositoryAccess: "read-write"
+    },
+    {
+        name: "reviewer",
+        role: "reviewer",
+        modelProfile: "",
+        instructions: "Review implementation changes for correctness, regressions, missing tests, and release risk.",
+        repositoryAccess: "read-write"
+    },
+    {
+        name: "release-preparer",
+        role: "release-preparer",
+        modelProfile: "",
+        instructions: "Prepare release and pull request artifacts from repository evidence.",
+        repositoryAccess: "read"
+    }
+];
+exports.recommendedBootstrapPhaseAgentAssignments = {
+    defaultAgent: "planner",
+    captureAgent: "planner",
+    refinementAgent: "planner",
+    specAgent: "planner",
+    technicalDesignAgent: "planner",
+    implementationAgent: "implementer",
+    reviewAgent: "reviewer",
+    releaseApprovalAgent: "release-preparer",
+    prPreparationAgent: "release-preparer"
+};
 function getSpecForgeSettings() {
     const vscode = require("vscode");
     return readSpecForgeSettings(vscode.workspace.getConfiguration("specForge"));
@@ -12,17 +54,9 @@ function getSpecForgeSettings() {
 function readSpecForgeSettings(configuration) {
     const modelProfiles = normalizeModelProfiles(configuration.get("execution.modelProfiles", []));
     const configuredAgentProfiles = normalizeAgentProfiles(configuration.get("execution.agentProfiles", []));
-    const effectiveAgentProfiles = configuredAgentProfiles.length > 0
-        ? configuredAgentProfiles
-        : modelProfiles.map((profile) => ({
-            name: profile.name,
-            role: profile.name,
-            modelProfile: profile.name,
-            instructions: "",
-            repositoryAccess: profile.repositoryAccess,
-            ...(profile.reasoningEffort ? { reasoningEffort: profile.reasoningEffort } : {})
-        }));
-    const phaseAgentAssignments = normalizePhaseAgentAssignments(configuration.get("execution.phaseAgents"));
+    const effectiveAgentProfiles = resolveEffectiveAgentProfiles(configuredAgentProfiles, modelProfiles);
+    const configuredPhaseAgentAssignments = normalizePhaseAgentAssignments(configuration.get("execution.phaseAgents"));
+    const phaseAgentAssignments = resolveEffectivePhaseAgentConfiguration(configuredAgentProfiles, configuredPhaseAgentAssignments);
     const autoRefinementAnswersProfile = normalizeUnknownOptional(configuration.get("execution.autoRefinementAnswersProfile"));
     const reviewEvidencePolicy = normalizeReviewEvidencePolicy(configuration.get("execution.reviewEvidencePolicy", "balanced"));
     const userStoryListViewMode = configuration.get("ui.userStoryListViewMode") === "phase"
@@ -32,7 +66,7 @@ function readSpecForgeSettings(configuration) {
     const reviewLearningSkillPath = normalizeUnknownOptional(configuration.get("features.reviewLearningSkillPath", ".codex/skills/sdd-phase-agents/SKILL.md"));
     return {
         modelProfiles,
-        ...(configuredAgentProfiles.length > 0 ? { agentProfiles: configuredAgentProfiles } : {}),
+        agentProfiles: effectiveAgentProfiles,
         phaseAgentAssignments,
         effectivePhaseAgentAssignments: resolveEffectivePhaseAgentAssignments(effectiveAgentProfiles, phaseAgentAssignments),
         autoRefinementAnswersProfile,
@@ -193,7 +227,16 @@ function resolveConfiguredOrDerivedAgentProfiles(settings) {
     if (settings.agentProfiles && settings.agentProfiles.length > 0) {
         return settings.agentProfiles;
     }
-    return settings.modelProfiles.map((profile) => ({
+    return resolveEffectiveAgentProfiles([], settings.modelProfiles);
+}
+function resolveEffectiveAgentProfiles(configuredAgentProfiles, modelProfiles) {
+    if (configuredAgentProfiles.length > 0) {
+        return configuredAgentProfiles;
+    }
+    if (modelProfiles.length === 0) {
+        return exports.recommendedBootstrapAgentProfiles;
+    }
+    return modelProfiles.map((profile) => ({
         name: profile.name,
         role: profile.name,
         modelProfile: profile.name,
@@ -201,6 +244,23 @@ function resolveConfiguredOrDerivedAgentProfiles(settings) {
         repositoryAccess: profile.repositoryAccess,
         ...(profile.reasoningEffort ? { reasoningEffort: profile.reasoningEffort } : {})
     }));
+}
+function resolveEffectivePhaseAgentConfiguration(configuredAgentProfiles, assignments) {
+    if (configuredAgentProfiles.length > 0 || hasAnyPhaseAgentAssignment(assignments)) {
+        return assignments;
+    }
+    return exports.recommendedBootstrapPhaseAgentAssignments;
+}
+function hasAnyPhaseAgentAssignment(assignments) {
+    return Boolean(assignments.defaultAgent
+        || assignments.captureAgent
+        || assignments.refinementAgent
+        || assignments.specAgent
+        || assignments.technicalDesignAgent
+        || assignments.implementationAgent
+        || assignments.reviewAgent
+        || assignments.releaseApprovalAgent
+        || assignments.prPreparationAgent);
 }
 function hasExplicitAgentsForAllModelDrivenPhases(assignments) {
     return [

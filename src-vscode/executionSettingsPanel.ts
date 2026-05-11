@@ -139,7 +139,7 @@ class ExecutionSettingsPanelController {
     const settings = getSpecForgeSettings();
     this.panel.webview.html = buildExecutionSettingsHtml({
       modelProfiles: settings.modelProfiles,
-      agentProfiles: settings.agentProfiles ?? deriveAgentProfilesFromModels(settings.modelProfiles),
+      agentProfiles: settings.agentProfiles ?? [],
       phaseAgentAssignments: settings.phaseAgentAssignments,
       refinementTolerance: settings.refinementTolerance,
       mvpRigor: settings.mvpRigor ?? "medium",
@@ -168,17 +168,6 @@ class ExecutionSettingsPanelController {
       typographyCssVars: getEditorTypographyCssVars()
     });
   }
-}
-
-function deriveAgentProfilesFromModels(modelProfiles: readonly SpecForgeModelProfile[]): readonly SpecForgeAgentProfile[] {
-  return modelProfiles.map((profile) => ({
-    name: profile.name,
-    role: profile.name,
-    modelProfile: profile.name,
-    instructions: "",
-    repositoryAccess: profile.repositoryAccess,
-    ...(profile.reasoningEffort ? { reasoningEffort: profile.reasoningEffort } : {})
-  }));
 }
 
 type ExecutionSettingsViewModel = {
@@ -1826,7 +1815,9 @@ async function saveExecutionSettingsAsync(
     prPreparationAgent: normalizeOptionalAssignment(phaseAgentAssignments.prPreparationAgent)
   };
   const modelNames = new Set(normalizedProfiles.map((profile) => profile.name));
-  const agentWithoutModel = normalizedAgents.find((agent) => !agent.modelProfile);
+  const agentWithoutModel = normalizedProfiles.length > 0
+    ? normalizedAgents.find((agent) => !agent.modelProfile)
+    : undefined;
   if (agentWithoutModel) {
     throw new Error(`Agent '${agentWithoutModel.name || "<unnamed>"}' must reference a model profile.`);
   }
