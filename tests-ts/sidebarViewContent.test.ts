@@ -15,6 +15,8 @@ function model(overrides: Partial<SidebarViewModel>): SidebarViewModel {
     activeWorkflowUsId: null,
     runtimeVersion: null,
     viewMode: "category",
+    showDroppedUserStories: false,
+    droppedUserStoryCount: 0,
     categories: ["workflow"],
     userStories: [],
     ...overrides
@@ -366,4 +368,24 @@ test("buildSidebarHtml wires user story row actions to selectable commands", () 
   assert.match(html, /class="story-card[^"]*" type="button" data-command="openWorkflow" data-us-id="US-0010"/);
   assert.match(html, /data-command="openMainArtifact" data-us-id="US-0010" role="menuitem">\s+<span class="action-menu__item-icon" aria-hidden="true">✎<\/span>\s+<span>Edit US info<\/span>/);
   assert.doesNotMatch(html, /<button class="action-menu__item" type="button" role="menuitem" disabled>\s+<span class="action-menu__item-icon" aria-hidden="true">✎<\/span>\s+<span>Edit US info<\/span>/);
+});
+
+test("buildSidebarHtml raises the active story row above neighboring cards while its menu is open", () => {
+  const html = buildSidebarHtml(model({
+    categories: ["workflow"],
+    userStories: [{
+      usId: "US-0011",
+      title: "Stacked workflow",
+      category: "workflow",
+      currentPhase: "capture",
+      status: "active",
+      mainArtifactPath: "/tmp/us.md",
+      directoryPath: "/tmp/us.US-0011",
+      workBranch: null
+    }]
+  }));
+
+  assert.match(html, /\.story-row--menu-open\s*\{\s*z-index: 120;\s*\}/);
+  assert.match(html, /closest\("\.story-row"\)\?\.classList\.add\("story-row--menu-open"\)/);
+  assert.match(html, /closest\("\.story-row"\)\?\.classList\.remove\("story-row--menu-open"\)/);
 });

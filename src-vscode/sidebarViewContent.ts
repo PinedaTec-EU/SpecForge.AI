@@ -1174,6 +1174,10 @@ function wrapHtml(content: string, busy: boolean, createFormResetToken: number, 
       box-shadow: 0 14px 30px rgba(0, 0, 0, 0.24);
       isolation: isolate;
       overflow: visible;
+      z-index: 0;
+    }
+    .story-row--menu-open {
+      z-index: 120;
     }
     .story-row--selected::before {
       content: none;
@@ -1595,6 +1599,7 @@ function wrapHtml(content: string, busy: boolean, createFormResetToken: number, 
         if (toggle instanceof HTMLButtonElement && panel instanceof HTMLElement) {
           panel.hidden = true;
           toggle.setAttribute("aria-expanded", "false");
+          menu.closest(".story-row")?.classList.remove("story-row--menu-open");
         }
       }
     };
@@ -1615,6 +1620,7 @@ function wrapHtml(content: string, busy: boolean, createFormResetToken: number, 
         if (shouldOpen && !busy) {
           actionMenuPanel.hidden = false;
           actionMenuToggle.setAttribute("aria-expanded", "true");
+          actionMenu.closest(".story-row")?.classList.add("story-row--menu-open");
         }
       });
       actionMenuPanel.addEventListener("click", () => {

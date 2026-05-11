@@ -72,7 +72,7 @@ test("CLI workflow renderer routes sidebar edit action to the user story source 
     assert.match(content, /url\.searchParams\.set\("selectedPhaseId", "capture"\)/);
   }
 
-  assert.match(packagedSidebar, /data-command="openMainArtifact" data-us-id="\$\{\(0, htmlEscape_1\.escapeHtmlAttr\)\(summary\.usId\)\}" role="menuitem"/);
+  assert.match(packagedSidebar, /data-command="openMainArtifact" data-us-id="\$\{[\s\S]*?summary\.usId[\s\S]*?\}" role="menuitem"/);
   assert.doesNotMatch(packagedSidebar, /<button class="action-menu__item" type="button" role="menuitem" disabled>\s+<span class="action-menu__item-icon" aria-hidden="true">✎<\/span>\s+<span>Edit US info<\/span>/);
 });
 

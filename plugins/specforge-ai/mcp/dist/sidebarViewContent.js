@@ -1125,6 +1125,10 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
       box-shadow: 0 14px 30px rgba(0, 0, 0, 0.24);
       isolation: isolate;
       overflow: visible;
+      z-index: 0;
+    }
+    .story-row--menu-open {
+      z-index: 120;
     }
     .story-row--selected::before {
       content: none;
@@ -1546,6 +1550,7 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
         if (toggle instanceof HTMLButtonElement && panel instanceof HTMLElement) {
           panel.hidden = true;
           toggle.setAttribute("aria-expanded", "false");
+          menu.closest(".story-row")?.classList.remove("story-row--menu-open");
         }
       }
     };
@@ -1566,6 +1571,7 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
         if (shouldOpen && !busy) {
           actionMenuPanel.hidden = false;
           actionMenuToggle.setAttribute("aria-expanded", "true");
+          actionMenu.closest(".story-row")?.classList.add("story-row--menu-open");
         }
       });
       actionMenuPanel.addEventListener("click", () => {
