@@ -4198,6 +4198,24 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
         0 10px 18px rgba(9, 39, 82, 0.16),
         0 0 18px rgba(76, 166, 255, 0.16);
     }
+    .phase-node .graph-phase-status-icon.graph-phase-status-icon--dependency-blocked {
+      color: #ffd75a;
+      border-color: rgba(255, 213, 90, 0.74);
+      background:
+        radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.32), transparent 34%),
+        linear-gradient(180deg, rgba(255, 213, 90, 0.28), rgba(96, 67, 16, 0.92));
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.28),
+        0 12px 22px rgba(83, 57, 9, 0.24),
+        0 0 0 6px rgba(255, 213, 90, 0.1),
+        0 0 24px rgba(255, 213, 90, 0.18);
+    }
+    .phase-node .graph-phase-status-icon.graph-phase-status-icon--dependency-blocked svg {
+      fill: currentColor;
+      filter:
+        drop-shadow(0 0 4px rgba(255, 213, 90, 0.42))
+        drop-shadow(0 0 12px rgba(255, 213, 90, 0.28));
+    }
     .detail-panel {
       padding: 22px;
       display: block;
