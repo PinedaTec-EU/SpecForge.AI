@@ -20,6 +20,20 @@ open_url() {
   fi
 }
 
+print_usage() {
+  cat <<'EOF'
+Usage: ./launch.sh [US-ID]
+
+Starts the local SpecForge workflow portal for the current workspace.
+
+Arguments:
+  US-ID    Optional user story id to focus at startup, for example US-0001
+
+Options:
+  -h, --help    Show this help text
+EOF
+}
+
 normalize_url() {
   local url="${1:-http://localhost:5128/}"
 
@@ -34,6 +48,21 @@ workspace_root="$(pwd)"
 user_story_id="${1:-}"
 portal_url="$(normalize_url "${SPECFORGE_WORKFLOW_PORTAL_URL:-http://localhost:5128/}")"
 project_path="src/SpecForge.Runner.Cli/SpecForge.Runner.Cli.csproj"
+
+case "$user_story_id" in
+  "")
+    ;;
+  -h|--help)
+    print_usage
+    exit 0
+    ;;
+  -*)
+    echo "Unknown option: $user_story_id" >&2
+    echo >&2
+    print_usage >&2
+    exit 1
+    ;;
+esac
 
 echo "Launching the SpecForge workflow portal..."
 echo "Portal URL: ${portal_url}"
