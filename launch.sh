@@ -46,10 +46,11 @@ normalize_url() {
 
 workspace_root="$(pwd)"
 user_story_id="${1:-}"
+normalized_option="$(printf '%s' "$user_story_id" | tr '[:upper:]' '[:lower:]')"
 portal_url="$(normalize_url "${SPECFORGE_WORKFLOW_PORTAL_URL:-http://localhost:5128/}")"
 project_path="src/SpecForge.Runner.Cli/SpecForge.Runner.Cli.csproj"
 
-case "$user_story_id" in
+case "$normalized_option" in
   "")
     ;;
   -h|--help)
