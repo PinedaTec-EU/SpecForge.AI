@@ -176,6 +176,20 @@ npm run test:ts
 
 ### Serve the CLI portal
 
+Preferred local entrypoint:
+
+```bash
+./launch.sh
+```
+
+To open the portal focused on a specific story:
+
+```bash
+./launch.sh US-0001
+```
+
+The script opens the local portal URL in the browser and delegates to `SpecForge.Runner.Cli serve-workflow`.
+
 The CLI serves a single browser portal for the current workspace. The root page shows the repo's user stories and workflow graph. The `/configuration` page inside the same portal manages providers, phase routing, and advanced settings without a separate configuration server:
 
 ```bash
