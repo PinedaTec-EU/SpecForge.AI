@@ -26,10 +26,49 @@ internal sealed record SpecForgePortalSettings(
     double DecompositionTolerance,
     int DecompositionMaxChildren)
 {
+    public static readonly IReadOnlyList<OpenAiCompatibleAgentProfile> RecommendedBootstrapAgentProfiles =
+    [
+        new(
+            Name: "planner",
+            Role: "planner",
+            ModelProfile: string.Empty,
+            Instructions: "Focus on requirements, workflow consistency, and repository-aware planning.",
+            RepositoryAccess: "read"),
+        new(
+            Name: "implementer",
+            Role: "implementer",
+            ModelProfile: string.Empty,
+            Instructions: "Implement approved technical designs with focused code changes and matching tests.",
+            RepositoryAccess: "read-write"),
+        new(
+            Name: "reviewer",
+            Role: "reviewer",
+            ModelProfile: string.Empty,
+            Instructions: "Review implementation changes for correctness, regressions, missing tests, and release risk.",
+            RepositoryAccess: "read-write"),
+        new(
+            Name: "release-preparer",
+            Role: "release-preparer",
+            ModelProfile: string.Empty,
+            Instructions: "Prepare release and pull request artifacts from repository evidence.",
+            RepositoryAccess: "read")
+    ];
+
+    public static readonly OpenAiCompatiblePhaseAgentAssignments RecommendedBootstrapPhaseAgentAssignments = new(
+        DefaultAgent: "planner",
+        RefinementAgent: "planner",
+        SpecAgent: "planner",
+        TechnicalDesignAgent: "planner",
+        ImplementationAgent: "implementer",
+        ReviewAgent: "reviewer",
+        ReleaseApprovalAgent: "release-preparer",
+        PrPreparationAgent: "release-preparer");
+
     public IReadOnlyList<OpenAiCompatibleAgentProfile> ResolveAgentProfiles() =>
         AgentProfiles.Count > 0
             ? AgentProfiles
-            : ModelProfiles
+            : ModelProfiles.Count > 0
+                ? ModelProfiles
                 .Select(static profile => new OpenAiCompatibleAgentProfile(
                     Name: profile.Name,
                     Role: profile.Name,
@@ -37,7 +76,8 @@ internal sealed record SpecForgePortalSettings(
                     Instructions: string.Empty,
                     RepositoryAccess: profile.RepositoryAccess,
                     ReasoningEffort: profile.ReasoningEffort))
-                .ToList();
+                .ToList()
+                : RecommendedBootstrapAgentProfiles;
 }
 
 internal static class SpecForgePortalSettingsStore
@@ -62,7 +102,7 @@ internal static class SpecForgePortalSettingsStore
     }
 
     public static SpecForgePortalSettings LoadOrDefault(string workspaceRoot) =>
-        Load(workspaceRoot) ?? CreateDefault();
+        Load(workspaceRoot) ?? SaveDefault(workspaceRoot);
 
     public static SpecForgePortalSettings Deserialize(string payload)
     {
@@ -120,6 +160,19 @@ internal static class SpecForgePortalSettingsStore
             settings = settings with { DecompositionMaxChildren = 5 };
         }
 
+        if (settings.AgentProfiles.Count == 0 && settings.ModelProfiles.Count == 0)
+        {
+            settings = settings with { AgentProfiles = SpecForgePortalSettings.RecommendedBootstrapAgentProfiles };
+
+            if (!HasAnyPhaseAgentAssignment(settings.PhaseAgentAssignments))
+            {
+                settings = settings with
+                {
+                    PhaseAgentAssignments = SpecForgePortalSettings.RecommendedBootstrapPhaseAgentAssignments
+                };
+            }
+        }
+
         return settings;
     }
 
@@ -133,8 +186,8 @@ internal static class SpecForgePortalSettingsStore
     private static SpecForgePortalSettings CreateDefault() =>
         new(
             ModelProfiles: [],
-            AgentProfiles: [],
-            PhaseAgentAssignments: new OpenAiCompatiblePhaseAgentAssignments(),
+            AgentProfiles: SpecForgePortalSettings.RecommendedBootstrapAgentProfiles,
+            PhaseAgentAssignments: SpecForgePortalSettings.RecommendedBootstrapPhaseAgentAssignments,
             RefinementTolerance: "balanced",
             MvpRigor: "medium",
             ReviewTolerance: "balanced",
@@ -156,6 +209,24 @@ internal static class SpecForgePortalSettingsStore
             DecompositionTolerance: 0.10,
             DecompositionMaxChildren: 5);
 
+    private static SpecForgePortalSettings SaveDefault(string workspaceRoot)
+    {
+        var settings = CreateDefault();
+        Save(workspaceRoot, settings);
+
+        return settings;
+    }
+
     private static string GetSettingsPath(string workspaceRoot) =>
         Path.Combine(workspaceRoot, SettingsPath);
+
+    private static bool HasAnyPhaseAgentAssignment(OpenAiCompatiblePhaseAgentAssignments? assignments) =>
+        !string.IsNullOrWhiteSpace(assignments?.DefaultAgent)
+        || !string.IsNullOrWhiteSpace(assignments?.RefinementAgent)
+        || !string.IsNullOrWhiteSpace(assignments?.SpecAgent)
+        || !string.IsNullOrWhiteSpace(assignments?.TechnicalDesignAgent)
+        || !string.IsNullOrWhiteSpace(assignments?.ImplementationAgent)
+        || !string.IsNullOrWhiteSpace(assignments?.ReviewAgent)
+        || !string.IsNullOrWhiteSpace(assignments?.ReleaseApprovalAgent)
+        || !string.IsNullOrWhiteSpace(assignments?.PrPreparationAgent);
 }

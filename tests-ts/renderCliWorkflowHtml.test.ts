@@ -42,9 +42,9 @@ test("CLI workflow renderer embeds the reusable user-story sidebar with collapse
   assert.match(script, /configurationProvidersUrl = payload\.configurationProvidersUrl \|\| configurationPortalUrl/);
   assert.match(script, /configurationAdvancedUrl = payload\.configurationAdvancedUrl \|\| configurationPortalUrl/);
   assert.match(script, /data-cli-config-overlay/);
-  assert.match(script, /openConfiguration\(\$\{JSON\.stringify\(configurationAdvancedUrl\)\}\)/);
+  assert.match(script, /openConfiguration\(\$\{JSON\.stringify\(configurationPortalUrl\)\}\)/);
   assert.match(script, /openConfiguration\(\$\{JSON\.stringify\(configurationProvidersUrl\)\}\)/);
-  assert.doesNotMatch(script, /window\.open\(/);
+  assert.doesNotMatch(script, /openConfiguration\(\$\{JSON\.stringify\(configurationAdvancedUrl\)\}\)/);
 });
 
 test("CLI workflow renderer groups sidebar stories by category", async () => {

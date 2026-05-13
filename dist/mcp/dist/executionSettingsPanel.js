@@ -94,6 +94,7 @@ class ExecutionSettingsPanelController {
         this.panel.reveal(vscode.ViewColumn.Active);
     }
     async refreshAsync() {
+        await ensureRecommendedAgentProfilesBootstrapAsync();
         const settings = (0, extensionSettings_1.getSpecForgeSettings)();
         this.panel.webview.html = buildExecutionSettingsHtml({
             modelProfiles: settings.modelProfiles,
@@ -125,6 +126,16 @@ class ExecutionSettingsPanelController {
             completedUsLockOnCompleted: settings.completedUsLockOnCompleted,
             typographyCssVars: (0, webviewTypography_1.getEditorTypographyCssVars)()
         });
+    }
+}
+async function ensureRecommendedAgentProfilesBootstrapAsync() {
+    const configuration = vscode.workspace.getConfiguration("specForge");
+    if (!(0, extensionSettings_1.shouldBootstrapRecommendedAgentProfiles)(configuration)) {
+        return;
+    }
+    await configuration.update("execution.agentProfiles", extensionSettings_1.recommendedBootstrapAgentProfiles, vscode.ConfigurationTarget.Workspace);
+    if ((0, extensionSettings_1.shouldBootstrapRecommendedPhaseAgentAssignments)(configuration)) {
+        await configuration.update("execution.phaseAgents", extensionSettings_1.recommendedBootstrapPhaseAgentAssignments, vscode.ConfigurationTarget.Workspace);
     }
 }
 const executionPhases = [

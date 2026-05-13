@@ -543,6 +543,29 @@ test("buildSidebarHtml keeps dropped story cards selectable", () => {
   assert.doesNotMatch(html, /<button class="story-card[^"]*" type="button" disabled>/);
 });
 
+test("buildSidebarHtml scrolls the selected user story row as high as possible", () => {
+  const html = buildSidebarHtml(model({
+    activeWorkflowUsId: "US-0011",
+    categories: ["workflow"],
+    userStories: [{
+      usId: "US-0011",
+      title: "Selected workflow",
+      category: "workflow",
+      currentPhase: "capture",
+      status: "active",
+      mainArtifactPath: "/tmp/us.md",
+      directoryPath: "/tmp/us.US-0011",
+      workBranch: null
+    }]
+  }));
+
+  assert.match(html, /story-row--selected/);
+  assert.match(html, /function keepSelectedStoryVisible\(\)/);
+  assert.match(html, /querySelector\("\.story-row--selected"\)/);
+  assert.match(html, /scrollIntoView\(\{ block: "start" \}\)/);
+  assert.match(html, /requestAnimationFrame\(keepSelectedStoryVisible\)/);
+});
+
 test("buildSidebarHtml raises the active story row above neighboring cards while its menu is open", () => {
   const html = buildSidebarHtml(model({
     categories: ["workflow"],

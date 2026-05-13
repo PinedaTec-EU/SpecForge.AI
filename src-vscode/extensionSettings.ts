@@ -180,6 +180,14 @@ export function readSpecForgeSettings(configuration: ConfigurationReader): SpecF
   };
 }
 
+export function shouldBootstrapRecommendedAgentProfiles(configuration: ConfigurationReader): boolean {
+  return normalizeAgentProfiles(configuration.get<unknown[]>("execution.agentProfiles", [])).length === 0;
+}
+
+export function shouldBootstrapRecommendedPhaseAgentAssignments(configuration: ConfigurationReader): boolean {
+  return !hasAnyPhaseAgentAssignment(normalizePhaseAgentAssignments(configuration.get<unknown>("execution.phaseAgents")));
+}
+
 export function buildBackendEnvironment(settings: SpecForgeSettings): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {};
 

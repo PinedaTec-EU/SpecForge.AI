@@ -3,6 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.recommendedBootstrapPhaseAgentAssignments = exports.recommendedBootstrapAgentProfiles = void 0;
 exports.getSpecForgeSettings = getSpecForgeSettings;
 exports.readSpecForgeSettings = readSpecForgeSettings;
+exports.shouldBootstrapRecommendedAgentProfiles = shouldBootstrapRecommendedAgentProfiles;
+exports.shouldBootstrapRecommendedPhaseAgentAssignments = shouldBootstrapRecommendedPhaseAgentAssignments;
 exports.buildBackendEnvironment = buildBackendEnvironment;
 exports.getSpecForgeSettingsStatus = getSpecForgeSettingsStatus;
 const executionSettingsModel_1 = require("./executionSettingsModel");
@@ -95,6 +97,12 @@ function readSpecForgeSettings(configuration) {
         reviewLearningSkillPath,
         completedUsLockOnCompleted: configuration.get("features.completedUsLockOnCompleted", false)
     };
+}
+function shouldBootstrapRecommendedAgentProfiles(configuration) {
+    return normalizeAgentProfiles(configuration.get("execution.agentProfiles", [])).length === 0;
+}
+function shouldBootstrapRecommendedPhaseAgentAssignments(configuration) {
+    return !hasAnyPhaseAgentAssignment(normalizePhaseAgentAssignments(configuration.get("execution.phaseAgents")));
 }
 function buildBackendEnvironment(settings) {
     const env = {};

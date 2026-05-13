@@ -400,7 +400,7 @@ const sidebarShell = `
       <span class="specforge-cli-sidebar__title">SpecForge.AI</span>
       ${displayRuntimeVersion ? `<span class="specforge-cli-sidebar__version">v.${escapeHtmlAttr(displayRuntimeVersion)}</span>` : ""}
     </div>
-    <button class="specforge-cli-sidebar__button" type="button" data-cli-sidebar-settings title="Advanced configuration" aria-label="Advanced configuration">⚙</button>
+    <button class="specforge-cli-sidebar__button" type="button" data-cli-sidebar-settings title="Configuration" aria-label="Configuration">⚙</button>
     <button class="specforge-cli-sidebar__button specforge-cli-sidebar__button--active" type="button" data-cli-sidebar-pin title="Unpin sidebar" aria-label="Unpin sidebar" aria-pressed="true">📌</button>
   </div>
   <iframe class="specforge-cli-sidebar__frame" title="User stories" srcdoc="${escapeHtmlAttr(sidebarHtml)}"></iframe>
@@ -513,7 +513,7 @@ const sidebarShell = `
     applyCollapsed(localStorage.getItem(collapsedKey) === "true");
     sidebarPin?.addEventListener("click", () => applyCollapsed(!document.body.classList.contains("specforge-cli-sidebar-collapsed")));
     document.querySelector("[data-cli-sidebar-settings]")?.addEventListener("click", () => {
-      openConfiguration(${JSON.stringify(configurationAdvancedUrl)});
+      openConfiguration(${JSON.stringify(configurationPortalUrl)});
     });
     sidebarFrame?.addEventListener("load", applySidebarStarredUserStory);
     applySidebarStarredUserStory();

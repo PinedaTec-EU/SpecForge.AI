@@ -97,8 +97,15 @@ test("CLI workflow portal payload includes sidebar stories and configuration URL
   assert.match(source, /fetch\("api\/settings"/);
   assert.doesNotMatch(source, /fetch\("\/api\/settings"/);
   assert.match(source, /Path = "\/configuration"/);
-  assert.match(source, /<section class="panel" id="providers">/);
-  assert.match(source, /<section class="panel" id="advanced">/);
+  assert.match(source, /<span class="runtime-version">v\.__RUNTIME_VERSION__<\/span>/);
+  assert.match(source, /Replace\("__RUNTIME_VERSION__", WebUtility\.HtmlEncode\(GetRuntimeVersion\(\) \?\? "unknown"\), StringComparison\.Ordinal\)/);
+  assert.match(source, /<button class="tab-button"[\s\S]*?data-tab-target="providers">Models<\/button>/);
+  assert.match(source, /<button class="tab-button"[\s\S]*?data-tab-target="advanced">Client Basics<\/button>/);
+  assert.match(source, /<button class="tab-button"[\s\S]*?data-tab-target="central">SpecForge Central<\/button>/);
+  assert.match(source, /<div class="tab-panel" id="providers" role="tabpanel">/);
+  assert.match(source, /<div class="tab-panel" id="advanced" role="tabpanel" hidden>/);
+  assert.match(source, /<div class="tab-panel" id="central" role="tabpanel" hidden>/);
+  assert.match(source, /const configurationTabs = \["providers", "advanced", "central"\]/);
   assert.match(source, /ResolveWorkflowPortalUserStoryId\(context\.Request, usId\)/);
 });
 

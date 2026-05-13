@@ -12,7 +12,12 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
         var settings = SpecForgePortalSettingsStore.LoadOrDefault(workspaceRoot);
 
         Assert.Empty(settings.ModelProfiles);
-        Assert.Empty(settings.AgentProfiles);
+        Assert.Equal(
+            ["planner", "implementer", "reviewer", "release-preparer"],
+            settings.AgentProfiles.Select(static agent => agent.Name));
+        Assert.Equal("planner", settings.PhaseAgentAssignments?.DefaultAgent);
+        Assert.Equal("implementer", settings.PhaseAgentAssignments?.ImplementationAgent);
+        Assert.True(File.Exists(Path.Combine(workspaceRoot, ".specs", "configuration", "settings.json")));
         Assert.Equal("balanced", settings.RefinementTolerance);
         Assert.Equal("medium", settings.MvpRigor);
         Assert.True(settings.ReviewSubagentsEnabled);
@@ -55,6 +60,44 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
         Assert.True(settings.AutoReviewEnabled);
         Assert.True(settings.PauseOnFailedReview);
         Assert.True(settings.ReviewLearningEnabled);
+    }
+
+    [Fact]
+    public void Deserialize_BootstrapsRecommendedAgentsWhenNoProfilesAreConfigured()
+    {
+        var settings = SpecForgePortalSettingsStore.Deserialize(
+            """
+            {
+              "modelProfiles": [],
+              "agentProfiles": [],
+              "phaseAgentAssignments": {},
+              "refinementTolerance": "balanced",
+              "mvpRigor": "medium",
+              "reviewTolerance": "balanced",
+              "reviewEvidencePolicy": "balanced",
+              "technicalDesignSubagentsEnabled": false,
+              "reviewSubagentsEnabled": true,
+              "autoRefinementAnswersEnabled": false,
+              "autoRefinementAnswersProfile": null,
+              "autoPlayEnabled": true,
+              "autoReviewEnabled": true,
+              "maxImplementationReviewCycles": 5,
+              "destructiveRewindEnabled": false,
+              "pauseOnFailedReview": true,
+              "reviewLearningEnabled": true,
+              "reviewLearningSkillPath": ".codex/skills/sdd-phase-agents/SKILL.md",
+              "completedUsLockOnCompleted": false
+            }
+            """);
+
+        Assert.Equal(
+            ["planner", "implementer", "reviewer", "release-preparer"],
+            settings.AgentProfiles.Select(static agent => agent.Name));
+        Assert.Equal("planner", settings.PhaseAgentAssignments?.DefaultAgent);
+        Assert.Equal("planner", settings.PhaseAgentAssignments?.TechnicalDesignAgent);
+        Assert.Equal("implementer", settings.PhaseAgentAssignments?.ImplementationAgent);
+        Assert.Equal("reviewer", settings.PhaseAgentAssignments?.ReviewAgent);
+        Assert.Equal("release-preparer", settings.PhaseAgentAssignments?.PrPreparationAgent);
     }
 
     [Fact]

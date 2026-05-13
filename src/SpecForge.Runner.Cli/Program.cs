@@ -849,8 +849,14 @@ static string BuildConfigurationPortalHtml() =>
         button.secondary { background: #1d4f7a; }
         button.danger { background: #8f2f38; }
         .lead { margin: 0; color: #9fb0c1; }
+        .title-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+        .runtime-version { color: #7f8da0; font-size: 0.95rem; font-weight: 600; }
         .section-copy { margin: -4px 0 4px; color: #9fb0c1; line-height: 1.45; max-width: 78ch; }
         .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+        .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 22px; border-bottom: 1px solid #253447; }
+        .tab-button { border-radius: 8px 8px 0 0; background: transparent; color: #9fb0c1; border: 1px solid transparent; border-bottom: 0; }
+        .tab-button[aria-selected="true"] { background: #121d28; color: #e8eef5; border-color: #253447; }
+        .tab-panel[hidden] { display: none; }
         .panel { border: 1px solid #253447; border-radius: 8px; padding: 18px; background: #121d28; margin-top: 16px; }
         .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
         .cards { display: grid; gap: 12px; }
@@ -873,41 +879,59 @@ static string BuildConfigurationPortalHtml() =>
     </head>
     <body>
       <main>
-        <h1>SpecForge Configuration</h1>
+        <div class="title-row">
+          <h1>SpecForge Configuration</h1>
+          <span class="runtime-version">v.__RUNTIME_VERSION__</span>
+        </div>
         <p class="lead">Configure the CLI-served workflow runtime for Codex without depending on the Visual Studio configuration surface.</p>
         <form id="settings-form">
-          <section class="panel" id="providers">
-            <h2>Model Profiles</h2>
-            <p class="section-copy">Model profiles describe the available model runtimes: provider type, endpoint credentials when needed, model identifier, reasoning effort, and default repository access.</p>
-            <div id="models" class="cards"></div>
-            <div class="toolbar"><button type="button" class="secondary" id="add-model">Add Model</button></div>
-          </section>
-          <section class="panel" id="agent-profiles">
-            <h2>Agent Profiles</h2>
-            <p class="section-copy">Agent profiles define the workflow roles that use those models, including phase-specific instructions and the repository permissions each role is allowed to use.</p>
-            <div id="agents" class="cards"></div>
-            <div class="toolbar"><button type="button" class="secondary" id="add-agent">Add Agent</button></div>
-          </section>
-          <section class="panel" id="routing">
-            <h2>Phase Routing</h2>
-            <div id="assignments" class="grid"></div>
-          </section>
-          <section class="panel" id="advanced">
-            <h2>Workflow Behavior</h2>
-            <div class="grid">
-              <label><span class="field-label">Refinement tolerance</span><span class="field-control"><select id="refinementTolerance"><option>strict</option><option>balanced</option><option>inferential</option></select><button class="help-button" type="button" aria-label="Refinement tolerance details" aria-expanded="false" data-help="Controls how much ambiguity refinement tolerates before spec can continue. Strict asks more questions; inferential allows the model to proceed with more assumptions.">?</button></span></label>
-              <label><span class="field-label">MVP rigor</span><span class="field-control"><select id="mvpRigor"><option>low</option><option>medium</option><option>high</option></select><button class="help-button" type="button" aria-label="MVP rigor details" aria-expanded="false" data-help="Controls how much product detail refinement requires before a user story can become a buildable MVP slice. Low is lean; high is exacting.">?</button></span></label>
-              <label><span class="field-label">Review tolerance</span><span class="field-control"><select id="reviewTolerance"><option>strict</option><option>balanced</option><option>inferential</option></select><button class="help-button" type="button" aria-label="Review tolerance details" aria-expanded="false" data-help="Controls how demanding review is before it passes or fails delivered work. Strict requires stronger evidence; inferential is more permissive.">?</button></span></label>
-              <label><span class="field-label">Review evidence policy</span><span class="field-control"><select id="reviewEvidencePolicy"><option>strict</option><option>balanced</option><option>release</option><option>advisory</option></select><button class="help-button" type="button" aria-label="Review evidence policy details" aria-expanded="false" data-help="Controls how missing automated, static, operational, or deferred validation evidence affects review readiness.">?</button></span></label>
-              <label><span class="field-label">Auto-refinement agent</span><span class="field-control"><select id="autoRefinementAnswersProfile"></select><button class="help-button" type="button" aria-label="Auto-refinement agent details" aria-expanded="false" data-help="Agent used to answer refinement questions automatically before the workflow hands the phase back to the user.">?</button></span></label>
-              <label><span class="field-label">Review learning skill path</span><span class="field-control"><input id="reviewLearningSkillPath"><button class="help-button" type="button" aria-label="Review learning skill path details" aria-expanded="false" data-help="Workspace-relative skill file where generalized lessons from failed reviews can be persisted.">?</button></span></label>
-              <label><span class="field-label">Max implementation/review cycles</span><span class="field-control"><input id="maxImplementationReviewCycles" type="number" min="1"><button class="help-button" type="button" aria-label="Max implementation/review cycles details" aria-expanded="false" data-help="Maximum implementation attempts allowed in the implementation/review loop before automatic continuation stops.">?</button></span></label>
-              <label><span class="field-label">Decomposition threshold</span><span class="field-control"><input id="decompositionThreshold" type="number" min="0" max="1" step="0.01"><button class="help-button" type="button" aria-label="Decomposition threshold details" aria-expanded="false" data-help="Complexity score at or above this value requires splitting the spec into child user stories. Default is 0.60.">?</button></span></label>
-              <label><span class="field-label">Decomposition tolerance</span><span class="field-control"><input id="decompositionTolerance" type="number" min="0" max="1" step="0.01"><button class="help-button" type="button" aria-label="Decomposition tolerance details" aria-expanded="false" data-help="Tolerance below the threshold where SpecForge suggests, but does not require, splitting. With 0.60 and 0.10, suggested starts at 0.50.">?</button></span></label>
-              <label><span class="field-label">Max decomposition children</span><span class="field-control"><input id="decompositionMaxChildren" type="number" min="1"><button class="help-button" type="button" aria-label="Max decomposition children details" aria-expanded="false" data-help="Maximum child user stories a decomposition proposal may create.">?</button></span></label>
-            </div>
-            <div class="toggles" id="toggles"></div>
-          </section>
+          <nav class="tabs" aria-label="Configuration sections">
+            <button class="tab-button" type="button" role="tab" aria-controls="providers" aria-selected="true" data-tab-target="providers">Models</button>
+            <button class="tab-button" type="button" role="tab" aria-controls="advanced" aria-selected="false" data-tab-target="advanced">Client Basics</button>
+            <button class="tab-button" type="button" role="tab" aria-controls="central" aria-selected="false" data-tab-target="central">SpecForge Central</button>
+          </nav>
+          <div class="tab-panel" id="providers" role="tabpanel">
+            <section class="panel">
+              <h2>Model Profiles</h2>
+              <p class="section-copy">Model profiles describe the available model runtimes: provider type, endpoint credentials when needed, model identifier, reasoning effort, and default repository access.</p>
+              <div id="models" class="cards"></div>
+              <div class="toolbar"><button type="button" class="secondary" id="add-model">Add Model</button></div>
+            </section>
+            <section class="panel" id="agent-profiles">
+              <h2>Agent Profiles</h2>
+              <p class="section-copy">Agent profiles define the workflow roles that use those models, including phase-specific instructions and the repository permissions each role is allowed to use.</p>
+              <div id="agents" class="cards"></div>
+              <div class="toolbar"><button type="button" class="secondary" id="add-agent">Add Agent</button></div>
+            </section>
+            <section class="panel" id="routing">
+              <h2>Phase Routing</h2>
+              <div id="assignments" class="grid"></div>
+            </section>
+          </div>
+          <div class="tab-panel" id="advanced" role="tabpanel" hidden>
+            <section class="panel">
+              <h2>Workflow Behavior</h2>
+              <div class="grid">
+                <label><span class="field-label">Refinement tolerance</span><span class="field-control"><select id="refinementTolerance"><option>strict</option><option>balanced</option><option>inferential</option></select><button class="help-button" type="button" aria-label="Refinement tolerance details" aria-expanded="false" data-help="Controls how much ambiguity refinement tolerates before spec can continue. Strict asks more questions; inferential allows the model to proceed with more assumptions.">?</button></span></label>
+                <label><span class="field-label">MVP rigor</span><span class="field-control"><select id="mvpRigor"><option>low</option><option>medium</option><option>high</option></select><button class="help-button" type="button" aria-label="MVP rigor details" aria-expanded="false" data-help="Controls how much product detail refinement requires before a user story can become a buildable MVP slice. Low is lean; high is exacting.">?</button></span></label>
+                <label><span class="field-label">Review tolerance</span><span class="field-control"><select id="reviewTolerance"><option>strict</option><option>balanced</option><option>inferential</option></select><button class="help-button" type="button" aria-label="Review tolerance details" aria-expanded="false" data-help="Controls how demanding review is before it passes or fails delivered work. Strict requires stronger evidence; inferential is more permissive.">?</button></span></label>
+                <label><span class="field-label">Review evidence policy</span><span class="field-control"><select id="reviewEvidencePolicy"><option>strict</option><option>balanced</option><option>release</option><option>advisory</option></select><button class="help-button" type="button" aria-label="Review evidence policy details" aria-expanded="false" data-help="Controls how missing automated, static, operational, or deferred validation evidence affects review readiness.">?</button></span></label>
+                <label><span class="field-label">Auto-refinement agent</span><span class="field-control"><select id="autoRefinementAnswersProfile"></select><button class="help-button" type="button" aria-label="Auto-refinement agent details" aria-expanded="false" data-help="Agent used to answer refinement questions automatically before the workflow hands the phase back to the user.">?</button></span></label>
+                <label><span class="field-label">Review learning skill path</span><span class="field-control"><input id="reviewLearningSkillPath"><button class="help-button" type="button" aria-label="Review learning skill path details" aria-expanded="false" data-help="Workspace-relative skill file where generalized lessons from failed reviews can be persisted.">?</button></span></label>
+                <label><span class="field-label">Max implementation/review cycles</span><span class="field-control"><input id="maxImplementationReviewCycles" type="number" min="1"><button class="help-button" type="button" aria-label="Max implementation/review cycles details" aria-expanded="false" data-help="Maximum implementation attempts allowed in the implementation/review loop before automatic continuation stops.">?</button></span></label>
+                <label><span class="field-label">Decomposition threshold</span><span class="field-control"><input id="decompositionThreshold" type="number" min="0" max="1" step="0.01"><button class="help-button" type="button" aria-label="Decomposition threshold details" aria-expanded="false" data-help="Complexity score at or above this value requires splitting the spec into child user stories. Default is 0.60.">?</button></span></label>
+                <label><span class="field-label">Decomposition tolerance</span><span class="field-control"><input id="decompositionTolerance" type="number" min="0" max="1" step="0.01"><button class="help-button" type="button" aria-label="Decomposition tolerance details" aria-expanded="false" data-help="Tolerance below the threshold where SpecForge suggests, but does not require, splitting. With 0.60 and 0.10, suggested starts at 0.50.">?</button></span></label>
+                <label><span class="field-label">Max decomposition children</span><span class="field-control"><input id="decompositionMaxChildren" type="number" min="1"><button class="help-button" type="button" aria-label="Max decomposition children details" aria-expanded="false" data-help="Maximum child user stories a decomposition proposal may create.">?</button></span></label>
+              </div>
+              <div class="toggles" id="toggles"></div>
+            </section>
+          </div>
+          <div class="tab-panel" id="central" role="tabpanel" hidden>
+            <section class="panel">
+              <h2>SpecForge Central</h2>
+              <p class="section-copy">Centralized configuration sync is reserved for the shared SpecForge Central workflow. Local client settings remain editable in the other tabs until central policy management is defined.</p>
+            </section>
+          </div>
           <div class="toolbar">
             <button type="submit">Save Configuration</button>
             <button type="button" class="secondary" id="reload">Reload</button>
@@ -939,6 +963,7 @@ static string BuildConfigurationPortalHtml() =>
           ["completedUsLockOnCompleted", "Lock completed user stories"],
           ["decompositionEnabled", "Complexity decomposition"]
         ];
+        const configurationTabs = ["providers", "advanced", "central"];
         const helpDescriptions = {
           "model.name": "Stable profile name used by agent routing and phase assignments.",
           "model.provider": "Provider kind for this model profile. Codex, Claude, and Copilot use native/local CLI identity; openai-compatible uses an HTTP endpoint.",
@@ -989,15 +1014,30 @@ static string BuildConfigurationPortalHtml() =>
           renderAgents();
           renderAssignments();
           renderBehavior();
+          renderTabState(resolveActiveTabFromHash());
         }
 
         function scrollToHashSection() {
-          const hash = window.location.hash.slice(1);
-          if (!hash) {
-            return;
-          }
+          renderTabState(resolveActiveTabFromHash());
+        }
 
-          document.getElementById(hash)?.scrollIntoView({ block: "start" });
+        function resolveActiveTabFromHash() {
+          const hash = window.location.hash.slice(1);
+          return configurationTabs.includes(hash) ? hash : "providers";
+        }
+
+        function renderTabState(activeTab) {
+          for (const tab of configurationTabs) {
+            const selected = tab === activeTab;
+            const button = document.querySelector(`[data-tab-target="${tab}"]`);
+            const panel = document.getElementById(tab);
+            if (button instanceof HTMLButtonElement) {
+              button.setAttribute("aria-selected", selected ? "true" : "false");
+            }
+            if (panel instanceof HTMLElement) {
+              panel.hidden = !selected;
+            }
+          }
         }
 
         function renderModels() {
@@ -1148,6 +1188,15 @@ static string BuildConfigurationPortalHtml() =>
         document.addEventListener("click", event => {
           const target = event.target;
           if (!(target instanceof HTMLElement)) return;
+          if (target.dataset.tabTarget) {
+            event.preventDefault();
+            closeHelpPopover();
+            sync();
+            window.location.hash = target.dataset.tabTarget;
+            renderTabState(target.dataset.tabTarget);
+            return;
+          }
+
           if (target.classList.contains("help-button")) {
             event.preventDefault();
             event.stopPropagation();
@@ -1182,6 +1231,10 @@ static string BuildConfigurationPortalHtml() =>
             normalizeConfigurationReferences();
             render();
           }
+        });
+
+        window.addEventListener("hashchange", () => {
+          renderTabState(resolveActiveTabFromHash());
         });
 
         document.addEventListener("keydown", event => {
@@ -1329,7 +1382,7 @@ static string BuildConfigurationPortalHtml() =>
       </script>
     </body>
     </html>
-    """;
+    """.Replace("__RUNTIME_VERSION__", WebUtility.HtmlEncode(GetRuntimeVersion() ?? "unknown"), StringComparison.Ordinal);
 
 internal sealed record ApprovalAnswerSuggestionRequest(string Question, string? Actor);
 

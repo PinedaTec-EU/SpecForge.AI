@@ -1740,6 +1740,13 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
       storySearch.addEventListener("input", applyStorySearch);
       applyStorySearch();
     }
+    function keepSelectedStoryVisible() {
+      const selectedStoryRow = document.querySelector(".story-row--selected");
+      if (selectedStoryRow instanceof HTMLElement) {
+        selectedStoryRow.scrollIntoView({ block: "start" });
+      }
+    }
+    window.requestAnimationFrame(keepSelectedStoryVisible);
     const form = document.getElementById("create-user-story-form");
     if (form) {
       window.addEventListener("message", (event) => {
