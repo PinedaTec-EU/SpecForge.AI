@@ -122,6 +122,12 @@ The current design is intentionally split into layers:
   - packaged MCP binaries, CLI portal runtime, and webview rendering assets for repository-local use
   - quick prompts including opening the CLI workflow portal
 
+The following diagram is the quickest way to read the conceptual relationship between the local plugin surface, the skill layer, the MCP contract, the CLI runtime, and the remote `SF-Central` control plane.
+
+<p align="center">
+  <img loading="lazy" alt="Conceptual diagram showing Plugin, Skills, MCP, CLI, and remote SF-Central as linked steel and graphite modules" src="./doc/images/conceptual-architecture-steel-graphite.png" width="92%"/>
+</p>
+
 See the detailed design documents in:
 
 - [doc/product-vision.md](doc/product-vision.md)
@@ -249,6 +255,204 @@ The repository includes a packaged local plugin at `plugins/specforge-ai/`. Cons
 The bundle includes task-focused skills and quick prompts for common operations such as listing user stories, advancing phases, and opening the CLI workflow portal.
 
 The packaged MCP server can also start the portal itself through `open_workflow_portal`. By default it uses `http://localhost:5128/`; set `SPECFORGE_WORKFLOW_PORTAL_URL` or pass the tool's `url` argument when the client needs a different localhost port.
+
+## Developer Onboarding
+
+This section is for someone who is not only evaluating SpecForge as a user, but also forking the repository and working on the product itself.
+
+### What you are working on
+
+SpecForge.AI is not a single app. In local development you are usually touching one or more of these surfaces:
+
+- the VS Code extension in `src-vscode/`
+- the workflow/domain backend in `src/SpecForge.Domain/`
+- the MCP server in `src/SpecForge.McpServer/`
+- the browser workflow portal in `src/SpecForge.Runner.Cli/`
+- the packaged local plugin in `plugins/specforge-ai/`
+
+The source of truth for workflow state is always the repository itself under `.specs/`, not an external database.
+
+### Fork and clone
+
+Typical development setup:
+
+```bash
+git clone git@github.com:<your-user>/SpecForge.AI.git
+cd SpecForge.AI
+git remote add upstream git@github.com:PinedaTec-EU/SpecForge.AI.git
+git fetch upstream
+```
+
+When you start work on a change:
+
+```bash
+git checkout main
+git pull --ff-only upstream main
+git checkout -b <your-branch>
+```
+
+This repository already follows a "sync before edit" rule, so keeping your local branch current before larger edit blocks is part of the expected workflow.
+
+### First bootstrap
+
+From a clean clone:
+
+```bash
+npm install
+npm run compile
+dotnet test SpecForge.AI.slnx
+```
+
+What those commands do:
+
+- `npm install` installs the VS Code extension toolchain
+- `npm run compile` builds the TypeScript extension and publishes the MCP server into `dist/mcp/`
+- `dotnet test SpecForge.AI.slnx` validates the .NET side of the workflow engine and CLI stack
+
+If you also want the TypeScript test suite:
+
+```bash
+npm run test:ts
+```
+
+### Quick orientation
+
+If you are new to the codebase, read in this order:
+
+1. [`README.md`](README.md) for the product surface and local entrypoints.
+2. [`doc/architecture.md`](doc/architecture.md) for runtime boundaries.
+3. [`doc/workflow-canonico-fase-1.md`](doc/workflow-canonico-fase-1.md) for workflow semantics.
+4. [`doc/mcp-contract-fase-1.md`](doc/mcp-contract-fase-1.md) for the external contract the UI and agents depend on.
+
+That sequence is enough to understand what is authoritative before diving into implementation files.
+
+### Main local entrypoints
+
+You have three practical ways to work on the product locally.
+
+#### 1. VS Code extension development host
+
+Use this when you are changing the extension UX, explorer behavior, workflow webviews, or extension-to-backend wiring.
+
+1. Open the repo in VS Code.
+2. Run `npm run compile`.
+3. Start the `Run SpecForge Extension` launch configuration from [`.vscode/launch.json`](.vscode/launch.json).
+4. In the Extension Development Host window, open the `SpecForge.AI` activity bar view.
+
+That launch configuration uses the build task declared in [`.vscode/tasks.json`](.vscode/tasks.json), so you do not need a global TypeScript install.
+
+#### 2. Browser workflow portal
+
+Use this when you are changing workflow presentation, approval/refinement flows, browser interactions, or configuration UX outside VS Code.
+
+```bash
+./launch.sh
+```
+
+To open directly on a specific story:
+
+```bash
+./launch.sh US-0001
+```
+
+`launch.sh` starts `SpecForge.Runner.Cli serve-workflow`, opens the browser, and targets `http://localhost:5128/` by default.
+
+#### 3. MCP-first local development
+
+Use this when you are validating how Codex-style agents or MCP clients interact with the workflow without relying on the VS Code UI.
+
+- The development MCP server is built into `dist/mcp/`.
+- The packaged distributable plugin lives in `plugins/specforge-ai/`.
+- The packaged plugin includes its own `.mcp.json`, skills, prompts, and compiled runtime assets.
+
+This is the path to use when you want to verify the public operational contract instead of only the internal code paths.
+
+### Local configuration and environment
+
+There are two different configuration layers to keep straight:
+
+- VS Code extension settings such as `specForge.execution.*`
+- workspace runtime files under `.specs/`
+
+Useful facts:
+
+- The workflow portal persists workspace execution settings in `.specs/configuration/settings.json`.
+- Repository category configuration lives in `.specs/config.yaml`.
+- User-story runtime state and artifacts live under `.specs/us/`.
+- The generated workspace MCP configuration points to `${workspaceFolder}/.env` for environment variables when a client wants them.
+
+If you need provider-specific environment variables locally, create a repo-root `.env`. If you do not need any, the deterministic local engine and local file-backed workflow still work without building a parallel app config system.
+
+### First-run path for a new developer
+
+If your goal is "I want to see the product working before I touch code", this is the shortest useful path:
+
+1. Clone the repo and run `npm install`.
+2. Run `npm run compile`.
+3. Start `./launch.sh`.
+4. Open the portal home page in the browser.
+5. Inspect the existing user stories already persisted under `.specs/us/`.
+6. Open one story, review its phase graph, artifacts, and timeline.
+7. After that, launch the VS Code extension host and compare the same workflow in the extension UI.
+
+That gives you the fastest understanding of the product without requiring provider setup first.
+
+### First-run path for a contributor changing code
+
+Choose the entrypoint by the subsystem you are changing:
+
+- `src-vscode/`: run the Extension Development Host
+- `src/SpecForge.Domain/` or `src/SpecForge.McpServer/`: run `dotnet test SpecForge.AI.slnx`
+- `src/SpecForge.Runner.Cli/`: run `./launch.sh`
+- `plugins/specforge-ai/`: validate the packaged plugin contract after building
+
+As a rule, prefer exercising the narrowest real surface that matches your change instead of always testing through the full stack.
+
+### How the repository is meant to be used
+
+The important operational rule is that workflow state should be changed through SpecForge operations, not by hand-editing files under `.specs/` unless the task is explicitly about persistence or repair.
+
+In practice:
+
+- create or advance stories through the extension, MCP tools, or CLI portal
+- treat `.specs/us/**` as persisted workflow state to inspect and validate
+- update docs in `doc/` when workflow semantics change
+- update packaged plugin contents when you change the external MCP-facing behavior
+
+### Working on the packaged plugin
+
+`plugins/specforge-ai/` is not just an example folder. It is the repository-local distribution bundle for non-VS Code agent clients.
+
+When you touch MCP contracts, workflow portal rendering, or packaged operational assets, verify that:
+
+- the packaged binaries and assets still exist under `plugins/specforge-ai/mcp/`
+- the packaged plugin metadata in `plugins/specforge-ai/.codex-plugin/plugin.json` still matches the current versioning and capabilities
+- the packaged `.mcp.json` still points correctly at the local server entrypoint
+
+If your change only affects the in-repo development code path and not the packaged plugin contract, call that out clearly in your review or change summary.
+
+### Daily workflow expectations
+
+The repo is optimized for traceable, workflow-centric changes, not just feature coding in isolation.
+
+- sync with remote before new edit blocks
+- prefer small, scoped changes tied to a clear workflow outcome
+- keep docs and workflow semantics aligned
+- validate the subsystem you touched before closing the task
+
+The local process in this repository also expects finished work to be closed with a functional commit and then a separate version bump commit. If you are only iterating locally and not closing the task yet, do not run the version bump early.
+
+### Useful files to know by memory
+
+- [`README.md`](README.md): product surface and local entrypoints
+- [`CODEX.md`](CODEX.md): repository-specific UI and model-output conventions
+- [`AGENTS.md`](AGENTS.md): repo operating rules and active skills
+- [`package.json`](package.json): extension manifest, scripts, and contributed settings
+- [`launch.sh`](launch.sh): fastest browser portal launcher
+- [`.vscode/launch.json`](.vscode/launch.json): extension development host entrypoint
+- [`src-vscode/extension.ts`](src-vscode/extension.ts): extension activation
+- [`src/SpecForge.McpServer/Program.cs`](src/SpecForge.McpServer/Program.cs): MCP server entry
+- [`src/SpecForge.Runner.Cli/Program.cs`](src/SpecForge.Runner.Cli/Program.cs): CLI portal entry
 
 ## Model Configuration
 
