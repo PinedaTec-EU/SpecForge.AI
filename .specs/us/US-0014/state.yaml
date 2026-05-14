@@ -1,0 +1,9 @@
+﻿usId: US-0014
+workflowId: canonical-v1
+status: active
+currentPhase: capture
+sourceHash: sha256:e7efacac842f90e6417812866cb0ced2cf6964c31cc9381eaf28e1eeac4a40b6
+createdWithRuntimeVersion: 0.1.4.490+a0318af5002e708de39a7dc9b7d23eb03d9ad4ec
+lastRuntimeVersion: 0.1.4.490+a0318af5002e708de39a7dc9b7d23eb03d9ad4ec
+approvedPhases:
+  []

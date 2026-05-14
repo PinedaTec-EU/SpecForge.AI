@@ -3,6 +3,7 @@
 ## Metadata
 - Kind: `feature`
 - Category: `user-stories`
+- Tags: `sf-central`
 
 ## Objective
 ## SpecForge Goal Intake

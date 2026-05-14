@@ -1,0 +1,14 @@
+﻿usId: US-0015
+workflowId: canonical-v1
+status: waiting-children
+currentPhase: spec
+sourceHash: sha256:9197c9b4453035f44f1ceb155861b4f0ca7d40ed0e720324f7837723039c18ef
+createdWithRuntimeVersion: 
+lastRuntimeVersion: 
+workflowKind: aggregate
+parentUsId: 
+childUsIds:
+  - US-0016
+  - US-0017
+approvedPhases:
+  []

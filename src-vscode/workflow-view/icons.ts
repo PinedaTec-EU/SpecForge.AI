@@ -62,6 +62,14 @@ export function cameraIcon(): string {
   `;
 }
 
+export function editLayoutIcon(): string {
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M15.86 4.64a2.25 2.25 0 0 1 3.18 3.18l-8.9 8.9a3.25 3.25 0 0 1-1.42.82l-3.01.86a.75.75 0 0 1-.92-.93l.86-3a3.25 3.25 0 0 1 .82-1.43l8.9-8.9Zm2.12 1.06a.75.75 0 0 0-1.06 0l-1.02 1.02 1.06 1.06 1.02-1.02a.75.75 0 0 0 0-1.06Zm-3.14 2.08-7.3 7.3a1.75 1.75 0 0 0-.44.77l-.48 1.68 1.68-.48c.29-.08.55-.23.77-.44l7.3-7.3-1.53-1.53Z"></path>
+    </svg>
+  `;
+}
+
 export function lockClosedIcon(): string {
   return `
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">

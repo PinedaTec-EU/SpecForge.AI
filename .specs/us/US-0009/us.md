@@ -3,6 +3,7 @@
 ## Metadata
 - Kind: `feature`
 - Category: `repositories`
+- Tags: `sf-central`
 
 ## Objective
 # SpecForge · Managed repositories user story

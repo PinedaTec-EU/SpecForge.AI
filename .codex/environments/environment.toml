@@ -8,8 +8,4 @@ script = ""
 [[actions]]
 name = "Run"
 icon = "run"
-command = '''
-dotnet run --project src/SpecForge.Runner.Cli/SpecForge.Runner.Cli.csproj -- serve-workflow "$PWD"
-
-open http://localhost:5128/
-'''
+command = "./launch.sh"

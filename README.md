@@ -30,7 +30,7 @@ Implemented today:
 
 Not implemented yet:
 
-- full PR integration
+- provider-neutral issue and PR integrations beyond the current GitHub-oriented PR preparation path
 - richer prompt inspection UX, diffing, and effective prompt visibility
 
 ## Interface Preview
@@ -131,6 +131,7 @@ See the detailed design documents in:
 - [doc/spec-schema-fase-1.md](doc/spec-schema-fase-1.md)
 - [doc/mcp-contract-fase-1.md](doc/mcp-contract-fase-1.md)
 - [doc/implementation-plan.md](doc/implementation-plan.md)
+- [doc/market-positioning.md](doc/market-positioning.md)
 
 ## Installation
 
@@ -176,6 +177,8 @@ npm run test:ts
 
 ### Serve the CLI portal
 
+The CLI serves a single browser portal for the current workspace. The root page shows the repo's user stories and workflow graph. The `/configuration` page inside the same portal manages providers, phase routing, and advanced settings without a separate configuration server:
+
 Preferred local entrypoint:
 
 ```bash
@@ -189,8 +192,6 @@ To open the portal focused on a specific story:
 ```
 
 The script opens the local portal URL in the browser and delegates to `SpecForge.Runner.Cli serve-workflow`.
-
-The CLI serves a single browser portal for the current workspace. The root page shows the repo's user stories and workflow graph. The `/configuration` page inside the same portal manages providers, phase routing, and advanced settings without a separate configuration server:
 
 ```bash
 dotnet run --project src/SpecForge.Runner.Cli/SpecForge.Runner.Cli.csproj -- serve-workflow "$PWD"
@@ -799,11 +800,12 @@ Last reviewed: 2026-05-09, against implementation through `0.1.4.432`.
 - [x] expose a user-story context action to open the CLI workflow portal
 - [x] support phase agent profiles with real repository permissions
 - [ ] finalize richer branch lifecycle rules and Git/PR metadata
-- [ ] add issue and PR preparation integration
+- [ ] add provider-neutral issue and PR integrations beyond the current GitHub-oriented PR preparation path
 - [ ] add a switch to show completed user stories and workflows
 - [ ] add sidebar search across user stories and workflows
 - [ ] add prompt diffing and effective prompt inspection/editing UX
 - [ ] add a one-command plugin release pipeline for compile, MCP publish, artifact sync, and validation
+- [ ] add SpecForge Central as the enterprise control plane for managed repositories, readiness, policy distribution, portfolio workflow visibility, and audit
 
 ## MVP Roadmap
 
@@ -828,11 +830,30 @@ The current target is an MVP, not a feature-complete product.
 
 - [x] graph visualization and richer workflow observability
 - [ ] prompt diffing and effective prompt inspection UX
-- [ ] GitHub PR / issue integration
+- [ ] provider-neutral issue and PR integrations beyond the current GitHub-oriented PR preparation path
 - [ ] customizable workflows
 - [ ] completed user story visibility toggle in the sidebar
 - [ ] user story and workflow search in the sidebar
 - [ ] one-command plugin release/sync pipeline
+- [ ] SpecForge Central enterprise control plane
+
+### SpecForge Central
+
+SpecForge Central is the planned enterprise layer for running governed SDD across many repositories.
+
+Central will manage the portfolio view and policy plane:
+
+- managed repository catalog and target repository selection
+- readiness checks for `.specs`, MCP/plugin runtime, prompts, provider routing, and evidence policy
+- portfolio visibility across active, blocked, waiting-user, review-failed, release-pending, PR-preparation, and completed workflows
+- central policy distribution for prompts, rules, categories, provider defaults, and evidence policies
+- mandatory policy locks that local runtimes enforce, including disabled prompt customization or locked review evidence settings
+- drift detection between central policy and repository-local overrides
+- spec-governance work queues focused on specs, evidence, gates, blockers, policy compliance, and repositories instead of Scrum boards
+- role-aware operations for platform owners, maintainers, reviewers, and contributors
+- audit and compliance exports for approvals, regressions, forced review approvals, evidence gaps, and reopened completed workflows
+
+Central must not replace repository-local truth. Each managed repository keeps its `.specs` artifacts, prompts, state, timeline, and workflow history.
 
 ### High-value candidates
 

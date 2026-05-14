@@ -1,0 +1,67 @@
+{
+  "modelProfiles": [],
+  "agentProfiles": [
+    {
+      "name": "planner",
+      "role": "planner",
+      "modelProfile": "",
+      "instructions": "Focus on requirements, workflow consistency, and repository-aware planning.",
+      "repositoryAccess": "read",
+      "reasoningEffort": null
+    },
+    {
+      "name": "implementer",
+      "role": "implementer",
+      "modelProfile": "",
+      "instructions": "Implement approved technical designs with focused code changes and matching tests.",
+      "repositoryAccess": "read-write",
+      "reasoningEffort": null
+    },
+    {
+      "name": "reviewer",
+      "role": "reviewer",
+      "modelProfile": "",
+      "instructions": "Review implementation changes for correctness, regressions, missing tests, and release risk.",
+      "repositoryAccess": "read-write",
+      "reasoningEffort": null
+    },
+    {
+      "name": "release-preparer",
+      "role": "release-preparer",
+      "modelProfile": "",
+      "instructions": "Prepare release and pull request artifacts from repository evidence.",
+      "repositoryAccess": "read",
+      "reasoningEffort": null
+    }
+  ],
+  "phaseAgentAssignments": {
+    "defaultAgent": "planner",
+    "refinementAgent": "planner",
+    "specAgent": "planner",
+    "technicalDesignAgent": "planner",
+    "implementationAgent": "implementer",
+    "reviewAgent": "reviewer",
+    "releaseApprovalAgent": "release-preparer",
+    "prPreparationAgent": "release-preparer"
+  },
+  "refinementTolerance": "balanced",
+  "mvpRigor": "medium",
+  "reviewTolerance": "balanced",
+  "reviewEvidencePolicy": "balanced",
+  "technicalDesignSubagentsEnabled": false,
+  "reviewSubagentsEnabled": true,
+  "autoRefinementAnswersEnabled": false,
+  "autoRefinementAnswersProfile": null,
+  "autoPlayEnabled": true,
+  "autoReviewEnabled": true,
+  "maxImplementationReviewCycles": 5,
+  "destructiveRewindEnabled": false,
+  "pauseOnFailedReview": true,
+  "reviewLearningEnabled": true,
+  "reviewLearningSkillPath": ".codex/skills/sdd-phase-agents/SKILL.md",
+  "completedUsLockOnCompleted": false,
+  "decompositionEnabled": true,
+  "decompositionThreshold": 0.6,
+  "decompositionTolerance": 0.1,
+  "decompositionMaxChildren": 5
+}

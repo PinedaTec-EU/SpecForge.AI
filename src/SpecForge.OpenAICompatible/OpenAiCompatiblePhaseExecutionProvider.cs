@@ -1889,17 +1889,31 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
         phaseId switch
         {
             PhaseId.Refinement => ResolveToleranceTemperature(options.RefinementTolerance),
-            PhaseId.Review => ResolveToleranceTemperature(options.ReviewTolerance),
-            _ => 0.2d
+            PhaseId.Spec => 0.0d,
+            PhaseId.TechnicalDesign => 0.1d,
+            PhaseId.Implementation => 0.0d,
+            PhaseId.Review => ResolveReviewTemperature(options.ReviewTolerance),
+            PhaseId.ReleaseApproval => 0.0d,
+            PhaseId.PrPreparation => 0.0d,
+            _ => 0.1d
         };
 
     private static double ResolveToleranceTemperature(string tolerance) =>
         NormalizeTolerance(tolerance) switch
         {
             StrictTolerance => 0.0d,
-            BalancedTolerance => 0.2d,
-            InferentialTolerance => 0.4d,
-            _ => 0.2d
+            BalancedTolerance => 0.1d,
+            InferentialTolerance => 0.2d,
+            _ => 0.1d
+        };
+
+    private static double ResolveReviewTemperature(string tolerance) =>
+        NormalizeTolerance(tolerance) switch
+        {
+            StrictTolerance => 0.0d,
+            BalancedTolerance => 0.1d,
+            InferentialTolerance => 0.2d,
+            _ => 0.1d
         };
 
     private static string ResolveRefinementGuidance(string tolerance) =>

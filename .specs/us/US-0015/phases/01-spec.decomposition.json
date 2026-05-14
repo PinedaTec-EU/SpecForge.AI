@@ -1,0 +1,32 @@
+{
+  "state": "approved",
+  "complexityScore": 0.6,
+  "threshold": 0.6,
+  "tolerance": 0.1,
+  "decision": "required",
+  "rationale": "The parent spec mixes three independently reviewable concerns: the aggregate-specific workflow layout, parent-child navigation, and the persisted artifact lineage that explains why the split happened. Keeping those concerns in one implementation pass would hide the evidence trail and make local validation ambiguous, so the spec was split into focused child stories.",
+  "proposedChildren": [
+    {
+      "title": "Test: hija 1 - primer slice visual",
+      "objective": "Validar la primera historia hija generada desde la historia agrupadora de prueba.",
+      "acceptanceCriteria": [
+        "La hija 1 aparece vinculada a la agregadora y es navegable en el portal."
+      ],
+      "dependencies": []
+    },
+    {
+      "title": "Test: hija 2 - segundo slice visual",
+      "objective": "Validar la segunda historia hija generada desde la historia agrupadora de prueba.",
+      "acceptanceCriteria": [
+        "La hija 2 aparece vinculada a la agregadora y muestra el parent correctamente."
+      ],
+      "dependencies": [
+        "Test: hija 1 - primer slice visual"
+      ]
+    }
+  ],
+  "createdChildUsIds": [
+    "US-0016",
+    "US-0017"
+  ]
+}
