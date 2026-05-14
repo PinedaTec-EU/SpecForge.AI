@@ -183,9 +183,9 @@ public sealed class OpenAiCompatibleWorkflowIntegrationTests : IDisposable
 
         Assert.Equal(3, modelStub.Requests.Count);
         Assert.All(modelStub.Requests, request => Assert.Equal("/v1/chat/completions", request.Path));
-        Assert.Equal(0.4d, OpenAiCompatibleRequestJson.ReadTemperature(modelStub.Requests[0].Body));
-        Assert.Equal(0.4d, OpenAiCompatibleRequestJson.ReadTemperature(modelStub.Requests[1].Body));
-        Assert.Equal(0.2d, OpenAiCompatibleRequestJson.ReadTemperature(modelStub.Requests[2].Body));
+        Assert.Equal(0.2d, OpenAiCompatibleRequestJson.ReadTemperature(modelStub.Requests[0].Body));
+        Assert.Equal(0.2d, OpenAiCompatibleRequestJson.ReadTemperature(modelStub.Requests[1].Body));
+        Assert.Equal(0.0d, OpenAiCompatibleRequestJson.ReadTemperature(modelStub.Requests[2].Body));
         Assert.False(OpenAiCompatibleRequestJson.HasResponseFormat(modelStub.Requests[0].Body));
         Assert.False(OpenAiCompatibleRequestJson.HasResponseFormat(modelStub.Requests[1].Body));
         Assert.False(OpenAiCompatibleRequestJson.HasResponseFormat(modelStub.Requests[2].Body));
