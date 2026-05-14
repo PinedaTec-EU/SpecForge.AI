@@ -276,6 +276,28 @@ Pending subtasks before the MVP is considered complete:
 - [ ] add SpecForge Central repository management: catalog, readiness, create/register flow, and target repository selection
 - [ ] add PR/issue integration or an export-first bridge if direct integration is too early
 
+## SpecForge Central Enterprise Roadmap
+
+SpecForge Central is the enterprise control plane for teams that need governed SDD across several repositories. Central must coordinate repositories without becoming the source of truth for repository-local workflows.
+
+Enterprise roadmap:
+
+- [ ] Managed repository catalog: stable repository id, display name, owner/team, local path or remote URL, default branch, enabled state, grouping, and tags.
+- [ ] Repository readiness checks: `.specs` bootstrap, category catalog, prompt overrides, MCP/plugin availability, runtime version, provider routing, evidence policy, and missing configuration warnings.
+- [ ] Target repository selection: create, import, inspect, and continue user stories from Central while writing artifacts into the selected repository.
+- [ ] Portfolio workflow dashboard: show active, blocked, waiting-user, review-failed, release-pending, PR-preparation, completed, and dropped workflows across repositories.
+- [ ] Central policy distribution: publish approved prompt/rule/evidence-policy/category bundles and let repositories apply, defer, or report drift.
+- [ ] Central policy locks: mark specific policy fields as mandatory so local clients disable custom prompt overrides, model/provider routing changes, relaxed evidence policies, workflow customization, or unauthorized forced approvals.
+- [ ] Local runtime enforcement: MCP, VS Code, and the browser portal must reject or disable actions that violate locked Central policy and record the reason in audit output.
+- [ ] Policy drift detection: show where local repositories diverge from the active Central policy and whether the drift is approved.
+- [ ] Spec-governance work hub: provide Jira-like shared visibility without making epics, sprints, velocity, or story points the primary organizing model.
+- [ ] Decision queues: show waiting-user gates, review failures, release approvals, policy violations, regressions, and evidence gaps across repositories.
+- [ ] Enterprise evidence views: aggregate review evidence packs, release approvals, forced review approvals, regressions, resets, and reopened completed workflows.
+- [ ] Provider-neutral issue and PR integration status: show which repositories are linked to GitHub, GitLab, Azure DevOps, Jira, or export-only bridges.
+- [ ] Role-aware operations: separate platform owner, repository maintainer, reviewer, and contributor actions.
+- [ ] Audit and compliance export: export timeline summaries, approvals, regressions, evidence gaps, and policy drift for external review.
+- [ ] Local/offline compatibility: repositories must remain operable through the local MCP/plugin runtime when Central is unavailable, then report state back later.
+
 Persistence artifacts already defined or being defined:
 
 - ✅ `state.yaml`

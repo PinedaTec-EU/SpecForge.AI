@@ -24,7 +24,7 @@ import { buildWorkflowHtml } from "./workflowView";
 import type { WorkflowViewState } from "./workflow-view/models";
 import { getEditorTypographyCssVars } from "./webviewTypography";
 import { readUserWorkspacePreferences, setPausedWorkflowPhaseIds } from "./userWorkspacePreferences";
-import { readWorkflowGraphLayoutConfigAsync } from "./workflowGraphLayout";
+import { readWorkflowGraphLayoutConfigAsync, updateAggregateWorkflowGraphLayoutAsync, updateWorkflowGraphLayoutPositionsAsync, updateWorkflowGraphLegendPositionAsync } from "./workflowGraphLayout";
 import { asErrorMessage, getNextAttachmentPathAsync } from "./utils";
 
 type WorkflowPanelCommand =
@@ -62,6 +62,18 @@ type WorkflowPanelCommand =
   | { readonly command: "play" }
   | { readonly command: "pause" }
   | { readonly command: "togglePhasePause"; readonly phaseId?: string }
+  | {
+    readonly command: "saveWorkflowGraphLayout";
+    readonly layoutKind?: "workflow" | "aggregate";
+    readonly userStoryId?: string;
+    readonly layoutMode?: "horizontal" | "vertical";
+    readonly positions?: Readonly<Record<string, { readonly x: number; readonly y: number }>>;
+    readonly legendPosition?: { readonly x: number; readonly y: number };
+    readonly aggregate?: {
+      readonly positions: Readonly<Record<string, { readonly x: number; readonly y: number }>>;
+      readonly spacing: Readonly<Record<string, number>>;
+    };
+  }
   | { readonly command: "stop" };
 
 type WorkflowExecutionRequest = {
@@ -333,6 +345,40 @@ class WorkflowPanelController {
       case "selectIteration":
         this.selectedIterationKey = message.iterationKey?.trim() || null;
         await this.renderCachedWorkflowAsync("command:selectIteration");
+        return;
+      case "saveWorkflowGraphLayout":
+        if (message.layoutKind === "aggregate" && message.aggregate) {
+          const positions = message.aggregate.positions;
+          const spacing = message.aggregate.spacing;
+          await updateAggregateWorkflowGraphLayoutAsync(this.workspaceRoot, {
+            positions: {
+              capture: positions.capture ?? { x: 56, y: 140 },
+              refinement: positions.refinement ?? { x: 336, y: 140 },
+              spec: positions.spec ?? { x: 336, y: 332 },
+              split: positions.split ?? { x: 56, y: 524 }
+            },
+            spacing: {
+              horizontalPadding: spacing.horizontalPadding ?? 56,
+              topRowTop: spacing.topRowTop ?? 140,
+              topRowGap: spacing.topRowGap ?? 56,
+              rowGap: spacing.rowGap ?? 192,
+              childGap: spacing.childGap ?? 56,
+              maxChildrenPerRow: spacing.maxChildrenPerRow ?? 2
+            }
+          }, message.userStoryId);
+          if (message.layoutMode && message.legendPosition) {
+            await updateWorkflowGraphLegendPositionAsync(this.workspaceRoot, message.layoutMode, message.legendPosition);
+          }
+          await this.refreshAsync("command:saveWorkflowGraphLayout:aggregate");
+        } else if (message.layoutMode) {
+          if (message.positions) {
+            await updateWorkflowGraphLayoutPositionsAsync(this.workspaceRoot, message.layoutMode, message.positions);
+          }
+          if (message.legendPosition) {
+            await updateWorkflowGraphLegendPositionAsync(this.workspaceRoot, message.layoutMode, message.legendPosition);
+          }
+          await this.refreshAsync("command:saveWorkflowGraphLayout:workflow");
+        }
         return;
       case "togglePhaseIterations":
         if (message.phaseId) {

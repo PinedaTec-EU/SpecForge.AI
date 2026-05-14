@@ -3,6 +3,7 @@
 ## Metadata
 - Kind: `feature`
 - Category: `synchronization`
+- Tags: `sf-central`
 
 ## Objective
 ## SpecForge Goal Intake

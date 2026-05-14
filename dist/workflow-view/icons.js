@@ -8,6 +8,7 @@ exports.stopIcon = stopIcon;
 exports.fileIcon = fileIcon;
 exports.externalLinkIcon = externalLinkIcon;
 exports.cameraIcon = cameraIcon;
+exports.editLayoutIcon = editLayoutIcon;
 exports.lockClosedIcon = lockClosedIcon;
 exports.lockOpenIcon = lockOpenIcon;
 exports.userPhaseIcon = userPhaseIcon;
@@ -67,6 +68,13 @@ function cameraIcon() {
     return `
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path d="M9.7 4.5a1.75 1.75 0 0 0-1.43.74l-.82 1.16H6.25A3.25 3.25 0 0 0 3 9.65v7.1A3.25 3.25 0 0 0 6.25 20h11.5A3.25 3.25 0 0 0 21 16.75v-7.1a3.25 3.25 0 0 0-3.25-3.25h-1.2l-.82-1.16a1.75 1.75 0 0 0-1.43-.74H9.7Zm0 1.5h4.6c.08 0 .16.04.2.1l1.04 1.46c.28.4.74.64 1.23.64h1.98c.97 0 1.75.78 1.75 1.75v7.1c0 .97-.78 1.75-1.75 1.75H6.25c-.97 0-1.75-.78-1.75-1.75v-7.1c0-.97.78-1.75 1.75-1.75h1.98c.5 0 .95-.24 1.24-.64l1.03-1.45c.05-.07.12-.11.2-.11ZM12 8.75A4.25 4.25 0 1 0 12 17.25 4.25 4.25 0 0 0 12 8.75Zm0 1.5A2.75 2.75 0 1 1 12 15.75 2.75 2.75 0 0 1 12 10.25Z"></path>
+    </svg>
+  `;
+}
+function editLayoutIcon() {
+    return `
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M15.86 4.64a2.25 2.25 0 0 1 3.18 3.18l-8.9 8.9a3.25 3.25 0 0 1-1.42.82l-3.01.86a.75.75 0 0 1-.92-.93l.86-3a3.25 3.25 0 0 1 .82-1.43l8.9-8.9Zm2.12 1.06a.75.75 0 0 0-1.06 0l-1.02 1.02 1.06 1.06 1.02-1.02a.75.75 0 0 0 0-1.06Zm-3.14 2.08-7.3 7.3a1.75 1.75 0 0 0-.44.77l-.48 1.68 1.68-.48c.29-.08.55-.23.77-.44l7.3-7.3-1.53-1.53Z"></path>
     </svg>
   `;
 }

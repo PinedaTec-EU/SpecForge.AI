@@ -5,58 +5,58 @@
 horizontal:
   capture:
     x: 80
-    y: 60
+    y: 120
   refinement:
-    x: 380
-    y: 100
+    x: 390
+    y: 120
   spec:
-    x: 580
-    y: 280
+    x: 700
+    y: 120
   technical-design:
-    x: 880
-    y: 320
+    x: 1010
+    y: 120
   implementation:
-    x: 1080
-    y: 500
+    x: 1010
+    y: 340
   review:
-    x: 1080
-    y: 680
+    x: 1010
+    y: 560
   release-approval:
-    x: 1280
-    y: 860
+    x: 1320
+    y: 560
   pr-preparation:
-    x: 1580
-    y: 900
+    x: 1630
+    y: 560
   completed:
-    x: 1880
-    y: 1080
+    x: 1940
+    y: 560
   legend:
     x: 20
-    y: 300
+    y: 720
   connections:
     capture->refinement:
       from: R3
       to: L3
     refinement->spec:
-      from: B3
+      from: R3
       to: L3
     spec->technical-design:
       from: R3
       to: L3
     technical-design->implementation:
       from: B3
-      to: L3
+      to: T3
     implementation->review:
       from: B3
       to: T3
     review->release-approval:
-      from: B3
+      from: R3
       to: L3
     release-approval->pr-preparation:
       from: R3
       to: L3
     pr-preparation->completed:
-      from: B3
+      from: R3
       to: L3
   loops:
     implementation-review:
@@ -64,37 +64,59 @@ horizontal:
       toPhaseId: review
       side: right
 
+aggregate:
+  positions:
+    capture:
+      x: 56
+      y: 140
+    refinement:
+      x: 336
+      y: 140
+    spec:
+      x: 336
+      y: 332
+    split:
+      x: 56
+      y: 524
+  spacing:
+    horizontalPadding: 56
+    topRowTop: 140
+    topRowGap: 56
+    rowGap: 192
+    childGap: 56
+    maxChildrenPerRow: 2
+
 vertical:
   capture:
     x: 80
     y: 60
   refinement:
-    x: 380
-    y: 100
+    x: 390
+    y: 60
   spec:
-    x: 430
-    y: 280
+    x: 390
+    y: 240
   technical-design:
-    x: 430
-    y: 460
+    x: 390
+    y: 420
   implementation:
-    x: 80
-    y: 640
+    x: 390
+    y: 600
   review:
-    x: 80
-    y: 820
+    x: 390
+    y: 780
   release-approval:
-    x: 230
-    y: 1000
+    x: 390
+    y: 960
   pr-preparation:
-    x: 380
-    y: 1180
+    x: 390
+    y: 1140
   completed:
-    x: 230
-    y: 1360
+    x: 390
+    y: 1320
   legend:
     x: 20
-    y: 300
+    y: 250
   connections:
     capture->refinement:
       from: R3
@@ -107,19 +129,19 @@ vertical:
       to: T3
     technical-design->implementation:
       from: B3
-      to: R3
+      to: T3
     implementation->review:
       from: B3
       to: T3
     review->release-approval:
       from: B3
-      to: L3
+      to: T3
     release-approval->pr-preparation:
       from: B3
-      to: L3
+      to: T3
     pr-preparation->completed:
       from: B3
-      to: R3
+      to: T3
   loops:
     implementation-review:
       fromPhaseId: implementation

@@ -1,0 +1,10 @@
+﻿usId: US-0015
+status: idle
+currentPhase: spec
+lastOutcome: succeeded
+activeOperation: null
+ownerProcessId: null
+startedAtUtc: null
+lastHeartbeatUtc: 2026-05-12T07:34:44.5659460Z
+lastCompletedAtUtc: 2026-05-12T07:34:44.5659480Z
+message: Completed 'generate-next-phase'.

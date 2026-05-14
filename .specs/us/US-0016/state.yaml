@@ -1,0 +1,13 @@
+﻿usId: US-0016
+workflowId: canonical-v1
+status: active
+currentPhase: capture
+sourceHash: sha256:dcaa03a3a65585b313cbb268bdf62bd80aa858da38e8450926a2a8525143d623
+createdWithRuntimeVersion: 
+lastRuntimeVersion: 
+workflowKind: normal
+parentUsId: US-0015
+childUsIds:
+  []
+approvedPhases:
+  []

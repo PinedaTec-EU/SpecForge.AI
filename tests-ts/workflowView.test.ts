@@ -438,7 +438,7 @@ test("buildWorkflowHtml wires delegated handlers and pointer phase-node listener
   assert.match(html, /viewState\.selectedPhaseId = element\.dataset\.phaseId;/);
   assert.match(html, /document\.querySelectorAll\("\[data-command\]"\)\.forEach\(\(element\) => \{/);
   assert.match(html, /bindCommandElement\(element\);/);
-  assert.match(html, /element\.addEventListener\("pointerdown"/);
+  assert.match(html, /element\.addEventListener\("click"/);
   assert.match(html, /event\.target\.closest\('\[data-command="selectPhase"\]'\)/);
 });
 
@@ -2461,6 +2461,8 @@ test("buildWorkflowHtml computes deterministic two-column graph positions with o
   assert.match(html, /phase-node spec[\s\S]*?--phase-left-desktop-vertical:/);
   assert.match(html, /phase-graph" data-graph-layout-mode="vertical" aria-label="Workflow graph" style="--graph-width-desktop-horizontal:/);
   assert.match(html, /graph-stage-actions/);
+  assert.match(html, /data-graph-layout-edit-toggle[\s\S]*?aria-label="Enable workflow graph layout editing"/);
+  assert.match(html, /data-graph-layout-edit-toggle[\s\S]*?title="Enable workflow graph layout editing"/);
   assert.match(html, /data-export-workflow-snapshot/);
   assert.match(html, /phase-role-badge/);
 });
@@ -2539,7 +2541,8 @@ test("buildWorkflowHtml routes graph links around cards using rounded orthogonal
     settingsMessage: null
   }, "idle");
 
-  assert.match(html, /<path class="[^"]+"[^>]* d="M [^"]* C [^"]*"/);
+  assert.match(html, /<path class="[^"]+"[^>]* d="M [^"]* L [^"]*"/);
+  assert.doesNotMatch(html, /<path class="[^"]+"[^>]* d="M [^"]* C [^"]*"/);
   assert.doesNotMatch(html, /data-edge="review-&gt;implementation"/);
   assert.doesNotMatch(html, /class="reverse/);
 });
@@ -5197,7 +5200,7 @@ test("buildWorkflowHtml renders the reference graph layout with canonical refine
   assert.match(html, /graph-links--desktop-vertical/);
   assert.match(html, /graph-links--mobile-horizontal/);
   assert.match(html, /graph-links--mobile-vertical/);
-  assert.match(html, /data-graph-layout-mode="vertical" style="[^"]*--graph-legend-top-desktop-vertical: 300px/);
+  assert.match(html, /data-graph-layout-mode="vertical" style="[^"]*--graph-legend-top-desktop-vertical: 250px/);
   assert.doesNotMatch(html, /--graph-legend-top-desktop-vertical: 1402px/);
 });
 

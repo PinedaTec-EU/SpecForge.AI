@@ -159,6 +159,136 @@ function fileNameFromPath(filePath) {
     const segments = normalized.split("/");
     return segments.at(-1) ?? filePath;
 }
+function findPhaseById(workflow, phaseId) {
+    return workflow.phases.find((phase) => phase.phaseId === phaseId) ?? null;
+}
+function buildAggregateArtifactFlowLabel(inputPath, outputPath) {
+    const parts = [];
+    if (inputPath) {
+        parts.push(`used ${fileNameFromPath(inputPath)}`);
+    }
+    if (outputPath) {
+        parts.push(`generated ${fileNameFromPath(outputPath)}`);
+    }
+    return parts.join(" -> ");
+}
+function buildAggregateGraphLayout(childrenCount, nodeWidth, config) {
+    const { horizontalPadding, topRowTop, topRowGap, rowGap, childGap, maxChildrenPerRow } = config.spacing;
+    const positions = {
+        capture: { left: config.positions.capture.x, top: config.positions.capture.y },
+        refinement: { left: config.positions.refinement.x, top: config.positions.refinement.y },
+        spec: { left: config.positions.spec.x, top: config.positions.spec.y }
+    };
+    positions.split = { left: config.positions.split.x, top: config.positions.split.y };
+    const minimumGraphWidth = positions.refinement.left + nodeWidth + horizontalPadding;
+    const childTop = positions.split.top + rowGap;
+    let graphWidth = minimumGraphWidth;
+    if (childrenCount > 0) {
+        const rows = Math.ceil(childrenCount / maxChildrenPerRow);
+        for (let rowIndex = 0; rowIndex < rows; rowIndex += 1) {
+            const firstChildIndex = rowIndex * maxChildrenPerRow;
+            const rowChildrenCount = Math.min(maxChildrenPerRow, childrenCount - firstChildIndex);
+            const rowWidth = rowChildrenCount * nodeWidth + Math.max(0, rowChildrenCount - 1) * childGap;
+            graphWidth = Math.max(graphWidth, rowWidth + horizontalPadding * 2);
+        }
+        for (let index = 0; index < childrenCount; index += 1) {
+            const rowIndex = Math.floor(index / maxChildrenPerRow);
+            const indexInRow = index % maxChildrenPerRow;
+            const firstChildIndex = rowIndex * maxChildrenPerRow;
+            const rowChildrenCount = Math.min(maxChildrenPerRow, childrenCount - firstChildIndex);
+            const rowWidth = rowChildrenCount * nodeWidth + Math.max(0, rowChildrenCount - 1) * childGap;
+            const rowStartLeft = Math.round((graphWidth - rowWidth) * 0.5);
+            positions[`child-${index}`] = {
+                left: rowStartLeft + indexInRow * (nodeWidth + childGap),
+                top: childTop + rowIndex * rowGap
+            };
+        }
+    }
+    const graphHeight = childrenCount > 0
+        ? positions[`child-${childrenCount - 1}`].top + phaseNodeHeight + 84
+        : positions.split.top + phaseNodeHeight + 112;
+    return {
+        positions,
+        width: graphWidth,
+        height: graphHeight
+    };
+}
+function renderWorkflowGraphNode(config) {
+    const selectedClass = config.selected ? " selected" : "";
+    const currentClass = config.current ? " phase-node--current" : "";
+    const dependencyBlockedClass = config.dependencyBlocked ? " phase-node--dependency-blocked" : "";
+    const finalClass = config.final ? " phase-node--final" : "";
+    const targetDataAttribute = config.targetAttributeName && config.targetId
+        ? `${config.targetAttributeName}="${(0, htmlEscape_1.escapeHtmlAttr)(config.targetId)}"`
+        : "";
+    const secondaryLabel = config.secondaryLabel ? `<div class="phase-slug">${(0, htmlEscape_1.escapeHtml)(config.secondaryLabel)}</div>` : "";
+    const extraBodyLines = (config.bodyLines ?? [])
+        .filter((line) => Boolean(line))
+        .map((line) => `<div class="phase-slug">${(0, htmlEscape_1.escapeHtml)(line)}</div>`)
+        .join("");
+    return `
+    <div
+      class="phase-node ${(0, htmlEscape_1.escapeHtmlAttr)(config.phaseClassName)} phase-tone-${(0, htmlEscape_1.escapeHtmlAttr)(config.visualTone)}${selectedClass}${currentClass}${dependencyBlockedClass}${finalClass}${config.aggregate ? " phase-node--aggregate" : ""}"
+      ${config.commandName ? `data-command="${(0, htmlEscape_1.escapeHtmlAttr)(config.commandName)}"` : ""}
+      ${targetDataAttribute}
+      ${config.extraDataAttributesHtml ?? ""}
+      role="button"
+      tabindex="0"
+      style="${config.style}">
+      ${config.current ? `<span class="phase-current-rail"><span class="phase-current-rail__label">Current</span></span>` : ""}
+      ${config.selected ? `<span class="phase-viewing-rail"><span class="phase-viewing-rail__label">Viewing</span></span>` : ""}
+      <div class="phase-node-content${config.current ? " phase-node-content--current" : ""}">
+        <div class="phase-node-header">
+          <div class="phase-node-header-main">${config.headerMetaHtml ?? ""}</div>
+          <div class="phase-node-header-actions">${config.headerActionsHtml ?? ""}</div>
+        </div>
+        <div class="phase-node-body">
+          <span class="phase-node-visual" aria-hidden="true">${config.visualIconHtml}</span>
+          <div class="phase-node-copy">
+            <h3>${(0, htmlEscape_1.escapeHtml)(config.title)}</h3>
+            ${secondaryLabel}
+            ${extraBodyLines}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+function renderPhaseTag(label, tone = "approval") {
+    return `<span class="phase-tag${tone === "approval" ? " approval" : ` phase-tag--${(0, htmlEscape_1.escapeHtmlAttr)(tone)}`}">${(0, htmlEscape_1.escapeHtml)(label)}</span>`;
+}
+function renderGraphStatusBadgeFromTone(tone, phaseId = "spec") {
+    return `<span class="phase-role-badge graph-phase-status-icon">${renderGraphPhaseStatusIcon({ phaseId }, tone, false) || (0, icons_1.workflowPhaseIcon)(phaseId)}</span>`;
+}
+function renderPhaseRoleBadge(expectsHumanIntervention) {
+    const phaseRoleIcon = expectsHumanIntervention ? (0, icons_1.userPhaseIcon)() : (0, icons_1.automationPhaseIcon)();
+    const phaseRoleModifier = expectsHumanIntervention ? "user-enabled" : "model-automated";
+    const phaseRoleLabel = expectsHumanIntervention ? "User intervention enabled" : "Model automated";
+    return `<span class="phase-role-badge phase-role-badge--${(0, htmlEscape_1.escapeHtmlAttr)(phaseRoleModifier)}" title="${(0, htmlEscape_1.escapeHtmlAttr)(phaseRoleLabel)}" aria-label="${(0, htmlEscape_1.escapeHtmlAttr)(phaseRoleLabel)}">${phaseRoleIcon}</span>`;
+}
+function renderAggregateNode(config) {
+    return renderWorkflowGraphNode({
+        phaseClassName: config.phaseKind ?? "spec",
+        visualTone: config.phaseTone ?? "pending",
+        selected: config.selected,
+        current: config.current,
+        final: config.final,
+        aggregate: true,
+        commandName: config.command ?? "selectPhase",
+        targetAttributeName: config.command === "openWorkflow" ? "data-us-id" : "data-phase-id",
+        targetId: config.targetId,
+        extraDataAttributesHtml: config.extraDataAttributesHtml,
+        style: `--aggregate-node-left: ${config.left}px; --aggregate-node-top: ${config.top}px;`,
+        headerMetaHtml: config.headerMetaHtml ?? (config.metaTag ? renderPhaseTag(config.metaTag, "approval") : ""),
+        headerActionsHtml: config.headerActionsHtml ?? (config.statusTag
+            ? renderPhaseTag(config.statusTag.label, config.statusTag.tone)
+            : renderGraphStatusBadgeFromTone(config.phaseTone ?? "pending", config.phaseKind ?? "spec")),
+        visualIconHtml: config.visualIconHtml ?? (0, icons_1.workflowPhaseIcon)(config.phaseKind ?? "spec"),
+        title: config.title,
+        secondaryLabel: config.secondaryLabel ?? config.eyebrow,
+        bodyLines: config.bodyLines ?? [config.artifact, config.subtitle, config.footer].filter((line) => Boolean(line))
+    });
+}
 function renderTokenSummaryRow(label, value) {
     return `
     <div class="token-summary__row">
@@ -1424,6 +1554,7 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
             ? displayedCurrentPhaseId ?? state.selectedPhaseId
             : state.selectedPhaseId;
     const graphLayoutMode = state.graphLayoutMode === "horizontal" ? "horizontal" : "vertical";
+    const isAggregateWorkflow = workflow.workflowKind === "aggregate";
     const selectedPhase = workflow.phases.find((phase) => phase.phaseId === selectedPhaseId) ?? workflow.phases[0];
     const selectedPhaseIsCurrent = selectedPhase.phaseId === displayedCurrentPhaseId;
     const isRefinementDetail = selectedPhase.phaseId === "refinement" && workflow.refinement !== null;
@@ -3012,11 +3143,24 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
       height: 18px;
       fill: currentColor;
     }
+    .graph-stage-action-button[data-graph-layout-edit-toggle] {
+      width: 38px;
+      min-width: 38px;
+      padding: 0;
+    }
     .graph-stage-action-button:hover {
       border-color: rgba(114, 241, 184, 0.3);
       background: rgba(16, 32, 31, 0.96);
       color: rgba(244, 255, 250, 0.98);
       box-shadow: 0 10px 18px rgba(0, 0, 0, 0.18);
+    }
+    .graph-stage-action-button--active {
+      border-color: rgba(114, 241, 184, 0.42);
+      background: rgba(20, 46, 38, 0.98);
+      color: rgba(244, 255, 250, 0.98);
+      box-shadow:
+        0 10px 18px rgba(0, 0, 0, 0.18),
+        0 0 0 1px rgba(114, 241, 184, 0.12);
     }
     .panel-copy {
       position: relative;
@@ -3290,102 +3434,79 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
       min-height: var(--graph-height-desktop-vertical, ${desktopGraphHeight}px);
     }
     .phase-graph--aggregate {
-      display: grid;
-      grid-template-rows: auto auto minmax(0, 1fr);
-      gap: 18px;
-      width: min(960px, 100%);
-      min-width: 0;
+      width: var(--aggregate-graph-width, 1040px);
+      min-width: var(--aggregate-graph-width, 1040px);
+      min-height: var(--aggregate-graph-height, 620px);
       height: auto;
-      min-height: 360px;
-      padding: 28px;
+      padding: 0;
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      overflow: visible;
     }
-    .aggregate-parent-node,
-    .aggregate-spec-node,
-    .aggregate-child-node {
-      border: 1px solid rgba(114, 241, 184, 0.18);
-      border-radius: 8px;
-      background: rgba(11, 18, 26, 0.88);
-      color: rgba(235, 244, 241, 0.94);
-      box-shadow: 0 18px 36px rgba(0, 0, 0, 0.24);
+    .phase-graph--aggregate .phase-node.phase-node--aggregate {
+      left: var(--aggregate-node-left);
+      top: var(--aggregate-node-top);
+      width: var(--aggregate-node-width, 224px);
+      min-height: 132px;
+      padding: 12px 14px 14px;
     }
-    .aggregate-parent-node,
-    .aggregate-spec-node {
-      justify-self: center;
-      width: min(520px, 100%);
-      padding: 16px 18px;
-      text-align: center;
+    .phase-graph--aggregate .phase-node.phase-node--aggregate .phase-node-content {
+      gap: 10px;
     }
-    .aggregate-parent-node h3 {
-      margin: 8px 0 4px;
-      font-size: 1rem;
+    .phase-graph--aggregate .phase-node.phase-node--aggregate .phase-node-body {
+      align-items: flex-start;
+      gap: 10px;
     }
-    .aggregate-parent-node p,
-    .aggregate-spec-node span {
-      margin: 0;
-      color: rgba(204, 214, 211, 0.76);
-      font-size: 0.78rem;
-      font-weight: 700;
+    .phase-graph--aggregate .phase-node.phase-node--aggregate h3 {
+      font-size: 0.98rem;
+      line-height: 1.3;
     }
-    .aggregate-spec-node {
-      position: relative;
-      display: grid;
-      gap: 6px;
+    .phase-graph--aggregate .phase-node.phase-node--aggregate .phase-slug {
+      font-size: 0.72rem;
+      line-height: 1.4;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
-    .aggregate-spec-node::before,
-    .aggregate-children-grid::before {
-      content: "";
+    .phase-graph--aggregate .phase-node.phase-node--aggregate .phase-node-visual {
+      width: 42px;
+      height: 42px;
+      min-width: 42px;
+    }
+    .aggregate-graph-links {
+      opacity: 0.96;
+    }
+    .aggregate-graph-caption {
       position: absolute;
-      left: 50%;
-      width: 2px;
-      transform: translateX(-50%);
-      background: rgba(114, 241, 184, 0.24);
+      left: 42px;
+      top: 36px;
+      z-index: 4;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
     }
-    .aggregate-spec-node::before {
-      top: -18px;
-      height: 18px;
+    @media (max-width: 820px) {
+      .aggregate-graph-caption {
+        left: 20px;
+        top: 20px;
+      }
     }
-    .aggregate-children-grid {
+    .aggregate-graph-shell {
       position: relative;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 14px;
-      padding-top: 22px;
+      width: 100%;
+      min-width: 0;
     }
-    .aggregate-children-grid::before {
-      top: 0;
-      height: 22px;
-    }
-    .aggregate-child-node {
-      display: grid;
-      gap: 6px;
-      min-height: 116px;
-      padding: 14px;
-      text-align: left;
-      cursor: pointer;
-      font: inherit;
-    }
-    .aggregate-child-node:hover {
-      border-color: rgba(114, 241, 184, 0.44);
-      background: rgba(16, 32, 42, 0.96);
-    }
-    .aggregate-child-node__id {
-      color: #72f1b8;
-      font-size: 0.74rem;
-      font-weight: 900;
-      letter-spacing: 0;
-    }
-    .aggregate-child-node span:last-child {
-      color: rgba(204, 214, 211, 0.72);
-      font-size: 0.76rem;
-      font-weight: 700;
-    }
-    .aggregate-child-node--completed {
-      border-color: rgba(114, 241, 184, 0.34);
-    }
-    .aggregate-child-node--empty {
-      display: block;
-      color: rgba(204, 214, 211, 0.72);
-      cursor: default;
+    @media (max-width: 960px) {
+      .aggregate-graph-shell {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .aggregate-graph-shell .graph-legend {
+        position: static;
+        width: auto;
+        margin: 0 0 0 20px;
+      }
     }
     .phase-graph[data-graph-layout-mode="horizontal"] {
       width: var(--graph-width-desktop-horizontal, ${desktopGraphWidth}px);
@@ -3478,6 +3599,12 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
       box-shadow: 0 16px 26px rgba(4, 8, 16, 0.22);
       pointer-events: auto;
       z-index: 6;
+    }
+    .phase-graph--layout-edit .graph-legend {
+      cursor: grab;
+    }
+    .phase-graph--layout-edit .graph-legend:active {
+      cursor: grabbing;
     }
     .graph-legend[hidden] {
       display: none;
@@ -3589,6 +3716,15 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
       isolation: isolate;
       animation: nodeRise 420ms ease both;
       z-index: 3;
+      touch-action: none;
+    }
+    .phase-graph.phase-graph--layout-edit .phase-node {
+      cursor: grab;
+    }
+    .phase-node.phase-node--dragging {
+      cursor: grabbing;
+      transition: none;
+      z-index: 8;
     }
     .phase-graph[data-graph-layout-mode="horizontal"] .phase-node {
       left: var(--phase-left-desktop-horizontal);
@@ -6030,7 +6166,7 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
         ? `<button class="workflow-action-button workflow-action-button--document workflow-action-button--icon" type="button" data-command="openExternalUrl" data-url="${(0, htmlEscape_1.escapeHtmlAttr)(pullRequestUrl)}">${(0, icons_1.externalLinkIcon)()}<span>${(0, htmlEscape_1.escapeHtml)(pullRequestLabel)}</span></button>`
         : ""}
           ${playbackButtons}
-          <button class="icon-button icon-button--document" type="button" data-open-workflow-files aria-label="Open workflow files">
+          <button class="icon-button icon-button--document" type="button" data-open-workflow-files aria-label="Open workflow files" title="Open workflow files">
             ${(0, icons_1.fileIcon)()}
           </button>
         </div>
@@ -6059,7 +6195,9 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
           <div class="graph-panel__head">
             <div>
               <h2 class="panel-title">Workflow Constellation</h2>
-              <p class="panel-copy">The graph is the primary surface. Click any phase node to move the detail focus and inspect its artifact and phase context.</p>
+              <p class="panel-copy">${isAggregateWorkflow
+        ? "This aggregate layout keeps the parent journey, split rationale, and created child stories together without reusing the constellation viewport."
+        : "The graph is the primary surface. Click any phase node to move the detail focus and inspect its artifact and phase context."}</p>
             </div>
             <div class="graph-stage-actions">
               <button
@@ -6089,6 +6227,14 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
               <button
                 class="graph-stage-action-button"
                 type="button"
+                data-graph-layout-edit-toggle
+                aria-label="Enable workflow graph layout editing"
+                title="Enable workflow graph layout editing">
+                ${(0, icons_1.editLayoutIcon)()}
+              </button>
+              <button
+                class="graph-stage-action-button"
+                type="button"
                 data-graph-zoom-in
                 aria-label="Zoom in workflow graph"
                 title="Zoom in workflow graph">
@@ -6105,13 +6251,20 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
             </div>
           </div>
           <div class="graph-panel__viewport" data-panel-scroll="graph">
-            <div class="graph-stage${executionOverlay ? " graph-stage--overlay-active" : ""}${playbackState === "playing" || playbackState === "stopping" ? " graph-stage--overlay-blocking" : ""}" data-graph-layout-mode="${(0, htmlEscape_1.escapeHtmlAttr)(graphLayoutMode)}" style="${graphStageLegendStyle}">
+            ${isAggregateWorkflow
+        ? `<div class="graph-stage" data-graph-layout-mode="vertical" style="${graphStageLegendStyle}">
+              <div class="graph-stage__canvas aggregate-graph-shell" data-graph-stage-canvas>
+                ${phaseGraph}
+                ${renderGraphLegend(workflow.usId)}
+              </div>
+            </div>`
+        : `<div class="graph-stage${executionOverlay ? " graph-stage--overlay-active" : ""}${playbackState === "playing" || playbackState === "stopping" ? " graph-stage--overlay-blocking" : ""}" data-graph-layout-mode="${(0, htmlEscape_1.escapeHtmlAttr)(graphLayoutMode)}" style="${graphStageLegendStyle}">
               <div class="graph-stage__canvas" data-graph-stage-canvas>
                 ${executionOverlay}
                 ${phaseGraph}
                 ${renderGraphLegend(workflow.usId)}
               </div>
-            </div>
+            </div>`}
           </div>
         </aside>
         <main class="panel detail-panel" data-panel-scroll="detail">
@@ -6208,6 +6361,12 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
     })};
     const graphLegendElements = Array.from(document.querySelectorAll("[data-graph-legend]"));
     const exportWorkflowSnapshotButton = document.querySelector("[data-export-workflow-snapshot]");
+    const graphLayoutEditToggleButton = document.querySelector("[data-graph-layout-edit-toggle]");
+    const workflowGraphPhaseIds = ${JSON.stringify(defaultPhaseSequence.map((phase) => phase.phaseId))};
+    const workflowUserStoryId = ${JSON.stringify(workflow.usId)};
+    const aggregateGraphLayoutConfig = ${JSON.stringify(state.workflowGraphLayout?.aggregateUserStories?.[workflow.usId]
+        ?? state.workflowGraphLayout?.aggregate
+        ?? workflowGraphLayout_1.defaultAggregateWorkflowGraphLayout)};
     const selectedPhaseNode = document.querySelector(".phase-node.selected");
     const currentPhaseNode = document.querySelector(".phase-node.phase-node--current");
     const focusedPhaseNode = selectedPhaseNode instanceof HTMLElement
@@ -6221,6 +6380,7 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
     const graphZoomMin = 0.35;
     const graphZoomMax = 2.2;
     const graphZoomStep = 0.12;
+    let graphLayoutEditMode = viewState.graphLayoutEditMode === true;
     const configuredGraphInitialZoomMode = ${JSON.stringify(state.graphInitialZoomMode === "fit-width" ? "fit-width" : "actual-size")};
     const restoredGraphZoomMode = viewState.graphInitialZoomMode === configuredGraphInitialZoomMode
       ? viewState.graphZoomMode
@@ -6437,6 +6597,457 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
       }
       if (graphZoomInButton instanceof HTMLButtonElement) {
         graphZoomInButton.disabled = nextScale >= graphZoomMax - 0.001;
+      }
+    };
+    const isCompactGraphViewport = () => window.matchMedia("(max-width: 760px)").matches;
+    const isAggregateGraphView = () => phaseGraph instanceof HTMLElement && phaseGraph.classList.contains("phase-graph--aggregate");
+    const getActiveGraphLayoutMode = () => phaseGraph instanceof HTMLElement && phaseGraph.dataset.graphLayoutMode === "horizontal"
+      ? "horizontal"
+      : "vertical";
+    const getCurrentPhaseNodeWidth = () => isCompactGraphViewport() ? ${mobilePhaseNodeWidth} : ${phaseNodeWidth};
+    const getCurrentPhaseNodeHeight = () => ${phaseNodeHeight};
+    const getGraphPositionVarPrefix = () => {
+      const compact = isCompactGraphViewport();
+      const layoutMode = getActiveGraphLayoutMode();
+      if (compact) {
+        return layoutMode === "horizontal" ? "mobile-horizontal" : "mobile-vertical";
+      }
+
+      return layoutMode === "horizontal" ? "desktop-horizontal" : "desktop-vertical";
+    };
+    const readPhaseNodePosition = (node) => ({
+      left: Number.parseFloat(node.dataset.graphLeft ?? "") || node.offsetLeft || 0,
+      top: Number.parseFloat(node.dataset.graphTop ?? "") || node.offsetTop || 0
+    });
+    const readGraphLegendPosition = (legendElement) => ({
+      left: Number.parseFloat(legendElement.dataset.graphLeft ?? "") || legendElement.offsetLeft || 0,
+      top: Number.parseFloat(legendElement.dataset.graphTop ?? "") || legendElement.offsetTop || 0
+    });
+    const writePhaseNodePosition = (node, left, top) => {
+      if (node.dataset.aggregateAnchorId) {
+        node.dataset.graphLeft = String(left);
+        node.dataset.graphTop = String(top);
+        node.style.setProperty("--aggregate-node-left", Math.round(left) + "px");
+        node.style.setProperty("--aggregate-node-top", Math.round(top) + "px");
+        return;
+      }
+
+      const prefix = getGraphPositionVarPrefix();
+      node.dataset.graphLeft = String(left);
+      node.dataset.graphTop = String(top);
+      node.style.setProperty("--phase-left-" + prefix, Math.round(left) + "px");
+      node.style.setProperty("--phase-top-" + prefix, Math.round(top) + "px");
+    };
+    const writeGraphLegendPosition = (legendElement, left, top) => {
+      legendElement.dataset.graphLeft = String(left);
+      legendElement.dataset.graphTop = String(top);
+      legendElement.style.left = Math.round(left) + "px";
+      legendElement.style.top = Math.round(top) + "px";
+    };
+    const resolveGraphNodeRect = (phaseId) => {
+      if (!(phaseGraph instanceof HTMLElement)) {
+        return null;
+      }
+
+      const escapedPhaseId = CSS.escape(phaseId);
+      const node = phaseGraph.querySelector('.phase-node[data-phase-id="' + escapedPhaseId + '"], .phase-node[data-aggregate-node-id="' + escapedPhaseId + '"]');
+      if (!(node instanceof HTMLElement)) {
+        return null;
+      }
+
+      const position = readPhaseNodePosition(node);
+      return {
+        node,
+        left: position.left,
+        top: position.top,
+        width: node.offsetWidth || getCurrentPhaseNodeWidth(),
+        height: node.offsetHeight || getCurrentPhaseNodeHeight()
+      };
+    };
+    const resolveDynamicAnchors = (fromRect, toRect) => {
+      const fromCenterX = fromRect.left + fromRect.width * 0.5;
+      const fromCenterY = fromRect.top + fromRect.height * 0.5;
+      const toCenterX = toRect.left + toRect.width * 0.5;
+      const toCenterY = toRect.top + toRect.height * 0.5;
+      const deltaX = toCenterX - fromCenterX;
+      const deltaY = toCenterY - fromCenterY;
+
+      if (Math.abs(deltaX) >= Math.abs(deltaY)) {
+        if (deltaX >= 0) {
+          return {
+            from: { x: fromRect.left + fromRect.width, y: fromCenterY },
+            to: { x: toRect.left, y: toCenterY },
+            axis: "horizontal"
+          };
+        }
+
+        return {
+          from: { x: fromRect.left, y: fromCenterY },
+          to: { x: toRect.left + toRect.width, y: toCenterY },
+          axis: "horizontal"
+        };
+      }
+
+      if (deltaY >= 0) {
+        return {
+          from: { x: fromCenterX, y: fromRect.top + fromRect.height },
+          to: { x: toCenterX, y: toRect.top },
+          axis: "vertical"
+        };
+      }
+
+      return {
+        from: { x: fromCenterX, y: fromRect.top },
+        to: { x: toCenterX, y: toRect.top + toRect.height },
+        axis: "vertical"
+      };
+    };
+    const simplifyOrthogonalPoints = (points) => {
+      const normalized = [];
+      for (const point of points) {
+        const previous = normalized[normalized.length - 1];
+        if (previous && previous.x === point.x && previous.y === point.y) {
+          continue;
+        }
+
+        normalized.push(point);
+        while (normalized.length >= 3) {
+          const last = normalized[normalized.length - 1];
+          const middle = normalized[normalized.length - 2];
+          const first = normalized[normalized.length - 3];
+          const sameX = first.x === middle.x && middle.x === last.x;
+          const sameY = first.y === middle.y && middle.y === last.y;
+          if (!sameX && !sameY) {
+            break;
+          }
+
+          normalized.splice(normalized.length - 2, 1);
+        }
+      }
+
+      return normalized;
+    };
+    const movePointTowards = (from, to, distance) => {
+      if (from.x === to.x) {
+        return { x: from.x, y: from.y + Math.sign(to.y - from.y) * distance };
+      }
+
+      return { x: from.x + Math.sign(to.x - from.x) * distance, y: from.y };
+    };
+    const buildRoundedOrthogonalPath = (points, radius) => {
+      if (!Array.isArray(points) || points.length === 0) {
+        return "";
+      }
+
+      let path = "M " + points[0].x + " " + points[0].y;
+      for (let index = 1; index < points.length - 1; index += 1) {
+        const previous = points[index - 1];
+        const current = points[index];
+        const next = points[index + 1];
+        const incoming = Math.abs(previous.x - current.x) + Math.abs(previous.y - current.y);
+        const outgoing = Math.abs(next.x - current.x) + Math.abs(next.y - current.y);
+        const cornerRadius = Math.min(radius, incoming * 0.5, outgoing * 0.5);
+        const collinear = (previous.x === current.x && current.x === next.x)
+          || (previous.y === current.y && current.y === next.y);
+        if (cornerRadius <= 0.5 || collinear) {
+          path += " L " + current.x + " " + current.y;
+          continue;
+        }
+
+        const cornerStart = movePointTowards(current, previous, cornerRadius);
+        const cornerEnd = movePointTowards(current, next, cornerRadius);
+        path += " L " + cornerStart.x + " " + cornerStart.y + " Q " + current.x + " " + current.y + " " + cornerEnd.x + " " + cornerEnd.y;
+      }
+
+      const last = points[points.length - 1];
+      path += " L " + last.x + " " + last.y;
+      return path;
+    };
+    const buildDynamicEdgePath = (fromPhaseId, toPhaseId) => {
+      const fromRect = resolveGraphNodeRect(fromPhaseId);
+      const toRect = resolveGraphNodeRect(toPhaseId);
+      if (!fromRect || !toRect) {
+        return "";
+      }
+
+      const anchor = resolveDynamicAnchors(fromRect, toRect);
+      const lead = Math.max(34, Math.round(Math.min(fromRect.width, toRect.width) * 0.16));
+      const startLead = anchor.axis === "horizontal"
+        ? { x: anchor.from.x + Math.sign(anchor.to.x - anchor.from.x || 1) * lead, y: anchor.from.y }
+        : { x: anchor.from.x, y: anchor.from.y + Math.sign(anchor.to.y - anchor.from.y || 1) * lead };
+      const endLead = anchor.axis === "horizontal"
+        ? { x: anchor.to.x - Math.sign(anchor.to.x - anchor.from.x || 1) * lead, y: anchor.to.y }
+        : { x: anchor.to.x, y: anchor.to.y - Math.sign(anchor.to.y - anchor.from.y || 1) * lead };
+      const waypoints = [];
+      if (startLead.x !== endLead.x && startLead.y !== endLead.y) {
+        if (anchor.axis === "horizontal") {
+          const midX = Math.round((startLead.x + endLead.x) * 0.5);
+          waypoints.push({ x: midX, y: startLead.y }, { x: midX, y: endLead.y });
+        } else {
+          const midY = Math.round((startLead.y + endLead.y) * 0.5);
+          waypoints.push({ x: startLead.x, y: midY }, { x: endLead.x, y: midY });
+        }
+      }
+
+      return buildRoundedOrthogonalPath(
+        simplifyOrthogonalPoints([anchor.from, startLead, ...waypoints, endLead, anchor.to]),
+        Math.max(12, Math.round(getCurrentPhaseNodeWidth() * 0.06))
+      );
+    };
+    const updateDynamicGraphLinks = () => {
+      if (!(phaseGraph instanceof HTMLElement)) {
+        return;
+      }
+
+      const activeMode = getActiveGraphLayoutMode();
+      const compact = isCompactGraphViewport();
+      const activeSelector = compact
+        ? ".graph-links--mobile-" + activeMode
+        : ".graph-links--desktop-" + activeMode;
+      const activeSvg = phaseGraph.querySelector(activeSelector);
+      if (!(activeSvg instanceof SVGSVGElement)) {
+        return;
+      }
+
+      for (const path of activeSvg.querySelectorAll("path[data-edge]")) {
+        if (!(path instanceof SVGPathElement)) {
+          continue;
+        }
+
+        const edgeId = path.dataset.edge ?? "";
+        const [fromPhaseId, toPhaseId] = edgeId.split("->");
+        if (!fromPhaseId || !toPhaseId) {
+          continue;
+        }
+
+        const nextPath = buildDynamicEdgePath(fromPhaseId, toPhaseId);
+        if (nextPath) {
+          path.setAttribute("d", nextPath);
+        }
+      }
+    };
+    const persistWorkflowGraphLayout = () => {
+      const activeLegendElement = graphLegendElements.find((element) => element instanceof HTMLElement && !element.hidden);
+      const legendPosition = activeLegendElement instanceof HTMLElement
+        ? readGraphLegendPosition(activeLegendElement)
+        : null;
+      if (isAggregateGraphView()) {
+        const aggregatePositions = {};
+        for (const anchorId of ["capture", "refinement", "spec", "split"]) {
+          const rect = resolveGraphNodeRect(anchorId);
+          if (!rect) {
+            continue;
+          }
+
+          aggregatePositions[anchorId] = {
+            x: Math.round(rect.left),
+            y: Math.round(rect.top)
+          };
+        }
+
+        vscode.postMessage({
+          command: "saveWorkflowGraphLayout",
+          layoutKind: "aggregate",
+          userStoryId: workflowUserStoryId,
+          layoutMode: getActiveGraphLayoutMode(),
+          legendPosition: legendPosition
+            ? {
+              x: Math.round(legendPosition.left),
+              y: Math.round(legendPosition.top)
+            }
+            : undefined,
+          aggregate: {
+            positions: aggregatePositions,
+            spacing: aggregateGraphLayoutConfig.spacing
+          }
+        });
+        return;
+      }
+
+      const positions = {};
+      for (const phaseId of workflowGraphPhaseIds) {
+        const rect = resolveGraphNodeRect(phaseId);
+        if (!rect) {
+          continue;
+        }
+
+        positions[phaseId] = {
+          x: Math.round(rect.left),
+          y: Math.round(rect.top)
+        };
+      }
+
+      vscode.postMessage({
+        command: "saveWorkflowGraphLayout",
+        layoutMode: getActiveGraphLayoutMode(),
+        legendPosition: legendPosition
+          ? {
+            x: Math.round(legendPosition.left),
+            y: Math.round(legendPosition.top)
+          }
+          : undefined,
+        positions
+      });
+    };
+    const bindGraphNodeDragging = () => {
+      if (!(phaseGraph instanceof HTMLElement)) {
+        return;
+      }
+
+      const draggableSelector = isAggregateGraphView()
+        ? '.phase-node[data-aggregate-anchor-id]'
+        : '.phase-node[data-phase-id]';
+      for (const node of phaseGraph.querySelectorAll(draggableSelector)) {
+        if (!(node instanceof HTMLElement)) {
+          continue;
+        }
+
+        node.addEventListener("pointerdown", (event) => {
+          if (event.button !== 0 || isCompactGraphViewport() || !graphLayoutEditMode) {
+            return;
+          }
+
+          const interactiveChild = event.target instanceof Element
+            ? event.target.closest("button, a, input, textarea, select, [data-phase-pause-button]")
+            : null;
+          if (interactiveChild) {
+            return;
+          }
+
+          const start = readPhaseNodePosition(node);
+          const pointerId = event.pointerId;
+          const startClientX = event.clientX;
+          const startClientY = event.clientY;
+          let dragging = false;
+          node.setPointerCapture(pointerId);
+
+          const handlePointerMove = (moveEvent) => {
+            if (moveEvent.pointerId !== pointerId) {
+              return;
+            }
+
+            const scale = Math.max(0.001, getGraphZoomScale());
+            const nextLeft = Math.max(0, start.left + (moveEvent.clientX - startClientX) / scale);
+            const nextTop = Math.max(0, start.top + (moveEvent.clientY - startClientY) / scale);
+            if (!dragging && (Math.abs(moveEvent.clientX - startClientX) > 3 || Math.abs(moveEvent.clientY - startClientY) > 3)) {
+              dragging = true;
+              node.classList.add("phase-node--dragging");
+            }
+
+            if (!dragging) {
+              return;
+            }
+
+            writePhaseNodePosition(node, nextLeft, nextTop);
+            updateDynamicGraphLinks();
+          };
+
+          const finishDrag = (finishEvent) => {
+            if (finishEvent.pointerId !== pointerId) {
+              return;
+            }
+
+            node.classList.remove("phase-node--dragging");
+            node.removeEventListener("pointermove", handlePointerMove);
+            node.removeEventListener("pointerup", finishDrag);
+            node.removeEventListener("pointercancel", finishDrag);
+            try {
+              node.releasePointerCapture(pointerId);
+            } catch {
+              // Ignore release failures after implicit capture cleanup.
+            }
+
+            if (dragging) {
+              persistWorkflowGraphLayout();
+            }
+          };
+
+          node.addEventListener("pointermove", handlePointerMove);
+          node.addEventListener("pointerup", finishDrag);
+          node.addEventListener("pointercancel", finishDrag);
+        });
+      }
+
+      for (const legendElement of graphLegendElements) {
+        if (!(legendElement instanceof HTMLElement)) {
+          continue;
+        }
+
+        legendElement.addEventListener("pointerdown", (event) => {
+          if (event.button !== 0 || isCompactGraphViewport() || !graphLayoutEditMode) {
+            return;
+          }
+
+          const interactiveChild = event.target instanceof Element
+            ? event.target.closest("button, a, input, textarea, select")
+            : null;
+          if (interactiveChild) {
+            return;
+          }
+
+          const start = readGraphLegendPosition(legendElement);
+          const pointerId = event.pointerId;
+          const startClientX = event.clientX;
+          const startClientY = event.clientY;
+          let dragging = false;
+          legendElement.setPointerCapture(pointerId);
+
+          const handlePointerMove = (moveEvent) => {
+            if (moveEvent.pointerId !== pointerId) {
+              return;
+            }
+
+            const scale = Math.max(0.001, getGraphZoomScale());
+            const nextLeft = Math.max(0, start.left + (moveEvent.clientX - startClientX) / scale);
+            const nextTop = Math.max(0, start.top + (moveEvent.clientY - startClientY) / scale);
+            if (!dragging && (Math.abs(moveEvent.clientX - startClientX) > 3 || Math.abs(moveEvent.clientY - startClientY) > 3)) {
+              dragging = true;
+            }
+
+            if (!dragging) {
+              return;
+            }
+
+            writeGraphLegendPosition(legendElement, nextLeft, nextTop);
+          };
+
+          const finishDrag = (finishEvent) => {
+            if (finishEvent.pointerId !== pointerId) {
+              return;
+            }
+
+            legendElement.removeEventListener("pointermove", handlePointerMove);
+            legendElement.removeEventListener("pointerup", finishDrag);
+            legendElement.removeEventListener("pointercancel", finishDrag);
+            try {
+              legendElement.releasePointerCapture(pointerId);
+            } catch {
+              // Ignore release failures after implicit capture cleanup.
+            }
+
+            if (dragging) {
+              persistWorkflowGraphLayout();
+            }
+          };
+
+          legendElement.addEventListener("pointermove", handlePointerMove);
+          legendElement.addEventListener("pointerup", finishDrag);
+          legendElement.addEventListener("pointercancel", finishDrag);
+        });
+      }
+    };
+    const syncGraphLayoutEditMode = () => {
+      if (phaseGraph instanceof HTMLElement) {
+        phaseGraph.classList.toggle("phase-graph--layout-edit", graphLayoutEditMode);
+      }
+      if (graphLayoutEditToggleButton instanceof HTMLButtonElement) {
+        const editLayoutTooltip = graphLayoutEditMode
+          ? "Disable workflow graph layout editing"
+          : "Enable workflow graph layout editing";
+        graphLayoutEditToggleButton.setAttribute("aria-pressed", graphLayoutEditMode ? "true" : "false");
+        graphLayoutEditToggleButton.setAttribute("aria-label", editLayoutTooltip);
+        graphLayoutEditToggleButton.setAttribute("title", editLayoutTooltip);
+        graphLayoutEditToggleButton.classList.toggle("graph-stage-action-button--active", graphLayoutEditMode);
       }
     };
     const autoFitGraph = () => {
@@ -7018,6 +7629,7 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
           graphStageOffsetX: graphStageOffsetState.x,
           graphStageOffsetY: graphStageOffsetState.y,
           detailScrollTop: detailPanel instanceof HTMLElement ? detailPanel.scrollTop : 0,
+          graphLayoutEditMode,
           graphInitialZoomMode: configuredGraphInitialZoomMode,
           graphZoomMode: graphZoomState.mode,
           graphZoomScale: graphZoomState.scale
@@ -7176,8 +7788,8 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
         return;
       }
 
-      element.addEventListener("pointerdown", (event) => {
-        if (event.button !== 0) {
+      element.addEventListener("click", (event) => {
+        if (graphLayoutEditMode) {
           return;
         }
 
@@ -7226,6 +7838,9 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
     } catch {
       // Ignore ready-report failures.
     }
+    syncGraphLayoutEditMode();
+    bindGraphNodeDragging();
+    updateDynamicGraphLinks();
     if (graphPanel instanceof HTMLElement) {
       const restoredGraphScrollTop = typeof viewState.graphScrollTop === "number" ? viewState.graphScrollTop : null;
       const restoredGraphScrollLeft = typeof viewState.graphScrollLeft === "number" ? viewState.graphScrollLeft : null;
@@ -7255,12 +7870,14 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
     if (graphZoomOutButton instanceof HTMLButtonElement) {
       graphZoomOutButton.addEventListener("click", () => {
         setManualGraphZoom(getGraphZoomScale() - graphZoomStep);
+        updateDynamicGraphLinks();
         persistWorkflowScrollState();
       });
     }
     if (graphZoomInButton instanceof HTMLButtonElement) {
       graphZoomInButton.addEventListener("click", () => {
         setManualGraphZoom(getGraphZoomScale() + graphZoomStep);
+        updateDynamicGraphLinks();
         persistWorkflowScrollState();
       });
     }
@@ -7268,6 +7885,7 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
       graphAutoFitButton.addEventListener("click", () => {
         autoFitGraph();
         window.requestAnimationFrame(() => {
+          updateDynamicGraphLinks();
           centerGraphInViewport();
           persistWorkflowScrollState();
         });
@@ -7277,11 +7895,27 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
       graphFitWidthButton.addEventListener("click", () => {
         fitGraphWidth();
         window.requestAnimationFrame(() => {
+          updateDynamicGraphLinks();
           centerFitWidthGraphFocus();
           persistWorkflowScrollState();
         });
       });
     }
+    if (graphLayoutEditToggleButton instanceof HTMLButtonElement) {
+      graphLayoutEditToggleButton.addEventListener("click", () => {
+        graphLayoutEditMode = !graphLayoutEditMode;
+        viewState.graphLayoutEditMode = graphLayoutEditMode;
+        syncGraphLayoutEditMode();
+        vscode.setState({
+          ...viewState,
+          workflowFilesOpen: Boolean(viewState.workflowFilesOpen),
+          graphLayoutEditMode
+        });
+      });
+    }
+    window.addEventListener("resize", () => {
+      updateDynamicGraphLinks();
+    });
     if (graphPanel instanceof HTMLElement) {
       graphPanel.addEventListener("wheel", (event) => {
         if (!event.ctrlKey && !event.metaKey) {
@@ -8458,43 +9092,151 @@ function buildWorkflowTagTokens(tags) {
 function formatWorkflowTagLabel(tag) {
     return `#${tag}`;
 }
-function buildAggregateWorkflowGraph(workflow) {
+function buildAggregateWorkflowGraph(workflow, selectedPhaseId, workflowGraphLayout, graphLayoutEditMode) {
     const children = workflow.childUserStories ?? [];
-    const childNodes = children.map((child, index) => `
-    <button
-      class="aggregate-child-node aggregate-child-node--${(0, htmlEscape_1.escapeHtmlAttr)(child.status)}"
-      type="button"
-      data-command="openWorkflowTab"
-      data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(child.usId)}"
-      style="--aggregate-child-index: ${index};">
-      <span class="aggregate-child-node__id">${(0, htmlEscape_1.escapeHtml)(child.usId)}</span>
-      <strong>${(0, htmlEscape_1.escapeHtml)(child.title)}</strong>
-      <span>${(0, htmlEscape_1.escapeHtml)(child.currentPhase)} · ${(0, htmlEscape_1.escapeHtml)(child.status)}</span>
-    </button>
-  `).join("");
+    const capturePhase = findPhaseById(workflow, "capture");
+    const refinementPhase = findPhaseById(workflow, "refinement");
+    const specPhase = findPhaseById(workflow, "spec");
+    const decompositionArtifactPath = workflow.decomposition?.artifactPath ?? null;
     const decision = workflow.decomposition?.decision ?? "approved";
     const score = workflow.decomposition ? ` · ${Math.round(workflow.decomposition.complexityScore * 100)}%` : "";
+    const rationale = workflow.decomposition?.rationale?.trim() ?? "SpecForge marked the parent spec as complex enough to split into child stories.";
+    const aggregateNodeWidth = 224;
+    const aggregateConfig = workflowGraphLayout?.aggregateUserStories?.[workflow.usId]
+        ?? workflowGraphLayout?.aggregate
+        ?? workflowGraphLayout_1.defaultAggregateWorkflowGraphLayout;
+    const aggregateLayout = buildAggregateGraphLayout(children.length, aggregateNodeWidth, aggregateConfig);
+    const { positions } = aggregateLayout;
+    const captureNode = renderAggregateNode({
+        targetId: "capture",
+        phaseKind: "capture",
+        title: graphPhaseTitle(capturePhase ?? { phaseId: "capture", title: "Capture" }),
+        secondaryLabel: graphPhaseSecondaryLabel(capturePhase ?? { phaseId: "capture", title: "Capture" }),
+        headerMetaHtml: capturePhase?.requiresApproval ? renderPhaseTag("approval", "approval") : "",
+        headerActionsHtml: renderPhaseRoleBadge(capturePhase?.expectsHumanIntervention === true),
+        bodyLines: [],
+        selected: selectedPhaseId === "capture",
+        current: workflow.currentPhase === "capture",
+        phaseTone: "completed",
+        left: positions.capture.left,
+        top: positions.capture.top,
+        extraDataAttributesHtml: 'data-aggregate-anchor-id="capture" data-aggregate-node-id="capture"'
+    });
+    const refinementNode = renderAggregateNode({
+        targetId: "refinement",
+        phaseKind: "refinement",
+        title: graphPhaseTitle(refinementPhase ?? { phaseId: "refinement", title: "Refinement" }),
+        secondaryLabel: graphPhaseSecondaryLabel(refinementPhase ?? { phaseId: "refinement", title: "Refinement" }),
+        headerMetaHtml: refinementPhase?.requiresApproval ? renderPhaseTag("approval", "approval") : "",
+        headerActionsHtml: renderPhaseRoleBadge(refinementPhase?.expectsHumanIntervention === true),
+        bodyLines: [],
+        selected: selectedPhaseId === "refinement",
+        current: workflow.currentPhase === "refinement",
+        phaseTone: "completed",
+        left: positions.refinement.left,
+        top: positions.refinement.top,
+        extraDataAttributesHtml: 'data-aggregate-anchor-id="refinement" data-aggregate-node-id="refinement"'
+    });
+    const specNode = renderAggregateNode({
+        targetId: "spec",
+        phaseKind: "spec",
+        title: graphPhaseTitle(specPhase ?? { phaseId: "spec", title: "Spec" }),
+        secondaryLabel: graphPhaseSecondaryLabel(specPhase ?? { phaseId: "spec", title: "Spec" }),
+        headerMetaHtml: specPhase?.requiresApproval ? renderPhaseTag("approval", "approval") : "",
+        headerActionsHtml: renderPhaseRoleBadge(specPhase?.expectsHumanIntervention === true),
+        bodyLines: [],
+        selected: selectedPhaseId === "spec",
+        current: workflow.currentPhase === "spec",
+        phaseTone: "waiting-user",
+        left: positions.spec.left,
+        top: positions.spec.top,
+        extraDataAttributesHtml: 'data-aggregate-anchor-id="spec" data-aggregate-node-id="spec"'
+    });
+    const splitNode = renderAggregateNode({
+        targetId: "spec",
+        phaseKind: "spec",
+        metaTag: "split",
+        title: "Split",
+        secondaryLabel: "spec decomposition decision",
+        artifact: decompositionArtifactPath ? fileNameFromPath(decompositionArtifactPath) : "no decomposition artifact",
+        subtitle: buildAggregateArtifactFlowLabel(specPhase?.artifactPath ?? null, decompositionArtifactPath),
+        footer: rationale,
+        statusTag: { tone: "blocked", label: `${children.length} children` },
+        selected: false,
+        current: false,
+        phaseTone: "blocked",
+        left: positions.split.left,
+        top: positions.split.top,
+        headerMetaHtml: renderPhaseTag("split", "approval"),
+        extraDataAttributesHtml: 'data-aggregate-anchor-id="split" data-aggregate-node-id="split"'
+    });
+    const childNodes = children.map((child, index) => renderAggregateNode({
+        targetId: child.usId,
+        command: "openWorkflow",
+        phaseKind: child.currentPhase === "capture" ? "capture" : "implementation",
+        metaTag: "child",
+        title: child.title,
+        eyebrow: child.usId,
+        artifact: child.currentPhase,
+        subtitle: `${child.currentPhase} · ${child.status}`,
+        footer: child.parentUsId ? `parent ${child.parentUsId}` : "",
+        statusTag: { tone: child.status === "completed" ? "completed" : child.status === "waiting-user" ? "waiting-user" : "active", label: child.status },
+        selected: false,
+        current: false,
+        phaseTone: child.status === "completed" ? "completed" : child.status === "waiting-user" ? "waiting-user" : "pending",
+        left: positions[`child-${index}`].left,
+        top: positions[`child-${index}`].top,
+        extraDataAttributesHtml: `data-aggregate-node-id="child-${index}"`
+    })).join("");
+    const aggregateEdgeConnections = {
+        "capture->refinement": { from: "R3", to: "L3" },
+        "refinement->spec": { from: "R3", to: "L3" },
+        "spec->split": { from: "B3", to: "T3" }
+    };
+    const aggregateEdges = [
+        { fromPhaseId: "capture", toPhaseId: "refinement", className: "completed" },
+        { fromPhaseId: "refinement", toPhaseId: "spec", className: "completed" },
+        { fromPhaseId: "spec", toPhaseId: "split", className: "current" }
+    ];
+    for (let index = 0; index < children.length; index += 1) {
+        const childStatus = children[index].status;
+        const edgeClassName = childStatus === "completed" ? "completed" : childStatus === "waiting-user" ? "current" : "pending";
+        aggregateEdges.push({ fromPhaseId: "split", toPhaseId: `child-${index}`, className: edgeClassName });
+    }
     return `
-    <div class="phase-graph phase-graph--aggregate" data-graph-layout-mode="vertical" aria-label="Aggregate user story graph">
-      <div class="aggregate-parent-node">
+    <div class="phase-graph phase-graph--aggregate${graphLayoutEditMode ? " phase-graph--layout-edit" : ""}" data-graph-layout-mode="vertical" aria-label="Aggregate user story graph" style="--aggregate-graph-width: ${aggregateLayout.width}px; --aggregate-graph-height: ${aggregateLayout.height}px; --aggregate-node-width: ${aggregateNodeWidth}px;">
+      <svg class="graph-links graph-links--desktop graph-links--desktop-vertical aggregate-graph-links" viewBox="0 0 ${aggregateLayout.width} ${aggregateLayout.height}" preserveAspectRatio="none" aria-hidden="true">
+        ${renderGraphEdges(aggregateEdges, positions, aggregateNodeWidth, "vertical", aggregateEdgeConnections)}
+      </svg>
+      <svg class="graph-links graph-links--mobile graph-links--mobile-vertical aggregate-graph-links" viewBox="0 0 ${aggregateLayout.width} ${aggregateLayout.height}" preserveAspectRatio="none" aria-hidden="true">
+        ${renderGraphEdges(aggregateEdges, positions, aggregateNodeWidth, "vertical", aggregateEdgeConnections)}
+      </svg>
+      <div class="aggregate-graph-caption">
         <span class="phase-tag approval">aggregate</span>
-        <h3>${(0, htmlEscape_1.escapeHtml)(workflow.usId)} · Parent spec</h3>
-        <p>${(0, htmlEscape_1.escapeHtml)(decision)} decomposition${(0, htmlEscape_1.escapeHtml)(score)}</p>
+        <span class="phase-tag phase-tag--waiting-user">${(0, htmlEscape_1.escapeHtml)(workflow.status)}</span>
+        <span class="phase-tag phase-tag--pending">${children.length} children</span>
       </div>
-      <div class="aggregate-spec-node">
-        <span class="phase-tag approval">spec decision</span>
-        <strong>${(0, htmlEscape_1.escapeHtml)(workflow.title)}</strong>
-        <span>${(0, htmlEscape_1.escapeHtml)(workflow.status)}</span>
-      </div>
-      <div class="aggregate-children-grid">
-        ${childNodes || `<div class="aggregate-child-node aggregate-child-node--empty">No child user stories were created.</div>`}
-      </div>
+      ${captureNode}
+      ${refinementNode}
+      ${specNode}
+      ${splitNode}
+      ${childNodes || renderWorkflowGraphNode({
+        phaseClassName: "capture",
+        visualTone: "pending",
+        aggregate: true,
+        style: `--aggregate-node-left: ${positions.split.left}px; --aggregate-node-top: ${positions.split.top + 192}px;`,
+        headerActionsHtml: renderGraphStatusBadgeFromTone("pending", "capture"),
+        visualIconHtml: (0, icons_1.workflowPhaseIcon)("capture"),
+        title: "No child stories",
+        secondaryLabel: "split result",
+        bodyLines: ["The split did not create child user stories."]
+    })}
     </div>
   `;
 }
 function buildPhaseGraph(workflow, state, selectedPhaseId, playbackState, effectiveExecutionPhaseId) {
     if (workflow.workflowKind === "aggregate") {
-        return buildAggregateWorkflowGraph(workflow);
+        return buildAggregateWorkflowGraph(workflow, selectedPhaseId, state.workflowGraphLayout, state.graphLayoutEditMode === true);
     }
     const executionPhaseId = playbackState === "playing" ? effectiveExecutionPhaseId : null;
     const pausedExecutionPhaseId = resolvePausedExecutionPhaseId(workflow, state, playbackState);
@@ -8572,20 +9314,7 @@ function buildPhaseGraph(workflow, state, selectedPhaseId, playbackState, effect
             : `Pause before ${phase.title}`;
         const statusIcon = renderGraphPhaseStatusIcon(phase, visualTone, state.completedUsLockOnCompleted !== false);
         const phaseRoleBadge = `<span class="phase-role-badge phase-role-badge--${(0, htmlEscape_1.escapeHtmlAttr)(phaseRoleModifier)}" title="${(0, htmlEscape_1.escapeHtmlAttr)(phaseRoleLabel)}" aria-label="${(0, htmlEscape_1.escapeHtmlAttr)(phaseRoleLabel)}">${phaseRoleIcon}</span>`;
-        return `
-    <div
-      class="phase-node ${(0, htmlEscape_1.escapeHtmlAttr)(phase.phaseId)} phase-tone-${(0, htmlEscape_1.escapeHtmlAttr)(visualTone)}${phaseIsSelected ? " selected" : ""}${phaseIsCurrent ? " phase-node--current" : ""}${dependencyBlocked ? " phase-node--dependency-blocked" : ""}${phase.phaseId === "completed" ? " phase-node--final" : ""}"
-      data-command="selectPhase"
-      data-phase-id="${(0, htmlEscape_1.escapeHtmlAttr)(phaseSelectTargetId)}"
-      role="button"
-      tabindex="0"
-      style="--phase-left-desktop-horizontal: ${desktopHorizontalPosition.left}px; --phase-top-desktop-horizontal: ${desktopHorizontalPosition.top}px; --phase-left-desktop-vertical: ${desktopVerticalPosition.left}px; --phase-top-desktop-vertical: ${desktopVerticalPosition.top}px; --phase-left-mobile-horizontal: ${mobileHorizontalPosition.left}px; --phase-top-mobile-horizontal: ${mobileHorizontalPosition.top}px; --phase-left-mobile-vertical: ${mobileVerticalPosition.left}px; --phase-top-mobile-vertical: ${mobileVerticalPosition.top}px;">
-      ${phaseIsCurrent ? `<span class="phase-current-rail"><span class="phase-current-rail__label">Current</span></span>` : ""}
-      ${phaseIsSelected ? `<span class="phase-viewing-rail"><span class="phase-viewing-rail__label">Viewing</span></span>` : ""}
-      <div class="phase-node-content${phaseIsCurrent ? " phase-node-content--current" : ""}">
-        <div class="phase-node-header">
-          <div class="phase-node-header-main">${phaseHeaderMeta}</div>
-          <div class="phase-node-header-actions">
+        const headerActionsHtml = `
             ${phase.phaseId === "completed"
             ? `<span class="phase-role-badge graph-phase-status-icon" title="Completed workflow lock state" aria-label="Completed workflow lock state">${statusIcon || phaseRoleIcon}</span>`
             : dependencyBlocked
@@ -8604,21 +9333,27 @@ function buildPhaseGraph(workflow, state, selectedPhaseId, playbackState, effect
                 ${(0, icons_1.pauseIcon)()}
               </button>`
             : ""}
-          </div>
-        </div>
-        <div class="phase-node-body">
-          <span class="phase-node-visual" aria-hidden="true">${phaseVisualIcon}</span>
-          <div class="phase-node-copy">
-            <h3>${(0, htmlEscape_1.escapeHtml)(graphPhaseTitle(phase))}</h3>
-            <div class="phase-slug">${(0, htmlEscape_1.escapeHtml)(graphPhaseSecondaryLabel(phase))}</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
+          `;
+        return renderWorkflowGraphNode({
+            phaseClassName: phase.phaseId,
+            visualTone,
+            selected: phaseIsSelected,
+            current: phaseIsCurrent,
+            dependencyBlocked,
+            final: phase.phaseId === "completed",
+            commandName: "selectPhase",
+            targetAttributeName: "data-phase-id",
+            targetId: phaseSelectTargetId,
+            style: `--phase-left-desktop-horizontal: ${desktopHorizontalPosition.left}px; --phase-top-desktop-horizontal: ${desktopHorizontalPosition.top}px; --phase-left-desktop-vertical: ${desktopVerticalPosition.left}px; --phase-top-desktop-vertical: ${desktopVerticalPosition.top}px; --phase-left-mobile-horizontal: ${mobileHorizontalPosition.left}px; --phase-top-mobile-horizontal: ${mobileHorizontalPosition.top}px; --phase-left-mobile-vertical: ${mobileVerticalPosition.left}px; --phase-top-mobile-vertical: ${mobileVerticalPosition.top}px;`,
+            headerMetaHtml: phaseHeaderMeta,
+            headerActionsHtml,
+            visualIconHtml: phaseVisualIcon,
+            title: graphPhaseTitle(phase),
+            secondaryLabel: graphPhaseSecondaryLabel(phase)
+        });
     }).join("");
     return `
-    <div class="phase-graph" data-graph-layout-mode="${(0, htmlEscape_1.escapeHtmlAttr)(graphLayoutMode)}" aria-label="Workflow graph" style="--graph-width-desktop-horizontal: ${desktopHorizontalGraphWidth}px; --graph-height-desktop-horizontal: ${desktopHorizontalGraphHeight}px; --graph-width-desktop-vertical: ${desktopVerticalGraphWidth}px; --graph-height-desktop-vertical: ${desktopVerticalGraphHeight}px; --graph-width-mobile-horizontal: ${mobileHorizontalGraphWidth}px; --graph-height-mobile-horizontal: ${mobileHorizontalGraphHeight}px; --graph-width-mobile-vertical: ${mobileVerticalGraphWidth}px; --graph-height-mobile-vertical: ${mobileVerticalGraphHeight}px; --graph-legend-left-desktop-horizontal: ${desktopHorizontalLegendPosition.left}px; --graph-legend-top-desktop-horizontal: ${desktopHorizontalLegendPosition.top}px; --graph-legend-left-desktop-vertical: ${desktopVerticalLegendPosition.left}px; --graph-legend-top-desktop-vertical: ${desktopVerticalLegendPosition.top}px; --graph-legend-left-mobile-horizontal: ${mobileHorizontalLegendPosition.left}px; --graph-legend-top-mobile-horizontal: ${mobileHorizontalLegendPosition.top}px; --graph-legend-left-mobile-vertical: ${mobileVerticalLegendPosition.left}px; --graph-legend-top-mobile-vertical: ${mobileVerticalLegendPosition.top}px;">
+    <div class="phase-graph${state.graphLayoutEditMode ? " phase-graph--layout-edit" : ""}" data-graph-layout-mode="${(0, htmlEscape_1.escapeHtmlAttr)(graphLayoutMode)}" aria-label="Workflow graph" style="--graph-width-desktop-horizontal: ${desktopHorizontalGraphWidth}px; --graph-height-desktop-horizontal: ${desktopHorizontalGraphHeight}px; --graph-width-desktop-vertical: ${desktopVerticalGraphWidth}px; --graph-height-desktop-vertical: ${desktopVerticalGraphHeight}px; --graph-width-mobile-horizontal: ${mobileHorizontalGraphWidth}px; --graph-height-mobile-horizontal: ${mobileHorizontalGraphHeight}px; --graph-width-mobile-vertical: ${mobileVerticalGraphWidth}px; --graph-height-mobile-vertical: ${mobileVerticalGraphHeight}px; --graph-legend-left-desktop-horizontal: ${desktopHorizontalLegendPosition.left}px; --graph-legend-top-desktop-horizontal: ${desktopHorizontalLegendPosition.top}px; --graph-legend-left-desktop-vertical: ${desktopVerticalLegendPosition.left}px; --graph-legend-top-desktop-vertical: ${desktopVerticalLegendPosition.top}px; --graph-legend-left-mobile-horizontal: ${mobileHorizontalLegendPosition.left}px; --graph-legend-top-mobile-horizontal: ${mobileHorizontalLegendPosition.top}px; --graph-legend-left-mobile-vertical: ${mobileVerticalLegendPosition.left}px; --graph-legend-top-mobile-vertical: ${mobileVerticalLegendPosition.top}px;">
       <svg class="graph-links graph-links--desktop graph-links--desktop-horizontal" viewBox="0 0 ${desktopHorizontalGraphWidth} ${desktopHorizontalGraphHeight}" preserveAspectRatio="none" aria-hidden="true">
         ${desktopHorizontalLinks}
       </svg>
@@ -8849,13 +9584,16 @@ function computeGraphLoopBounds(loopOverlays) {
 function buildGraphLinks(visiblePhases, executingTargetPhaseId, currentPhaseId, completedPhaseIds, positions, nodeWidth, graphLayoutMode, edgeConnections) {
     const visiblePhaseMap = new Map(visiblePhases.map((phase) => [phase.phaseId, phase]));
     const edges = buildPrimaryGraphEdges(visiblePhases, visiblePhaseMap, executingTargetPhaseId, currentPhaseId, completedPhaseIds);
+    return renderGraphEdges(edges, positions, nodeWidth, graphLayoutMode, edgeConnections);
+}
+function renderGraphEdges(edges, positions, nodeWidth, graphLayoutMode, edgeConnections) {
     const classPriority = {
         pending: 0,
         completed: 1,
         current: 2,
         executing: 3
     };
-    return edges
+    return [...edges]
         .sort((left, right) => (classPriority[left.className] ?? 0) - (classPriority[right.className] ?? 0))
         .map((edge) => `<path class="${edge.className}" data-edge="${(0, htmlEscape_1.escapeHtmlAttr)(`${edge.fromPhaseId}->${edge.toPhaseId}`)}" d="${(0, graphLayout_1.graphPath)(edge.fromPhaseId, edge.toPhaseId, positions, nodeWidth, graphLayoutMode, edgeConnections[`${edge.fromPhaseId}->${edge.toPhaseId}`])}"></path>`)
         .join("");

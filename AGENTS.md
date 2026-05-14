@@ -26,8 +26,10 @@ This repository consumes shared skills from `../ai-skills-shared`.
 ## Local Rules
 
 - In local development, runtime environment variables must come from the `.env` file referenced by `.vscode/launch.json`. Do not duplicate those variables in `launchSettings.json`, `tasks.json`, or tracked configuration files unless there is an exceptional and explicit need.
+- Technical articles intended for GitHub Pages or public documentation must be written in English unless the user explicitly requests another language.
 - All SpecForge Central work must be created and evolved through the SpecForge tool itself. User stories, workflow state, generated specs, technical designs, implementation/review artifacts, and other `.specs/**` workflow outputs for SpecForge Central must be created, imported, advanced, approved, regressed, or repaired through the SpecForge MCP/actions instead of manual file edits, except for explicit low-level repair after the tool cannot perform the operation and the user confirms that risk.
 - From this repository onward, each completed functional task or subtask must be closed with both required commits: first a functional git commit that maps clearly to the delivered change, then a separate version bump commit produced with `dotnet versionbumper`. Each commit message must include the corresponding `done` outcome so the repository history can be traced back to the task checklist.
+- From this repository onward, any change set that reaches a local compile or validation milestone (`npm run compile`, `npm run compile:ts`, `npm run test:ts`, `dotnet build`, or equivalent) must be followed by a version bump through `dotnet versionbumper`. Do not defer the bump to a later session or batch it with unrelated compiled changes.
 
 ## Priority Order
 

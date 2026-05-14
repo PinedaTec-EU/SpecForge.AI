@@ -33,10 +33,14 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.defaultVerticalWorkflowGraphLoops = exports.defaultHorizontalWorkflowGraphLoops = exports.defaultVerticalWorkflowGraphConnections = exports.defaultHorizontalWorkflowGraphConnections = exports.defaultWorkflowGraphLegendPositions = exports.defaultVerticalWorkflowGraphPositions = exports.defaultHorizontalWorkflowGraphPositions = void 0;
+exports.defaultAggregateWorkflowGraphLayout = exports.defaultVerticalWorkflowGraphLoops = exports.defaultHorizontalWorkflowGraphLoops = exports.defaultVerticalWorkflowGraphConnections = exports.defaultHorizontalWorkflowGraphConnections = exports.defaultWorkflowGraphLegendPositions = exports.defaultVerticalWorkflowGraphPositions = exports.defaultHorizontalWorkflowGraphPositions = void 0;
 exports.getWorkflowGraphLayoutPath = getWorkflowGraphLayoutPath;
 exports.ensureWorkflowGraphLayoutConfigExistsAsync = ensureWorkflowGraphLayoutConfigExistsAsync;
 exports.readWorkflowGraphLayoutConfigAsync = readWorkflowGraphLayoutConfigAsync;
+exports.writeWorkflowGraphLayoutConfigAsync = writeWorkflowGraphLayoutConfigAsync;
+exports.updateWorkflowGraphLayoutPositionsAsync = updateWorkflowGraphLayoutPositionsAsync;
+exports.updateWorkflowGraphLegendPositionAsync = updateWorkflowGraphLegendPositionAsync;
+exports.updateAggregateWorkflowGraphLayoutAsync = updateAggregateWorkflowGraphLayoutAsync;
 const fs = __importStar(require("node:fs"));
 const path = __importStar(require("node:path"));
 const workflowGraphPhaseIds = [
@@ -50,59 +54,81 @@ const workflowGraphPhaseIds = [
     "pr-preparation",
     "completed"
 ];
+const aggregateWorkflowGraphAnchorIds = [
+    "capture",
+    "refinement",
+    "spec",
+    "split"
+];
 // Keep this comment aligned with workflowView.ts card constants.
 // Card dimensions used by the renderer: desktop 240x118, mobile 206x118.
 exports.defaultHorizontalWorkflowGraphPositions = {
-    capture: { x: 80, y: 60 },
-    refinement: { x: 380, y: 100 },
-    spec: { x: 580, y: 280 },
-    "technical-design": { x: 880, y: 320 },
-    implementation: { x: 1080, y: 500 },
-    review: { x: 1080, y: 680 },
-    "release-approval": { x: 1280, y: 860 },
-    "pr-preparation": { x: 1580, y: 900 },
-    completed: { x: 1880, y: 1080 }
+    capture: { x: 80, y: 120 },
+    refinement: { x: 390, y: 120 },
+    spec: { x: 700, y: 120 },
+    "technical-design": { x: 1010, y: 120 },
+    implementation: { x: 1010, y: 340 },
+    review: { x: 1010, y: 560 },
+    "release-approval": { x: 1320, y: 560 },
+    "pr-preparation": { x: 1630, y: 560 },
+    completed: { x: 1940, y: 560 }
 };
 exports.defaultVerticalWorkflowGraphPositions = {
     capture: { x: 80, y: 60 },
-    refinement: { x: 380, y: 100 },
-    spec: { x: 430, y: 280 },
-    "technical-design": { x: 430, y: 460 },
-    implementation: { x: 80, y: 640 },
-    review: { x: 80, y: 820 },
-    "release-approval": { x: 230, y: 1000 },
-    "pr-preparation": { x: 380, y: 1180 },
-    completed: { x: 230, y: 1360 }
+    refinement: { x: 390, y: 60 },
+    spec: { x: 390, y: 240 },
+    "technical-design": { x: 390, y: 420 },
+    implementation: { x: 390, y: 600 },
+    review: { x: 390, y: 780 },
+    "release-approval": { x: 390, y: 960 },
+    "pr-preparation": { x: 390, y: 1140 },
+    completed: { x: 390, y: 1320 }
 };
 exports.defaultWorkflowGraphLegendPositions = {
-    horizontal: { x: 20, y: 300 },
-    vertical: { x: 20, y: 300 }
+    horizontal: { x: 20, y: 720 },
+    vertical: { x: 20, y: 250 }
 };
 exports.defaultHorizontalWorkflowGraphConnections = {
     "capture->refinement": { from: "R3", to: "L3" },
-    "refinement->spec": { from: "B3", to: "L3" },
+    "refinement->spec": { from: "R3", to: "L3" },
     "spec->technical-design": { from: "R3", to: "L3" },
-    "technical-design->implementation": { from: "B3", to: "L3" },
+    "technical-design->implementation": { from: "B3", to: "T3" },
     "implementation->review": { from: "B3", to: "T3" },
-    "review->release-approval": { from: "B3", to: "L3" },
+    "review->release-approval": { from: "R3", to: "L3" },
     "release-approval->pr-preparation": { from: "R3", to: "L3" },
-    "pr-preparation->completed": { from: "B3", to: "L3" }
+    "pr-preparation->completed": { from: "R3", to: "L3" }
 };
 exports.defaultVerticalWorkflowGraphConnections = {
     "capture->refinement": { from: "R3", to: "L3" },
     "refinement->spec": { from: "B3", to: "T3" },
     "spec->technical-design": { from: "B3", to: "T3" },
-    "technical-design->implementation": { from: "B3", to: "R3" },
+    "technical-design->implementation": { from: "B3", to: "T3" },
     "implementation->review": { from: "B3", to: "T3" },
-    "review->release-approval": { from: "B3", to: "L3" },
-    "release-approval->pr-preparation": { from: "B3", to: "L3" },
-    "pr-preparation->completed": { from: "B3", to: "R3" }
+    "review->release-approval": { from: "B3", to: "T3" },
+    "release-approval->pr-preparation": { from: "B3", to: "T3" },
+    "pr-preparation->completed": { from: "B3", to: "T3" }
 };
 exports.defaultHorizontalWorkflowGraphLoops = {
     "implementation-review": { fromPhaseId: "implementation", toPhaseId: "review", side: "right" }
 };
 exports.defaultVerticalWorkflowGraphLoops = {
     "implementation-review": { fromPhaseId: "implementation", toPhaseId: "review", side: "right" }
+};
+exports.defaultAggregateWorkflowGraphLayout = {
+    positions: {
+        capture: { x: 56, y: 140 },
+        refinement: { x: 336, y: 140 },
+        spec: { x: 336, y: 332 },
+        split: { x: 56, y: 524 }
+    },
+    spacing: {
+        horizontalPadding: 56,
+        topRowTop: 140,
+        topRowGap: 56,
+        rowGap: 192,
+        childGap: 56,
+        maxChildrenPerRow: 2
+    }
 };
 function getWorkflowGraphLayoutPath(workspaceRoot) {
     return path.join(workspaceRoot, ".specs", "workflow-graph-layout.yaml");
@@ -114,6 +140,28 @@ function appendWorkflowGraphLayoutLog(message) {
 function appendWorkflowGraphLayoutDebugLog(message) {
     const { appendSpecForgeDebugLog } = require("./outputChannel");
     appendSpecForgeDebugLog(message);
+}
+function cloneDefaultAggregateWorkflowGraphLayout() {
+    return {
+        positions: {
+            capture: { ...exports.defaultAggregateWorkflowGraphLayout.positions.capture },
+            refinement: { ...exports.defaultAggregateWorkflowGraphLayout.positions.refinement },
+            spec: { ...exports.defaultAggregateWorkflowGraphLayout.positions.spec },
+            split: { ...exports.defaultAggregateWorkflowGraphLayout.positions.split }
+        },
+        spacing: { ...exports.defaultAggregateWorkflowGraphLayout.spacing }
+    };
+}
+function cloneAggregateWorkflowGraphLayoutConfig(config) {
+    return {
+        positions: {
+            capture: { ...config.positions.capture },
+            refinement: { ...config.positions.refinement },
+            spec: { ...config.positions.spec },
+            split: { ...config.positions.split }
+        },
+        spacing: { ...config.spacing }
+    };
 }
 async function ensureWorkflowGraphLayoutConfigExistsAsync(workspaceRoot) {
     const filePath = getWorkflowGraphLayoutPath(workspaceRoot);
@@ -137,7 +185,9 @@ async function ensureWorkflowGraphLayoutConfigExistsAsync(workspaceRoot) {
         loops: {
             horizontal: exports.defaultHorizontalWorkflowGraphLoops,
             vertical: exports.defaultVerticalWorkflowGraphLoops
-        }
+        },
+        aggregate: cloneDefaultAggregateWorkflowGraphLayout(),
+        aggregateUserStories: {}
     }), "utf8");
     appendWorkflowGraphLayoutLog(`Created workflow graph layout bootstrap at '${filePath}'.`);
 }
@@ -164,9 +214,117 @@ async function readWorkflowGraphLayoutConfigAsync(workspaceRoot) {
             loops: {
                 horizontal: { ...exports.defaultHorizontalWorkflowGraphLoops },
                 vertical: { ...exports.defaultVerticalWorkflowGraphLoops }
-            }
+            },
+            aggregate: cloneDefaultAggregateWorkflowGraphLayout(),
+            aggregateUserStories: {}
         };
     }
+}
+async function writeWorkflowGraphLayoutConfigAsync(workspaceRoot, config) {
+    const filePath = getWorkflowGraphLayoutPath(workspaceRoot);
+    await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.promises.writeFile(filePath, serializeWorkflowGraphLayoutConfig(config), "utf8");
+    appendWorkflowGraphLayoutLog(`Saved workflow graph layout at '${filePath}'.`);
+}
+async function updateWorkflowGraphLayoutPositionsAsync(workspaceRoot, mode, positions) {
+    const current = await readWorkflowGraphLayoutConfigAsync(workspaceRoot);
+    const next = {
+        ...current,
+        horizontal: { ...current.horizontal },
+        vertical: { ...current.vertical },
+        legend: {
+            horizontal: { ...current.legend.horizontal },
+            vertical: { ...current.legend.vertical }
+        },
+        connections: {
+            horizontal: { ...current.connections.horizontal },
+            vertical: { ...current.connections.vertical }
+        },
+        loops: {
+            horizontal: { ...current.loops.horizontal },
+            vertical: { ...current.loops.vertical }
+        }
+    };
+    const target = mode === "horizontal" ? next.horizontal : next.vertical;
+    for (const phaseId of workflowGraphPhaseIds) {
+        const position = positions[phaseId];
+        if (!position) {
+            continue;
+        }
+        target[phaseId] = {
+            x: Math.round(position.x),
+            y: Math.round(position.y)
+        };
+    }
+    await writeWorkflowGraphLayoutConfigAsync(workspaceRoot, next);
+    return next;
+}
+async function updateWorkflowGraphLegendPositionAsync(workspaceRoot, mode, position) {
+    const current = await readWorkflowGraphLayoutConfigAsync(workspaceRoot);
+    const nextLegendHorizontal = mode === "horizontal"
+        ? {
+            x: Math.round(position.x),
+            y: Math.round(position.y)
+        }
+        : { ...current.legend.horizontal };
+    const nextLegendVertical = mode === "vertical"
+        ? {
+            x: Math.round(position.x),
+            y: Math.round(position.y)
+        }
+        : { ...current.legend.vertical };
+    const next = {
+        ...current,
+        horizontal: { ...current.horizontal },
+        vertical: { ...current.vertical },
+        legend: {
+            horizontal: nextLegendHorizontal,
+            vertical: nextLegendVertical
+        },
+        connections: {
+            horizontal: { ...current.connections.horizontal },
+            vertical: { ...current.connections.vertical }
+        },
+        loops: {
+            horizontal: { ...current.loops.horizontal },
+            vertical: { ...current.loops.vertical }
+        }
+    };
+    await writeWorkflowGraphLayoutConfigAsync(workspaceRoot, next);
+    return next;
+}
+async function updateAggregateWorkflowGraphLayoutAsync(workspaceRoot, aggregate, userStoryId) {
+    const current = await readWorkflowGraphLayoutConfigAsync(workspaceRoot);
+    const nextAggregate = cloneAggregateWorkflowGraphLayoutConfig(current.aggregate);
+    const nextAggregateUserStories = Object.fromEntries(Object.entries(current.aggregateUserStories).map(([key, value]) => [key, cloneAggregateWorkflowGraphLayoutConfig(value)]));
+    const normalizedUserStoryId = userStoryId?.trim();
+    if (normalizedUserStoryId) {
+        nextAggregateUserStories[normalizedUserStoryId] = cloneAggregateWorkflowGraphLayoutConfig(aggregate);
+    }
+    else {
+        Object.assign(nextAggregate, cloneAggregateWorkflowGraphLayoutConfig(aggregate));
+    }
+    const next = {
+        ...current,
+        horizontal: { ...current.horizontal },
+        vertical: { ...current.vertical },
+        legend: {
+            horizontal: { ...current.legend.horizontal },
+            vertical: { ...current.legend.vertical }
+        },
+        connections: {
+            horizontal: { ...current.connections.horizontal },
+            vertical: { ...current.connections.vertical }
+        },
+        loops: {
+            horizontal: { ...current.loops.horizontal },
+            vertical: { ...current.loops.vertical }
+        },
+        aggregate: nextAggregate,
+        aggregateUserStories: nextAggregateUserStories
+    };
+    await writeWorkflowGraphLayoutConfigAsync(workspaceRoot, next);
+    return next;
 }
 function parseWorkflowGraphLayoutConfig(raw) {
     const horizontal = { ...exports.defaultHorizontalWorkflowGraphPositions };
@@ -183,12 +341,19 @@ function parseWorkflowGraphLayoutConfig(raw) {
         horizontal: { ...exports.defaultHorizontalWorkflowGraphLoops },
         vertical: { ...exports.defaultVerticalWorkflowGraphLoops }
     };
+    const aggregate = cloneDefaultAggregateWorkflowGraphLayout();
+    const aggregateUserStories = {};
     let currentMode = null;
     let currentSection = "positions";
     let currentPhaseId = null;
     let currentEdgeId = null;
     let currentLoopId = null;
     let currentLegendTarget = null;
+    let inAggregate = false;
+    let inAggregateUserStories = false;
+    let aggregateSection = null;
+    let currentAggregateAnchorId = null;
+    let currentAggregateUserStoryId = null;
     let pendingX = null;
     let pendingY = null;
     let pendingFromAnchor = null;
@@ -197,6 +362,15 @@ function parseWorkflowGraphLayoutConfig(raw) {
     let pendingLoopToPhaseId = null;
     let pendingLoopSide = null;
     const commitPending = () => {
+        if (inAggregate || inAggregateUserStories) {
+            const aggregateTarget = currentAggregateUserStoryId
+                ? (aggregateUserStories[currentAggregateUserStoryId] ??= cloneDefaultAggregateWorkflowGraphLayout())
+                : aggregate;
+            if (aggregateSection === "positions" && currentAggregateAnchorId && pendingX !== null && pendingY !== null) {
+                aggregateTarget.positions[currentAggregateAnchorId] = { x: pendingX, y: pendingY };
+            }
+            return;
+        }
         if (currentSection === "positions") {
             if (currentLegendTarget && pendingX !== null && pendingY !== null) {
                 legend[currentLegendTarget] = { x: pendingX, y: pendingY };
@@ -235,6 +409,11 @@ function parseWorkflowGraphLayoutConfig(raw) {
         const modeMatch = /^(horizontal|vertical):\s*$/.exec(trimmed);
         if (modeMatch) {
             commitPending();
+            inAggregate = false;
+            inAggregateUserStories = false;
+            aggregateSection = null;
+            currentAggregateAnchorId = null;
+            currentAggregateUserStoryId = null;
             currentMode = modeMatch[1];
             currentSection = "positions";
             currentPhaseId = null;
@@ -249,6 +428,86 @@ function parseWorkflowGraphLayoutConfig(raw) {
             pendingLoopToPhaseId = null;
             pendingLoopSide = null;
             continue;
+        }
+        if (trimmed === "aggregate:") {
+            commitPending();
+            inAggregate = true;
+            inAggregateUserStories = false;
+            aggregateSection = null;
+            currentAggregateAnchorId = null;
+            currentAggregateUserStoryId = null;
+            currentMode = null;
+            currentPhaseId = null;
+            currentEdgeId = null;
+            currentLoopId = null;
+            currentLegendTarget = null;
+            pendingX = null;
+            pendingY = null;
+            pendingFromAnchor = null;
+            pendingToAnchor = null;
+            pendingLoopFromPhaseId = null;
+            pendingLoopToPhaseId = null;
+            pendingLoopSide = null;
+            continue;
+        }
+        if (trimmed === "aggregateUserStories:") {
+            commitPending();
+            inAggregate = false;
+            inAggregateUserStories = true;
+            aggregateSection = null;
+            currentAggregateAnchorId = null;
+            currentAggregateUserStoryId = null;
+            currentMode = null;
+            currentPhaseId = null;
+            currentEdgeId = null;
+            currentLoopId = null;
+            currentLegendTarget = null;
+            pendingX = null;
+            pendingY = null;
+            pendingFromAnchor = null;
+            pendingToAnchor = null;
+            pendingLoopFromPhaseId = null;
+            pendingLoopToPhaseId = null;
+            pendingLoopSide = null;
+            continue;
+        }
+        if (inAggregateUserStories) {
+            const aggregateUserStoryMatch = /^([A-Za-z0-9._-]+):\s*$/.exec(trimmed);
+            if (aggregateUserStoryMatch && aggregateSection === null && aggregateUserStoryMatch[1] !== "positions" && aggregateUserStoryMatch[1] !== "spacing") {
+                commitPending();
+                currentAggregateUserStoryId = aggregateUserStoryMatch[1];
+                aggregateUserStories[currentAggregateUserStoryId] ??= cloneDefaultAggregateWorkflowGraphLayout();
+                currentAggregateAnchorId = null;
+                pendingX = null;
+                pendingY = null;
+                continue;
+            }
+        }
+        if ((inAggregate || inAggregateUserStories) && trimmed === "positions:") {
+            commitPending();
+            aggregateSection = "positions";
+            currentAggregateAnchorId = null;
+            pendingX = null;
+            pendingY = null;
+            continue;
+        }
+        if ((inAggregate || inAggregateUserStories) && trimmed === "spacing:") {
+            commitPending();
+            aggregateSection = "spacing";
+            currentAggregateAnchorId = null;
+            pendingX = null;
+            pendingY = null;
+            continue;
+        }
+        if ((inAggregate || inAggregateUserStories) && aggregateSection === "positions") {
+            const aggregateAnchorMatch = /^([a-z0-9-]+):\s*$/.exec(trimmed);
+            if (aggregateAnchorMatch && isAggregateWorkflowGraphAnchorId(aggregateAnchorMatch[1])) {
+                commitPending();
+                currentAggregateAnchorId = aggregateAnchorMatch[1];
+                pendingX = null;
+                pendingY = null;
+                continue;
+            }
         }
         if (trimmed === "connections:") {
             commitPending();
@@ -346,14 +605,26 @@ function parseWorkflowGraphLayoutConfig(raw) {
             continue;
         }
         const xMatch = /^x:\s*(-?\d+)\s*$/.exec(trimmed);
-        if (xMatch && (currentPhaseId || currentLegendTarget)) {
+        if (xMatch && (currentPhaseId || currentLegendTarget || currentAggregateAnchorId)) {
             pendingX = Number.parseInt(xMatch[1], 10);
             continue;
         }
         const yMatch = /^y:\s*(-?\d+)\s*$/.exec(trimmed);
-        if (yMatch && (currentPhaseId || currentLegendTarget)) {
+        if (yMatch && (currentPhaseId || currentLegendTarget || currentAggregateAnchorId)) {
             pendingY = Number.parseInt(yMatch[1], 10);
             continue;
+        }
+        if ((inAggregate || inAggregateUserStories) && aggregateSection === "spacing") {
+            const spacingMatch = /^(horizontalPadding|topRowTop|topRowGap|rowGap|childGap|maxChildrenPerRow):\s*(-?\d+)\s*$/.exec(trimmed);
+            if (spacingMatch) {
+                const key = spacingMatch[1];
+                const value = Number.parseInt(spacingMatch[2], 10);
+                const aggregateTarget = currentAggregateUserStoryId
+                    ? (aggregateUserStories[currentAggregateUserStoryId] ??= cloneDefaultAggregateWorkflowGraphLayout())
+                    : aggregate;
+                aggregateTarget.spacing[key] = value;
+                continue;
+            }
         }
         const fromMatch = /^from:\s*([TLRB][1-5])\s*$/.exec(trimmed);
         if (fromMatch && currentEdgeId) {
@@ -382,7 +653,7 @@ function parseWorkflowGraphLayoutConfig(raw) {
         }
     }
     commitPending();
-    return { horizontal, vertical, legend, connections, loops };
+    return { horizontal, vertical, legend, connections, loops, aggregate, aggregateUserStories };
 }
 function serializeWorkflowGraphLayoutConfig(config) {
     const serializeMode = (mode) => {
@@ -423,6 +694,42 @@ function serializeWorkflowGraphLayoutConfig(config) {
         serializeMode("horizontal"),
         "",
         serializeMode("vertical"),
+        "",
+        "aggregate:",
+        "  positions:",
+        ...aggregateWorkflowGraphAnchorIds.flatMap((anchorId) => [
+            `    ${anchorId}:`,
+            `      x: ${Math.round(config.aggregate.positions[anchorId].x)}`,
+            `      y: ${Math.round(config.aggregate.positions[anchorId].y)}`
+        ]),
+        "  spacing:",
+        `    horizontalPadding: ${config.aggregate.spacing.horizontalPadding}`,
+        `    topRowTop: ${config.aggregate.spacing.topRowTop}`,
+        `    topRowGap: ${config.aggregate.spacing.topRowGap}`,
+        `    rowGap: ${config.aggregate.spacing.rowGap}`,
+        `    childGap: ${config.aggregate.spacing.childGap}`,
+        `    maxChildrenPerRow: ${config.aggregate.spacing.maxChildrenPerRow}`,
+        "",
+        "aggregateUserStories:",
+        ...Object.keys(config.aggregateUserStories).sort().flatMap((userStoryId) => {
+            const aggregateLayout = config.aggregateUserStories[userStoryId];
+            return [
+                `  ${userStoryId}:`,
+                "    positions:",
+                ...aggregateWorkflowGraphAnchorIds.flatMap((anchorId) => [
+                    `      ${anchorId}:`,
+                    `        x: ${Math.round(aggregateLayout.positions[anchorId].x)}`,
+                    `        y: ${Math.round(aggregateLayout.positions[anchorId].y)}`
+                ]),
+                "    spacing:",
+                `      horizontalPadding: ${aggregateLayout.spacing.horizontalPadding}`,
+                `      topRowTop: ${aggregateLayout.spacing.topRowTop}`,
+                `      topRowGap: ${aggregateLayout.spacing.topRowGap}`,
+                `      rowGap: ${aggregateLayout.spacing.rowGap}`,
+                `      childGap: ${aggregateLayout.spacing.childGap}`,
+                `      maxChildrenPerRow: ${aggregateLayout.spacing.maxChildrenPerRow}`
+            ];
+        }),
         ""
     ].join("\n");
 }
@@ -431,5 +738,8 @@ function isAnchorCode(value) {
 }
 function isWorkflowGraphPhaseId(value) {
     return workflowGraphPhaseIds.includes(value);
+}
+function isAggregateWorkflowGraphAnchorId(value) {
+    return aggregateWorkflowGraphAnchorIds.includes(value);
 }
 //# sourceMappingURL=workflowGraphLayout.js.map

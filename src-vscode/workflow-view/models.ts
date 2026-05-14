@@ -54,6 +54,7 @@ export interface WorkflowViewState {
   readonly pendingRewindPhaseId?: string | null;
   readonly graphLayoutMode?: "horizontal" | "vertical";
   readonly graphInitialZoomMode?: "actual-size" | "fit-width";
+  readonly graphLayoutEditMode?: boolean;
   readonly workflowGraphLayout?: WorkflowGraphLayoutConfig;
 }
 

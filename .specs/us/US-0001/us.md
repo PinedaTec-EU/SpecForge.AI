@@ -3,6 +3,7 @@
 ## Metadata
 - Kind: `feature`
 - Category: `configuration`
+- Tags: `sf-central`
 
 ## Objective
 ## SpecForge Goal Intake

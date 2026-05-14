@@ -264,6 +264,41 @@ class WorkflowPanelController {
                 this.selectedIterationKey = message.iterationKey?.trim() || null;
                 await this.renderCachedWorkflowAsync("command:selectIteration");
                 return;
+            case "saveWorkflowGraphLayout":
+                if (message.layoutKind === "aggregate" && message.aggregate) {
+                    const positions = message.aggregate.positions;
+                    const spacing = message.aggregate.spacing;
+                    await (0, workflowGraphLayout_1.updateAggregateWorkflowGraphLayoutAsync)(this.workspaceRoot, {
+                        positions: {
+                            capture: positions.capture ?? { x: 56, y: 140 },
+                            refinement: positions.refinement ?? { x: 336, y: 140 },
+                            spec: positions.spec ?? { x: 336, y: 332 },
+                            split: positions.split ?? { x: 56, y: 524 }
+                        },
+                        spacing: {
+                            horizontalPadding: spacing.horizontalPadding ?? 56,
+                            topRowTop: spacing.topRowTop ?? 140,
+                            topRowGap: spacing.topRowGap ?? 56,
+                            rowGap: spacing.rowGap ?? 192,
+                            childGap: spacing.childGap ?? 56,
+                            maxChildrenPerRow: spacing.maxChildrenPerRow ?? 2
+                        }
+                    }, message.userStoryId);
+                    if (message.layoutMode && message.legendPosition) {
+                        await (0, workflowGraphLayout_1.updateWorkflowGraphLegendPositionAsync)(this.workspaceRoot, message.layoutMode, message.legendPosition);
+                    }
+                    await this.refreshAsync("command:saveWorkflowGraphLayout:aggregate");
+                }
+                else if (message.layoutMode) {
+                    if (message.positions) {
+                        await (0, workflowGraphLayout_1.updateWorkflowGraphLayoutPositionsAsync)(this.workspaceRoot, message.layoutMode, message.positions);
+                    }
+                    if (message.legendPosition) {
+                        await (0, workflowGraphLayout_1.updateWorkflowGraphLegendPositionAsync)(this.workspaceRoot, message.layoutMode, message.legendPosition);
+                    }
+                    await this.refreshAsync("command:saveWorkflowGraphLayout:workflow");
+                }
+                return;
             case "togglePhaseIterations":
                 if (message.phaseId) {
                     let requiresFullRender = false;
