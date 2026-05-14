@@ -50,19 +50,7 @@ function graphPath(fromPhaseId, toPhaseId, positions, nodeWidth, graphLayoutMode
     if (!fromPosition || !toPosition) {
         return "";
     }
-    if (graphLayoutMode === "horizontal") {
-        return buildHorizontalGraphPath(fromPosition, toPosition, nodeWidth, edgeConnection);
-    }
-    const resolvedAnchors = resolveAnchors(fromPosition, toPosition, edgeConnection);
-    const from = getAnchorPointFromCodeOrAnchor(fromPosition, resolvedAnchors.fromAnchor, nodeWidth, true);
-    const to = getAnchorPointFromCodeOrAnchor(toPosition, resolvedAnchors.toAnchor, nodeWidth, false);
-    const fromAnchor = toGraphAnchor(resolvedAnchors.fromAnchor, true);
-    const toAnchor = toGraphAnchor(resolvedAnchors.toAnchor, false);
-    const sameColumn = fromPosition.left === toPosition.left;
-    if (sameColumn) {
-        return buildSameColumnGraphPath(fromPosition, toPosition, fromAnchor, toAnchor, from, to, nodeWidth);
-    }
-    return buildCrossColumnGraphPath(fromPosition, toPosition, fromAnchor, toAnchor, from, to, nodeWidth);
+    return buildOrthogonalGraphPath(fromPosition, toPosition, nodeWidth, graphLayoutMode, edgeConnection);
 }
 function computeGraphHeight(positions, nodeHeight, bottomPadding) {
     const maxTop = Math.max(...Object.values(positions).map((position) => position.top));
@@ -72,72 +60,156 @@ function computeGraphWidth(positions, nodeWidth, rightPadding) {
     const maxLeft = Math.max(...Object.values(positions).map((position) => position.left));
     return maxLeft + nodeWidth + rightPadding;
 }
-function buildHorizontalGraphPath(fromPosition, toPosition, nodeWidth, edgeConnection) {
-    const from = getAnchorPointFromCodeOrAnchor(fromPosition, edgeConnection?.from ?? (toPosition.left >= fromPosition.left ? "R3" : "L3"), nodeWidth, true);
-    const to = getAnchorPointFromCodeOrAnchor(toPosition, edgeConnection?.to ?? (toPosition.left >= fromPosition.left ? "L3" : "R3"), nodeWidth, false);
-    const deltaX = to.x - from.x;
-    const deltaY = to.y - from.y;
-    const movingRight = deltaX >= 0;
-    const sameRow = Math.abs(deltaY) <= Math.max(24, exports.workflowGraphNodeHeight * 0.16);
-    const sameColumn = Math.abs(deltaX) <= Math.max(24, nodeWidth * 0.08);
-    if (sameRow) {
-        const spread = Math.max(88, Math.abs(to.x - from.x) * 0.32);
-        const sign = movingRight ? 1 : -1;
-        return `M ${from.x} ${from.y} C ${from.x + spread * sign} ${from.y}, ${to.x - spread * sign} ${to.y}, ${to.x} ${to.y}`;
-    }
-    if (sameColumn) {
-        const movingDown = deltaY >= 0;
-        const spread = Math.max(88, Math.abs(to.y - from.y) * 0.32);
-        const sign = movingDown ? 1 : -1;
-        return `M ${from.x} ${from.y} C ${from.x} ${from.y + spread * sign}, ${to.x} ${to.y - spread * sign}, ${to.x} ${to.y}`;
-    }
-    const midX = from.x + (to.x - from.x) * 0.5;
-    const bendY = from.y + (to.y - from.y) * 0.5;
-    return `M ${from.x} ${from.y} C ${midX} ${from.y}, ${midX} ${bendY}, ${midX} ${bendY} S ${midX} ${to.y}, ${to.x} ${to.y}`;
+function buildOrthogonalGraphPath(fromPosition, toPosition, nodeWidth, graphLayoutMode, edgeConnection) {
+    const resolvedAnchors = resolveAnchorsForLayout(fromPosition, toPosition, graphLayoutMode, edgeConnection);
+    const from = getAnchorPointFromCodeOrAnchor(fromPosition, resolvedAnchors.fromAnchor, nodeWidth, true);
+    const to = getAnchorPointFromCodeOrAnchor(toPosition, resolvedAnchors.toAnchor, nodeWidth, false);
+    const fromAnchor = toGraphAnchor(resolvedAnchors.fromAnchor, true);
+    const toAnchor = toGraphAnchor(resolvedAnchors.toAnchor, false);
+    const leadDistance = Math.max(34, Math.round(nodeWidth * 0.16));
+    const startLead = projectAwayFromNode(fromPosition, fromAnchor, from, leadDistance);
+    const endLead = projectAwayFromNode(toPosition, toAnchor, to, leadDistance);
+    const preferredAxis = resolvePreferredAxis(graphLayoutMode, fromAnchor, toAnchor, startLead, endLead);
+    const points = simplifyOrthogonalPoints([
+        from,
+        startLead,
+        ...buildOrthogonalWaypoints(startLead, endLead, preferredAxis),
+        endLead,
+        to
+    ]);
+    return buildRoundedPath(points, Math.max(12, Math.round(nodeWidth * 0.06)));
 }
-function buildSameColumnGraphPath(fromPosition, toPosition, fromAnchor, toAnchor, from, to, nodeWidth) {
-    const verticalGap = Math.abs(to.y - from.y);
-    const laneOffset = Math.max(42, nodeWidth * 0.18);
-    const exitPull = projectAwayFromNode(fromPosition, fromAnchor, from, laneOffset);
-    const entryPull = projectAwayFromNode(toPosition, toAnchor, to, laneOffset);
-    if (to.y > from.y) {
-        const verticalSpread = Math.max(48, verticalGap * 0.3);
-        return `M ${from.x} ${from.y} C ${from.x} ${from.y + verticalSpread}, ${to.x} ${to.y - verticalSpread}, ${to.x} ${to.y}`;
+function resolveAnchorsForLayout(from, to, graphLayoutMode, edgeConnection) {
+    if (edgeConnection?.from && edgeConnection?.to) {
+        return {
+            fromAnchor: edgeConnection.from,
+            toAnchor: edgeConnection.to
+        };
     }
-    const laneX = fromAnchor === "exit-left" || toAnchor === "entry-left"
-        ? fromPosition.left - laneOffset
-        : fromPosition.left + nodeWidth + laneOffset;
-    const verticalSpread = Math.max(44, verticalGap * 0.3);
-    return `M ${from.x} ${from.y} C ${exitPull.x} ${from.y}, ${laneX} ${from.y - verticalSpread * 0.12}, ${laneX} ${from.y - verticalSpread} S ${laneX} ${to.y + verticalSpread}, ${entryPull.x} ${to.y} S ${to.x} ${to.y}, ${to.x} ${to.y}`;
-}
-function buildCrossColumnGraphPath(fromPosition, toPosition, fromAnchor, toAnchor, from, to, nodeWidth) {
-    if (to.y > from.y && isDownwardFlowAnchor(fromAnchor) && isTopEntryAnchor(toAnchor)) {
-        return buildDownwardCrossColumnGraphPath(fromPosition, toPosition, from, to, nodeWidth);
+    if (graphLayoutMode === "horizontal") {
+        if (Math.abs(to.left - from.left) >= Math.abs(to.top - from.top)) {
+            return to.left >= from.left
+                ? { fromAnchor: "R3", toAnchor: "L3" }
+                : { fromAnchor: "L3", toAnchor: "R3" };
+        }
+        return to.top >= from.top
+            ? { fromAnchor: "B3", toAnchor: "T3" }
+            : { fromAnchor: "T3", toAnchor: "B3" };
     }
-    const channelOffset = Math.max(38, nodeWidth * 0.18);
-    const exitPull = projectAwayFromNode(fromPosition, fromAnchor, from, channelOffset);
-    const entryPull = projectAwayFromNode(toPosition, toAnchor, to, channelOffset);
-    const deltaX = to.x - from.x;
-    const deltaY = to.y - from.y;
-    const horizontalSpread = Math.max(62, Math.abs(deltaX) * 0.28);
-    const verticalBias = Math.max(30, Math.abs(deltaY) * 0.22);
-    const exitX = from.x + Math.sign(deltaX || 1) * horizontalSpread;
-    const entryX = to.x - Math.sign(deltaX || 1) * Math.max(46, Math.abs(deltaX) * 0.22);
-    const crestY = deltaY >= 0
-        ? Math.min(from.y, to.y) + verticalBias
-        : Math.max(from.y, to.y) - verticalBias;
-    return `M ${from.x} ${from.y} C ${exitPull.x} ${from.y}, ${exitX} ${crestY}, ${from.x + deltaX * 0.52} ${from.y + deltaY * 0.52} S ${entryX} ${to.y}, ${to.x} ${to.y}`;
+    if (Math.abs(to.top - from.top) >= Math.abs(to.left - from.left)) {
+        return to.top >= from.top
+            ? { fromAnchor: "B3", toAnchor: "T3" }
+            : { fromAnchor: "T3", toAnchor: "B3" };
+    }
+    return to.left >= from.left
+        ? { fromAnchor: "R3", toAnchor: "L3" }
+        : { fromAnchor: "L3", toAnchor: "R3" };
 }
-function buildDownwardCrossColumnGraphPath(_fromPosition, _toPosition, from, to, nodeWidth) {
-    const deltaX = to.x - from.x;
-    const deltaY = to.y - from.y;
-    const verticalExit = Math.max(42, Math.min(92, deltaY * 0.28));
-    const verticalEntry = Math.max(42, Math.min(88, deltaY * 0.26));
-    const midY = from.y + deltaY * 0.54;
-    const horizontalDrift = Math.max(36, Math.min(nodeWidth * 0.34, Math.abs(deltaX) * 0.42));
-    const controlFromX = from.x + Math.sign(deltaX || 1) * horizontalDrift;
-    const controlToX = to.x - Math.sign(deltaX || 1) * horizontalDrift;
-    return `M ${from.x} ${from.y} C ${from.x} ${from.y + verticalExit}, ${controlFromX} ${midY - verticalExit * 0.22}, ${from.x + deltaX * 0.5} ${midY} S ${controlToX} ${to.y - verticalEntry}, ${to.x} ${to.y}`;
+function resolvePreferredAxis(graphLayoutMode, fromAnchor, toAnchor, startLead, endLead) {
+    const anchorsAreVertical = (isVerticalAnchor(fromAnchor) && isVerticalAnchor(toAnchor))
+        || startLead.x === endLead.x;
+    const anchorsAreHorizontal = (isHorizontalAnchor(fromAnchor) && isHorizontalAnchor(toAnchor))
+        || startLead.y === endLead.y;
+    if (anchorsAreVertical && !anchorsAreHorizontal) {
+        return "vertical";
+    }
+    if (anchorsAreHorizontal && !anchorsAreVertical) {
+        return "horizontal";
+    }
+    return graphLayoutMode;
+}
+function buildOrthogonalWaypoints(from, to, preferredAxis) {
+    if (from.x === to.x || from.y === to.y) {
+        return [];
+    }
+    if (preferredAxis === "horizontal") {
+        const midX = Math.round((from.x + to.x) * 0.5);
+        return [
+            { x: midX, y: from.y },
+            { x: midX, y: to.y }
+        ];
+    }
+    const midY = Math.round((from.y + to.y) * 0.5);
+    return [
+        { x: from.x, y: midY },
+        { x: to.x, y: midY }
+    ];
+}
+function simplifyOrthogonalPoints(points) {
+    const normalized = [];
+    for (const point of points) {
+        const previous = normalized.at(-1);
+        if (previous && previous.x === point.x && previous.y === point.y) {
+            continue;
+        }
+        normalized.push(point);
+        while (normalized.length >= 3) {
+            const last = normalized.at(-1);
+            const middle = normalized.at(-2);
+            const first = normalized.at(-3);
+            if (!last || !middle || !first) {
+                break;
+            }
+            const sameX = first.x === middle.x && middle.x === last.x;
+            const sameY = first.y === middle.y && middle.y === last.y;
+            if (!sameX && !sameY) {
+                break;
+            }
+            normalized.splice(normalized.length - 2, 1);
+        }
+    }
+    return normalized;
+}
+function buildRoundedPath(points, radius) {
+    if (points.length === 0) {
+        return "";
+    }
+    if (points.length === 1) {
+        return `M ${points[0].x} ${points[0].y}`;
+    }
+    let path = `M ${points[0].x} ${points[0].y}`;
+    for (let index = 1; index < points.length - 1; index += 1) {
+        const previous = points[index - 1];
+        const current = points[index];
+        const next = points[index + 1];
+        if (!isAxisAligned(previous, current) || !isAxisAligned(current, next)) {
+            path += ` L ${current.x} ${current.y}`;
+            continue;
+        }
+        const incoming = Math.abs(previous.x - current.x) + Math.abs(previous.y - current.y);
+        const outgoing = Math.abs(next.x - current.x) + Math.abs(next.y - current.y);
+        const cornerRadius = Math.min(radius, incoming * 0.5, outgoing * 0.5);
+        if (cornerRadius <= 0.5 || arePointsCollinear(previous, current, next)) {
+            path += ` L ${current.x} ${current.y}`;
+            continue;
+        }
+        const cornerStart = movePointTowards(current, previous, cornerRadius);
+        const cornerEnd = movePointTowards(current, next, cornerRadius);
+        path += ` L ${cornerStart.x} ${cornerStart.y} Q ${current.x} ${current.y} ${cornerEnd.x} ${cornerEnd.y}`;
+    }
+    const last = points.at(-1);
+    if (last) {
+        path += ` L ${last.x} ${last.y}`;
+    }
+    return path;
+}
+function movePointTowards(from, to, distance) {
+    if (from.x === to.x) {
+        return {
+            x: from.x,
+            y: from.y + Math.sign(to.y - from.y) * distance
+        };
+    }
+    return {
+        x: from.x + Math.sign(to.x - from.x) * distance,
+        y: from.y
+    };
+}
+function isAxisAligned(first, second) {
+    return first.x === second.x || first.y === second.y;
+}
+function arePointsCollinear(first, second, third) {
+    return (first.x === second.x && second.x === third.x) || (first.y === second.y && second.y === third.y);
 }
 function resolveAnchors(from, to, edgeConnection) {
     if (edgeConnection?.from && edgeConnection?.to) {
@@ -268,5 +340,11 @@ function isDownwardFlowAnchor(anchor) {
 }
 function isTopEntryAnchor(anchor) {
     return anchor === "entry-top" || anchor === "entry-top-left" || anchor === "entry-top-right";
+}
+function isVerticalAnchor(anchor) {
+    return isDownwardFlowAnchor(anchor) || isTopEntryAnchor(anchor);
+}
+function isHorizontalAnchor(anchor) {
+    return !isVerticalAnchor(anchor);
 }
 //# sourceMappingURL=graphLayout.js.map
