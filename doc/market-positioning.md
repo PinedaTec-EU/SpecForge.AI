@@ -83,6 +83,8 @@ Why we recommend the SpecForge bundle here: it makes governed SDD portable. A co
 
 This table isolates the planned enterprise control plane. Central is where SpecForge stops being only a local SDD runtime and becomes a governance product for teams.
 
+Commercial stance: SpecForge Central is currently a private side project aimed at controlled enterprise adoption. It is not planned as a broadly open public SaaS. Organizations that want to use it should expect a paid/commercial engagement. A later self-hosted variant may exist, but only in a limited and controlled form.
+
 | Capability | SpecForge Central | GitHub Spec Kit | Colign | Planu | Kiro |
 | --- | --- | --- | --- | --- | --- |
 | Multi-repository governance | Planned, first-class | Mostly project/repo local | Platform-level projects | Tool-local/project oriented | IDE/project oriented |
@@ -142,7 +144,7 @@ That makes the strongest product message:
 
 The repository-local runtime is the adoption wedge. It proves the workflow in one repository without forcing a central platform into the team on day one.
 
-SpecForge Central is the enterprise layer.
+SpecForge Central is the enterprise layer, and the intended go-to-market is controlled enterprise access rather than open public availability.
 
 Central should not replace repository truth. It should manage the control plane around many repositories:
 

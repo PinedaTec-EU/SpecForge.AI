@@ -64,6 +64,8 @@ SpecForge competes in the spec-driven development space, but with a narrower cla
 
 Compared with tools such as GitHub Spec Kit, Colign, Planu, or Kiro, SpecForge is positioned as a governed, repository-local SDD runtime: explicit workflow, persisted artifacts, auditable transitions, MCP-constrained operations, and a path toward cross-repository governance through SpecForge Central.
 
+SpecForge Central is not planned as an open public SaaS. It is currently a private side project intended as a controlled enterprise offering. If an organization wants to use it, that engagement is commercial. A limited self-hosted model may exist later, but only under controlled product boundaries and governance.
+
 Short version:
 
 - choose lighter alternatives if you mainly want spec templates or a simpler agent workflow
@@ -83,7 +85,7 @@ Near-term priorities:
 
 Strategic product direction:
 
-- SpecForge Central as the enterprise control plane for managed repositories, readiness checks, policy distribution, workflow visibility, drift detection, and audit
+- SpecForge Central as a private enterprise control plane for managed repositories, readiness checks, policy distribution, workflow visibility, drift detection, and audit
 
 The fuller roadmap lives in [doc/roadmap.md](doc/roadmap.md) and the implementation history in [doc/implementation-plan.md](doc/implementation-plan.md).
 

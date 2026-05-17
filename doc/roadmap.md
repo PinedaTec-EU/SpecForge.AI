@@ -50,3 +50,9 @@ SpecForge Central is the planned enterprise control plane for governed SDD acros
 - work queues centered on specs, evidence, blockers, and approvals
 
 The core rule remains unchanged: repository-local artifacts stay the source of truth.
+
+Commercial posture:
+
+- SpecForge Central is currently a private side project, not a public/open product line.
+- Enterprise use is expected to be commercial.
+- A limited self-hosted offering may exist later, but only in a controlled form with explicit governance boundaries.

@@ -72,12 +72,17 @@ public sealed class RepositoryPromptInitializerTests : IDisposable
         Assert.Contains("prefer another refinement iteration over a speculative spec", refinementPrompt);
         Assert.Contains("implementation evidence", implementationSystemPrompt);
         Assert.Contains("implementation did not execute", implementationSystemPrompt);
+        Assert.Contains("update the corresponding repository documentation in the same implementation phase", implementationSystemPrompt);
         Assert.Contains("repository evidence, touched files, and validations", implementationPrompt);
         Assert.Contains("Role: implementation executor.", implementationPrompt);
+        Assert.Contains("documentation updates are part of implementation", implementationPrompt);
         Assert.Contains("Implementation Strategy` must be an operational implementation plan", await File.ReadAllTextAsync(paths.TechnicalDesignExecutePromptPath));
+        Assert.Contains("explicitly list the repository docs that implementation must update", await File.ReadAllTextAsync(paths.TechnicalDesignExecutePromptPath));
         Assert.Contains("implementation evidence is missing, empty", reviewSystemPrompt);
+        Assert.Contains("review must verify that the corresponding documentation was updated", reviewSystemPrompt);
         Assert.Contains("Findings must be grounded in inspected files", reviewSystemPrompt);
         Assert.Contains("if implementation evidence shows zero touched files, the review must fail", reviewPrompt);
+        Assert.Contains("fail the review when the corresponding documentation was not updated", reviewPrompt);
         var hashContent = await File.ReadAllTextAsync(paths.PromptSystemHashesPath);
         Assert.Contains("refinement.execute.system.md", hashContent);
     }

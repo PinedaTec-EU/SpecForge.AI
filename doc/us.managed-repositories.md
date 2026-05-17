@@ -4,6 +4,8 @@ This user story defines the product intent for SpecForge Central as an enterpris
 
 SpecForge Central is not a Scrum board or an epic tracker. It is a governance control plane for spec-driven delivery. Its primary objects are repositories, governed user stories, specs, phase evidence, policy compliance, approvals, regressions, and audit trails.
 
+Product posture: SpecForge Central is a private side project for controlled enterprise adoption. Commercial use is expected to be paid. A future self-hosted model may exist, but only as a limited, governed distribution.
+
 ## Objective
 
 Allow SpecForge Central to create, register, inspect, and manage multiple repositories so a team can run the SpecForge SDD workflow across a portfolio instead of only inside the currently opened repository.

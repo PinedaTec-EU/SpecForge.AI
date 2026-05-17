@@ -328,6 +328,7 @@ public sealed class RepositoryPromptInitializer
         Prefer concrete component impact, validation strategy, and delivery sequencing over generic architecture prose.
         Distinguish confirmed repository facts from inferred design intent, and name uncertainty when the supplied context does not prove a touchpoint.
         The design must preserve existing ownership boundaries and avoid expanding scope beyond the approved spec.
+        When the change affects user-facing behavior, operator workflow, prompts, contracts, configuration, generated artifacts, or product positioning, the design must identify which repository documentation must be updated as part of implementation.
         """;
 
     private static string BuildImplementationExecuteSystemPrompt() =>
@@ -339,6 +340,7 @@ public sealed class RepositoryPromptInitializer
         The implementation artifact must remain auditable from repository evidence, touched files, and validation actually performed.
         If execution cannot modify the repository, the artifact must say implementation did not execute instead of presenting planned work as completed work.
         Completed-change claims must name concrete files, commands, artifacts, or explicit no-op rationale.
+        When code, prompts, contracts, configuration, generated artifacts, workflows, or product behavior change, update the corresponding repository documentation in the same implementation phase unless the artifact explicitly records a justified no-doc-change rationale.
         """;
 
     private static string BuildReviewExecuteSystemPrompt() =>
@@ -354,6 +356,7 @@ public sealed class RepositoryPromptInitializer
         If the Technical Design validation strategy is missing, empty, or cannot be inspected, the review result must be `fail`.
         Findings must be grounded in inspected files, artifacts, commands, diffs, or explicit absence of required evidence.
         Do not treat implementation artifact claims as sufficient when repository evidence or validation results contradict them.
+        If implementation changed behavior, contracts, prompts, workflow semantics, configuration, generated artifacts, or product positioning, review must verify that the corresponding documentation was updated or that a justified no-doc-change rationale is present; otherwise review must fail.
         """;
 
     private static string BuildReleaseApprovalApproveSystemPrompt() =>
@@ -513,6 +516,7 @@ public sealed class RepositoryPromptInitializer
         - order the work into concrete implementation steps
         - call out edge cases, negative paths, and complexity risks that implementation must cover
         - reject designs that hide god-class growth, duplicated responsibilities, or missing validation behind vague wording
+        - when the change affects user-facing behavior, operator workflow, prompts, contracts, configuration, generated artifacts, or product positioning, explicitly list the repository docs that implementation must update
         - `Validation Strategy` must map to concrete checks the review phase can verify later
         - prefix each `Validation Strategy` bullet with exactly one evidence tag: `[automated]`, `[static]`, `[operational]`, or `[deferred]`
         - use `[operational]` for live services, secrets, databases, bootstrap execution, external models, or environment-dependent readback unless the repository provides a reliable local fake or test harness
@@ -536,6 +540,7 @@ public sealed class RepositoryPromptInitializer
         - if the phase produced no repository delta, say so explicitly instead of fabricating an execution narrative
         - separate completed changes from skipped, blocked, or deferred work
         - preserve approved scope boundaries; do not add opportunistic refactors or adjacent features unless the design explicitly requires them
+        - documentation updates are part of implementation whenever repository behavior, contracts, prompts, workflows, configuration, generated artifacts, or product positioning changed; if no documentation update is needed, justify that explicitly
         """;
 
     private static string BuildReviewExecutePrompt() =>
@@ -558,6 +563,7 @@ public sealed class RepositoryPromptInitializer
         - never return `pass` if the Validation Checklist is missing, empty, incomplete, or contains any failed blocking item
         - the `## State` section must contain exactly one `- Result:` line with value `pass` or `fail`
         - every finding must include the concrete evidence path, command, artifact, or missing-evidence condition that supports it
+        - if implementation changed repository behavior, contracts, prompts, workflows, configuration, generated artifacts, or product positioning, fail the review when the corresponding documentation was not updated and no justified no-doc-change rationale exists
         Behave as reviewer, not as author.
         """;
 

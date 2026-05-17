@@ -47,6 +47,8 @@ SpecForge Central must also allow teams to register and manage multiple reposito
 
 Central must also act as a policy control plane. A platform owner can publish mandatory rules, and connected local runtimes must enforce them. Examples include disabling custom prompt overrides, locking review evidence policy, restricting provider/model routing, requiring review evidence packs, requiring PR links before completion, and restricting forced review approvals to authorized roles.
 
+SpecForge Central is intended as a private, controlled enterprise offering. It is not a public/open rollout target. Commercial use should be treated as a paid product engagement. A future self-hosted option may exist, but only with deliberately limited and governed capabilities.
+
 The Central work surface should be familiar enough for teams that use issue trackers, but it should not become a Scrum clone. The central objects are governed user stories, specs, evidence, workflow gates, blockers, policy state, repositories, and audit decisions.
 
 ## Principles
