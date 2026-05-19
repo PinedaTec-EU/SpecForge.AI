@@ -1149,6 +1149,75 @@ function buildEmbeddedArtifactSection(title, artifactPath, artifactContent, opti
     </section>
   `;
 }
+function buildEffectivePromptModalContent(selectedPhase) {
+    const inspection = selectedPhase.latestExecutionInspection;
+    const prompt = inspection?.effectivePrompt;
+    if (!prompt) {
+        return "<p class=\"muted\">No effective prompt is available for this phase.</p>";
+    }
+    const sourcePrompts = (prompt.sourcePrompts ?? []).map((item) => `
+      <div class="inspection-kv">
+        <strong>${(0, htmlEscape_1.escapeHtml)(item.role)}</strong>
+        <span>${(0, htmlEscape_1.escapeHtml)(item.path)}</span>
+        <span>${(0, htmlEscape_1.escapeHtml)(item.isOverride ? "override" : "embedded")}</span>
+      </div>
+    `).join("");
+    const warnings = (prompt.warnings ?? []).map((warning) => `<li>${(0, htmlEscape_1.escapeHtml)(warning)}</li>`).join("");
+    return `
+    <div class="inspection-stack">
+      ${inspection?.receiptPath ? `<p class="muted">Receipt: <code>${(0, htmlEscape_1.escapeHtml)(inspection.receiptPath)}</code></p>` : ""}
+      ${sourcePrompts ? `<section class="detail-card detail-card--embedded-artifact"><h3>Prompt Sources</h3><div class="inspection-grid">${sourcePrompts}</div></section>` : ""}
+      ${warnings ? `<section class="detail-card detail-card--embedded-artifact"><h3>Warnings</h3><ul>${warnings}</ul></section>` : ""}
+      <section class="detail-card detail-card--embedded-artifact">
+        <h3>System Prompt</h3>
+        <pre class="artifact-preview artifact-preview--raw-artifact">${(0, htmlEscape_1.escapeHtml)(prompt.systemPrompt)}</pre>
+      </section>
+      <section class="detail-card detail-card--embedded-artifact">
+        <h3>User Prompt</h3>
+        <pre class="artifact-preview artifact-preview--raw-artifact">${(0, htmlEscape_1.escapeHtml)(prompt.userPrompt)}</pre>
+      </section>
+    </div>
+  `;
+}
+function buildEffectiveContextModalContent(selectedPhase) {
+    const inspection = selectedPhase.latestExecutionInspection;
+    const context = inspection?.effectiveContext;
+    if (!context) {
+        return "<p class=\"muted\">No effective context is available for this phase.</p>";
+    }
+    const renderArtifacts = (items) => items.length === 0
+        ? "<p class=\"muted\">None.</p>"
+        : `<div class="inspection-grid">${items.map((item) => `
+          <div class="inspection-kv">
+            <strong>${(0, htmlEscape_1.escapeHtml)(item.phaseId ?? fileNameFromPath(item.path))}</strong>
+            <span>${(0, htmlEscape_1.escapeHtml)(item.path)}</span>
+            <span>${(0, htmlEscape_1.escapeHtml)(item.sha256 ?? "(no hash)")}</span>
+          </div>
+        `).join("")}</div>`;
+    return `
+    <div class="inspection-stack">
+      ${inspection?.receiptPath ? `<p class="muted">Receipt: <code>${(0, htmlEscape_1.escapeHtml)(inspection.receiptPath)}</code></p>` : ""}
+      <section class="detail-card detail-card--embedded-artifact">
+        <h3>Runtime Context</h3>
+        <div class="inspection-grid">
+          <div class="inspection-kv"><strong>Workspace Root</strong><span>${(0, htmlEscape_1.escapeHtml)(context.workspaceRoot)}</span></div>
+          <div class="inspection-kv"><strong>User Story Path</strong><span>${(0, htmlEscape_1.escapeHtml)(context.userStoryPath)}</span></div>
+          <div class="inspection-kv"><strong>Workspace Git HEAD</strong><span>${(0, htmlEscape_1.escapeHtml)(context.workspaceGitHeadSha ?? "(unavailable)")}</span></div>
+          <div class="inspection-kv"><strong>Operation Prompt SHA256</strong><span>${(0, htmlEscape_1.escapeHtml)(context.operationPromptSha256 ?? "(none)")}</span></div>
+          <div class="inspection-kv"><strong>Current Artifact</strong><span>${(0, htmlEscape_1.escapeHtml)(context.currentArtifact?.path ?? "(none)")}</span></div>
+        </div>
+      </section>
+      <section class="detail-card detail-card--embedded-artifact">
+        <h3>Previous Artifacts</h3>
+        ${renderArtifacts(context.previousArtifacts)}
+      </section>
+      <section class="detail-card detail-card--embedded-artifact">
+        <h3>Context Files</h3>
+        ${renderArtifacts(context.contextFiles)}
+      </section>
+    </div>
+  `;
+}
 function buildArtifactCollectionSection(artifacts, options) {
     if (artifacts.length === 0) {
         return `<p class="muted">${(0, htmlEscape_1.escapeHtml)(options?.emptyMessage ?? "No artifacts are available.")}</p>`;
@@ -1963,6 +2032,12 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
             : buildArtifactPreviewSection(selectedIteration?.outputArtifactPath ?? selectedPhase.artifactPath, artifactPreviewHtml, state.selectedArtifactContent ?? "Artifact content unavailable.")
         : "<p class=\"muted\">No artifact is persisted for this phase.</p>";
     const promptButtons = [
+        selectedPhase.latestExecutionInspection?.effectivePrompt
+            ? `<button class="workflow-action-button workflow-action-button--document" type="button" data-open-effective-prompt-modal>View Effective Prompt</button>`
+            : "",
+        selectedPhase.latestExecutionInspection?.effectiveContext
+            ? `<button class="workflow-action-button workflow-action-button--document" type="button" data-open-effective-context-modal>View Effective Context</button>`
+            : "",
         selectedPhase.executePromptPath
             ? `<button class="workflow-action-button workflow-action-button--document" data-command="openPrompt" data-path="${(0, htmlEscape_1.escapeHtmlAttr)(selectedPhase.executePromptPath)}">Open Execute Prompt</button>`
             : "",
@@ -1978,7 +2053,7 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
     ].filter(Boolean).join("");
     const promptSection = promptButtons
         ? `<div class="detail-actions">${promptButtons}</div>`
-        : "<p class=\"muted\">This phase does not expose prompt templates from the current repo bootstrap.</p>";
+        : "<p class=\"muted\">This phase does not expose prompt templates or persisted execution inspection yet.</p>";
     const contextFiles = workflow.contextFiles ?? [];
     const workflowFilesSection = `
     <section class="file-group">
@@ -5204,6 +5279,28 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
     .detail-actions--files {
       justify-content: space-between;
     }
+    .inspection-stack {
+      display: grid;
+      gap: 16px;
+    }
+    .inspection-grid {
+      display: grid;
+      gap: 10px;
+    }
+    .inspection-kv {
+      display: grid;
+      gap: 4px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.035);
+    }
+    .inspection-kv strong {
+      color: rgba(248, 252, 255, 0.96);
+    }
+    .inspection-kv span {
+      word-break: break-word;
+    }
     .file-kind-toggle {
       display: inline-flex;
       padding: 4px;
@@ -6148,6 +6245,40 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
           <button class="workflow-action-button workflow-action-button--document" type="button" data-close-review-approve-anyway-modal>Cancel</button>
           <button class="workflow-action-button workflow-action-button--attention" type="button" data-submit-review-approve-anyway disabled>Approve Anyway</button>
         </div>
+      </div>
+    </div>
+  </div>
+  <div class="workflow-files-overlay" data-effective-prompt-overlay hidden>
+    <div class="workflow-files-dialog panel" role="dialog" aria-modal="true" aria-labelledby="workflow-effective-prompt-title">
+      <div class="workflow-files-dialog__head">
+        <div>
+          <p class="eyebrow">Execution Inspection</p>
+          <h2 id="workflow-effective-prompt-title">${(0, htmlEscape_1.escapeHtml)(selectedPhase.title)} effective prompt</h2>
+          <p>Inspect the final prompt payload actually sent for the latest persisted execution of this phase.</p>
+        </div>
+        <button class="workflow-files-dialog__close" type="button" data-close-effective-prompt-modal aria-label="Close effective prompt dialog">
+          Close
+        </button>
+      </div>
+      <div class="workflow-files-shell">
+        ${buildEffectivePromptModalContent(selectedPhase)}
+      </div>
+    </div>
+  </div>
+  <div class="workflow-files-overlay" data-effective-context-overlay hidden>
+    <div class="workflow-files-dialog panel" role="dialog" aria-modal="true" aria-labelledby="workflow-effective-context-title">
+      <div class="workflow-files-dialog__head">
+        <div>
+          <p class="eyebrow">Execution Inspection</p>
+          <h2 id="workflow-effective-context-title">${(0, htmlEscape_1.escapeHtml)(selectedPhase.title)} effective context</h2>
+          <p>Inspect the latest persisted runtime context that SpecForge injected into this phase execution.</p>
+        </div>
+        <button class="workflow-files-dialog__close" type="button" data-close-effective-context-modal aria-label="Close effective context dialog">
+          Close
+        </button>
+      </div>
+      <div class="workflow-files-shell">
+        ${buildEffectiveContextModalContent(selectedPhase)}
       </div>
     </div>
   </div>
@@ -8248,6 +8379,8 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
     const rejectOverlay = document.querySelector("[data-reject-overlay]");
     const reviewRegressionOverlay = document.querySelector("[data-review-regression-overlay]");
     const reviewApproveAnywayOverlay = document.querySelector("[data-review-approve-anyway-overlay]");
+    const effectivePromptOverlay = document.querySelector("[data-effective-prompt-overlay]");
+    const effectiveContextOverlay = document.querySelector("[data-effective-context-overlay]");
     const rejectTextarea = document.querySelector("#workflow-reject-textarea");
     const reviewApproveAnywayTextarea = document.querySelector("#workflow-review-approve-anyway-textarea");
     const rejectTitle = document.querySelector("#workflow-reject-title");
@@ -8309,6 +8442,8 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
         toggleRejectModal(false);
         toggleReviewRegressionModal(false);
         toggleReviewApproveAnywayModal(false);
+        toggleEffectivePromptModal(false);
+        toggleEffectiveContextModal(false);
       }
     });
 
@@ -8436,6 +8571,30 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
       }
     };
 
+    const toggleEffectivePromptModal = (open) => {
+      if (!(effectivePromptOverlay instanceof HTMLElement)) {
+        return;
+      }
+
+      effectivePromptOverlay.hidden = !open;
+      effectivePromptOverlay.classList.toggle("is-open", open);
+      if (workflowShell instanceof HTMLElement) {
+        workflowShell.classList.toggle("shell--interaction-locked", open);
+      }
+    };
+
+    const toggleEffectiveContextModal = (open) => {
+      if (!(effectiveContextOverlay instanceof HTMLElement)) {
+        return;
+      }
+
+      effectiveContextOverlay.hidden = !open;
+      effectiveContextOverlay.classList.toggle("is-open", open);
+      if (workflowShell instanceof HTMLElement) {
+        workflowShell.classList.toggle("shell--interaction-locked", open);
+      }
+    };
+
     for (const element of document.querySelectorAll("[data-open-reject-modal]")) {
       element.addEventListener("click", () => {
         toggleRejectModal(true, {
@@ -8499,6 +8658,46 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
       reviewApproveAnywayOverlay.addEventListener("click", (event) => {
         if (event.target === reviewApproveAnywayOverlay) {
           toggleReviewApproveAnywayModal(false);
+        }
+      });
+    }
+
+    for (const element of document.querySelectorAll("[data-open-effective-prompt-modal]")) {
+      element.addEventListener("click", () => {
+        toggleEffectivePromptModal(true);
+      });
+    }
+
+    for (const element of document.querySelectorAll("[data-close-effective-prompt-modal]")) {
+      element.addEventListener("click", () => {
+        toggleEffectivePromptModal(false);
+      });
+    }
+
+    if (effectivePromptOverlay instanceof HTMLElement) {
+      effectivePromptOverlay.addEventListener("click", (event) => {
+        if (event.target === effectivePromptOverlay) {
+          toggleEffectivePromptModal(false);
+        }
+      });
+    }
+
+    for (const element of document.querySelectorAll("[data-open-effective-context-modal]")) {
+      element.addEventListener("click", () => {
+        toggleEffectiveContextModal(true);
+      });
+    }
+
+    for (const element of document.querySelectorAll("[data-close-effective-context-modal]")) {
+      element.addEventListener("click", () => {
+        toggleEffectiveContextModal(false);
+      });
+    }
+
+    if (effectiveContextOverlay instanceof HTMLElement) {
+      effectiveContextOverlay.addEventListener("click", (event) => {
+        if (event.target === effectiveContextOverlay) {
+          toggleEffectiveContextModal(false);
         }
       });
     }
