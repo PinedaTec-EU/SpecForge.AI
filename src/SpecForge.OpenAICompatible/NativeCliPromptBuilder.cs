@@ -8,7 +8,7 @@ internal static class NativeCliPromptBuilder
 {
     public static string BuildPhasePrompt(
         PhaseExecutionContext context,
-        EffectivePrompt prompt,
+        PhaseExecutionEffectivePrompt prompt,
         string providerKind,
         bool includeSkillUsageReport)
     {
@@ -82,7 +82,7 @@ internal static class NativeCliPromptBuilder
     public static string BuildStandaloneMarkdownPrompt(
         string providerKind,
         string title,
-        EffectivePrompt prompt)
+        PhaseExecutionEffectivePrompt prompt)
     {
         var providerLabel = ResolveProviderLabel(providerKind);
         var builder = new StringBuilder()
@@ -119,8 +119,3 @@ internal static class NativeCliPromptBuilder
             _ => providerKind
         };
 }
-
-internal sealed record EffectivePrompt(
-    string SystemPrompt,
-    string UserPrompt,
-    IReadOnlyCollection<string>? Warnings = null);

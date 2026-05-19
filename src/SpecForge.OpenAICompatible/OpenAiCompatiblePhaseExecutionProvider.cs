@@ -266,7 +266,7 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
             var nativePrompt = NativeCliPromptBuilder.BuildStandaloneMarkdownPrompt(
                 modelSelection.ProviderKind,
                 "SpecForge Spec Approval Answer Suggestion",
-                new EffectivePrompt(systemPrompt, userPrompt));
+                new PhaseExecutionEffectivePrompt(systemPrompt, userPrompt));
             var nativeResult = await ExecuteStructuredNativeAsync(
                 context.WorkspaceRoot,
                 nativePrompt,
@@ -360,7 +360,7 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
             var nativePrompt = NativeCliPromptBuilder.BuildStandaloneMarkdownPrompt(
                 modelSelection.ProviderKind,
                 "SpecForge Spec Decomposition Evaluation",
-                new EffectivePrompt(systemPrompt, userPrompt));
+                new PhaseExecutionEffectivePrompt(systemPrompt, userPrompt));
             var nativeResult = await ExecuteStructuredNativeAsync(
                 context.WorkspaceRoot,
                 nativePrompt,
@@ -406,7 +406,7 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
 
     private async Task<PhaseExecutionResult> ExecuteSinglePhaseAsync(
         PhaseExecutionContext context,
-        EffectivePrompt prompt,
+        PhaseExecutionEffectivePrompt prompt,
         ResolvedModelSelection modelSelection,
         CancellationToken cancellationToken)
     {
@@ -455,7 +455,7 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
 
     private async Task<PhaseExecutionResult> ExecuteWithPhaseSubagentsAsync(
         PhaseExecutionContext context,
-        EffectivePrompt prompt,
+        PhaseExecutionEffectivePrompt prompt,
         ResolvedModelSelection modelSelection,
         CancellationToken cancellationToken)
     {
@@ -487,7 +487,7 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
 
     private async Task<PhaseSubagentResult> ExecutePhaseSubagentAsync(
         PhaseExecutionContext context,
-        EffectivePrompt prompt,
+        PhaseExecutionEffectivePrompt prompt,
         ResolvedModelSelection modelSelection,
         PhaseSubagentDefinition subagent,
         CancellationToken cancellationToken)
@@ -499,7 +499,7 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
             var nativePrompt = NativeCliPromptBuilder.BuildStandaloneMarkdownPrompt(
                 modelSelection.ProviderKind,
                 $"SpecForge {WorkflowPresentation.ToPhaseSlug(context.PhaseId)} subagent: {subagent.Name}",
-                new EffectivePrompt(prompt.SystemPrompt, userPrompt, prompt.Warnings));
+                new PhaseExecutionEffectivePrompt(prompt.SystemPrompt, userPrompt, prompt.Warnings, prompt.SourcePrompts));
             var nativeResult = await ExecuteStructuredNativeAsync(
                 context.WorkspaceRoot,
                 nativePrompt,
@@ -831,7 +831,7 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
         return null;
     }
 
-    private async Task<EffectivePrompt> BuildEffectivePromptAsync(
+    private async Task<PhaseExecutionEffectivePrompt> BuildEffectivePromptAsync(
         PhaseExecutionContext context,
         CancellationToken cancellationToken)
     {
@@ -1166,10 +1166,16 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
                 .AppendLine("- If no skill applies, write exactly `- none` under `## Skills Used`.");
         }
 
-        return new EffectivePrompt(systemPrompt, builder.ToString().Trim(), warnings);
+        var sourcePrompts = BuildPromptSources(
+            ("shared-system", sharedSystemPrompt),
+            ("phase-system", phaseSystemPrompt),
+            ("shared-style", sharedStylePrompt),
+            ("phase-task", phasePrompt));
+
+        return new PhaseExecutionEffectivePrompt(systemPrompt, builder.ToString().Trim(), warnings, sourcePrompts);
     }
 
-    private async Task<EffectivePrompt> BuildAutoRefinementAnswersPromptAsync(
+    private async Task<PhaseExecutionEffectivePrompt> BuildAutoRefinementAnswersPromptAsync(
         PhaseExecutionContext context,
         RefinementSession session,
         CancellationToken cancellationToken)
@@ -1298,7 +1304,15 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
             .AppendLine("- Do not invent facts that are not grounded in the provided context.")
             .AppendLine("- Do not return JSON.");
 
-        return new EffectivePrompt(systemPrompt, builder.ToString().Trim(), warnings);
+        var sourcePrompts = BuildPromptSources(
+            ("shared-system", sharedSystemPrompt),
+            ("refinement-system", refinementSystemPrompt),
+            ("auto-refinement-system", autoRefinementAnswersSystemPrompt),
+            ("shared-style", sharedStylePrompt),
+            ("shared-output-rules", sharedOutputRulesPrompt),
+            ("refinement-task", phasePrompt));
+
+        return new PhaseExecutionEffectivePrompt(systemPrompt, builder.ToString().Trim(), warnings, sourcePrompts);
     }
 
     private static StringBuilder AppendPromptInputDocument(
@@ -1352,6 +1366,19 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
         return warnings.Count == 0 ? null : warnings;
     }
 
+    private static IReadOnlyCollection<PhaseExecutionPromptSource> BuildPromptSources(
+        params (string Role, RepositoryPromptCatalog.PromptTemplateContent Prompt)[] prompts) =>
+        prompts
+            .Select(static item => new PhaseExecutionPromptSource(
+                item.Role,
+                PhaseExecutionReceiptStore.NormalizePath(item.Prompt.Path),
+                item.Prompt.IsOverride,
+                PromptSystemHashManifest.ComputeSha256(item.Prompt.Content),
+                item.Prompt.EmbeddedContent is null
+                    ? null
+                    : PromptSystemHashManifest.ComputeSha256(item.Prompt.EmbeddedContent)))
+            .ToArray();
+
     private static AutoRefinementAnswersDocument ParseAutoRefinementAnswersMarkdown(string markdown)
     {
         var decision = TryReadMarkdownSection(markdown, "## Decision") ?? string.Empty;
@@ -1398,7 +1425,7 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
 
     private async Task<PhaseExecutionResult> ExecuteViaNativeCliAsync(
         PhaseExecutionContext context,
-        EffectivePrompt prompt,
+        PhaseExecutionEffectivePrompt prompt,
         ResolvedModelSelection modelSelection,
         CancellationToken cancellationToken)
     {

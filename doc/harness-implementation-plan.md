@@ -4,6 +4,8 @@ Last reviewed: 2026-05-18.
 
 This document tracks the implementation plan derived from the harness-engineering baseline in [harness-engineering-checklist.md](harness-engineering-checklist.md).
 
+Execution tasks live in [harness-phase-tasks.md](harness-phase-tasks.md).
+
 Its purpose is operational:
 
 - keep the execution plan visible in one place
@@ -82,7 +84,7 @@ Validated current phase coverage:
 - [x] `pr-preparation`: effective prompt built and PR artifact contract injected.
 - [x] `auto-refinement answers`: separate effective prompt built with its own system and task layers.
 - [x] `approval-answer suggestion`: dedicated prompt flow exists for spec approval questions.
-- [ ] `capture`: no model-backed prompt inspection surface applies because this phase does not materialize through the normal execution prompt pipeline.
+- [x] `capture`: this is the workflow entry phase and does not require a model-backed prompt pipeline.
 
 Validated current context assembly:
 
@@ -102,6 +104,70 @@ Validated current persistence and exposure:
 - [ ] Receipts persist hashes and manifests, not the effective prompt text itself.
 - [ ] Timeline metadata persists hashes and warnings, not the effective prompt text itself.
 - [ ] Current portal and MCP surfaces expose prompt paths and execution metadata, but not a unified effective-prompt/effective-context view.
+
+Recommended first cut:
+
+- persist effective prompt and effective context first in the execution receipt, not in the timeline markdown
+- expose the new data through workflow detail DTOs and MCP before building a richer portal inspector
+- the first operator-facing inspector must let an operator visualize the effective prompt actually sent for a phase execution
+- keep the first scope read-only and phase-execution focused; do not mix it yet with policy visibility or eval semantics
+
+Minimum contract proposal:
+
+- `effectivePrompt`:
+  - `systemPrompt`
+  - `userPrompt`
+  - `warnings`
+  - `sourcePromptPaths`
+- `effectiveContext`:
+  - `userStoryPath`
+  - `previousArtifacts[]` with `phaseId`, `path`, `sha256`
+  - `contextFiles[]` with `path`, `sha256`
+  - `currentArtifact` when operating on an existing artifact
+  - `operationPromptSha256`
+  - `workspaceGitHeadSha`
+
+Why this cut:
+
+- it reuses data already assembled in `PhaseExecutionContext` and `BuildEffectivePromptAsync(...)`
+- it avoids timeline bloat and keeps markdown readable
+- it preserves a clean separation: receipt for detailed truth, timeline for summarized trace
+
+Known code anchors for implementation:
+
+- `src/SpecForge.OpenAICompatible/OpenAiCompatiblePhaseExecutionProvider.cs`
+  - `BuildEffectivePromptAsync(...)` already materializes the composed prompt
+- `src/SpecForge.Domain/Application/PhaseExecutionContext.cs`
+  - already defines the runtime context ingredients that should become inspectable
+- `src/SpecForge.Domain/Application/WorkflowRunner.cs`
+  - `MaterializePhaseArtifactAsync(...)` already builds the input manifest and persists the execution receipt
+- `src/SpecForge.Domain/Application/PhaseExecutionReceipt.cs`
+  - current receipt contract is the natural storage point for the first cut
+- `src/SpecForge.Domain/Application/SpecForgeApplicationService.cs`
+  - current workflow DTO building is the likely first exposure path for MCP and portal consumers
+
+Suggested delivery slices:
+
+- Slice 1A: Receipt enrichment
+  - extend the receipt contract with effective prompt and effective context payloads
+  - persist them only for normal model-backed phase execution
+  - keep auto-refinement answers as a follow-up unless the same abstraction falls out naturally
+- Slice 1B: Read model exposure
+  - expose the latest receipt-backed effective prompt and context in workflow detail responses
+  - keep the first API shape phase-local and latest-execution-only
+- Slice 1C: Operator surface
+  - show a compact phase inspector with prompt, warnings, and included inputs
+  - start with a plain text or collapsible raw view before investing in richer diff UX
+- Slice 1D: Drift usability
+  - surface prompt override warnings beside the effective prompt, not only in timeline metadata
+  - reserve prompt-to-prompt diffing for a later iteration
+
+Explicit non-goals for Wave 1:
+
+- no cross-execution comparison UI
+- no policy snapshot visualization
+- no attachment ingestion redesign
+- no timeline markdown expansion beyond linking the richer receipt when needed
 
 ### Wave 2 · Structured Execution Evidence
 

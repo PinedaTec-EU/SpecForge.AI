@@ -48,33 +48,17 @@ public static class PhaseExecutionReceiptStore
         string workspaceRoot,
         PhaseExecutionContext context)
     {
-        var previousArtifacts = context.PreviousArtifactPaths
-            .OrderBy(static item => item.Key)
-            .Select(static item => new PhaseExecutionArtifactInput(
-                NormalizePath(item.Value),
-                TryComputeFileSha256(item.Value),
-                WorkflowPresentation.ToPhaseSlug(item.Key)))
-            .ToArray();
-        var contextFiles = context.ContextFilePaths
-            .OrderBy(static path => path, StringComparer.Ordinal)
-            .Select(static path => new PhaseExecutionArtifactInput(NormalizePath(path), TryComputeFileSha256(path)))
-            .ToArray();
-        var currentArtifact = string.IsNullOrWhiteSpace(context.CurrentArtifactPath)
-            ? null
-            : new PhaseExecutionArtifactInput(
-                NormalizePath(context.CurrentArtifactPath),
-                TryComputeFileSha256(context.CurrentArtifactPath),
-                WorkflowPresentation.ToPhaseSlug(context.PhaseId));
+        var effectiveContext = PhaseExecutionInspectionBuilder.BuildEffectiveContext(workspaceRoot, context);
         var manifestWithoutHash = new PhaseExecutionInputManifest(
             ManifestSha256: string.Empty,
-            WorkspaceRoot: NormalizePath(workspaceRoot),
-            UserStoryPath: NormalizePath(context.UserStoryPath),
+            WorkspaceRoot: effectiveContext.WorkspaceRoot,
+            UserStoryPath: effectiveContext.UserStoryPath,
             UserStorySha256: TryComputeFileSha256(context.UserStoryPath),
-            WorkspaceGitHeadSha: TryReadGitHeadSha(workspaceRoot),
-            PreviousArtifacts: previousArtifacts,
-            ContextFiles: contextFiles,
-            CurrentArtifact: currentArtifact,
-            OperationPromptSha256: ComputeSha256(context.OperationPrompt));
+            WorkspaceGitHeadSha: effectiveContext.WorkspaceGitHeadSha,
+            PreviousArtifacts: effectiveContext.PreviousArtifacts,
+            ContextFiles: effectiveContext.ContextFiles,
+            CurrentArtifact: effectiveContext.CurrentArtifact,
+            OperationPromptSha256: effectiveContext.OperationPromptSha256);
 
         return manifestWithoutHash with
         {
@@ -116,7 +100,7 @@ public static class PhaseExecutionReceiptStore
 
     public static string NormalizePath(string path) => path.Replace('\\', '/');
 
-    private static string? TryReadGitHeadSha(string workspaceRoot)
+    internal static string? TryReadGitHeadSha(string workspaceRoot)
     {
         try
         {
