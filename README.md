@@ -100,6 +100,7 @@ The fuller roadmap lives in [doc/roadmap.md](doc/roadmap.md) and the implementat
 
 - [doc/product-vision.md](doc/product-vision.md)
 - [doc/architecture.md](doc/architecture.md)
+- [doc/harness-engineering-checklist.md](doc/harness-engineering-checklist.md)
 - [doc/workflow-canonico-fase-1.md](doc/workflow-canonico-fase-1.md)
 - [doc/mcp-contract-fase-1.md](doc/mcp-contract-fase-1.md)
 - [doc/spec-schema-fase-1.md](doc/spec-schema-fase-1.md)

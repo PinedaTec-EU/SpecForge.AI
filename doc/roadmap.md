@@ -4,6 +4,8 @@ Last reviewed: 2026-05-14.
 
 This document is the product-facing roadmap summary. For implementation sequencing and history, see [implementation-plan.md](implementation-plan.md).
 
+For the detailed harness-adoption baseline and capability checklist, see [harness-engineering-checklist.md](harness-engineering-checklist.md).
+
 ## Current Strength
 
 The current product already provides:
