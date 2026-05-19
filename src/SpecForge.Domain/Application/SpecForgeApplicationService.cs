@@ -1,5 +1,6 @@
 using SpecForge.Domain.Persistence;
 using SpecForge.Domain.Workflow;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace SpecForge.Domain.Application;
@@ -13,7 +14,6 @@ public sealed class SpecForgeApplicationService
     private static readonly Regex UserStoryIdRegex = new(
         pattern: "\\bUS-[A-Z0-9]+(?:-[A-Z0-9]+)*\\b",
         options: RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
-
     private readonly UserStoryFileStore fileStore;
     private readonly WorkflowRunner workflowRunner;
     private readonly RepositoryPromptInitializer repositoryPromptInitializer;
@@ -461,7 +461,7 @@ public sealed class SpecForgeApplicationService
                     workflowRun.Branch.PullRequest.Url,
                     workflowRun.Branch.PullRequest.RemoteBranch,
                     workflowRun.Branch.PullRequest.PublishedAtUtc?.ToString("O")),
-            BuildPhaseDetails(workflowRun, paths),
+            await BuildPhaseDetailsAsync(workflowRun, paths, timelineEvents, cancellationToken),
             new CurrentPhaseControls(
                 currentPhase.CanAdvance,
                 currentPhase.CanApprove,
@@ -1300,9 +1300,11 @@ public sealed class SpecForgeApplicationService
             : string.Concat(summary.AsSpan(0, 277), "...");
     }
 
-    private IReadOnlyCollection<WorkflowPhaseDetails> BuildPhaseDetails(
+    private async Task<IReadOnlyCollection<WorkflowPhaseDetails>> BuildPhaseDetailsAsync(
         Workflow.WorkflowRun workflowRun,
-        UserStoryFilePaths paths)
+        UserStoryFilePaths paths,
+        IReadOnlyCollection<TimelineEventDetails> timelineEvents,
+        CancellationToken cancellationToken)
     {
         var phases = new[]
         {
@@ -1316,32 +1318,39 @@ public sealed class SpecForgeApplicationService
             Workflow.PhaseId.PrPreparation
         };
 
-        var materializedPhases = phases
-            .Select((phaseId, index) =>
-            {
-                var requiresApproval = workflowRun.Definition.RequiresApproval(phaseId);
-                var isCompletedWorkflow = workflowRun.Status == UserStoryStatus.Completed;
-                var isCurrent = isCompletedWorkflow
-                    ? false
-                    : workflowRun.CurrentPhase == phaseId;
-                return new WorkflowPhaseDetails(
-                    WorkflowPresentation.ToPhaseSlug(phaseId),
-                    ToPhaseTitle(phaseId),
-                    index,
-                    requiresApproval,
-                    WorkflowPresentation.ExpectsHumanIntervention(phaseId, requiresApproval),
-                    workflowRun.IsPhaseApproved(phaseId),
-                    isCurrent,
-                    ResolvePhaseState(workflowRun, phaseId),
-                    TryGetLatestArtifactPath(paths, phaseId),
-                    TryGetLatestOperationLogPath(paths, phaseId),
-                    TryGetExecutePromptPath(paths, phaseId),
-                    TryGetApprovePromptPath(paths, phaseId),
-                    TryGetExecuteSystemPromptPath(paths, phaseId),
-                    TryGetApproveSystemPromptPath(paths, phaseId),
-                    workflowRunner.GetPhaseExecutionReadiness(phaseId));
-            })
-            .ToList();
+        var materializedPhases = new List<WorkflowPhaseDetails>();
+
+        foreach (var (phaseId, index) in phases.Select((phaseId, index) => (phaseId, index)))
+        {
+            var requiresApproval = workflowRun.Definition.RequiresApproval(phaseId);
+            var isCompletedWorkflow = workflowRun.Status == UserStoryStatus.Completed;
+            var isCurrent = isCompletedWorkflow
+                ? false
+                : workflowRun.CurrentPhase == phaseId;
+            var phaseSlug = WorkflowPresentation.ToPhaseSlug(phaseId);
+            var latestExecutionInspection = await TryReadLatestExecutionInspectionAsync(
+                timelineEvents,
+                phaseSlug,
+                cancellationToken);
+
+            materializedPhases.Add(new WorkflowPhaseDetails(
+                phaseSlug,
+                ToPhaseTitle(phaseId),
+                index,
+                requiresApproval,
+                WorkflowPresentation.ExpectsHumanIntervention(phaseId, requiresApproval),
+                workflowRun.IsPhaseApproved(phaseId),
+                isCurrent,
+                ResolvePhaseState(workflowRun, phaseId),
+                TryGetLatestArtifactPath(paths, phaseId),
+                TryGetLatestOperationLogPath(paths, phaseId),
+                TryGetExecutePromptPath(paths, phaseId),
+                TryGetApprovePromptPath(paths, phaseId),
+                TryGetExecuteSystemPromptPath(paths, phaseId),
+                TryGetApproveSystemPromptPath(paths, phaseId),
+                workflowRunner.GetPhaseExecutionReadiness(phaseId),
+                latestExecutionInspection));
+        }
 
         if (workflowRun.Status == UserStoryStatus.Completed)
         {
@@ -1360,10 +1369,56 @@ public sealed class SpecForgeApplicationService
                 ApprovePromptPath: null,
                 ExecuteSystemPromptPath: null,
                 ApproveSystemPromptPath: null,
-                ExecutionReadiness: null));
+                ExecutionReadiness: null,
+                LatestExecutionInspection: null));
         }
 
         return materializedPhases;
+    }
+
+    private static async Task<PhaseExecutionInspectionDetails?> TryReadLatestExecutionInspectionAsync(
+        IReadOnlyCollection<TimelineEventDetails> timelineEvents,
+        string phaseSlug,
+        CancellationToken cancellationToken)
+    {
+        var receiptPath = timelineEvents
+            .Where(timelineEvent =>
+                string.Equals(timelineEvent.Phase, phaseSlug, StringComparison.Ordinal) &&
+                timelineEvent.Execution?.ReceiptPath is not null)
+            .OrderByDescending(timelineEvent => timelineEvent.TimestampUtc)
+            .Select(timelineEvent => timelineEvent.Execution?.ReceiptPath)
+            .FirstOrDefault(static path => !string.IsNullOrWhiteSpace(path));
+
+        if (string.IsNullOrWhiteSpace(receiptPath))
+        {
+            return null;
+        }
+
+        try
+        {
+            var receipt = await PhaseExecutionReceiptStore.TryLoadAsync(receiptPath, cancellationToken);
+            if (receipt?.EffectivePrompt is null && receipt?.EffectiveContext is null)
+            {
+                return null;
+            }
+
+            return new PhaseExecutionInspectionDetails(
+                receiptPath,
+                receipt?.EffectivePrompt,
+                receipt?.EffectiveContext);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     private async Task<IReadOnlyCollection<UserStorySummary>> BuildChildStorySummariesAsync(

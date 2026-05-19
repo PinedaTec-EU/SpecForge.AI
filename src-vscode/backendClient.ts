@@ -227,6 +227,44 @@ export interface WorkflowPhaseDetails {
   readonly executeSystemPromptPath?: string | null;
   readonly approveSystemPromptPath?: string | null;
   readonly executionReadiness?: PhaseExecutionReadiness | null;
+  readonly latestExecutionInspection?: PhaseExecutionInspectionDetails | null;
+}
+
+export interface PhaseExecutionPromptSource {
+  readonly role: string;
+  readonly path: string;
+  readonly isOverride: boolean;
+  readonly contentSha256?: string | null;
+  readonly embeddedContentSha256?: string | null;
+}
+
+export interface PhaseExecutionEffectivePrompt {
+  readonly systemPrompt: string;
+  readonly userPrompt: string;
+  readonly warnings?: readonly string[] | null;
+  readonly sourcePrompts?: readonly PhaseExecutionPromptSource[] | null;
+}
+
+export interface PhaseExecutionArtifactInput {
+  readonly path: string;
+  readonly sha256?: string | null;
+  readonly phaseId?: string | null;
+}
+
+export interface PhaseExecutionEffectiveContext {
+  readonly workspaceRoot: string;
+  readonly userStoryPath: string;
+  readonly workspaceGitHeadSha?: string | null;
+  readonly previousArtifacts: readonly PhaseExecutionArtifactInput[];
+  readonly contextFiles: readonly PhaseExecutionArtifactInput[];
+  readonly currentArtifact?: PhaseExecutionArtifactInput | null;
+  readonly operationPromptSha256?: string | null;
+}
+
+export interface PhaseExecutionInspectionDetails {
+  readonly receiptPath?: string | null;
+  readonly effectivePrompt?: PhaseExecutionEffectivePrompt | null;
+  readonly effectiveContext?: PhaseExecutionEffectiveContext | null;
 }
 
 export interface PhaseExecutionRequirements {

@@ -45,7 +45,7 @@ Use this document as the operational backlog for implementation.
   Output: receipt contract, serialization, backward-compatible read path.
   Notes: do not persist prompt text in `timeline.md`.
 
-- [ ] `H-SHARED-03` Status: `todo`
+- [x] `H-SHARED-03` Status: `done`
   Expose latest effective prompt and effective context through workflow detail DTOs and MCP.
   Output: read model consumable by portal and non-portal operator surfaces.
 

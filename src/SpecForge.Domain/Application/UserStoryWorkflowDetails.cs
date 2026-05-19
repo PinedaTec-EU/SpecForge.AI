@@ -47,7 +47,13 @@ public sealed record WorkflowPhaseDetails(
     string? ApprovePromptPath,
     string? ExecuteSystemPromptPath = null,
     string? ApproveSystemPromptPath = null,
-    PhaseExecutionReadiness? ExecutionReadiness = null);
+    PhaseExecutionReadiness? ExecutionReadiness = null,
+    PhaseExecutionInspectionDetails? LatestExecutionInspection = null);
+
+public sealed record PhaseExecutionInspectionDetails(
+    string? ReceiptPath,
+    PhaseExecutionEffectivePrompt? EffectivePrompt,
+    PhaseExecutionEffectiveContext? EffectiveContext);
 
 public sealed record CurrentPhaseControls(
     bool CanContinue,

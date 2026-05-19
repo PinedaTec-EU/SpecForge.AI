@@ -79,6 +79,19 @@ public static class PhaseExecutionReceiptStore
         return receiptPath;
     }
 
+    public static async Task<PhaseExecutionReceipt?> TryLoadAsync(
+        string? receiptPath,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(receiptPath) || !File.Exists(receiptPath))
+        {
+            return null;
+        }
+
+        await using var stream = File.OpenRead(receiptPath);
+        return await JsonSerializer.DeserializeAsync<PhaseExecutionReceipt>(stream, SerializerOptions, cancellationToken);
+    }
+
     public static string? ComputeSha256(string? content)
     {
         if (string.IsNullOrWhiteSpace(content))
