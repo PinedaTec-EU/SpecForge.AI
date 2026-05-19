@@ -40,7 +40,7 @@ Use this document as the operational backlog for implementation.
   Output: domain model and receipt payload shape.
   Notes: this is the base for `refinement`, `spec`, `technical-design`, `implementation`, `review`, `release-approval`, and `pr-preparation`.
 
-- [ ] `H-SHARED-02` Status: `todo`
+- [x] `H-SHARED-02` Status: `done`
   Persist `effectivePrompt` and `effectiveContext` in execution receipts for normal model-backed phase execution.
   Output: receipt contract, serialization, backward-compatible read path.
   Notes: do not persist prompt text in `timeline.md`.

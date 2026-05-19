@@ -450,7 +450,8 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
                 InputSha256: inputSha256,
                 OutputSha256: outputSha256,
                 StructuredOutputSha256: null,
-                UsedSkills: usedSkills));
+                UsedSkills: usedSkills),
+            EffectivePrompt: prompt);
     }
 
     private async Task<PhaseExecutionResult> ExecuteWithPhaseSubagentsAsync(
@@ -1482,7 +1483,8 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
                 InputSha256: ComputeSha256(nativePrompt),
                 OutputSha256: ComputeSha256(response.Content),
                 StructuredOutputSha256: null,
-                UsedSkills: usedSkills));
+                UsedSkills: usedSkills),
+            EffectivePrompt: prompt);
     }
 
     private static string? ComputeSha256(string? content)

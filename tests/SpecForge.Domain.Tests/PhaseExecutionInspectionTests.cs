@@ -90,6 +90,50 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("\"embeddedContentSha256\":\"def\"", json);
     }
 
+    [Fact]
+    public void Receipt_SerializesEffectivePromptAndEffectiveContext_WhenPresent()
+    {
+        var receipt = new PhaseExecutionReceipt(
+            ExecutionId: "execution-1",
+            UsId: "US-0001",
+            PhaseId: "spec",
+            StartedAtUtc: "2026-05-19T10:00:00.0000000+00:00",
+            CompletedAtUtc: "2026-05-19T10:00:01.0000000+00:00",
+            InputManifest: new PhaseExecutionInputManifest(
+                "manifest-hash",
+                "/repo",
+                "/repo/.specs/us/US-0001/us.md",
+                "us-hash",
+                "git-head",
+                [],
+                [],
+                null,
+                null),
+            OutputManifest: new PhaseExecutionOutputManifest(
+                "/repo/.specs/us/US-0001/phases/01-spec.md",
+                "artifact-hash",
+                []),
+            Usage: new TokenUsage(10, 20, 30),
+            Execution: new PhaseExecutionMetadata("openai-compatible", "test-model"),
+            EffectivePrompt: new PhaseExecutionEffectivePrompt("system", "user"),
+            EffectiveContext: new PhaseExecutionEffectiveContext(
+                "/repo",
+                "/repo/.specs/us/US-0001/us.md",
+                "git-head",
+                [],
+                [],
+                null,
+                null));
+
+        var json = JsonSerializer.Serialize(receipt, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        Assert.Contains("\"effectivePrompt\":{", json);
+        Assert.Contains("\"effectiveContext\":{", json);
+        Assert.Contains("\"systemPrompt\":\"system\"", json);
+        Assert.Contains("\"userPrompt\":\"user\"", json);
+        Assert.Contains("\"workspaceRoot\":\"/repo\"", json);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(workspaceRoot))

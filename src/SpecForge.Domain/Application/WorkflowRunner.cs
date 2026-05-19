@@ -1616,6 +1616,7 @@ public sealed class WorkflowRunner
         var executionId = BuildExecutionId(workflowRun.CurrentPhase);
         var executionStartedAtUtc = DateTimeOffset.UtcNow;
         var inputManifest = PhaseExecutionReceiptStore.BuildInputManifest(workspaceRoot, executionContext);
+        var effectiveContext = PhaseExecutionInspectionBuilder.BuildEffectiveContext(workspaceRoot, executionContext);
         var previousArtifactList = executionContext.PreviousArtifactPaths
             .OrderBy(static item => item.Key)
             .Select(static item => $"{WorkflowPresentation.ToPhaseSlug(item.Key)}='{item.Value}'")
@@ -1754,7 +1755,9 @@ public sealed class WorkflowRunner
                         PhaseExecutionReceiptStore.TryComputeFileSha256(path)))
                     .ToArray()),
             result.Usage,
-            executionMetadata);
+            executionMetadata,
+            result.EffectivePrompt,
+            result.EffectivePrompt is null ? null : effectiveContext);
         var receiptPath = await PhaseExecutionReceiptStore.PersistAsync(paths.ExecutionReceiptsDirectoryPath, receipt, cancellationToken);
         generatedFiles.Add(receiptPath);
         if (!File.Exists(artifactPath))

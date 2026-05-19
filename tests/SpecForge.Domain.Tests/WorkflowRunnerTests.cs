@@ -1267,6 +1267,10 @@ public sealed class WorkflowRunnerTests : IDisposable
         var receiptJson = await File.ReadAllTextAsync(receiptPath);
         Assert.Contains("\"manifestSha256\"", receiptJson);
         Assert.Contains("\"outputManifest\"", receiptJson);
+        Assert.Contains("\"effectivePrompt\":{", receiptJson);
+        Assert.Contains("\"effectiveContext\":{", receiptJson);
+        Assert.Contains("\"systemPrompt\":\"system instructions\"", receiptJson);
+        Assert.Contains("\"userPrompt\":\"user instructions\"", receiptJson);
     }
 
     [Fact]
@@ -2051,7 +2055,19 @@ public sealed class WorkflowRunnerTests : IDisposable
                         InputSha256: "input-hash",
                         OutputSha256: "output-hash",
                         StructuredOutputSha256: "structured-hash",
-                        UsedSkills: [".codex/skills/sdd-phase-agents/SKILL.md"])));
+                        UsedSkills: [".codex/skills/sdd-phase-agents/SKILL.md"]),
+                    new PhaseExecutionEffectivePrompt(
+                        "system instructions",
+                        "user instructions",
+                        ["prompt warning"],
+                        [
+                            new PhaseExecutionPromptSource(
+                                "phase-task",
+                                "/repo/.specs/prompts/phases/spec.execute.md",
+                                IsOverride: true,
+                                ContentSha256: "content-hash",
+                                EmbeddedContentSha256: "embedded-hash")
+                        ])));
     }
 
     private sealed class ApprovalAnswerSuggestionCapturingProvider : IPhaseExecutionProvider

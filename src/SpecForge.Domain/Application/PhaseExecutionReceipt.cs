@@ -14,7 +14,9 @@ public sealed record PhaseExecutionReceipt(
     PhaseExecutionInputManifest InputManifest,
     PhaseExecutionOutputManifest OutputManifest,
     TokenUsage? Usage,
-    PhaseExecutionMetadata? Execution);
+    PhaseExecutionMetadata? Execution,
+    PhaseExecutionEffectivePrompt? EffectivePrompt = null,
+    PhaseExecutionEffectiveContext? EffectiveContext = null);
 
 public sealed record PhaseExecutionInputManifest(
     string ManifestSha256,
