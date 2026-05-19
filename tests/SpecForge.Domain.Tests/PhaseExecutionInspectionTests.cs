@@ -115,6 +115,15 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
                 []),
             Usage: new TokenUsage(10, 20, 30),
             Execution: new PhaseExecutionMetadata("openai-compatible", "test-model"),
+            EvidenceRecord: new PhaseExecutionEvidenceRecord(
+                new PhaseExecutionEvidenceActor("phase-agent", ProviderKind: "openai-compatible", Model: "test-model"),
+                [new PhaseExecutionEvidenceReference("user-story", "/repo/.specs/us/US-0001/us.md", "us-hash")],
+                [new PhaseExecutionEvidenceReference("result-artifact", "/repo/.specs/us/US-0001/phases/01-spec.md", "artifact-hash")],
+                [new PhaseExecutionEvidenceSetting("policy-key", "shared-phase-policy/v1")],
+                [new PhaseExecutionEvidenceTool("model:openai-compatible", "execute", "execution-metadata")],
+                null,
+                new PhaseExecutionValidationSummary("captured", "Execution persisted evidence links.", ["result-artifact-generated"]),
+                [new PhaseExecutionEvidenceLink("receipt", "/repo/.specs/us/US-0001/execution-receipts/execution-1.json", "receipt")]),
             EffectivePrompt: new PhaseExecutionEffectivePrompt("system", "user"),
             EffectiveContext: new PhaseExecutionEffectiveContext(
                 "/repo",
@@ -129,9 +138,11 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
 
         Assert.Contains("\"effectivePrompt\":{", json);
         Assert.Contains("\"effectiveContext\":{", json);
+        Assert.Contains("\"evidenceRecord\":{", json);
         Assert.Contains("\"systemPrompt\":\"system\"", json);
         Assert.Contains("\"userPrompt\":\"user\"", json);
         Assert.Contains("\"workspaceRoot\":\"/repo\"", json);
+        Assert.Contains("\"validationSummary\":{", json);
     }
 
     [Fact]
@@ -162,6 +173,59 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("`release`", reviewPolicy.Summary);
         Assert.Contains(reviewPolicy.EvidenceRequirements, item => item.Id == "validation_strategy_evidence" && item.PolicyInput == "release");
         Assert.Contains(reviewPolicy.EligibilityRules, rule => rule.Id == "review_evidence_policy_selected");
+    }
+
+    [Fact]
+    public void PhaseExecutionEvidenceBuilder_CapturesSharedEvidenceShape()
+    {
+        var inputManifest = new PhaseExecutionInputManifest(
+            "manifest-hash",
+            "/repo",
+            "/repo/.specs/us/US-0001/us.md",
+            "us-hash",
+            "git-head",
+            [new PhaseExecutionArtifactInput("/repo/.specs/us/US-0001/phases/01-spec.md", "spec-hash", "spec")],
+            [new PhaseExecutionArtifactInput("/repo/context/architecture.md", "ctx-hash")],
+            new PhaseExecutionArtifactInput("/repo/.specs/us/US-0001/phases/02-technical-design.md", "td-hash", "technical-design"),
+            "op-hash");
+        var outputManifest = new PhaseExecutionOutputManifest(
+            "/repo/.specs/us/US-0001/phases/03-implementation.md",
+            "impl-hash",
+            [
+                new PhaseExecutionArtifactInput("/repo/.specs/us/US-0001/phases/03-implementation.evidence.md", "emd-hash"),
+                new PhaseExecutionArtifactInput("/repo/.specs/us/US-0001/phases/03-implementation.evidence.json", "ejson-hash")
+            ]);
+        var policy = PhaseExecutionPolicyCatalog.Describe(
+            PhaseId.Implementation,
+            new PhaseExecutionReadiness(
+                PhaseId.Implementation,
+                CanExecute: true,
+                RequiredPermissions: PhaseExecutionPermissionCatalog.Describe(PhaseId.Implementation)));
+        var execution = new PhaseExecutionMetadata(
+            "openai-compatible",
+            "test-model",
+            "impl-profile",
+            RuntimeVersion: "0.1.5.554",
+            AgentName: "implementer",
+            AgentRole: "implementation",
+            UsedSkills: [".codex/skills/sdd-phase-agents/SKILL.md"]);
+
+        var record = PhaseExecutionEvidenceBuilder.Build(
+            PhaseId.Implementation,
+            inputManifest,
+            outputManifest,
+            execution,
+            policy,
+            "/repo/.specs/us/US-0001/execution-receipts/20260520-implementation.json");
+
+        Assert.Equal("phase-agent", record.Actor.Kind);
+        Assert.Contains(record.Inputs, item => item.Kind == "current-artifact");
+        Assert.Contains(record.Outputs, item => item.Kind == "phase-evidence");
+        Assert.Contains(record.Settings, item => item.Name == "policy-key" && item.Value == "shared-phase-policy/v1");
+        Assert.Contains(record.ToolsUsed, item => item.Name == "workspace-write");
+        Assert.Equal("captured", record.ValidationSummary.Status);
+        Assert.Contains("phase-evidence-generated", record.ValidationSummary.Checks);
+        Assert.Contains(record.EvidenceLinks, item => item.Kind == "receipt");
     }
 
     public void Dispose()

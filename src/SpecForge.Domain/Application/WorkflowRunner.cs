@@ -1745,6 +1745,16 @@ public sealed class WorkflowRunner
         SpecForgeDiagnostics.Log(
             $"[runner.materialize.out] usId={workflowRun.UsId} phase={WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)} runtimeVersion={executionMetadata?.RuntimeVersion ?? "(none)"} generatedFiles=[{string.Join(", ", generatedFiles.Select(static path => $"'{path}'"))}]");
 
+        var executionPolicy = GetPhaseExecutionPolicy(workflowRun.CurrentPhase);
+        var receiptPath = Path.Combine(paths.ExecutionReceiptsDirectoryPath, $"{executionId}.json");
+        var outputManifest = new PhaseExecutionOutputManifest(
+            PhaseExecutionReceiptStore.NormalizePath(artifactPath),
+            PhaseExecutionReceiptStore.TryComputeFileSha256(artifactPath),
+            generatedFiles
+                .Select(path => new PhaseExecutionArtifactInput(
+                    PhaseExecutionReceiptStore.NormalizePath(path),
+                    PhaseExecutionReceiptStore.TryComputeFileSha256(path)))
+                .ToArray());
         var receipt = new PhaseExecutionReceipt(
             executionId,
             workflowRun.UsId,
@@ -1752,19 +1762,19 @@ public sealed class WorkflowRunner
             executionStartedAtUtc.ToString("O"),
             DateTimeOffset.UtcNow.ToString("O"),
             inputManifest,
-            new PhaseExecutionOutputManifest(
-                PhaseExecutionReceiptStore.NormalizePath(artifactPath),
-                PhaseExecutionReceiptStore.TryComputeFileSha256(artifactPath),
-                generatedFiles
-                    .Select(path => new PhaseExecutionArtifactInput(
-                        PhaseExecutionReceiptStore.NormalizePath(path),
-                        PhaseExecutionReceiptStore.TryComputeFileSha256(path)))
-                    .ToArray()),
+            outputManifest,
             result.Usage,
             executionMetadata,
+            PhaseExecutionEvidenceBuilder.Build(
+                workflowRun.CurrentPhase,
+                inputManifest,
+                outputManifest,
+                executionMetadata,
+                executionPolicy,
+                receiptPath),
             result.EffectivePrompt,
             result.EffectivePrompt is null ? null : effectiveContext);
-        var receiptPath = await PhaseExecutionReceiptStore.PersistAsync(paths.ExecutionReceiptsDirectoryPath, receipt, cancellationToken);
+        receiptPath = await PhaseExecutionReceiptStore.PersistAsync(paths.ExecutionReceiptsDirectoryPath, receipt, cancellationToken);
         generatedFiles.Add(receiptPath);
         if (!File.Exists(artifactPath))
         {

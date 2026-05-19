@@ -1269,6 +1269,10 @@ public sealed class WorkflowRunnerTests : IDisposable
         Assert.Contains("\"outputManifest\"", receiptJson);
         Assert.Contains("\"effectivePrompt\"", receiptJson);
         Assert.Contains("\"effectiveContext\"", receiptJson);
+        Assert.Contains("\"evidenceRecord\"", receiptJson);
+        Assert.Contains("\"validationSummary\"", receiptJson);
+        Assert.Contains("\"toolsUsed\"", receiptJson);
+        Assert.Contains("\"evidenceLinks\"", receiptJson);
         Assert.Contains("\"systemPrompt\"", receiptJson);
         Assert.Contains("system instructions", receiptJson);
         Assert.Contains("\"userPrompt\"", receiptJson);
