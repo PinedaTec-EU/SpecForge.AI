@@ -513,6 +513,7 @@ function buildPhaseSpecificSections(workflow, selectedPhase, state, artifactPrev
                 selectedPhase,
                 selectedArtifactContent: state.selectedArtifactContent,
                 artifactPreviewHtml,
+                escapeHtml: htmlEscape_1.escapeHtml,
                 buildArtifactPreviewSection
             });
         case "refinement":

@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildCapturePhaseSections = buildCapturePhaseSections;
 function buildCapturePhaseSections(args) {
-    const { workflow, selectedPhase, selectedArtifactContent, artifactPreviewHtml, buildArtifactPreviewSection } = args;
+    const { workflow, selectedPhase, selectedArtifactContent, artifactPreviewHtml, escapeHtml, buildArtifactPreviewSection } = args;
     const captureSourcePath = selectedPhase.phaseId === "capture"
         ? workflow.mainArtifactPath
         : null;
@@ -10,11 +10,28 @@ function buildCapturePhaseSections(args) {
         ? `
       <section class="detail-card">
         <h3>Capture Boundary</h3>
-        <p>${selectedPhase.executionBoundary.summary}</p>
+        <p>${escapeHtml(selectedPhase.executionBoundary.summary)}</p>
         <div class="token-strip">
-          <span class="token token--neutral">${selectedPhase.executionBoundary.boundaryKind}</span>
+          <span class="token token--neutral">${escapeHtml(selectedPhase.executionBoundary.boundaryKind)}</span>
           <span class="token token--attention">non-model</span>
         </div>
+      </section>
+    `
+        : "";
+    const captureRecordSection = selectedPhase.phaseId === "capture" && selectedPhase.captureRecord
+        ? `
+      <section class="detail-card">
+        <h3>Capture Record</h3>
+        <div class="detail-grid">
+          <div><strong>Actor</strong><div><code>${escapeHtml(selectedPhase.captureRecord.actor)}</code></div></div>
+          <div><strong>Created</strong><div><code>${escapeHtml(selectedPhase.captureRecord.createdAtUtc)}</code></div></div>
+          <div><strong>Source</strong><div><code>${escapeHtml(selectedPhase.captureRecord.sourceKind)}</code></div></div>
+          <div><strong>Source Reference</strong><div><code>${escapeHtml(selectedPhase.captureRecord.sourceReference ?? "n/a")}</code></div></div>
+        </div>
+        <h4>Materialized Artifacts</h4>
+        <ul class="detail-list">
+          ${selectedPhase.captureRecord.materializedArtifacts.map((path) => `<li><code>${escapeHtml(path)}</code></li>`).join("")}
+        </ul>
       </section>
     `
         : "";
@@ -27,7 +44,7 @@ function buildCapturePhaseSections(args) {
     `
         : "";
     return {
-        beforeArtifact: [boundarySection, captureSourceSection].filter(Boolean),
+        beforeArtifact: [boundarySection, captureRecordSection, captureSourceSection].filter(Boolean),
         afterArtifact: []
     };
 }
