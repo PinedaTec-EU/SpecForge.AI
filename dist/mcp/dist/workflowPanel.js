@@ -58,6 +58,7 @@ const workflowRewind_1 = require("./workflowRewind");
 const workflowRejectPlan_1 = require("./workflowRejectPlan");
 const workflowView_1 = require("./workflowView");
 const webviewTypography_1 = require("./webviewTypography");
+const workflowPanelFiles_1 = require("./workflowPanelFiles");
 const userWorkspacePreferences_1 = require("./userWorkspacePreferences");
 const workflowGraphLayout_1 = require("./workflowGraphLayout");
 const utils_1 = require("./utils");
@@ -746,58 +747,13 @@ class WorkflowPanelController {
         return "";
     }
     async attachFilesAsync(kind) {
-        const selection = await vscode.window.showOpenDialog({
-            canSelectFiles: true,
-            canSelectFolders: false,
-            canSelectMany: true,
-            openLabel: kind === "context" ? "Add context files" : "Add user story files"
-        });
-        if (!selection || selection.length === 0) {
-            return;
-        }
-        const attachmentsDirectoryPath = path.join(this.summary.directoryPath, kind === "context" ? "context" : "attachments");
-        await fs.promises.mkdir(attachmentsDirectoryPath, { recursive: true });
-        for (const source of selection) {
-            const targetPath = await (0, utils_1.getNextAttachmentPathAsync)(attachmentsDirectoryPath, path.basename(source.fsPath));
-            await fs.promises.copyFile(source.fsPath, targetPath);
-        }
-        await this.refreshAsync();
-        void vscode.window.showInformationMessage(`${selection.length} file(s) added to ${kind === "context" ? "context" : "user story info"} for ${this.summary.usId}.`);
+        await (0, workflowPanelFiles_1.attachWorkflowFilesAsync)(this.summary.directoryPath, this.summary.usId, kind, async () => this.refreshAsync());
     }
     async addContextFilesFromPathsAsync(paths) {
-        const uniquePaths = Array.from(new Set(paths.map((filePath) => path.normalize(filePath))));
-        if (uniquePaths.length === 0) {
-            return;
-        }
-        const contextDirectoryPath = path.join(this.summary.directoryPath, "context");
-        await fs.promises.mkdir(contextDirectoryPath, { recursive: true });
-        let copiedFiles = 0;
-        for (const sourcePath of uniquePaths) {
-            const sourceStats = await fs.promises.stat(sourcePath).catch(() => null);
-            if (!sourceStats?.isFile()) {
-                continue;
-            }
-            const targetPath = await (0, utils_1.getNextAttachmentPathAsync)(contextDirectoryPath, path.basename(sourcePath));
-            await fs.promises.copyFile(sourcePath, targetPath);
-            copiedFiles += 1;
-        }
-        await this.refreshAsync();
-        if (copiedFiles > 0) {
-            void vscode.window.showInformationMessage(`${copiedFiles} suggested context file(s) added to ${this.summary.usId}.`);
-        }
+        await (0, workflowPanelFiles_1.addContextFilesFromPathsAsync)(this.summary.directoryPath, this.summary.usId, paths, async () => this.refreshAsync());
     }
     async setFileKindAsync(filePath, targetKind) {
-        const sourcePath = path.normalize(filePath);
-        const targetDirectory = path.join(this.summary.directoryPath, targetKind === "context" ? "context" : "attachments");
-        const sourceDirectory = path.dirname(sourcePath);
-        if (path.normalize(sourceDirectory) === path.normalize(targetDirectory)) {
-            return;
-        }
-        await fs.promises.mkdir(targetDirectory, { recursive: true });
-        const targetPath = await (0, utils_1.getNextAttachmentPathAsync)(targetDirectory, path.basename(sourcePath));
-        await fs.promises.rename(sourcePath, targetPath);
-        await this.refreshAsync();
-        void vscode.window.showInformationMessage(`Moved ${path.basename(sourcePath)} to ${targetKind === "context" ? "context" : "user story info"} in ${this.summary.usId}.`);
+        await (0, workflowPanelFiles_1.setWorkflowFileKindAsync)(this.summary.directoryPath, this.summary.usId, filePath, targetKind, async () => this.refreshAsync());
     }
     async approveCurrentPhaseAsync(baseBranch, workBranch) {
         await this.materializePendingRewindAsync("approval");
