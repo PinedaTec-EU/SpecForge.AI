@@ -766,6 +766,7 @@ function buildPhaseSpecificSections(
         selectedPhase,
         selectedArtifactContent: state.selectedArtifactContent,
         artifactPreviewHtml,
+        escapeHtml,
         buildArtifactPreviewSection
       });
     case "refinement":

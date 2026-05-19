@@ -48,6 +48,7 @@ public sealed record WorkflowPhaseDetails(
     string? ExecuteSystemPromptPath = null,
     string? ApproveSystemPromptPath = null,
     PhaseExecutionBoundarySummary? ExecutionBoundary = null,
+    CaptureExecutionRecord? CaptureRecord = null,
     PhaseExecutionReadiness? ExecutionReadiness = null,
     PhaseExecutionPolicy? ExecutionPolicy = null,
     PhaseExecutionEnvelope? ExecutionEnvelope = null,

@@ -546,6 +546,57 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesCaptureExecutionRecord()
+    {
+        var applicationService = new SpecForgeApplicationService();
+
+        await applicationService.CreateUserStoryAsync(
+            workspaceRoot,
+            "US-0001",
+            "Story one",
+            "feature",
+            "workflow",
+            "Initial source",
+            actor: "alice");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var capturePhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "capture");
+
+        Assert.NotNull(capturePhase.CaptureRecord);
+        Assert.Equal("alice", capturePhase.CaptureRecord!.Actor);
+        Assert.Equal("direct-text", capturePhase.CaptureRecord.SourceKind);
+        Assert.Null(capturePhase.CaptureRecord.SourceReference);
+        Assert.Contains(capturePhase.CaptureRecord.MaterializedArtifacts, path => path.EndsWith("/us.md", StringComparison.Ordinal));
+        Assert.Contains(capturePhase.CaptureRecord.MaterializedArtifacts, path => path.EndsWith("/state.yaml", StringComparison.Ordinal));
+        Assert.Contains(capturePhase.CaptureRecord.MaterializedArtifacts, path => path.EndsWith("/timeline.md", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ImportUserStoryAsync_ExposesImportedCaptureSource()
+    {
+        var applicationService = new SpecForgeApplicationService();
+        var importPath = Path.Combine(workspaceRoot, "incoming.md");
+        Directory.CreateDirectory(workspaceRoot);
+        await File.WriteAllTextAsync(importPath, "# Imported\n\nSource");
+
+        await applicationService.ImportUserStoryAsync(
+            workspaceRoot,
+            "US-0001",
+            importPath,
+            "Imported story",
+            "feature",
+            "workflow",
+            actor: "importer");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var capturePhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "capture");
+
+        Assert.NotNull(capturePhase.CaptureRecord);
+        Assert.Equal("imported-markdown", capturePhase.CaptureRecord!.SourceKind);
+        Assert.Equal(Path.GetFullPath(importPath).Replace('\\', '/'), capturePhase.CaptureRecord.SourceReference);
+    }
+
+    [Fact]
     public async Task GetCurrentPhaseAsync_CompletedWorkflow_CannotAdvance()
     {
         var runner = new WorkflowRunner(

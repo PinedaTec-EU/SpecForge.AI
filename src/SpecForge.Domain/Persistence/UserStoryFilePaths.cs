@@ -21,6 +21,7 @@ public sealed class UserStoryFilePaths
         StateFilePath = Path.Combine(rootDirectory, "state.yaml");
         RuntimeFilePath = Path.Combine(rootDirectory, "runtime.yaml");
         TimelineFilePath = Path.Combine(rootDirectory, "timeline.md");
+        CaptureRecordPath = Path.Combine(rootDirectory, "capture.json");
         DroppedMarkerFilePath = Path.Combine(rootDirectory, ".dropped");
         PhasesDirectoryPath = Path.Combine(rootDirectory, "phases");
         BranchFilePath = Path.Combine(rootDirectory, "branch.yaml");
@@ -181,6 +182,8 @@ public sealed class UserStoryFilePaths
     public string RuntimeFilePath { get; }
 
     public string TimelineFilePath { get; }
+
+    public string CaptureRecordPath { get; }
 
     public string DroppedMarkerFilePath { get; }
 

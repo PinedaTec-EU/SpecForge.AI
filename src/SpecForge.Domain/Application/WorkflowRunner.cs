@@ -122,6 +122,8 @@ public sealed class WorkflowRunner
         string sourceText,
         string actor = "user",
         IReadOnlyCollection<string>? tags = null,
+        string captureSourceKind = "direct-text",
+        string? captureSourceReference = null,
         CancellationToken cancellationToken = default)
     {
         ValidateRequired(workspaceRoot, nameof(workspaceRoot));
@@ -139,9 +141,27 @@ public sealed class WorkflowRunner
         Directory.CreateDirectory(paths.AttachmentsDirectoryPath);
 
         var workflowRun = new WorkflowRun(usId, ComputeSourceHash(sourceText), WorkflowDefinition.CanonicalV1, runtimeVersion);
+        var normalizedActor = NormalizeActor(actor);
+        var captureRecord = new CaptureExecutionRecord(
+            Actor: normalizedActor,
+            CreatedAtUtc: DateTimeOffset.UtcNow.ToString("O"),
+            SourceKind: string.IsNullOrWhiteSpace(captureSourceKind) ? "direct-text" : captureSourceKind.Trim(),
+            SourceReference: string.IsNullOrWhiteSpace(captureSourceReference)
+                ? null
+                : captureSourceReference.Trim().Replace('\\', '/'),
+            MaterializedArtifacts:
+            [
+                paths.MainArtifactPath.Replace('\\', '/'),
+                paths.StateFilePath.Replace('\\', '/'),
+                paths.TimelineFilePath.Replace('\\', '/')
+            ]);
 
         await File.WriteAllTextAsync(paths.MainArtifactPath, BuildUserStoryMarkdown(usId, title, kind, category, sourceText, tags), cancellationToken);
-        await File.WriteAllTextAsync(paths.TimelineFilePath, BuildInitialTimeline(usId, title, actor, runtimeVersion), cancellationToken);
+        await File.WriteAllTextAsync(paths.TimelineFilePath, BuildInitialTimeline(usId, title, normalizedActor, runtimeVersion), cancellationToken);
+        await File.WriteAllTextAsync(
+            paths.CaptureRecordPath,
+            JsonSerializer.Serialize(captureRecord, JsonSerializerOptions.Web),
+            cancellationToken);
         await fileStore.SaveAsync(workflowRun, paths.RootDirectory, cancellationToken);
         return paths.RootDirectory;
     }
@@ -328,6 +348,8 @@ public sealed class WorkflowRunner
                 BuildChildUserStorySource(workflowRun.UsId, child),
                 actor,
                 metadata.Tags,
+                captureSourceKind: "decomposition-child",
+                captureSourceReference: workflowRun.UsId,
                 cancellationToken);
             var childRun = await fileStore.LoadAsync(childRoot, cancellationToken);
             childRun.LinkToParent(workflowRun.UsId);

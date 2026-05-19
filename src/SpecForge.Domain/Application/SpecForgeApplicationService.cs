@@ -79,6 +79,8 @@ public sealed class SpecForgeApplicationService
             sourceText,
             actor,
             normalizedTags,
+            captureSourceKind: "direct-text",
+            captureSourceReference: null,
             cancellationToken);
         return new CreateOrImportUserStoryResult(usId, rootDirectory, Path.Combine(rootDirectory, "us.md"));
     }
@@ -114,7 +116,21 @@ public sealed class SpecForgeApplicationService
         CancellationToken cancellationToken = default)
     {
         var sourceText = await File.ReadAllTextAsync(sourcePath, cancellationToken);
-        return await CreateUserStoryAsync(workspaceRoot, usId, title, kind, category, sourceText, actor, tags, cancellationToken);
+        repositoryCategoryCatalog.EnsureCategoryIsAllowed(workspaceRoot, category);
+        var normalizedTags = WorkflowRunner.NormalizeUserStoryTags(tags);
+        var rootDirectory = await workflowRunner.CreateUserStoryAsync(
+            workspaceRoot,
+            usId,
+            title,
+            kind,
+            category,
+            sourceText,
+            actor,
+            normalizedTags,
+            captureSourceKind: "imported-markdown",
+            captureSourceReference: Path.GetFullPath(sourcePath).Replace('\\', '/'),
+            cancellationToken);
+        return new CreateOrImportUserStoryResult(usId, rootDirectory, Path.Combine(rootDirectory, "us.md"));
     }
 
     public async Task<UpdateUserStoryInfoResult> UpdateUserStoryInfoAsync(
@@ -812,6 +828,9 @@ public sealed class SpecForgeApplicationService
                 : workflowRun.CurrentPhase == phaseId;
             var phaseSlug = WorkflowPresentation.ToPhaseSlug(phaseId);
             var executionBoundary = DescribeExecutionBoundary(phaseId);
+            var captureRecord = phaseId == PhaseId.Capture
+                ? await TryReadCaptureExecutionRecordAsync(paths, cancellationToken)
+                : null;
             var executionReadiness = workflowRunner.GetPhaseExecutionReadiness(phaseId);
             var executionPolicy = workflowRunner.GetPhaseExecutionPolicy(phaseId);
             var executionEnvelope = workflowRunner.GetPhaseExecutionEnvelope(phaseId);
@@ -836,6 +855,7 @@ public sealed class SpecForgeApplicationService
                 TryGetExecuteSystemPromptPath(paths, phaseId),
                 TryGetApproveSystemPromptPath(paths, phaseId),
                 executionBoundary,
+                captureRecord,
                 executionReadiness,
                 executionPolicy,
                 executionEnvelope,
@@ -860,6 +880,7 @@ public sealed class SpecForgeApplicationService
                 ExecuteSystemPromptPath: null,
                 ApproveSystemPromptPath: null,
                 ExecutionBoundary: null,
+                CaptureRecord: null,
                 ExecutionReadiness: null,
                 ExecutionPolicy: null,
                 ExecutionEnvelope: null,
@@ -910,6 +931,37 @@ public sealed class SpecForgeApplicationService
                 receiptPath,
                 receipt?.EffectivePrompt,
                 receipt?.EffectiveContext);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    private static async Task<CaptureExecutionRecord?> TryReadCaptureExecutionRecordAsync(
+        UserStoryFilePaths paths,
+        CancellationToken cancellationToken)
+    {
+        if (!File.Exists(paths.CaptureRecordPath))
+        {
+            return null;
+        }
+
+        try
+        {
+            await using var stream = File.OpenRead(paths.CaptureRecordPath);
+            return await JsonSerializer.DeserializeAsync<CaptureExecutionRecord>(
+                stream,
+                new JsonSerializerOptions(JsonSerializerDefaults.Web),
+                cancellationToken);
         }
         catch (JsonException)
         {

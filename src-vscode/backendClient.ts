@@ -214,6 +214,7 @@ export interface WorkflowPhaseDetails {
   readonly executeSystemPromptPath?: string | null;
   readonly approveSystemPromptPath?: string | null;
   readonly executionBoundary?: PhaseExecutionBoundarySummary | null;
+  readonly captureRecord?: CaptureExecutionRecord | null;
   readonly executionReadiness?: PhaseExecutionReadiness | null;
   readonly latestExecutionInspection?: PhaseExecutionInspectionDetails | null;
 }
@@ -222,6 +223,14 @@ export interface PhaseExecutionBoundarySummary {
   readonly boundaryKind: string;
   readonly isModelBacked: boolean;
   readonly summary: string;
+}
+
+export interface CaptureExecutionRecord {
+  readonly actor: string;
+  readonly createdAtUtc: string;
+  readonly sourceKind: string;
+  readonly sourceReference?: string | null;
+  readonly materializedArtifacts: readonly string[];
 }
 
 export interface PhaseExecutionPromptSource {
