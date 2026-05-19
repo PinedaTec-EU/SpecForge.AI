@@ -80,7 +80,7 @@ Current stance:
 
 ### Refinement
 
-- [ ] `H-REF-01` Status: `todo`
+- [x] `H-REF-01` Status: `done`
   Implement a first prompt inspector for `refinement`.
   Output: an operator can visualize the effective prompt actually sent during the latest refinement execution.
   Notes: this must include system prompt, user prompt, warnings, and source prompt paths.

@@ -12,6 +12,37 @@ interface RefinementPhaseViewArgs {
 
 export function buildRefinementPhaseSections(args: RefinementPhaseViewArgs): PhaseSectionFragments {
   const { workflow, selectedPhase, state, heroTokenClass, escapeHtml, escapeHtmlAttribute } = args;
+  const refinementInspectionSection = selectedPhase.latestExecutionInspection?.effectivePrompt || selectedPhase.latestExecutionInspection?.effectiveContext
+    ? `
+      <div class="refinement-context">
+        <div class="refinement-context__copy">
+          <h4>Inspect the last refinement execution</h4>
+          <p>
+            Review the exact effective prompt and injected runtime context that SpecForge sent in the latest persisted refinement run.
+            Use this before changing prompt templates or adding more context files.
+          </p>
+        </div>
+        <div class="detail-actions detail-actions--files detail-actions--refinement">
+          ${selectedPhase.latestExecutionInspection?.effectivePrompt
+            ? `<button class="workflow-action-button workflow-action-button--document" type="button" data-open-effective-prompt-modal>View Last Refinement Prompt</button>`
+            : ""}
+          ${selectedPhase.latestExecutionInspection?.effectiveContext
+            ? `<button class="workflow-action-button workflow-action-button--document" type="button" data-open-effective-context-modal>View Last Refinement Context</button>`
+            : ""}
+          ${selectedPhase.latestExecutionInspection?.receiptPath
+            ? `<button class="workflow-action-button workflow-action-button--document" data-command="openArtifact" data-path="${escapeHtmlAttribute(selectedPhase.latestExecutionInspection.receiptPath)}">Open Receipt</button>`
+            : ""}
+        </div>
+      </div>
+    `
+    : `
+      <div class="refinement-context">
+        <div class="refinement-context__copy">
+          <h4>Inspect the last refinement execution</h4>
+          <p>No persisted refinement execution inspection is available yet for this user story.</p>
+        </div>
+      </div>
+    `;
   const refinementSuggestionsSection = `
     <div class="refinement-context">
       <div class="refinement-context__copy">
@@ -54,6 +85,7 @@ export function buildRefinementPhaseSections(args: RefinementPhaseViewArgs): Pha
           <span class="badge">${escapeHtml(workflow.refinement.tolerance)}</span>
         </div>
         ${workflow.refinement.reason ? `<p class="refinement-reason">${escapeHtml(workflow.refinement.reason)}</p>` : ""}
+        ${refinementInspectionSection}
         ${workflow.refinement.items.length > 0
       ? `
             <div class="refinement-list">
