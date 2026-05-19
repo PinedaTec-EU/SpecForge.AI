@@ -501,6 +501,29 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesExecutionEnvelopePerPhase()
+    {
+        var runner = new WorkflowRunner(new InspectionAwarePhaseExecutionProvider());
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var capturePhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "capture");
+        var implementationPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "implementation");
+
+        Assert.NotNull(capturePhase.ExecutionEnvelope);
+        Assert.Equal("workflow-entry", capturePhase.ExecutionEnvelope!.ExecutionMode);
+        Assert.Equal("runtime-managed", capturePhase.ExecutionEnvelope.SandboxMode);
+
+        Assert.NotNull(implementationPhase.ExecutionEnvelope);
+        Assert.Equal("managed-provider", implementationPhase.ExecutionEnvelope!.ExecutionMode);
+        Assert.Equal("provider-managed", implementationPhase.ExecutionEnvelope.SandboxMode);
+        Assert.Contains(implementationPhase.ExecutionEnvelope.ToolPermissions, item => item.Tool == "context-materialization");
+        Assert.Equal("extended", implementationPhase.ExecutionEnvelope.Budget.ComputeTier);
+    }
+
+    [Fact]
     public async Task GetCurrentPhaseAsync_CompletedWorkflow_CannotAdvance()
     {
         var runner = new WorkflowRunner(

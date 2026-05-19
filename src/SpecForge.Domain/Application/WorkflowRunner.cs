@@ -106,6 +106,13 @@ public sealed class WorkflowRunner
             phaseExecutionProvider.GetPhaseExecutionReadiness(phaseId),
             reviewEvidencePolicy);
 
+    public PhaseExecutionEnvelope GetPhaseExecutionEnvelope(PhaseId phaseId)
+    {
+        var readiness = phaseExecutionProvider.GetPhaseExecutionReadiness(phaseId);
+        var policy = PhaseExecutionPolicyCatalog.Describe(phaseId, readiness, reviewEvidencePolicy);
+        return PhaseExecutionEnvelopeCatalog.Describe(phaseId, policy, readiness);
+    }
+
     public async Task<string> CreateUserStoryAsync(
         string workspaceRoot,
         string usId,
@@ -1746,6 +1753,7 @@ public sealed class WorkflowRunner
             $"[runner.materialize.out] usId={workflowRun.UsId} phase={WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)} runtimeVersion={executionMetadata?.RuntimeVersion ?? "(none)"} generatedFiles=[{string.Join(", ", generatedFiles.Select(static path => $"'{path}'"))}]");
 
         var executionPolicy = GetPhaseExecutionPolicy(workflowRun.CurrentPhase);
+        var executionEnvelope = GetPhaseExecutionEnvelope(workflowRun.CurrentPhase);
         var receiptPath = Path.Combine(paths.ExecutionReceiptsDirectoryPath, $"{executionId}.json");
         var outputManifest = new PhaseExecutionOutputManifest(
             PhaseExecutionReceiptStore.NormalizePath(artifactPath),
@@ -1772,6 +1780,7 @@ public sealed class WorkflowRunner
                 executionMetadata,
                 executionPolicy,
                 receiptPath),
+            executionEnvelope,
             result.EffectivePrompt,
             result.EffectivePrompt is null ? null : effectiveContext);
         receiptPath = await PhaseExecutionReceiptStore.PersistAsync(paths.ExecutionReceiptsDirectoryPath, receipt, cancellationToken);

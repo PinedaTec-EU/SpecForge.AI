@@ -16,6 +16,7 @@ public sealed record PhaseExecutionReceipt(
     TokenUsage? Usage,
     PhaseExecutionMetadata? Execution,
     PhaseExecutionEvidenceRecord? EvidenceRecord = null,
+    PhaseExecutionEnvelope? ExecutionEnvelope = null,
     PhaseExecutionEffectivePrompt? EffectivePrompt = null,
     PhaseExecutionEffectiveContext? EffectiveContext = null);
 

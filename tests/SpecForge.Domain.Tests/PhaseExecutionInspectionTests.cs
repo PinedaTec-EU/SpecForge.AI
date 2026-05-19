@@ -124,6 +124,15 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
                 null,
                 new PhaseExecutionValidationSummary("captured", "Execution persisted evidence links.", ["result-artifact-generated"]),
                 [new PhaseExecutionEvidenceLink("receipt", "/repo/.specs/us/US-0001/execution-receipts/execution-1.json", "receipt")]),
+            ExecutionEnvelope: new PhaseExecutionEnvelope(
+                "spec",
+                "shared-execution-envelope/v1",
+                "managed-provider",
+                "provider-managed",
+                [new PhaseExecutionEnvelopeToolPermission("phase-agent", "model-execution", "execute", "enforced")],
+                [new PhaseExecutionEnvelopeWriteScope("specforge-runtime", "<workspace-root>/.specs/us/**/phases/*", "write", "enforced")],
+                [new PhaseExecutionEnvelopeBoundary("workspace-root", "<workspace-root>", "scoped", "Execution is scoped to the current workspace root.")],
+                new PhaseExecutionEnvelopeBudget("standard", "medium", "standard", "artifact-only", "Declared budget only.")),
             EffectivePrompt: new PhaseExecutionEffectivePrompt("system", "user"),
             EffectiveContext: new PhaseExecutionEffectiveContext(
                 "/repo",
@@ -139,10 +148,12 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("\"effectivePrompt\":{", json);
         Assert.Contains("\"effectiveContext\":{", json);
         Assert.Contains("\"evidenceRecord\":{", json);
+        Assert.Contains("\"executionEnvelope\":{", json);
         Assert.Contains("\"systemPrompt\":\"system\"", json);
         Assert.Contains("\"userPrompt\":\"user\"", json);
         Assert.Contains("\"workspaceRoot\":\"/repo\"", json);
         Assert.Contains("\"validationSummary\":{", json);
+        Assert.Contains("\"sandboxMode\":\"provider-managed\"", json);
     }
 
     [Fact]
@@ -226,6 +237,50 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Equal("captured", record.ValidationSummary.Status);
         Assert.Contains("phase-evidence-generated", record.ValidationSummary.Checks);
         Assert.Contains(record.EvidenceLinks, item => item.Kind == "receipt");
+    }
+
+    [Fact]
+    public void PhaseExecutionEnvelopeCatalog_DescribesNativeCliAndManagedProviderBoundaries()
+    {
+        var implementationReadiness = new PhaseExecutionReadiness(
+            PhaseId.Implementation,
+            CanExecute: true,
+            RequiredPermissions: PhaseExecutionPermissionCatalog.Describe(PhaseId.Implementation),
+            AssignedModelSecurity: new PhaseExecutionModelSecurity(
+                ProviderKind: "codex",
+                Model: "gpt-5-codex",
+                ProfileName: "implementation",
+                RepositoryAccess: "read-write",
+                NativeCliRequired: true,
+                NativeCliAvailable: true,
+                AgentName: "implementer",
+                AgentRole: "implementation"));
+        var implementationPolicy = PhaseExecutionPolicyCatalog.Describe(PhaseId.Implementation, implementationReadiness);
+        var implementationEnvelope = PhaseExecutionEnvelopeCatalog.Describe(PhaseId.Implementation, implementationPolicy, implementationReadiness);
+
+        var specReadiness = new PhaseExecutionReadiness(
+            PhaseId.Spec,
+            CanExecute: true,
+            RequiredPermissions: PhaseExecutionPermissionCatalog.Describe(PhaseId.Spec),
+            AssignedModelSecurity: new PhaseExecutionModelSecurity(
+                ProviderKind: "openai-compatible",
+                Model: "gpt-5",
+                ProfileName: "spec",
+                RepositoryAccess: "read",
+                NativeCliRequired: false,
+                NativeCliAvailable: false));
+        var specPolicy = PhaseExecutionPolicyCatalog.Describe(PhaseId.Spec, specReadiness);
+        var specEnvelope = PhaseExecutionEnvelopeCatalog.Describe(PhaseId.Spec, specPolicy, specReadiness);
+
+        Assert.Equal("native-cli", implementationEnvelope.ExecutionMode);
+        Assert.Equal("workspace-write", implementationEnvelope.SandboxMode);
+        Assert.Contains(implementationEnvelope.WriteScopes, item => item.Actor == "phase-agent");
+        Assert.Equal("extended", implementationEnvelope.Budget.ComputeTier);
+
+        Assert.Equal("managed-provider", specEnvelope.ExecutionMode);
+        Assert.Equal("provider-managed", specEnvelope.SandboxMode);
+        Assert.DoesNotContain(specEnvelope.WriteScopes, item => item.Actor == "phase-agent");
+        Assert.Contains(specEnvelope.ToolPermissions, item => item.Tool == "context-materialization");
     }
 
     public void Dispose()
