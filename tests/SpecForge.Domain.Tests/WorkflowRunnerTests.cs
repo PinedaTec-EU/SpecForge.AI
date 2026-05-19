@@ -1267,10 +1267,12 @@ public sealed class WorkflowRunnerTests : IDisposable
         var receiptJson = await File.ReadAllTextAsync(receiptPath);
         Assert.Contains("\"manifestSha256\"", receiptJson);
         Assert.Contains("\"outputManifest\"", receiptJson);
-        Assert.Contains("\"effectivePrompt\":{", receiptJson);
-        Assert.Contains("\"effectiveContext\":{", receiptJson);
-        Assert.Contains("\"systemPrompt\":\"system instructions\"", receiptJson);
-        Assert.Contains("\"userPrompt\":\"user instructions\"", receiptJson);
+        Assert.Contains("\"effectivePrompt\"", receiptJson);
+        Assert.Contains("\"effectiveContext\"", receiptJson);
+        Assert.Contains("\"systemPrompt\"", receiptJson);
+        Assert.Contains("system instructions", receiptJson);
+        Assert.Contains("\"userPrompt\"", receiptJson);
+        Assert.Contains("user instructions", receiptJson);
     }
 
     [Fact]

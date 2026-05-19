@@ -137,6 +137,7 @@ Known code anchors for implementation:
 
 - `src/SpecForge.OpenAICompatible/OpenAiCompatiblePhaseExecutionProvider.cs`
   - `BuildEffectivePromptAsync(...)` already materializes the composed prompt
+  - native CLI execution support may now also live in `src/SpecForge.OpenAICompatible/OpenAiCompatibleNativeCli.cs`
 - `src/SpecForge.Domain/Application/PhaseExecutionContext.cs`
   - already defines the runtime context ingredients that should become inspectable
 - `src/SpecForge.Domain/Application/WorkflowRunner.cs`
@@ -145,6 +146,7 @@ Known code anchors for implementation:
   - current receipt contract is the natural storage point for the first cut
 - `src/SpecForge.Domain/Application/SpecForgeApplicationService.cs`
   - current workflow DTO building is the likely first exposure path for MCP and portal consumers
+  - supporting application responsibilities may be extracted into adjacent helpers under `src/SpecForge.Domain/Application/`
 
 Suggested delivery slices:
 

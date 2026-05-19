@@ -23,9 +23,10 @@ import { resolveWorkflowRejectPlan } from "./workflowRejectPlan";
 import { buildWorkflowHtml } from "./workflowView";
 import type { WorkflowViewState } from "./workflow-view/models";
 import { getEditorTypographyCssVars } from "./webviewTypography";
+import { addContextFilesFromPathsAsync as addContextFilesToWorkflowAsync, attachWorkflowFilesAsync, setWorkflowFileKindAsync as setWorkflowFileKindForWorkflowAsync } from "./workflowPanelFiles";
 import { readUserWorkspacePreferences, setPausedWorkflowPhaseIds } from "./userWorkspacePreferences";
 import { readWorkflowGraphLayoutConfigAsync, updateAggregateWorkflowGraphLayoutAsync, updateWorkflowGraphLayoutPositionsAsync, updateWorkflowGraphLegendPositionAsync } from "./workflowGraphLayout";
-import { asErrorMessage, getNextAttachmentPathAsync } from "./utils";
+import { asErrorMessage } from "./utils";
 
 type WorkflowPanelCommand =
   | { readonly command: "webviewReady"; readonly detail?: string }
@@ -922,75 +923,30 @@ class WorkflowPanelController {
   }
 
   private async attachFilesAsync(kind: "context" | "attachment"): Promise<void> {
-    const selection = await vscode.window.showOpenDialog({
-      canSelectFiles: true,
-      canSelectFolders: false,
-      canSelectMany: true,
-      openLabel: kind === "context" ? "Add context files" : "Add user story files"
-    });
-
-    if (!selection || selection.length === 0) {
-      return;
-    }
-
-    const attachmentsDirectoryPath = path.join(this.summary.directoryPath, kind === "context" ? "context" : "attachments");
-    await fs.promises.mkdir(attachmentsDirectoryPath, { recursive: true });
-
-    for (const source of selection) {
-      const targetPath = await getNextAttachmentPathAsync(attachmentsDirectoryPath, path.basename(source.fsPath));
-      await fs.promises.copyFile(source.fsPath, targetPath);
-    }
-
-    await this.refreshAsync();
-    void vscode.window.showInformationMessage(
-      `${selection.length} file(s) added to ${kind === "context" ? "context" : "user story info"} for ${this.summary.usId}.`
+    await attachWorkflowFilesAsync(
+      this.summary.directoryPath,
+      this.summary.usId,
+      kind,
+      async () => this.refreshAsync()
     );
   }
 
   private async addContextFilesFromPathsAsync(paths: readonly string[]): Promise<void> {
-    const uniquePaths = Array.from(new Set(paths.map((filePath) => path.normalize(filePath))));
-    if (uniquePaths.length === 0) {
-      return;
-    }
-
-    const contextDirectoryPath = path.join(this.summary.directoryPath, "context");
-    await fs.promises.mkdir(contextDirectoryPath, { recursive: true });
-
-    let copiedFiles = 0;
-    for (const sourcePath of uniquePaths) {
-      const sourceStats = await fs.promises.stat(sourcePath).catch(() => null);
-      if (!sourceStats?.isFile()) {
-        continue;
-      }
-
-      const targetPath = await getNextAttachmentPathAsync(contextDirectoryPath, path.basename(sourcePath));
-      await fs.promises.copyFile(sourcePath, targetPath);
-      copiedFiles += 1;
-    }
-
-    await this.refreshAsync();
-    if (copiedFiles > 0) {
-      void vscode.window.showInformationMessage(
-        `${copiedFiles} suggested context file(s) added to ${this.summary.usId}.`
-      );
-    }
+    await addContextFilesToWorkflowAsync(
+      this.summary.directoryPath,
+      this.summary.usId,
+      paths,
+      async () => this.refreshAsync()
+    );
   }
 
   private async setFileKindAsync(filePath: string, targetKind: "context" | "attachment"): Promise<void> {
-    const sourcePath = path.normalize(filePath);
-    const targetDirectory = path.join(this.summary.directoryPath, targetKind === "context" ? "context" : "attachments");
-    const sourceDirectory = path.dirname(sourcePath);
-
-    if (path.normalize(sourceDirectory) === path.normalize(targetDirectory)) {
-      return;
-    }
-
-    await fs.promises.mkdir(targetDirectory, { recursive: true });
-    const targetPath = await getNextAttachmentPathAsync(targetDirectory, path.basename(sourcePath));
-    await fs.promises.rename(sourcePath, targetPath);
-    await this.refreshAsync();
-    void vscode.window.showInformationMessage(
-      `Moved ${path.basename(sourcePath)} to ${targetKind === "context" ? "context" : "user story info"} in ${this.summary.usId}.`
+    await setWorkflowFileKindForWorkflowAsync(
+      this.summary.directoryPath,
+      this.summary.usId,
+      filePath,
+      targetKind,
+      async () => this.refreshAsync()
     );
   }
 

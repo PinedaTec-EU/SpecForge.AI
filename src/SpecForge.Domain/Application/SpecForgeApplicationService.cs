@@ -1,24 +1,20 @@
 using SpecForge.Domain.Persistence;
 using SpecForge.Domain.Workflow;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace SpecForge.Domain.Application;
 
 public sealed class SpecForgeApplicationService
 {
     private const string DependencyBlockingReason = "dependency_not_completed";
-    private const string MissingDependencyReason = "missing";
-    private const string MetadataHeading = "## Metadata";
-
-    private static readonly Regex UserStoryIdRegex = new(
-        pattern: "\\bUS-[A-Z0-9]+(?:-[A-Z0-9]+)*\\b",
-        options: RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
     private readonly UserStoryFileStore fileStore;
     private readonly WorkflowRunner workflowRunner;
     private readonly RepositoryPromptInitializer repositoryPromptInitializer;
     private readonly RepositoryCategoryCatalog repositoryCategoryCatalog;
     private readonly UserStoryRuntimeStatusStore runtimeStatusStore;
+    private readonly GoalUserStoryIntakeService goalUserStoryIntakeService;
+    private readonly UserStoryFilesService userStoryFilesService;
+    private readonly UserStoryDependencyService userStoryDependencyService;
     private readonly string? runtimeVersion;
     private readonly bool completedUsLockOnCompleted;
 
@@ -41,6 +37,9 @@ public sealed class SpecForgeApplicationService
         this.repositoryPromptInitializer = repositoryPromptInitializer ?? new RepositoryPromptInitializer();
         this.repositoryCategoryCatalog = repositoryCategoryCatalog ?? new RepositoryCategoryCatalog();
         this.runtimeStatusStore = runtimeStatusStore ?? new UserStoryRuntimeStatusStore();
+        goalUserStoryIntakeService = new GoalUserStoryIntakeService(this.repositoryCategoryCatalog);
+        userStoryFilesService = new UserStoryFilesService();
+        userStoryDependencyService = new UserStoryDependencyService(this.fileStore);
         this.runtimeVersion = string.IsNullOrWhiteSpace(runtimeVersion) ? null : runtimeVersion.Trim();
         this.completedUsLockOnCompleted = completedUsLockOnCompleted;
     }
@@ -84,98 +83,24 @@ public sealed class SpecForgeApplicationService
         return new CreateOrImportUserStoryResult(usId, rootDirectory, Path.Combine(rootDirectory, "us.md"));
     }
 
-    public async Task<GoalIntakeResult> CreateUserStoriesFromGoalAsync(
+    public Task<GoalIntakeResult> CreateUserStoriesFromGoalAsync(
         string workspaceRoot,
         string goalText,
         IReadOnlyList<GoalUserStoryDraft> stories,
         string? goalId = null,
         string? strategy = null,
         string actor = "model-on-behalf-of-user",
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(workspaceRoot);
-        ArgumentException.ThrowIfNullOrWhiteSpace(goalText);
-        if (stories.Count == 0)
-        {
-            throw new ArgumentException("At least one user story draft is required.", nameof(stories));
-        }
-
-        var normalizedGoalId = NormalizeGoalId(goalId);
-        var normalizedStrategy = string.IsNullOrWhiteSpace(strategy)
-            ? "small-user-stories"
-            : strategy.Trim();
-        var existingIds = (await ListUserStoriesAsync(workspaceRoot, cancellationToken: cancellationToken))
-            .Select(static story => story.UsId)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var nextNumber = NextUserStoryNumber(existingIds);
-        var normalizedStories = new List<NormalizedGoalUserStoryDraft>(stories.Count);
-
-        for (var index = 0; index < stories.Count; index++)
-        {
-            var draft = stories[index];
-            var usId = string.IsNullOrWhiteSpace(draft.UsId)
-                ? NextAvailableUserStoryId(existingIds, ref nextNumber)
-                : draft.UsId.Trim().ToUpperInvariant();
-            if (!Regex.IsMatch(usId, "^US-[0-9]{4,}$", RegexOptions.CultureInvariant))
-            {
-                throw new ArgumentException($"User story id '{usId}' must use the US-0001 format.", nameof(stories));
-            }
-
-            if (!existingIds.Add(usId))
-            {
-                throw new ArgumentException($"User story id '{usId}' already exists or is duplicated in the goal intake.", nameof(stories));
-            }
-
-            var title = RequireTrimmed(draft.Title, "User story title is required.");
-            var kind = string.IsNullOrWhiteSpace(draft.Kind) ? "feature" : draft.Kind.Trim();
-            var category = string.IsNullOrWhiteSpace(draft.Category) ? "workflow" : draft.Category.Trim();
-            repositoryCategoryCatalog.EnsureCategoryIsAllowed(workspaceRoot, category);
-            var tags = WorkflowRunner.NormalizeUserStoryTags(draft.Tags);
-            _ = RequireTrimmed(draft.SourceText, "User story source text is required.");
-            normalizedStories.Add(new NormalizedGoalUserStoryDraft(usId, title, kind, category, tags, index + 1, draft));
-        }
-
-        var created = new List<GoalUserStoryCreationResult>(stories.Count);
-
-        foreach (var story in normalizedStories)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var sourceText = BuildGoalUserStorySource(
-                normalizedGoalId,
-                goalText.Trim(),
-                normalizedStrategy,
-                story.Sequence,
-                stories.Count,
-                story.Draft);
-            var rootDirectory = await workflowRunner.CreateUserStoryAsync(
-                workspaceRoot,
-                story.UsId,
-                story.Title,
-                story.Kind,
-                story.Category,
-                sourceText,
-                actor,
-                story.Tags,
-                cancellationToken);
-
-            created.Add(new GoalUserStoryCreationResult(
-                story.UsId,
-                story.Title,
-                story.Kind,
-                story.Category,
-                story.Tags,
-                story.Sequence,
-                rootDirectory,
-                Path.Combine(rootDirectory, "us.md")));
-        }
-
-        return new GoalIntakeResult(
-            normalizedGoalId,
-            goalText.Trim(),
-            normalizedStrategy,
-            created[0].UsId,
-            created);
-    }
+        CancellationToken cancellationToken = default) =>
+        goalUserStoryIntakeService.CreateUserStoriesFromGoalAsync(
+            workflowRunner,
+            async (root, token) => await ListUserStoriesAsync(root, cancellationToken: token),
+            workspaceRoot,
+            goalText,
+            stories,
+            goalId,
+            strategy,
+            actor,
+            cancellationToken);
 
     public async Task<CreateOrImportUserStoryResult> ImportUserStoryAsync(
         string workspaceRoot,
@@ -204,18 +129,18 @@ public sealed class SpecForgeApplicationService
         var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, usId);
         var workflowRun = await fileStore.LoadAsync(paths.RootDirectory, cancellationToken);
         var metadata = await WorkflowRunner.ReadUserStoryMetadataAsync(paths.MainArtifactPath, workflowRun.UsId, cancellationToken);
-        var nextTitle = NormalizeOptionalScalar(title) ?? metadata.Title;
-        var nextKind = NormalizeOptionalScalar(kind)?.ToLowerInvariant() ?? metadata.Kind;
-        var nextCategory = NormalizeOptionalScalar(category)?.ToLowerInvariant() ?? metadata.Category;
+        var nextTitle = UserStoryMarkdown.NormalizeOptionalScalar(title) ?? metadata.Title;
+        var nextKind = UserStoryMarkdown.NormalizeOptionalScalar(kind)?.ToLowerInvariant() ?? metadata.Kind;
+        var nextCategory = UserStoryMarkdown.NormalizeOptionalScalar(category)?.ToLowerInvariant() ?? metadata.Category;
         var nextTags = tags is null
             ? metadata.Tags
             : WorkflowRunner.NormalizeUserStoryTags(tags);
 
-        ValidateUserStoryKind(nextKind);
+        UserStoryMarkdown.ValidateUserStoryKind(nextKind);
         repositoryCategoryCatalog.EnsureCategoryIsAllowed(workspaceRoot, nextCategory);
 
         var content = await File.ReadAllTextAsync(paths.MainArtifactPath, cancellationToken);
-        var updated = RewriteUserStoryInfo(content, workflowRun.UsId, nextTitle, nextKind, nextCategory, nextTags);
+        var updated = UserStoryMarkdown.RewriteUserStoryInfo(content, workflowRun.UsId, nextTitle, nextKind, nextCategory, nextTags);
         await File.WriteAllTextAsync(paths.MainArtifactPath, updated, cancellationToken);
 
         var summary = await GetUserStorySummaryAsync(workspaceRoot, workflowRun.UsId, cancellationToken);
@@ -263,143 +188,6 @@ public sealed class SpecForgeApplicationService
         return summaries;
     }
 
-    private static string BuildGoalUserStorySource(
-        string goalId,
-        string goalText,
-        string strategy,
-        int sequence,
-        int totalStories,
-        GoalUserStoryDraft draft)
-    {
-        var acceptanceCriteria = NormalizeList(draft.AcceptanceCriteria);
-        var dependencies = NormalizeList(draft.Dependencies);
-        var clarifiedAnswers = NormalizeList(draft.ClarifiedAnswers);
-        var nonGoals = NormalizeList(draft.NonGoals);
-        var lines = new List<string>
-        {
-            "## SpecForge Goal Intake",
-            "",
-            $"- Goal: `{goalId}`",
-            $"- Strategy: `{strategy}`",
-            $"- Sequence: `{sequence}` of `{totalStories}`",
-            "- Coding policy: do not implement directly from the broad goal; drive this story through SpecForge SDD phases before code changes.",
-            "",
-            "## Original Goal",
-            "",
-            goalText,
-            "",
-            "## User Story Slice",
-            "",
-            RequireTrimmed(draft.SourceText, "User story source text is required.")
-        };
-
-        if (!string.IsNullOrWhiteSpace(draft.MvpOutcome) || !string.IsNullOrWhiteSpace(draft.SliceRationale))
-        {
-            lines.Add("");
-            lines.Add("## MVP Slice");
-            lines.Add("");
-            if (!string.IsNullOrWhiteSpace(draft.MvpOutcome))
-            {
-                lines.Add($"- Outcome: {draft.MvpOutcome.Trim()}");
-            }
-
-            if (!string.IsNullOrWhiteSpace(draft.SliceRationale))
-            {
-                lines.Add($"- Slice rationale: {draft.SliceRationale.Trim()}");
-            }
-        }
-
-        if (acceptanceCriteria.Count > 0)
-        {
-            lines.Add("");
-            lines.Add("## Acceptance Intent");
-            lines.Add("");
-            lines.AddRange(acceptanceCriteria.Select(static item => $"- {item}"));
-        }
-
-        if (nonGoals.Count > 0)
-        {
-            lines.Add("");
-            lines.Add("## Non Goals");
-            lines.Add("");
-            lines.AddRange(nonGoals.Select(static item => $"- {item}"));
-        }
-
-        if (clarifiedAnswers.Count > 0)
-        {
-            lines.Add("");
-            lines.Add("## Clarified Intake Answers");
-            lines.Add("");
-            lines.AddRange(clarifiedAnswers.Select(static item => $"- {item}"));
-        }
-
-        if (dependencies.Count > 0)
-        {
-            lines.Add("");
-            lines.Add("## Dependencies");
-            lines.Add("");
-            lines.AddRange(dependencies.Select(static item => $"- {item}"));
-        }
-
-        return string.Join(Environment.NewLine, lines);
-    }
-
-    private static IReadOnlyList<string> NormalizeList(IReadOnlyList<string>? values) =>
-        values?
-            .Select(static value => value?.Trim())
-            .Where(static value => !string.IsNullOrWhiteSpace(value))
-            .Select(static value => value!)
-            .ToArray()
-        ?? [];
-
-    private static string NormalizeGoalId(string? goalId) =>
-        string.IsNullOrWhiteSpace(goalId)
-            ? $"GOAL-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}"
-            : goalId.Trim().ToUpperInvariant();
-
-    private static string RequireTrimmed(string? value, string message)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            throw new ArgumentException(message);
-        }
-
-        return value.Trim();
-    }
-
-    private static int NextUserStoryNumber(IReadOnlySet<string> existingIds)
-    {
-        var max = existingIds
-            .Select(static id => Regex.Match(id, "^US-([0-9]+)$", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase))
-            .Where(static match => match.Success)
-            .Select(static match => int.Parse(match.Groups[1].Value))
-            .DefaultIfEmpty(0)
-            .Max();
-        return max + 1;
-    }
-
-    private static string NextAvailableUserStoryId(ISet<string> reservedIds, ref int nextNumber)
-    {
-        while (true)
-        {
-            var candidate = $"US-{nextNumber:0000}";
-            nextNumber++;
-            if (!reservedIds.Contains(candidate))
-            {
-                return candidate;
-            }
-        }
-    }
-
-    private sealed record NormalizedGoalUserStoryDraft(
-        string UsId,
-        string Title,
-        string Kind,
-        string Category,
-        IReadOnlyList<string> Tags,
-        int Sequence,
-        GoalUserStoryDraft Draft);
-
     public async Task<UserStorySummary> GetUserStorySummaryAsync(
         string workspaceRoot,
         string usId,
@@ -423,7 +211,7 @@ public sealed class SpecForgeApplicationService
             : string.Empty;
         var refinement = await ReadRefinementSessionAsync(paths, cancellationToken);
         var approvalQuestions = await ReadApprovalQuestionsAsync(paths, cancellationToken);
-        var dependencies = await GetDependencySummariesAsync(
+        var dependencies = await userStoryDependencyService.GetDependencySummariesAsync(
             workspaceRoot,
             paths.MainArtifactPath,
             workflowRun.UsId,
@@ -437,7 +225,7 @@ public sealed class SpecForgeApplicationService
             metadata.Kind,
             metadata.Category,
             metadata.Tags,
-            ResolveOperationalStatus(workflowRun.Status, dependencies),
+            UserStoryDependencyService.ResolveOperationalStatus(workflowRun.Status, dependencies),
             WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase),
             paths.RootDirectory,
             workflowRun.Branch?.WorkBranchName,
@@ -483,9 +271,9 @@ public sealed class SpecForgeApplicationService
             timelineEvents,
             WorkflowIterationDetailsBuilder.Build(paths, timelineEvents),
             paths.ContextDirectoryPath,
-            BuildFileDetails(paths.ContextDirectoryPath),
+            UserStoryFilesService.BuildFileDetails(paths.ContextDirectoryPath),
             paths.AttachmentsDirectoryPath,
-            BuildFileDetails(paths.AttachmentsDirectoryPath));
+            UserStoryFilesService.BuildFileDetails(paths.AttachmentsDirectoryPath));
     }
 
     public async Task<WorkflowLineageAnalysisResult> AnalyzeUserStoryLineageAsync(
@@ -516,10 +304,10 @@ public sealed class SpecForgeApplicationService
         var mainArtifactPath = Path.Combine(directory, "us.md");
         var workflowRun = await fileStore.LoadAsync(directory, cancellationToken);
         var mainArtifact = await File.ReadAllTextAsync(mainArtifactPath, cancellationToken);
-        var title = ReadTitle(mainArtifact, Path.GetFileName(Path.GetDirectoryName(mainArtifactPath) ?? mainArtifactPath));
-        var description = ReadObjectiveSummary(mainArtifact);
+        var title = UserStoryMarkdown.ReadTitle(mainArtifact, Path.GetFileName(Path.GetDirectoryName(mainArtifactPath) ?? mainArtifactPath));
+        var description = UserStoryMarkdown.ReadObjectiveSummary(mainArtifact);
         var metadata = await WorkflowRunner.ReadUserStoryMetadataAsync(mainArtifactPath, workflowRun.UsId, cancellationToken);
-        var dependencies = await GetDependencySummariesAsync(
+        var dependencies = await userStoryDependencyService.GetDependencySummariesAsync(
             FindWorkspaceRoot(new UserStoryFilePaths(directory)),
             mainArtifactPath,
             workflowRun.UsId,
@@ -534,7 +322,7 @@ public sealed class SpecForgeApplicationService
             directory,
             mainArtifactPath,
             WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase),
-            ResolveOperationalStatus(workflowRun.Status, dependencies),
+            UserStoryDependencyService.ResolveOperationalStatus(workflowRun.Status, dependencies),
             workflowRun.Branch?.WorkBranchName,
             dependencies,
             workflowRun.WorkflowKind,
@@ -623,12 +411,12 @@ public sealed class SpecForgeApplicationService
                 BlockingReason: "aggregate_waiting_children");
         }
 
-        var dependencies = await GetDependencySummariesAsync(
+        var dependencies = await userStoryDependencyService.GetDependencySummariesAsync(
             workspaceRoot,
             paths.MainArtifactPath,
             workflowRun.UsId,
             cancellationToken);
-        if (HasBlockingDependencies(workflowRun.Status, dependencies))
+        if (UserStoryDependencyService.HasBlockingDependencies(workflowRun.Status, dependencies))
         {
             return new CurrentPhaseSummary(
                 workflowRun.UsId,
@@ -970,334 +758,29 @@ public sealed class SpecForgeApplicationService
     public Task<UserStoryFilesResult> ListUserStoryFilesAsync(
         string workspaceRoot,
         string usId,
-        CancellationToken cancellationToken = default)
-    {
-        var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, usId);
-        return Task.FromResult(new UserStoryFilesResult(
-            usId,
-            BuildFileDetails(paths.ContextDirectoryPath),
-            BuildFileDetails(paths.AttachmentsDirectoryPath)));
-    }
+        CancellationToken cancellationToken = default) =>
+        userStoryFilesService.ListUserStoryFilesAsync(workspaceRoot, usId, cancellationToken);
 
     public async Task<UserStoryFilesResult> AddUserStoryFilesAsync(
         string workspaceRoot,
         string usId,
         IReadOnlyCollection<string> sourcePaths,
         string kind,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(workspaceRoot);
-        ArgumentException.ThrowIfNullOrWhiteSpace(usId);
-        var normalizedKind = NormalizeUserStoryFileKind(kind);
-        var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, usId);
-        var targetDirectoryPath = GetDirectoryPathForFileKind(paths, normalizedKind);
-        Directory.CreateDirectory(targetDirectoryPath);
-
-        foreach (var sourcePath in sourcePaths)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var resolvedSourcePath = ResolveWorkspaceOrAbsolutePath(workspaceRoot, sourcePath);
-            if (!File.Exists(resolvedSourcePath))
-            {
-                throw new FileNotFoundException($"The provided file path does not exist: {resolvedSourcePath}.", resolvedSourcePath);
-            }
-
-            var targetPath = GetNextAvailableFilePath(targetDirectoryPath, Path.GetFileName(resolvedSourcePath));
-            await using var sourceStream = File.OpenRead(resolvedSourcePath);
-            await using var targetStream = File.Create(targetPath);
-            await sourceStream.CopyToAsync(targetStream, cancellationToken);
-        }
-
-        return await ListUserStoryFilesAsync(workspaceRoot, usId, cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        await userStoryFilesService.AddUserStoryFilesAsync(workspaceRoot, usId, sourcePaths, kind, cancellationToken);
 
     public async Task<UserStoryFilesResult> SetUserStoryFileKindAsync(
         string workspaceRoot,
         string usId,
         string filePath,
         string kind,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(workspaceRoot);
-        ArgumentException.ThrowIfNullOrWhiteSpace(usId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
-        var normalizedKind = NormalizeUserStoryFileKind(kind);
-        var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, usId);
-        var resolvedFilePath = ResolveWorkspaceOrAbsolutePath(workspaceRoot, filePath);
-        var normalizedFilePath = Path.GetFullPath(resolvedFilePath);
-        var normalizedContextDirectory = Path.GetFullPath(paths.ContextDirectoryPath);
-        var normalizedAttachmentsDirectory = Path.GetFullPath(paths.AttachmentsDirectoryPath);
-
-        if (!File.Exists(normalizedFilePath))
-        {
-            throw new FileNotFoundException($"The provided file path does not exist: {normalizedFilePath}.", normalizedFilePath);
-        }
-
-        var currentDirectory = Path.GetDirectoryName(normalizedFilePath)
-            ?? throw new InvalidOperationException("The file path does not have a parent directory.");
-        var isContextFile = string.Equals(currentDirectory, normalizedContextDirectory, StringComparison.Ordinal);
-        var isAttachmentFile = string.Equals(currentDirectory, normalizedAttachmentsDirectory, StringComparison.Ordinal);
-        if (!isContextFile && !isAttachmentFile)
-        {
-            throw new InvalidOperationException("The file must already belong to the current user story.");
-        }
-
-        var targetDirectoryPath = GetDirectoryPathForFileKind(paths, normalizedKind);
-        Directory.CreateDirectory(targetDirectoryPath);
-        if (string.Equals(Path.GetFullPath(targetDirectoryPath), currentDirectory, StringComparison.Ordinal))
-        {
-            return await ListUserStoryFilesAsync(workspaceRoot, usId, cancellationToken);
-        }
-
-        var targetPath = GetNextAvailableFilePath(targetDirectoryPath, Path.GetFileName(normalizedFilePath));
-        File.Move(normalizedFilePath, targetPath);
-        return await ListUserStoryFilesAsync(workspaceRoot, usId, cancellationToken);
-    }
-
-    private async Task<IReadOnlyCollection<UserStoryDependencySummary>> GetDependencySummariesAsync(
-        string workspaceRoot,
-        string mainArtifactPath,
-        string currentUsId,
-        CancellationToken cancellationToken)
-    {
-        var dependencyIds = await ReadDependencyIdsAsync(mainArtifactPath, currentUsId, cancellationToken);
-        var dependencies = new List<UserStoryDependencySummary>(dependencyIds.Count);
-
-        foreach (var dependencyId in dependencyIds)
-        {
-            dependencies.Add(await ResolveDependencySummaryAsync(workspaceRoot, dependencyId, cancellationToken));
-        }
-
-        return dependencies;
-    }
-
-    private async Task<UserStoryDependencySummary> ResolveDependencySummaryAsync(
-        string workspaceRoot,
-        string dependencyId,
-        CancellationToken cancellationToken)
-    {
-        UserStoryFilePaths paths;
-        try
-        {
-            paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, dependencyId);
-        }
-        catch (DirectoryNotFoundException)
-        {
-            return new UserStoryDependencySummary(
-                dependencyId,
-                Title: null,
-                CurrentPhase: null,
-                Status: null,
-                IsSatisfied: false,
-                MissingReason: MissingDependencyReason);
-        }
-
-        if (File.Exists(paths.DroppedMarkerFilePath))
-        {
-            return new UserStoryDependencySummary(
-                dependencyId,
-                Title: null,
-                CurrentPhase: null,
-                Status: null,
-                IsSatisfied: false,
-                MissingReason: "dropped");
-        }
-
-        var workflowRun = await fileStore.LoadAsync(paths.RootDirectory, cancellationToken);
-        var mainArtifact = await File.ReadAllTextAsync(paths.MainArtifactPath, cancellationToken);
-        var status = WorkflowPresentation.ToStatusSlug(workflowRun.Status);
-
-        return new UserStoryDependencySummary(
-            workflowRun.UsId,
-            ReadTitle(mainArtifact, dependencyId),
-            WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase),
-            status,
-            IsSatisfied: workflowRun.Status == UserStoryStatus.Completed,
-            MissingReason: null);
-    }
-
-    private static async Task<IReadOnlyList<string>> ReadDependencyIdsAsync(
-        string mainArtifactPath,
-        string currentUsId,
-        CancellationToken cancellationToken)
-    {
-        if (!File.Exists(mainArtifactPath))
-        {
-            return [];
-        }
-
-        var content = await File.ReadAllTextAsync(mainArtifactPath, cancellationToken);
-
-        return ParseDependencyIds(content, currentUsId);
-    }
-
-    private static IReadOnlyList<string> ParseDependencyIds(string content, string currentUsId)
-    {
-        var lines = content.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
-        var dependencies = new List<string>();
-        var insideDependencies = false;
-
-        foreach (var rawLine in lines)
-        {
-            var line = rawLine.Trim();
-            if (line.Equals("## Dependencies", StringComparison.OrdinalIgnoreCase))
-            {
-                insideDependencies = true;
-                continue;
-            }
-
-            if (insideDependencies && line.StartsWith("## ", StringComparison.Ordinal))
-            {
-                break;
-            }
-
-            if (!insideDependencies || !line.StartsWith("- ", StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            foreach (Match match in UserStoryIdRegex.Matches(line))
-            {
-                var dependencyId = match.Value.ToUpperInvariant();
-                if (!dependencyId.Equals(currentUsId, StringComparison.OrdinalIgnoreCase))
-                {
-                    dependencies.Add(dependencyId);
-                }
-            }
-        }
-
-        return dependencies
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(static value => value, StringComparer.Ordinal)
-            .ToArray();
-    }
-
-    private static string ResolveOperationalStatus(
-        UserStoryStatus workflowStatus,
-        IReadOnlyCollection<UserStoryDependencySummary> dependencies) =>
-        HasBlockingDependencies(workflowStatus, dependencies)
-            ? "blocked"
-            : WorkflowPresentation.ToStatusSlug(workflowStatus);
-
-    private static bool HasBlockingDependencies(
-        UserStoryStatus workflowStatus,
-        IReadOnlyCollection<UserStoryDependencySummary> dependencies) =>
-        workflowStatus != UserStoryStatus.Completed
-        && dependencies.Any(static dependency => !dependency.IsSatisfied);
-
-    private static string? NormalizeOptionalScalar(string? value)
-    {
-        var normalized = value?.Trim();
-        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
-    }
-
-    private static void ValidateUserStoryKind(string kind)
-    {
-        if (kind is not ("feature" or "bug" or "hotfix"))
-        {
-            throw new WorkflowDomainException($"Unsupported user story kind '{kind}'.");
-        }
-    }
-
-    private static string RewriteUserStoryInfo(
-        string markdown,
-        string usId,
-        string title,
-        string kind,
-        string category,
-        IReadOnlyCollection<string> tags)
-    {
-        var lines = markdown.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n').ToList();
-        if (lines.Count == 0 || !lines[0].StartsWith("# ", StringComparison.Ordinal))
-        {
-            throw new WorkflowDomainException("User story heading was not found.");
-        }
-
-        lines[0] = $"# {usId} · {title}";
-        var metadataIndex = lines.FindIndex(static line => line.Equals(MetadataHeading, StringComparison.OrdinalIgnoreCase));
-        if (metadataIndex < 0)
-        {
-            throw new WorkflowDomainException("User story metadata section was not found.");
-        }
-
-        var endIndex = lines.Count;
-        for (var index = metadataIndex + 1; index < lines.Count; index++)
-        {
-            if (lines[index].StartsWith("## ", StringComparison.Ordinal))
-            {
-                endIndex = index;
-                break;
-            }
-        }
-
-        var metadataLines = new List<string>
-        {
-            MetadataHeading,
-            $"- Kind: `{kind}`",
-            $"- Category: `{category}`"
-        };
-
-        if (tags.Count > 0)
-        {
-            metadataLines.Add($"- Tags: {string.Join(", ", tags.Select(static tag => $"`{tag}`"))}");
-        }
-
-        metadataLines.Add(string.Empty);
-        lines.RemoveRange(metadataIndex, endIndex - metadataIndex);
-        lines.InsertRange(metadataIndex, metadataLines);
-
-        return string.Join('\n', lines).TrimEnd() + Environment.NewLine;
-    }
+        CancellationToken cancellationToken = default) =>
+        await userStoryFilesService.SetUserStoryFileKindAsync(workspaceRoot, usId, filePath, kind, cancellationToken);
 
     private static async Task<string> ReadTitleAsync(string filePath, CancellationToken cancellationToken)
     {
         var content = await File.ReadAllTextAsync(filePath, cancellationToken);
-        return ReadTitle(content, Path.GetFileName(Path.GetDirectoryName(filePath) ?? filePath));
-    }
-
-    private static string ReadTitle(string content, string fallback)
-    {
-        var titleLine = content
-            .Replace("\r\n", "\n", StringComparison.Ordinal)
-            .Split('\n')
-            .FirstOrDefault(static line => line.StartsWith("# ", StringComparison.Ordinal));
-
-        return titleLine?.Replace("# ", string.Empty, StringComparison.Ordinal).Trim()
-            ?? fallback;
-    }
-
-    private static string ReadObjectiveSummary(string content)
-    {
-        var lines = content
-            .Replace("\r\n", "\n", StringComparison.Ordinal)
-            .Split('\n');
-        var objectiveLines = new List<string>();
-        var insideObjective = false;
-
-        foreach (var rawLine in lines)
-        {
-            var line = rawLine.Trim();
-            if (line.Equals("## Objective", StringComparison.OrdinalIgnoreCase))
-            {
-                insideObjective = true;
-                continue;
-            }
-
-            if (insideObjective && line.StartsWith("## ", StringComparison.Ordinal))
-            {
-                break;
-            }
-
-            if (insideObjective && line.Length > 0)
-            {
-                objectiveLines.Add(line);
-            }
-        }
-
-        var summary = string.Join(" ", objectiveLines).Trim();
-        return summary.Length <= 280
-            ? summary
-            : string.Concat(summary.AsSpan(0, 277), "...");
+        return UserStoryMarkdown.ReadTitle(content, Path.GetFileName(Path.GetDirectoryName(filePath) ?? filePath));
     }
 
     private async Task<IReadOnlyCollection<WorkflowPhaseDetails>> BuildPhaseDetailsAsync(
@@ -1479,57 +962,6 @@ public sealed class SpecForgeApplicationService
             File.Exists(paths.DecompositionMarkdownPath) ? paths.DecompositionMarkdownPath : null,
             document.ProposedChildren,
             document.CreatedChildUsIds);
-    }
-
-    private static IReadOnlyCollection<UserStoryFileDetails> BuildFileDetails(string directoryPath)
-    {
-        if (!Directory.Exists(directoryPath))
-        {
-            return [];
-        }
-
-        return Directory.GetFiles(directoryPath, "*", SearchOption.TopDirectoryOnly)
-            .OrderBy(static path => path, StringComparer.Ordinal)
-            .Select(static path => new UserStoryFileDetails(Path.GetFileName(path), path))
-            .ToArray();
-    }
-
-    private static string NormalizeUserStoryFileKind(string kind) => kind.Trim().ToLowerInvariant() switch
-    {
-        "context" => "context",
-        "attachment" => "attachment",
-        "us-info" => "attachment",
-        "user-story" => "attachment",
-        "user-story-info" => "attachment",
-        _ => throw new InvalidOperationException($"Unsupported file kind '{kind}'. Expected 'context' or 'attachment'.")
-    };
-
-    private static string GetDirectoryPathForFileKind(UserStoryFilePaths paths, string kind) => kind switch
-    {
-        "context" => paths.ContextDirectoryPath,
-        "attachment" => paths.AttachmentsDirectoryPath,
-        _ => throw new InvalidOperationException($"Unsupported file kind '{kind}'.")
-    };
-
-    private static string ResolveWorkspaceOrAbsolutePath(string workspaceRoot, string filePath) =>
-        Path.GetFullPath(Path.IsPathRooted(filePath) ? filePath : Path.Combine(workspaceRoot, filePath));
-
-    private static string GetNextAvailableFilePath(string directoryPath, string fileName)
-    {
-        var extension = Path.GetExtension(fileName);
-        var baseName = extension.Length > 0 ? fileName[..^extension.Length] : fileName;
-
-        for (var attempt = 0; attempt < 100; attempt += 1)
-        {
-            var suffix = attempt == 0 ? string.Empty : $".{attempt + 1:00}";
-            var candidate = Path.Combine(directoryPath, $"{baseName}{suffix}{extension}");
-            if (!File.Exists(candidate))
-            {
-                return candidate;
-            }
-        }
-
-        throw new InvalidOperationException($"Unable to persist '{fileName}' after 100 attempts.");
     }
 
     private static string ResolvePhaseState(Workflow.WorkflowRun workflowRun, Workflow.PhaseId phaseId)

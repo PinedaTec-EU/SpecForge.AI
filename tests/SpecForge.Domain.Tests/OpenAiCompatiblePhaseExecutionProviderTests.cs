@@ -1786,18 +1786,18 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
         }
     }
 
-    private sealed class FakeNativeCliRunner : OpenAiCompatiblePhaseExecutionProvider.INativeCliRunner
+    private sealed class FakeNativeCliRunner : OpenAiCompatibleNativeCliRunners.INativeCliRunner
     {
         private readonly string responseJson;
         private readonly TokenUsage? usage;
-        private readonly Action<OpenAiCompatiblePhaseExecutionProvider.NativeCliInvocation>? onExecute;
+        private readonly Action<NativeCliInvocation>? onExecute;
 
         public FakeNativeCliRunner(
             string providerKind,
             bool isAvailable,
             string responseJson = "{}",
             TokenUsage? usage = null,
-            Action<OpenAiCompatiblePhaseExecutionProvider.NativeCliInvocation>? onExecute = null,
+            Action<NativeCliInvocation>? onExecute = null,
             int checkExitCode = 0,
             string checkStdout = "cli 1.0.0",
             string checkStderr = "")
@@ -1807,7 +1807,7 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
             this.responseJson = responseJson;
             this.usage = usage;
             this.onExecute = onExecute;
-            CheckResult = new OpenAiCompatiblePhaseExecutionProvider.NativeCliCheckResult(
+            CheckResult = new NativeCliCheckResult(
                 $"{providerKind} --version",
                 checkExitCode,
                 checkStdout,
@@ -1818,18 +1818,18 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
 
         public bool IsAvailable { get; }
 
-        public OpenAiCompatiblePhaseExecutionProvider.NativeCliCheckResult CheckResult { get; }
+        public NativeCliCheckResult CheckResult { get; }
 
-        public OpenAiCompatiblePhaseExecutionProvider.NativeCliInvocation? LastInvocation { get; private set; }
+        public NativeCliInvocation? LastInvocation { get; private set; }
 
-        public Task<OpenAiCompatiblePhaseExecutionProvider.NativeCliCheckResult> CheckAvailabilityAsync(CancellationToken cancellationToken) =>
+        public Task<NativeCliCheckResult> CheckAvailabilityAsync(CancellationToken cancellationToken) =>
             Task.FromResult(CheckResult);
 
-        public Task<OpenAiCompatiblePhaseExecutionProvider.NativeCliExecutionResult> ExecuteAsync(OpenAiCompatiblePhaseExecutionProvider.NativeCliInvocation invocation, CancellationToken cancellationToken)
+        public Task<NativeCliExecutionResult> ExecuteAsync(NativeCliInvocation invocation, CancellationToken cancellationToken)
         {
             LastInvocation = invocation;
             onExecute?.Invoke(invocation);
-            return Task.FromResult(new OpenAiCompatiblePhaseExecutionProvider.NativeCliExecutionResult(responseJson, usage));
+            return Task.FromResult(new NativeCliExecutionResult(responseJson, usage));
         }
     }
 
