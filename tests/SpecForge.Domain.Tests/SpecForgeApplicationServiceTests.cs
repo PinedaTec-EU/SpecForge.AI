@@ -524,6 +524,28 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_DescribesCaptureAsWorkflowEntryBoundary()
+    {
+        var runner = new WorkflowRunner(new InspectionAwarePhaseExecutionProvider());
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var capturePhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "capture");
+        var specPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "spec");
+
+        Assert.NotNull(capturePhase.ExecutionBoundary);
+        Assert.Equal("workflow-entry", capturePhase.ExecutionBoundary!.BoundaryKind);
+        Assert.False(capturePhase.ExecutionBoundary.IsModelBacked);
+        Assert.Contains("does not execute a phase model", capturePhase.ExecutionBoundary.Summary, StringComparison.Ordinal);
+
+        Assert.NotNull(specPhase.ExecutionBoundary);
+        Assert.Equal("model-phase", specPhase.ExecutionBoundary!.BoundaryKind);
+        Assert.True(specPhase.ExecutionBoundary.IsModelBacked);
+    }
+
+    [Fact]
     public async Task GetCurrentPhaseAsync_CompletedWorkflow_CannotAdvance()
     {
         var runner = new WorkflowRunner(

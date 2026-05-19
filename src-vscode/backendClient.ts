@@ -213,8 +213,15 @@ export interface WorkflowPhaseDetails {
   readonly approvePromptPath: string | null;
   readonly executeSystemPromptPath?: string | null;
   readonly approveSystemPromptPath?: string | null;
+  readonly executionBoundary?: PhaseExecutionBoundarySummary | null;
   readonly executionReadiness?: PhaseExecutionReadiness | null;
   readonly latestExecutionInspection?: PhaseExecutionInspectionDetails | null;
+}
+
+export interface PhaseExecutionBoundarySummary {
+  readonly boundaryKind: string;
+  readonly isModelBacked: boolean;
+  readonly summary: string;
 }
 
 export interface PhaseExecutionPromptSource {

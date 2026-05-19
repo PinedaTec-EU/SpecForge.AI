@@ -811,6 +811,7 @@ public sealed class SpecForgeApplicationService
                 ? false
                 : workflowRun.CurrentPhase == phaseId;
             var phaseSlug = WorkflowPresentation.ToPhaseSlug(phaseId);
+            var executionBoundary = DescribeExecutionBoundary(phaseId);
             var executionReadiness = workflowRunner.GetPhaseExecutionReadiness(phaseId);
             var executionPolicy = workflowRunner.GetPhaseExecutionPolicy(phaseId);
             var executionEnvelope = workflowRunner.GetPhaseExecutionEnvelope(phaseId);
@@ -834,6 +835,7 @@ public sealed class SpecForgeApplicationService
                 TryGetApprovePromptPath(paths, phaseId),
                 TryGetExecuteSystemPromptPath(paths, phaseId),
                 TryGetApproveSystemPromptPath(paths, phaseId),
+                executionBoundary,
                 executionReadiness,
                 executionPolicy,
                 executionEnvelope,
@@ -857,6 +859,7 @@ public sealed class SpecForgeApplicationService
                 ApprovePromptPath: null,
                 ExecuteSystemPromptPath: null,
                 ApproveSystemPromptPath: null,
+                ExecutionBoundary: null,
                 ExecutionReadiness: null,
                 ExecutionPolicy: null,
                 ExecutionEnvelope: null,
@@ -865,6 +868,17 @@ public sealed class SpecForgeApplicationService
 
         return materializedPhases;
     }
+
+    private static PhaseExecutionBoundarySummary DescribeExecutionBoundary(PhaseId phaseId) =>
+        phaseId == PhaseId.Capture
+            ? new PhaseExecutionBoundarySummary(
+                BoundaryKind: "workflow-entry",
+                IsModelBacked: false,
+                Summary: "Capture is the workflow entry phase. It materializes the user story and runtime state but does not execute a phase model or prompt pipeline.")
+            : new PhaseExecutionBoundarySummary(
+                BoundaryKind: "model-phase",
+                IsModelBacked: true,
+                Summary: $"Phase '{WorkflowPresentation.ToPhaseSlug(phaseId)}' is a model-backed workflow phase.");
 
     private static async Task<PhaseExecutionInspectionDetails?> TryReadLatestExecutionInspectionAsync(
         IReadOnlyCollection<TimelineEventDetails> timelineEvents,

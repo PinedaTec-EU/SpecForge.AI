@@ -47,10 +47,16 @@ public sealed record WorkflowPhaseDetails(
     string? ApprovePromptPath,
     string? ExecuteSystemPromptPath = null,
     string? ApproveSystemPromptPath = null,
+    PhaseExecutionBoundarySummary? ExecutionBoundary = null,
     PhaseExecutionReadiness? ExecutionReadiness = null,
     PhaseExecutionPolicy? ExecutionPolicy = null,
     PhaseExecutionEnvelope? ExecutionEnvelope = null,
     PhaseExecutionInspectionDetails? LatestExecutionInspection = null);
+
+public sealed record PhaseExecutionBoundarySummary(
+    string BoundaryKind,
+    bool IsModelBacked,
+    string Summary);
 
 public sealed record PhaseExecutionInspectionDetails(
     string? ReceiptPath,
