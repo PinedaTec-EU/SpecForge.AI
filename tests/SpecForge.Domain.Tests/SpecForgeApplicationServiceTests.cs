@@ -474,6 +474,33 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesExecutionPolicyPerPhase()
+    {
+        var runner = new WorkflowRunner(
+            new InspectionAwarePhaseExecutionProvider(),
+            runtimeVersion: null,
+            refinementTolerance: "balanced",
+            completedUsLockOnCompleted: true,
+            reviewEvidencePolicy: "release");
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var capturePhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "capture");
+        var reviewPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "review");
+
+        Assert.NotNull(capturePhase.ExecutionPolicy);
+        Assert.Equal("shared-phase-policy/v1", capturePhase.ExecutionPolicy!.PolicyKey);
+        Assert.Contains(capturePhase.ExecutionPolicy.EligibilityRules, rule => rule.Id == "entry_phase_no_model_required");
+
+        Assert.NotNull(reviewPhase.ExecutionPolicy);
+        Assert.Equal("read-write", reviewPhase.ExecutionPolicy!.Permissions.RepositoryAccess);
+        Assert.Contains(reviewPhase.ExecutionPolicy.EvidenceRequirements, item => item.Id == "validation_strategy_evidence" && item.PolicyInput == "release");
+        Assert.Contains(reviewPhase.ExecutionPolicy.EligibilityRules, rule => rule.Id == "review_evidence_policy_selected");
+    }
+
+    [Fact]
     public async Task GetCurrentPhaseAsync_CompletedWorkflow_CannotAdvance()
     {
         var runner = new WorkflowRunner(

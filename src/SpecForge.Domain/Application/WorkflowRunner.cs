@@ -100,6 +100,12 @@ public sealed class WorkflowRunner
     public PhaseExecutionReadiness GetPhaseExecutionReadiness(PhaseId phaseId) =>
         phaseExecutionProvider.GetPhaseExecutionReadiness(phaseId);
 
+    public PhaseExecutionPolicy GetPhaseExecutionPolicy(PhaseId phaseId) =>
+        PhaseExecutionPolicyCatalog.Describe(
+            phaseId,
+            phaseExecutionProvider.GetPhaseExecutionReadiness(phaseId),
+            reviewEvidencePolicy);
+
     public async Task<string> CreateUserStoryAsync(
         string workspaceRoot,
         string usId,

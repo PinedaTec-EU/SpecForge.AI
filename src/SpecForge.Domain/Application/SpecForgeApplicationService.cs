@@ -811,6 +811,8 @@ public sealed class SpecForgeApplicationService
                 ? false
                 : workflowRun.CurrentPhase == phaseId;
             var phaseSlug = WorkflowPresentation.ToPhaseSlug(phaseId);
+            var executionReadiness = workflowRunner.GetPhaseExecutionReadiness(phaseId);
+            var executionPolicy = workflowRunner.GetPhaseExecutionPolicy(phaseId);
             var latestExecutionInspection = await TryReadLatestExecutionInspectionAsync(
                 timelineEvents,
                 phaseSlug,
@@ -831,7 +833,8 @@ public sealed class SpecForgeApplicationService
                 TryGetApprovePromptPath(paths, phaseId),
                 TryGetExecuteSystemPromptPath(paths, phaseId),
                 TryGetApproveSystemPromptPath(paths, phaseId),
-                workflowRunner.GetPhaseExecutionReadiness(phaseId),
+                executionReadiness,
+                executionPolicy,
                 latestExecutionInspection));
         }
 
@@ -853,6 +856,7 @@ public sealed class SpecForgeApplicationService
                 ExecuteSystemPromptPath: null,
                 ApproveSystemPromptPath: null,
                 ExecutionReadiness: null,
+                ExecutionPolicy: null,
                 LatestExecutionInspection: null));
         }
 

@@ -48,6 +48,7 @@ public sealed record WorkflowPhaseDetails(
     string? ExecuteSystemPromptPath = null,
     string? ApproveSystemPromptPath = null,
     PhaseExecutionReadiness? ExecutionReadiness = null,
+    PhaseExecutionPolicy? ExecutionPolicy = null,
     PhaseExecutionInspectionDetails? LatestExecutionInspection = null);
 
 public sealed record PhaseExecutionInspectionDetails(

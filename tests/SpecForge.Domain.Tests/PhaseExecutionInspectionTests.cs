@@ -134,6 +134,36 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("\"workspaceRoot\":\"/repo\"", json);
     }
 
+    [Fact]
+    public void PhaseExecutionPolicyCatalog_DescribesImplementationAndReviewPolicies()
+    {
+        var implementationPolicy = PhaseExecutionPolicyCatalog.Describe(
+            PhaseId.Implementation,
+            new PhaseExecutionReadiness(
+                PhaseId.Implementation,
+                CanExecute: true,
+                RequiredPermissions: PhaseExecutionPermissionCatalog.Describe(PhaseId.Implementation)));
+        var reviewPolicy = PhaseExecutionPolicyCatalog.Describe(
+            PhaseId.Review,
+            new PhaseExecutionReadiness(
+                PhaseId.Review,
+                CanExecute: true,
+                RequiredPermissions: PhaseExecutionPermissionCatalog.Describe(PhaseId.Review)),
+            reviewEvidencePolicy: "release");
+
+        Assert.Equal("implementation", implementationPolicy.PhaseId);
+        Assert.Equal("shared-phase-policy/v1", implementationPolicy.PolicyKey);
+        Assert.Contains(implementationPolicy.AllowedTools, tool => tool.Tool == "workspace-write" && tool.Enforcement == "enforced");
+        Assert.Contains(implementationPolicy.WritablePaths, path => path.Path == "<workspace-root>/**" && path.Actor == "phase-agent");
+        Assert.Contains(implementationPolicy.ForbiddenPaths, path => path.Path == "<workspace-root>/.git/**");
+        Assert.Contains(implementationPolicy.EvidenceRequirements, item => item.Id == "implementation_evidence_record");
+
+        Assert.Equal("review", reviewPolicy.PhaseId);
+        Assert.Contains("`release`", reviewPolicy.Summary);
+        Assert.Contains(reviewPolicy.EvidenceRequirements, item => item.Id == "validation_strategy_evidence" && item.PolicyInput == "release");
+        Assert.Contains(reviewPolicy.EligibilityRules, rule => rule.Id == "review_evidence_policy_selected");
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(workspaceRoot))
