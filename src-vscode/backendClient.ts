@@ -274,9 +274,24 @@ export interface PhaseExecutionInspectionDetails {
   readonly refinementSkillPreselection?: RefinementSkillPreselection | null;
   readonly refinementGraphScopeRequest?: RefinementGraphScopeRequest | null;
   readonly specApprovalPolicySnapshot?: SpecPhaseApprovalPolicyDetails | null;
+  readonly implementationPolicySnapshot?: ImplementationPhasePolicySnapshot | null;
   readonly technicalDesignContextPack?: TechnicalDesignContextPack | null;
   readonly effectivePrompt?: PhaseExecutionEffectivePrompt | null;
   readonly effectiveContext?: PhaseExecutionEffectiveContext | null;
+}
+
+export interface ImplementationPhasePolicySnapshot {
+  readonly phaseId: string;
+  readonly policyKey: string;
+  readonly summary: string;
+  readonly executionAllowed: boolean;
+  readonly executionBlockingReason?: string | null;
+  readonly permissions: PhaseExecutionRequirements;
+  readonly allowedTools: readonly PhaseExecutionToolPermission[];
+  readonly writablePaths: readonly PhaseExecutionPathPolicy[];
+  readonly forbiddenPaths: readonly PhaseExecutionPathPolicy[];
+  readonly evidenceRequirements: readonly PhaseExecutionEvidenceRequirement[];
+  readonly eligibilityRules: readonly PhaseExecutionEligibilityRule[];
 }
 
 export interface TechnicalDesignContextPack {

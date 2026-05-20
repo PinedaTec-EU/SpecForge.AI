@@ -168,6 +168,18 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
                         "spec_approval_questions_unresolved",
                         "2 unresolved approval question(s) remain.")
                 ]),
+            ImplementationPolicySnapshot: new ImplementationPhasePolicySnapshot(
+                "implementation",
+                "shared-phase-policy/v1",
+                "Implementation may modify the workspace and must persist evidence for downstream review.",
+                ExecutionAllowed: true,
+                ExecutionBlockingReason: null,
+                new PhaseExecutionRequirements(true, "read-write", true),
+                [new PhaseExecutionToolPermission("workspace-write", "write", "enforced", "Implementation edits repository files inside the declared writable scope.")],
+                [new PhaseExecutionPathPolicy("<workspace-root>/**", "write", "phase-agent", "declared", "Implementation can update repository files inside the active workspace.")],
+                [new PhaseExecutionPathPolicy("<workspace-root>/.git/**", "write", "phase-agent", "enforced", "Git metadata must never be mutated by phase execution.")],
+                [new PhaseExecutionEvidenceRequirement("implementation_evidence_record", "Implementation must persist evidence markdown/json describing touched files and validation performed.", "enforced")],
+                [new PhaseExecutionEligibilityRule("implementation_write_scope_declared", "Implementation must expose writable scope and forbidden mutation zones so repository edits stay auditable.", "declared", null, true, "Writable scope and forbidden mutation zones are declared through the shared implementation policy contract.")]),
             TechnicalDesignContextPack: new TechnicalDesignContextPack(
                 [new RefinementSkillSelectionItem("../ai-skills-shared/.shared-skills/skills/dotnet/SKILL.md", "Selected for .NET repository scope.")],
                 new RefinementGraphScopeRequest(
@@ -237,6 +249,7 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("\"refinementSkillPreselection\":{", json);
         Assert.Contains("\"refinementGraphScopeRequest\":{", json);
         Assert.Contains("\"specApprovalPolicySnapshot\":{", json);
+        Assert.Contains("\"implementationPolicySnapshot\":{", json);
         Assert.Contains("\"technicalDesignContextPack\":{", json);
         Assert.Contains("\"evidenceRecord\":{", json);
         Assert.Contains("\"executionEnvelope\":{", json);
@@ -246,6 +259,7 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("\"requiredSkills\":[", json);
         Assert.Contains("\"seedNodes\":[", json);
         Assert.Contains("\"approvalBlockingReason\":\"spec_approval_questions_unresolved\"", json);
+        Assert.Contains("\"executionAllowed\":true", json);
         Assert.Contains("\"workspaceRoot\":\"/repo\"", json);
         Assert.Contains("\"impactGraphState\":\"fresh\"", json);
         Assert.Contains("\"graphQueryEvidence\":[", json);

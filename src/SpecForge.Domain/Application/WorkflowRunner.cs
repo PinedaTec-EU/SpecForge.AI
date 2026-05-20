@@ -1803,6 +1803,11 @@ public sealed class WorkflowRunner
         var specApprovalPolicySnapshot = workflowRun.CurrentPhase == PhaseId.Spec
             ? await SpecPhaseApprovalPolicyBuilder.BuildAsync(workflowRun, paths, cancellationToken)
             : null;
+        var implementationPolicySnapshot = workflowRun.CurrentPhase == PhaseId.Implementation
+            ? ImplementationPhasePolicySnapshotBuilder.Build(
+                GetPhaseExecutionReadiness(PhaseId.Implementation),
+                executionPolicy)
+            : null;
         var receiptPath = Path.Combine(paths.ExecutionReceiptsDirectoryPath, $"{executionId}.json");
         var outputManifest = new PhaseExecutionOutputManifest(
             PhaseExecutionReceiptStore.NormalizePath(artifactPath),
@@ -1834,6 +1839,7 @@ public sealed class WorkflowRunner
             refinementSkillPreselection,
             refinementGraphScopeRequest,
             specApprovalPolicySnapshot,
+            implementationPolicySnapshot,
             technicalDesignContextPack,
             result.EffectivePrompt,
             result.EffectivePrompt is null ? null : effectiveContext);

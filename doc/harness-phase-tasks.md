@@ -211,7 +211,7 @@ Current stance:
   Output: explicit evidence requirements, writable scope rules, forbidden mutation zones, and repository-access semantics.
   Notes: this is a priority item and aligns with the separate policy thread already in motion.
 
-- [ ] `P-IMP-02` Status: `todo`
+- [x] `P-IMP-02` Status: `done`
   Persist and expose the effective implementation policy snapshot.
   Output: operator can see which implementation policy governed the run and why an action was allowed or blocked.
 
