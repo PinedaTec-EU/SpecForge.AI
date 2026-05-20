@@ -168,6 +168,28 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
                         "spec_approval_questions_unresolved",
                         "2 unresolved approval question(s) remain.")
                 ]),
+            TechnicalDesignContextPack: new TechnicalDesignContextPack(
+                [new RefinementSkillSelectionItem("../ai-skills-shared/.shared-skills/skills/dotnet/SKILL.md", "Selected for .NET repository scope.")],
+                new RefinementGraphScopeRequest(
+                    2,
+                    [new RefinementGraphSeedNode("user-story-intent", "User Story Intent", "Primary intent source.")],
+                    [new PhaseExecutionArtifactInput("/repo/.specs/us/US-0001/us.md", "us-hash", "capture")],
+                    []),
+                "fresh",
+                "/repo/.specs/us/US-0001/context/impact-summary.md",
+                GraphEnabled: true,
+                GraphAvailable: true,
+                FallbackUsed: false,
+                GraphBackedExpansions:
+                [
+                    new TechnicalDesignGraphExpansion(
+                        "/repo/src/App/Service.cs",
+                        "Seed file from graph scope request.",
+                        "graph-scope-request",
+                        "/repo/src/App/App.csproj",
+                        "service-hash")
+                ],
+                Warnings: []),
             EffectivePrompt: new PhaseExecutionEffectivePrompt("system", "user"),
             EffectiveContext: new PhaseExecutionEffectiveContext(
                 "/repo",
@@ -176,7 +198,17 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
                 [],
                 [],
                 null,
-                null));
+                null,
+                new TechnicalDesignContextPack(
+                    [new RefinementSkillSelectionItem("../ai-skills-shared/.shared-skills/skills/dotnet/SKILL.md", "Selected for .NET repository scope.")],
+                    null,
+                    "fresh",
+                    "/repo/.specs/us/US-0001/context/impact-summary.md",
+                    GraphEnabled: true,
+                    GraphAvailable: true,
+                    FallbackUsed: false,
+                    GraphBackedExpansions: [],
+                    Warnings: [])));
 
         var json = JsonSerializer.Serialize(receipt, new JsonSerializerOptions(JsonSerializerDefaults.Web));
 
@@ -186,6 +218,7 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("\"refinementSkillPreselection\":{", json);
         Assert.Contains("\"refinementGraphScopeRequest\":{", json);
         Assert.Contains("\"specApprovalPolicySnapshot\":{", json);
+        Assert.Contains("\"technicalDesignContextPack\":{", json);
         Assert.Contains("\"evidenceRecord\":{", json);
         Assert.Contains("\"executionEnvelope\":{", json);
         Assert.Contains("\"systemPrompt\":\"system\"", json);
@@ -195,6 +228,7 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("\"seedNodes\":[", json);
         Assert.Contains("\"approvalBlockingReason\":\"spec_approval_questions_unresolved\"", json);
         Assert.Contains("\"workspaceRoot\":\"/repo\"", json);
+        Assert.Contains("\"impactGraphState\":\"fresh\"", json);
         Assert.Contains("\"validationSummary\":{", json);
         Assert.Contains("\"sandboxMode\":\"provider-managed\"", json);
     }

@@ -934,7 +934,8 @@ public sealed class SpecForgeApplicationService
                 receipt?.RefinementPolicySnapshot is null &&
                 receipt?.RefinementSkillPreselection is null &&
                 receipt?.RefinementGraphScopeRequest is null &&
-                receipt?.SpecApprovalPolicySnapshot is null)
+                receipt?.SpecApprovalPolicySnapshot is null &&
+                receipt?.TechnicalDesignContextPack is null)
             {
                 return null;
             }
@@ -946,6 +947,7 @@ public sealed class SpecForgeApplicationService
                 receipt?.RefinementSkillPreselection,
                 receipt?.RefinementGraphScopeRequest,
                 receipt?.SpecApprovalPolicySnapshot,
+                receipt?.TechnicalDesignContextPack,
                 receipt?.EffectivePrompt,
                 receipt?.EffectiveContext);
         }

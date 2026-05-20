@@ -14,4 +14,15 @@ public sealed record SemanticGraphRuntimeControls(
                 ? "Reuse semantic graph artifacts when available and allow graph materialization or refresh for the touched user-story scope."
                 : "Reuse semantic graph artifacts when available, but do not create or refresh graph state automatically for the touched user-story scope."
             : "Ignore semantic graph artifacts during workflow runtime and rely on fallback context expansion only.";
+
+    public static SemanticGraphRuntimeControls ResolveFromEnvironment() =>
+        new(
+            UseSemanticGraphWhenAvailable: !string.Equals(
+                Environment.GetEnvironmentVariable("SPECFORGE_USE_SEMANTIC_GRAPH_WHEN_AVAILABLE")?.Trim(),
+                "false",
+                StringComparison.OrdinalIgnoreCase),
+            AllowGraphBuildRefreshForTouchedUserStoryScope: string.Equals(
+                Environment.GetEnvironmentVariable("SPECFORGE_ALLOW_GRAPH_BUILD_REFRESH_FOR_TOUCHED_US_SCOPE")?.Trim(),
+                "true",
+                StringComparison.OrdinalIgnoreCase));
 }

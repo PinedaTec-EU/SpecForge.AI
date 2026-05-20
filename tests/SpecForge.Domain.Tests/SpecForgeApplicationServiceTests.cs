@@ -1,3 +1,4 @@
+using System.Text.Json;
 using SpecForge.Domain.Application;
 using SpecForge.Domain.Persistence;
 using SpecForge.Domain.Workflow;
@@ -634,6 +635,52 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
         Assert.Contains(
             technicalDesignPhase.LatestExecutionInspection.EvidenceRecord.Settings,
             item => item.Name == "phase-id" && item.Value == "technical-design");
+    }
+
+    [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesTechnicalDesignContextPack()
+    {
+        var originalUseGraph = Environment.GetEnvironmentVariable("SPECFORGE_USE_SEMANTIC_GRAPH_WHEN_AVAILABLE");
+        var originalAllowMutation = Environment.GetEnvironmentVariable("SPECFORGE_ALLOW_GRAPH_BUILD_REFRESH_FOR_TOUCHED_US_SCOPE");
+        Environment.SetEnvironmentVariable("SPECFORGE_USE_SEMANTIC_GRAPH_WHEN_AVAILABLE", "true");
+        Environment.SetEnvironmentVariable("SPECFORGE_ALLOW_GRAPH_BUILD_REFRESH_FOR_TOUCHED_US_SCOPE", "true");
+
+        try
+        {
+            var runner = new WorkflowRunner(new InspectionAwarePhaseExecutionProvider());
+            var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+            await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+            await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+            await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+            await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+            var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0001");
+            Directory.CreateDirectory(paths.ContextDirectoryPath);
+            await File.WriteAllTextAsync(
+                paths.GraphScopeRequestPath,
+                JsonSerializer.Serialize(
+                    new RefinementGraphScopeRequest(
+                        2,
+                        [new RefinementGraphSeedNode("user-story-intent", "User Story Intent", "Primary design scope root.")],
+                        [new PhaseExecutionArtifactInput("src/App/Service.cs", "service-hash", "refinement")],
+                        []),
+                    new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+            await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+            var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+            var technicalDesignPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "technical-design");
+
+            Assert.NotNull(technicalDesignPhase.LatestExecutionInspection);
+            Assert.NotNull(technicalDesignPhase.LatestExecutionInspection!.TechnicalDesignContextPack);
+            Assert.True(technicalDesignPhase.LatestExecutionInspection.TechnicalDesignContextPack!.GraphEnabled);
+            Assert.NotEmpty(technicalDesignPhase.LatestExecutionInspection.TechnicalDesignContextPack.SelectedSkills);
+            Assert.NotNull(technicalDesignPhase.LatestExecutionInspection.TechnicalDesignContextPack.GraphScopeRequest);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("SPECFORGE_USE_SEMANTIC_GRAPH_WHEN_AVAILABLE", originalUseGraph);
+            Environment.SetEnvironmentVariable("SPECFORGE_ALLOW_GRAPH_BUILD_REFRESH_FOR_TOUCHED_US_SCOPE", originalAllowMutation);
+        }
     }
 
     [Fact]

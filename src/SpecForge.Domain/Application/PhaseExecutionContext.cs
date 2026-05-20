@@ -13,4 +13,5 @@ public sealed record PhaseExecutionContext(
     // the operation on top of the existing artifact instead of generating a new one from scratch.
     // Only supported for Spec today; other phases ignore both fields.
     string? CurrentArtifactPath = null,
-    string? OperationPrompt = null);
+    string? OperationPrompt = null,
+    TechnicalDesignContextPack? TechnicalDesignContextPack = null);

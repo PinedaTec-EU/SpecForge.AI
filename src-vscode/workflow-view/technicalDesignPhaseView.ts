@@ -13,6 +13,9 @@ export function buildTechnicalDesignPhaseSections(args: TechnicalDesignPhaseView
   const effectivePrompt = selectedPhase.latestExecutionInspection?.effectivePrompt ?? null;
   const effectiveContext = selectedPhase.latestExecutionInspection?.effectiveContext ?? null;
   const evidenceRecord = selectedPhase.latestExecutionInspection?.evidenceRecord ?? null;
+  const contextPack = selectedPhase.latestExecutionInspection?.technicalDesignContextPack
+    ?? selectedPhase.latestExecutionInspection?.effectiveContext?.technicalDesignContextPack
+    ?? null;
   const receiptPath = selectedPhase.latestExecutionInspection?.receiptPath?.trim() || null;
   const executionReadiness = selectedPhase.executionReadiness ?? null;
   const executionPolicy = selectedPhase.executionPolicy ?? null;
@@ -108,6 +111,62 @@ export function buildTechnicalDesignPhaseSections(args: TechnicalDesignPhaseView
     `
     : "";
 
+  const technicalDesignContextPackSection = selectedPhase.phaseId === "technical-design" && contextPack
+    ? `
+      <section class="detail-card">
+        <h3>Design Context Pack</h3>
+        <p class="panel-copy">
+          This is the graph-aware narrowing pack that fed the latest technical-design execution: selected skills, graph scope, impact summary, and graph-backed file expansions.
+        </p>
+        <div class="detail-grid">
+          <div><strong>Selected Skills</strong><div><code>${contextPack.selectedSkills.length}</code></div></div>
+          <div><strong>Graph Enabled</strong><div><code>${contextPack.graphEnabled ? "true" : "false"}</code></div></div>
+          <div><strong>Impact Graph State</strong><div><code>${escapeHtml(contextPack.impactGraphState ?? "missing")}</code></div></div>
+          <div><strong>Graph Available</strong><div><code>${contextPack.graphAvailable ? "true" : "false"}</code></div></div>
+          <div><strong>Fallback Used</strong><div><code>${contextPack.fallbackUsed ? "true" : "false"}</code></div></div>
+          <div><strong>Graph Expansions</strong><div><code>${contextPack.graphBackedExpansions.length}</code></div></div>
+        </div>
+        <div class="refinement-suggestions">
+          <div class="refinement-suggestion refinement-suggestion--static">
+            <div class="refinement-suggestion__body">
+              <strong>Selected Skills</strong>
+              ${contextPack.selectedSkills.length === 0
+                ? "<span>No selected skills were recorded for this technical-design execution.</span>"
+                : contextPack.selectedSkills.map((skill) => `<span><code>${escapeHtml(skill.skillPath)}</code> · ${escapeHtml(skill.rationale)}</span>`).join("")}
+            </div>
+          </div>
+          <div class="refinement-suggestion refinement-suggestion--static">
+            <div class="refinement-suggestion__body">
+              <strong>Graph Scope</strong>
+              ${contextPack.graphScopeRequest
+                ? `
+                  <span>Depth: <code>${contextPack.graphScopeRequest.depth}</code></span>
+                  <span>Seed nodes: <code>${contextPack.graphScopeRequest.seedNodes.length}</code></span>
+                  <span>Seed files: <code>${contextPack.graphScopeRequest.seedFiles.length}</code></span>
+                  <span>Unresolved questions: <code>${contextPack.graphScopeRequest.unresolvedScopeQuestions.length}</code></span>
+                `
+                : "<span>No graph scope request was available.</span>"}
+            </div>
+          </div>
+          <div class="refinement-suggestion refinement-suggestion--static">
+            <div class="refinement-suggestion__body">
+              <strong>Graph-Backed Expansions</strong>
+              ${contextPack.graphBackedExpansions.length === 0
+                ? "<span>No graph-backed expansions were available for this execution.</span>"
+                : contextPack.graphBackedExpansions.map((item) => `<span><code>${escapeHtml(item.path)}</code> · <code>${escapeHtml(item.source)}</code> · ${escapeHtml(item.reason)}</span>`).join("")}
+              ${contextPack.impactSummaryPath
+                ? `<span>Impact summary: <code>${escapeHtml(contextPack.impactSummaryPath)}</code></span>`
+                : ""}
+            </div>
+          </div>
+        </div>
+        ${contextPack.warnings.length > 0
+          ? `<div class="callout callout--warning"><strong>Warnings:</strong> ${contextPack.warnings.map((warning) => escapeHtml(warning)).join(" · ")}</div>`
+          : ""}
+      </section>
+    `
+    : "";
+
   const technicalDesignPolicySection = selectedPhase.phaseId === "technical-design" && (executionReadiness || executionPolicy)
     ? `
       <section class="detail-card">
@@ -148,6 +207,7 @@ export function buildTechnicalDesignPhaseSections(args: TechnicalDesignPhaseView
   return {
     beforeArtifact: [
       ...(technicalDesignInspectionSection ? [technicalDesignInspectionSection] : []),
+      ...(technicalDesignContextPackSection ? [technicalDesignContextPackSection] : []),
       ...(technicalDesignPolicySection ? [technicalDesignPolicySection] : []),
       ...(technicalDesignEvidenceSection ? [technicalDesignEvidenceSection] : [])
     ],

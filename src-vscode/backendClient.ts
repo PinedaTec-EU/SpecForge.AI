@@ -264,6 +264,7 @@ export interface PhaseExecutionEffectiveContext {
   readonly contextFiles: readonly PhaseExecutionArtifactInput[];
   readonly currentArtifact?: PhaseExecutionArtifactInput | null;
   readonly operationPromptSha256?: string | null;
+  readonly technicalDesignContextPack?: TechnicalDesignContextPack | null;
 }
 
 export interface PhaseExecutionInspectionDetails {
@@ -273,8 +274,29 @@ export interface PhaseExecutionInspectionDetails {
   readonly refinementSkillPreselection?: RefinementSkillPreselection | null;
   readonly refinementGraphScopeRequest?: RefinementGraphScopeRequest | null;
   readonly specApprovalPolicySnapshot?: SpecPhaseApprovalPolicyDetails | null;
+  readonly technicalDesignContextPack?: TechnicalDesignContextPack | null;
   readonly effectivePrompt?: PhaseExecutionEffectivePrompt | null;
   readonly effectiveContext?: PhaseExecutionEffectiveContext | null;
+}
+
+export interface TechnicalDesignContextPack {
+  readonly selectedSkills: readonly RefinementSkillSelectionItem[];
+  readonly graphScopeRequest?: RefinementGraphScopeRequest | null;
+  readonly impactGraphState?: string | null;
+  readonly impactSummaryPath?: string | null;
+  readonly graphEnabled: boolean;
+  readonly graphAvailable: boolean;
+  readonly fallbackUsed: boolean;
+  readonly graphBackedExpansions: readonly TechnicalDesignGraphExpansion[];
+  readonly warnings: readonly string[];
+}
+
+export interface TechnicalDesignGraphExpansion {
+  readonly path: string;
+  readonly reason: string;
+  readonly source: string;
+  readonly projectPath?: string | null;
+  readonly sha256?: string | null;
 }
 
 export interface PhaseExecutionEvidenceRecord {

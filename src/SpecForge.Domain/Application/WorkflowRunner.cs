@@ -1648,7 +1648,7 @@ public sealed class WorkflowRunner
             ImplementationPhaseEvidence.EnsureReviewCanConsume(workspaceRoot, paths);
         }
 
-        var executionContext = new PhaseExecutionContext(
+        var baseExecutionContext = new PhaseExecutionContext(
             workspaceRoot,
             workflowRun.UsId,
             workflowRun.CurrentPhase,
@@ -1657,6 +1657,17 @@ public sealed class WorkflowRunner
             BuildContextFilePaths(paths, workflowRun.CurrentPhase),
             currentArtifactPath,
             operationPrompt);
+        var technicalDesignContextPack = workflowRun.CurrentPhase == PhaseId.TechnicalDesign
+            ? await TechnicalDesignContextPackBuilder.BuildAsync(
+                workspaceRoot,
+                workflowRun.UsId,
+                paths,
+                baseExecutionContext,
+                cancellationToken)
+            : null;
+        var executionContext = technicalDesignContextPack is null
+            ? baseExecutionContext
+            : baseExecutionContext with { TechnicalDesignContextPack = technicalDesignContextPack };
         EnsureExecutionInputFilesExist(executionContext);
         var executionId = BuildExecutionId(workflowRun.CurrentPhase);
         var executionStartedAtUtc = DateTimeOffset.UtcNow;
@@ -1823,6 +1834,7 @@ public sealed class WorkflowRunner
             refinementSkillPreselection,
             refinementGraphScopeRequest,
             specApprovalPolicySnapshot,
+            technicalDesignContextPack,
             result.EffectivePrompt,
             result.EffectivePrompt is null ? null : effectiveContext);
         receiptPath = await PhaseExecutionReceiptStore.PersistAsync(paths.ExecutionReceiptsDirectoryPath, receipt, cancellationToken);

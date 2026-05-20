@@ -991,6 +991,89 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
             }
         }
 
+        if (context.PhaseId == PhaseId.TechnicalDesign && context.TechnicalDesignContextPack is not null)
+        {
+            builder
+                .AppendLine("## Technical Design Context Pack")
+                .AppendLine()
+                .AppendLine($"- Semantic graph enabled: `{(context.TechnicalDesignContextPack.GraphEnabled ? "true" : "false")}`")
+                .AppendLine($"- Impact graph state: `{context.TechnicalDesignContextPack.ImpactGraphState ?? "missing"}`")
+                .AppendLine($"- Graph available: `{(context.TechnicalDesignContextPack.GraphAvailable ? "true" : "false")}`")
+                .AppendLine($"- Fallback used: `{(context.TechnicalDesignContextPack.FallbackUsed ? "true" : "false")}`")
+                .AppendLine();
+
+            if (context.TechnicalDesignContextPack.SelectedSkills.Count > 0)
+            {
+                builder
+                    .AppendLine("### Selected Skills")
+                    .AppendLine();
+
+                foreach (var skill in context.TechnicalDesignContextPack.SelectedSkills)
+                {
+                    builder.AppendLine($"- `{skill.SkillPath}`: {skill.Rationale}");
+                }
+
+                builder.AppendLine();
+            }
+
+            if (context.TechnicalDesignContextPack.GraphScopeRequest is not null)
+            {
+                builder
+                    .AppendLine("### Graph Scope Request")
+                    .AppendLine()
+                    .AppendLine($"- Depth: `{context.TechnicalDesignContextPack.GraphScopeRequest.Depth}`")
+                    .AppendLine($"- Seed nodes: `{context.TechnicalDesignContextPack.GraphScopeRequest.SeedNodes.Count}`")
+                    .AppendLine($"- Seed files: `{context.TechnicalDesignContextPack.GraphScopeRequest.SeedFiles.Count}`")
+                    .AppendLine($"- Unresolved scope questions: `{context.TechnicalDesignContextPack.GraphScopeRequest.UnresolvedScopeQuestions.Count}`")
+                    .AppendLine();
+            }
+
+            if (!string.IsNullOrWhiteSpace(context.TechnicalDesignContextPack.ImpactSummaryPath)
+                && File.Exists(context.TechnicalDesignContextPack.ImpactSummaryPath))
+            {
+                var impactSummary = await File.ReadAllTextAsync(context.TechnicalDesignContextPack.ImpactSummaryPath, cancellationToken);
+                if (!string.IsNullOrWhiteSpace(impactSummary))
+                {
+                    builder.AppendLine("### Impact Summary");
+                    builder.AppendLine();
+                    AppendPromptInputDocument(
+                        builder,
+                        "Impact summary",
+                        "graph-impact-summary",
+                        context.TechnicalDesignContextPack.ImpactSummaryPath,
+                        impactSummary);
+                }
+            }
+
+            if (context.TechnicalDesignContextPack.GraphBackedExpansions.Count > 0)
+            {
+                builder
+                    .AppendLine("### Graph-Backed Expansions")
+                    .AppendLine();
+
+                foreach (var expansion in context.TechnicalDesignContextPack.GraphBackedExpansions)
+                {
+                    builder.AppendLine($"- `{expansion.Path}` [{expansion.Source}] {expansion.Reason}");
+                }
+
+                builder.AppendLine();
+            }
+
+            if (context.TechnicalDesignContextPack.Warnings.Count > 0)
+            {
+                builder
+                    .AppendLine("### Graph Warnings")
+                    .AppendLine();
+
+                foreach (var warning in context.TechnicalDesignContextPack.Warnings)
+                {
+                    builder.AppendLine($"- {warning}");
+                }
+
+                builder.AppendLine();
+            }
+        }
+
         if (!string.IsNullOrWhiteSpace(context.OperationPrompt))
         {
             builder

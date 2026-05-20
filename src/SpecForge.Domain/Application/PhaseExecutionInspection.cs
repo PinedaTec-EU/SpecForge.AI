@@ -22,7 +22,8 @@ public sealed record PhaseExecutionEffectiveContext(
     IReadOnlyCollection<PhaseExecutionArtifactInput> PreviousArtifacts,
     IReadOnlyCollection<PhaseExecutionArtifactInput> ContextFiles,
     PhaseExecutionArtifactInput? CurrentArtifact,
-    string? OperationPromptSha256);
+    string? OperationPromptSha256,
+    TechnicalDesignContextPack? TechnicalDesignContextPack = null);
 
 public static class PhaseExecutionInspectionBuilder
 {
@@ -57,6 +58,7 @@ public static class PhaseExecutionInspectionBuilder
             PreviousArtifacts: previousArtifacts,
             ContextFiles: contextFiles,
             CurrentArtifact: currentArtifact,
-            OperationPromptSha256: PhaseExecutionReceiptStore.ComputeSha256(context.OperationPrompt));
+            OperationPromptSha256: PhaseExecutionReceiptStore.ComputeSha256(context.OperationPrompt),
+            TechnicalDesignContextPack: context.TechnicalDesignContextPack);
     }
 }

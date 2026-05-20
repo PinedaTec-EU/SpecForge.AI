@@ -565,6 +565,63 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
     }
 
     [Fact]
+    public async Task ExecuteAsync_TechnicalDesign_InjectsDesignContextPackIntoPrompt()
+    {
+        await PrepareInitializedWorkspaceAsync();
+        var impactSummaryPath = Path.Combine(workspaceRoot, ".specs", "us", "US-0001", "context", "impact-summary.md");
+        Directory.CreateDirectory(Path.GetDirectoryName(impactSummaryPath)!);
+        await File.WriteAllTextAsync(
+            impactSummaryPath,
+            """
+            # Impact Graph Summary
+
+            - Included files: `2`
+            """);
+        var handler = new CapturingFakeHttpMessageHandler(BuildMinimalTechnicalDesignMarkdown());
+        var provider = new OpenAiCompatiblePhaseExecutionProvider(
+            new HttpClient(handler),
+            CreateOptions(model: "llama3.1"));
+        var context = new PhaseExecutionContext(
+            WorkspaceRoot: workspaceRoot,
+            UsId: "US-0001",
+            PhaseId: PhaseId.TechnicalDesign,
+            UserStoryPath: Path.Combine(workspaceRoot, ".specs", "us", "US-0001", "us.md"),
+            PreviousArtifactPaths: new Dictionary<PhaseId, string>(),
+            ContextFilePaths: [],
+            TechnicalDesignContextPack: new TechnicalDesignContextPack(
+                [new RefinementSkillSelectionItem("../ai-skills-shared/.shared-skills/skills/dotnet/SKILL.md", ".NET repository scope.")],
+                new RefinementGraphScopeRequest(
+                    2,
+                    [new RefinementGraphSeedNode("service", "Service", "Primary scope root.")],
+                    [new PhaseExecutionArtifactInput("src/App/Service.cs", "service-hash", "refinement")],
+                    ["Clarify validation boundaries."]),
+                "fresh",
+                impactSummaryPath,
+                GraphEnabled: true,
+                GraphAvailable: true,
+                FallbackUsed: false,
+                GraphBackedExpansions:
+                [
+                    new TechnicalDesignGraphExpansion(
+                        "src/App/Service.cs",
+                        "Seed file from graph scope request.",
+                        "graph-scope-request",
+                        "src/App/App.csproj",
+                        "service-hash")
+                ],
+                Warnings: ["No global graph refresh was required."]));
+
+        await provider.ExecuteAsync(context);
+
+        var userPrompt = OpenAiCompatibleRequestJson.ReadUserPrompt(handler.LastBody);
+        Assert.Contains("## Technical Design Context Pack", userPrompt);
+        Assert.Contains("../ai-skills-shared/.shared-skills/skills/dotnet/SKILL.md", userPrompt);
+        Assert.Contains("### Impact Summary", userPrompt);
+        Assert.Contains("src/App/Service.cs", userPrompt);
+        Assert.Contains("No global graph refresh was required.", userPrompt);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_TechnicalDesign_WhenSubagentsEnabled_SynthesizesSpecialistReports()
     {
         await PrepareInitializedWorkspaceAsync();

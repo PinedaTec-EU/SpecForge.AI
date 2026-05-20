@@ -184,7 +184,7 @@ Current stance:
   Prepare an explicit design gate contract.
   Output: reusable criteria for repositories that require design approval before implementation.
 
-- [ ] `H-TD-03` Status: `todo`
+- [x] `H-TD-03` Status: `done`
   Feed `technical-design` from selected skills plus impact-graph context.
   Output: first design context pack that uses selected skills, graph scope, impact summary, and graph-backed expansions when available.
   Notes: must respect graph feature flags and fall back cleanly when graph usage is disabled, missing, stale, or failed.
