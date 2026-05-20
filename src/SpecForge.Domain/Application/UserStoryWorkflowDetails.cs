@@ -63,6 +63,7 @@ public sealed record PhaseExecutionInspectionDetails(
     string? ReceiptPath,
     RefinementPolicyDetails? RefinementPolicySnapshot,
     RefinementSkillPreselection? RefinementSkillPreselection,
+    RefinementGraphScopeRequest? RefinementGraphScopeRequest,
     PhaseExecutionEffectivePrompt? EffectivePrompt,
     PhaseExecutionEffectiveContext? EffectiveContext);
 

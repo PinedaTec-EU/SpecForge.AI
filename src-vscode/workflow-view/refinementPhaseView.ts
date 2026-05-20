@@ -15,6 +15,45 @@ export function buildRefinementPhaseSections(args: RefinementPhaseViewArgs): Pha
   const effectiveContext = selectedPhase.latestExecutionInspection?.effectiveContext ?? null;
   const refinementPolicy = selectedPhase.latestExecutionInspection?.refinementPolicySnapshot ?? workflow.refinement?.policy ?? null;
   const skillPreselection = selectedPhase.latestExecutionInspection?.refinementSkillPreselection ?? null;
+  const graphScopeRequest = selectedPhase.latestExecutionInspection?.refinementGraphScopeRequest ?? null;
+  const graphScopeSection = graphScopeRequest
+    ? `
+      <div class="refinement-context">
+        <div class="refinement-context__copy">
+          <h4>Technical Design Graph Handoff</h4>
+          <p>
+            This persisted handoff tells the future technical-design phase where to start exploring: graph depth, seed nodes, seed files, and unresolved scope questions.
+          </p>
+        </div>
+        <div class="detail-grid">
+          <div><strong>Depth</strong><div><code>${graphScopeRequest.depth}</code></div></div>
+          <div><strong>Seed Nodes</strong><div><code>${graphScopeRequest.seedNodes.length}</code></div></div>
+          <div><strong>Seed Files</strong><div><code>${graphScopeRequest.seedFiles.length}</code></div></div>
+          <div><strong>Unresolved Questions</strong><div><code>${graphScopeRequest.unresolvedScopeQuestions.length}</code></div></div>
+        </div>
+        <div class="refinement-suggestions">
+          <div class="refinement-suggestion refinement-suggestion--static">
+            <div class="refinement-suggestion__body">
+              <strong>Seed Nodes</strong>
+              ${renderGraphSeedNodes(graphScopeRequest.seedNodes, escapeHtml)}
+            </div>
+          </div>
+          <div class="refinement-suggestion refinement-suggestion--static">
+            <div class="refinement-suggestion__body">
+              <strong>Seed Files</strong>
+              ${renderInjectedArtifactList(graphScopeRequest.seedFiles, escapeHtml)}
+            </div>
+          </div>
+          <div class="refinement-suggestion refinement-suggestion--static">
+            <div class="refinement-suggestion__body">
+              <strong>Unresolved Scope Questions</strong>
+              ${renderContextGapList(graphScopeRequest.unresolvedScopeQuestions, escapeHtml)}
+            </div>
+          </div>
+        </div>
+      </div>
+    `
+    : "";
   const skillPreselectionSection = skillPreselection
     ? `
       <div class="refinement-context">
@@ -202,6 +241,7 @@ export function buildRefinementPhaseSections(args: RefinementPhaseViewArgs): Pha
         ${workflow.refinement.reason ? `<p class="refinement-reason">${escapeHtml(workflow.refinement.reason)}</p>` : ""}
         ${refinementPolicySection}
         ${skillPreselectionSection}
+        ${graphScopeSection}
         ${refinementInspectionSection}
         ${refinementContextSummarySection}
         ${workflow.refinement.items.length > 0
@@ -285,6 +325,27 @@ function renderContextGapList(
   return `
     <ul class="detail-list">
       ${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+    </ul>
+  `;
+}
+
+function renderGraphSeedNodes(
+  items: readonly { readonly id: string; readonly label: string; readonly reason: string }[],
+  escapeHtml: (value: string) => string
+): string {
+  if (items.length === 0) {
+    return `<p class="muted">None.</p>`;
+  }
+
+  return `
+    <ul class="detail-list">
+      ${items.map((item) => `
+        <li>
+          <strong>${escapeHtml(item.label)}</strong><br>
+          <span class="muted">id: <code>${escapeHtml(item.id)}</code></span><br>
+          <span class="muted">${escapeHtml(item.reason)}</span>
+        </li>
+      `).join("")}
     </ul>
   `;
 }

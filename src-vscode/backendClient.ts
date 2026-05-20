@@ -268,6 +268,7 @@ export interface PhaseExecutionInspectionDetails {
   readonly receiptPath?: string | null;
   readonly refinementPolicySnapshot?: RefinementPolicyDetails | null;
   readonly refinementSkillPreselection?: RefinementSkillPreselection | null;
+  readonly refinementGraphScopeRequest?: RefinementGraphScopeRequest | null;
   readonly effectivePrompt?: PhaseExecutionEffectivePrompt | null;
   readonly effectiveContext?: PhaseExecutionEffectiveContext | null;
 }
@@ -350,6 +351,19 @@ export interface RefinementSkillPreselection {
 export interface RefinementSkillSelectionItem {
   readonly skillPath: string;
   readonly rationale: string;
+}
+
+export interface RefinementGraphScopeRequest {
+  readonly depth: number;
+  readonly seedNodes: readonly RefinementGraphSeedNode[];
+  readonly seedFiles: readonly PhaseExecutionArtifactInput[];
+  readonly unresolvedScopeQuestions: readonly string[];
+}
+
+export interface RefinementGraphSeedNode {
+  readonly id: string;
+  readonly label: string;
+  readonly reason: string;
 }
 
 export interface ApprovalQuestionDetails {

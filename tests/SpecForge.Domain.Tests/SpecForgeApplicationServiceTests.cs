@@ -568,6 +568,26 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesReceiptLinkedRefinementGraphScopeRequest()
+    {
+        var runner = new WorkflowRunner();
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "TODO");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var refinementPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "refinement");
+
+        Assert.NotNull(refinementPhase.LatestExecutionInspection);
+        Assert.NotNull(refinementPhase.LatestExecutionInspection!.RefinementGraphScopeRequest);
+        Assert.True(refinementPhase.LatestExecutionInspection.RefinementGraphScopeRequest!.Depth >= 1);
+        Assert.NotEmpty(refinementPhase.LatestExecutionInspection.RefinementGraphScopeRequest.SeedNodes);
+        Assert.NotEmpty(refinementPhase.LatestExecutionInspection.RefinementGraphScopeRequest.SeedFiles);
+        Assert.NotEmpty(refinementPhase.LatestExecutionInspection.RefinementGraphScopeRequest.UnresolvedScopeQuestions);
+    }
+
+    [Fact]
     public async Task GetUserStoryWorkflowAsync_ExposesExecutionPolicyPerPhase()
     {
         var runner = new WorkflowRunner(

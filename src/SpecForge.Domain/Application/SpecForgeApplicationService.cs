@@ -926,7 +926,8 @@ public sealed class SpecForgeApplicationService
             if (receipt?.EffectivePrompt is null &&
                 receipt?.EffectiveContext is null &&
                 receipt?.RefinementPolicySnapshot is null &&
-                receipt?.RefinementSkillPreselection is null)
+                receipt?.RefinementSkillPreselection is null &&
+                receipt?.RefinementGraphScopeRequest is null)
             {
                 return null;
             }
@@ -935,6 +936,7 @@ public sealed class SpecForgeApplicationService
                 receiptPath,
                 receipt?.RefinementPolicySnapshot,
                 receipt?.RefinementSkillPreselection,
+                receipt?.RefinementGraphScopeRequest,
                 receipt?.EffectivePrompt,
                 receipt?.EffectiveContext);
         }

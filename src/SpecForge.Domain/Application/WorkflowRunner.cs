@@ -1788,6 +1788,7 @@ public sealed class WorkflowRunner
         var executionEnvelope = GetPhaseExecutionEnvelope(workflowRun.CurrentPhase);
         var refinementPolicySnapshot = TryBuildRefinementPolicySnapshot(workflowRun.CurrentPhase, result.Content);
         var refinementSkillPreselection = TryBuildRefinementSkillPreselection(workspaceRoot, executionContext, workflowRun.CurrentPhase, result.Content);
+        var refinementGraphScopeRequest = TryBuildRefinementGraphScopeRequest(executionContext, workflowRun.CurrentPhase, artifactPath, result.Content, refinementSkillPreselection);
         var receiptPath = Path.Combine(paths.ExecutionReceiptsDirectoryPath, $"{executionId}.json");
         var outputManifest = new PhaseExecutionOutputManifest(
             PhaseExecutionReceiptStore.NormalizePath(artifactPath),
@@ -1817,6 +1818,7 @@ public sealed class WorkflowRunner
             executionEnvelope,
             refinementPolicySnapshot,
             refinementSkillPreselection,
+            refinementGraphScopeRequest,
             result.EffectivePrompt,
             result.EffectivePrompt is null ? null : effectiveContext);
         receiptPath = await PhaseExecutionReceiptStore.PersistAsync(paths.ExecutionReceiptsDirectoryPath, receipt, cancellationToken);
@@ -1879,6 +1881,26 @@ public sealed class WorkflowRunner
             workspaceRoot,
             executionContext,
             refinement.Questions);
+    }
+
+    private RefinementGraphScopeRequest? TryBuildRefinementGraphScopeRequest(
+        PhaseExecutionContext executionContext,
+        PhaseId phaseId,
+        string artifactPath,
+        string content,
+        RefinementSkillPreselection? skillPreselection)
+    {
+        if (phaseId != PhaseId.Refinement || string.IsNullOrWhiteSpace(content) || skillPreselection is null)
+        {
+            return null;
+        }
+
+        var refinement = ParseRefinementArtifact(content);
+        return RefinementGraphScopeRequestBuilder.Build(
+            executionContext,
+            artifactPath,
+            refinement.Questions,
+            skillPreselection);
     }
 
     private async Task EvaluateSpecDecompositionAsync(

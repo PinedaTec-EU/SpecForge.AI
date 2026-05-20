@@ -144,6 +144,11 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
                 [new RefinementSkillSelectionItem("../ai-skills-shared/.shared-skills/skills/dotnet/SKILL.md", "Candidate for .NET repository scope.")],
                 [new RefinementSkillSelectionItem(".codex/skills/functional-commit-version-bump/SKILL.md", "Not part of refinement.")],
                 ["No repository context files are attached yet for this refinement run."]),
+            RefinementGraphScopeRequest: new RefinementGraphScopeRequest(
+                2,
+                [new RefinementGraphSeedNode("user-story-intent", "User Story Intent", "Primary intent source.")],
+                [new PhaseExecutionArtifactInput("/repo/.specs/us/US-0001/us.md", "us-hash", "capture")],
+                ["Which actor executes the workflow?"]),
             EffectivePrompt: new PhaseExecutionEffectivePrompt("system", "user"),
             EffectiveContext: new PhaseExecutionEffectiveContext(
                 "/repo",
@@ -160,12 +165,14 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("\"effectiveContext\":{", json);
         Assert.Contains("\"refinementPolicySnapshot\":{", json);
         Assert.Contains("\"refinementSkillPreselection\":{", json);
+        Assert.Contains("\"refinementGraphScopeRequest\":{", json);
         Assert.Contains("\"evidenceRecord\":{", json);
         Assert.Contains("\"executionEnvelope\":{", json);
         Assert.Contains("\"systemPrompt\":\"system\"", json);
         Assert.Contains("\"userPrompt\":\"user\"", json);
         Assert.Contains("\"eligibilityStatus\":\"eligible\"", json);
         Assert.Contains("\"requiredSkills\":[", json);
+        Assert.Contains("\"seedNodes\":[", json);
         Assert.Contains("\"workspaceRoot\":\"/repo\"", json);
         Assert.Contains("\"validationSummary\":{", json);
         Assert.Contains("\"sandboxMode\":\"provider-managed\"", json);
