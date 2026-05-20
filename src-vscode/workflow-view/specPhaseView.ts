@@ -40,6 +40,8 @@ export function buildSpecPhaseSections(args: SpecPhaseViewArgs): PhaseSectionFra
   const approvalBranchEditorVisible = selectedPhase.phaseId === "spec"
     && selectedPhase.isCurrent
     && workflow.controls.requiresApproval;
+  const effectivePrompt = selectedPhase.latestExecutionInspection?.effectivePrompt ?? null;
+  const effectiveContext = selectedPhase.latestExecutionInspection?.effectiveContext ?? null;
   const branchAlreadyCreated = selectedPhase.phaseId === "spec"
     && !selectedPhase.isCurrent
     && Boolean(workflow.workBranch?.trim());
@@ -219,6 +221,37 @@ export function buildSpecPhaseSections(args: SpecPhaseViewArgs): PhaseSectionFra
       </section>
     `
     : "";
+  const specExecutionInspectionSection = selectedPhase.phaseId === "spec"
+    ? `
+      <section class="detail-card">
+        <h3>Inspect Last Spec Execution</h3>
+        <p class="panel-copy">
+          Review the latest persisted effective prompt and injected runtime context for the spec phase before changing prompt templates, answering approval questions, or operating the current spec artifact.
+        </p>
+        ${effectivePrompt || effectiveContext
+          ? `
+            <div class="detail-grid">
+              <div><strong>Effective Prompt</strong><div><code>${effectivePrompt ? "available" : "unavailable"}</code></div></div>
+              <div><strong>Effective Context</strong><div><code>${effectiveContext ? "available" : "unavailable"}</code></div></div>
+              <div><strong>Previous Artifacts</strong><div><code>${effectiveContext?.previousArtifacts.length ?? 0}</code></div></div>
+              <div><strong>Context Files</strong><div><code>${effectiveContext?.contextFiles.length ?? 0}</code></div></div>
+            </div>
+            <div class="detail-actions">
+              ${effectivePrompt
+                ? `<button class="workflow-action-button workflow-action-button--document" type="button" data-open-effective-prompt-modal>View Last Spec Prompt</button>`
+                : ""}
+              ${effectiveContext
+                ? `<button class="workflow-action-button workflow-action-button--document" type="button" data-open-effective-context-modal>View Last Spec Context</button>`
+                : ""}
+              ${selectedPhase.latestExecutionInspection?.receiptPath
+                ? `<button class="workflow-action-button workflow-action-button--document" data-command="openArtifact" data-path="${escapeHtmlAttribute(selectedPhase.latestExecutionInspection.receiptPath)}">Open Receipt</button>`
+                : ""}
+            </div>
+          `
+          : `<p class="muted">No persisted spec execution inspection is available yet for this user story.</p>`}
+      </section>
+    `
+    : "";
 
   const phaseOperationSection = selectedPhase.phaseId === "spec"
     ? `
@@ -250,6 +283,7 @@ export function buildSpecPhaseSections(args: SpecPhaseViewArgs): PhaseSectionFra
 
   return {
     beforeArtifact: [
+      ...(specExecutionInspectionSection ? [specExecutionInspectionSection] : []),
       ...(specRefinementSection ? [specRefinementSection] : []),
       ...(specApprovalQuestionsSection ? [specApprovalQuestionsSection] : []),
       ...(approvalBranchSection ? [approvalBranchSection] : [])
