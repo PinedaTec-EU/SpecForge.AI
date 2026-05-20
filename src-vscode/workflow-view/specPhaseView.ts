@@ -42,6 +42,9 @@ export function buildSpecPhaseSections(args: SpecPhaseViewArgs): PhaseSectionFra
     && workflow.controls.requiresApproval;
   const effectivePrompt = selectedPhase.latestExecutionInspection?.effectivePrompt ?? null;
   const effectiveContext = selectedPhase.latestExecutionInspection?.effectiveContext ?? null;
+  const executionReadiness = selectedPhase.executionReadiness ?? null;
+  const executionPolicy = selectedPhase.executionPolicy ?? null;
+  const specApprovalPolicy = selectedPhase.specApprovalPolicy ?? null;
   const latestSpecArtifactPath = selectedPhase.artifactPath?.trim() || null;
   const latestSpecReceiptPath = selectedPhase.latestExecutionInspection?.receiptPath?.trim() || null;
   const specApprovePromptPath = selectedPhase.approvePromptPath?.trim() || null;
@@ -286,6 +289,49 @@ export function buildSpecPhaseSections(args: SpecPhaseViewArgs): PhaseSectionFra
       </section>
     `
     : "";
+  const specPolicySection = selectedPhase.phaseId === "spec" && (executionReadiness || executionPolicy || specApprovalPolicy)
+    ? `
+      <section class="detail-card">
+        <h3>Spec Eligibility And Policy</h3>
+        <p class="panel-copy">
+          Inspect the explicit execution and approval rules that currently govern the spec phase before continuing or approving.
+        </p>
+        <div class="detail-grid">
+          <div><strong>Execution Readiness</strong><div><code>${executionReadiness?.canExecute ? "ready" : "blocked"}</code></div></div>
+          <div><strong>Execution Blocking Reason</strong><div><code>${escapeHtml(executionReadiness?.blockingReason ?? "none")}</code></div></div>
+          <div><strong>Approval Status</strong><div><code>${escapeHtml(specApprovalPolicy?.status ?? "unknown")}</code></div></div>
+          <div><strong>Approval Blocking Reason</strong><div><code>${escapeHtml(specApprovalPolicy?.approvalBlockingReason ?? "none")}</code></div></div>
+          <div><strong>Repository Access</strong><div><code>${escapeHtml(executionPolicy?.permissions.repositoryAccess ?? executionReadiness?.requiredPermissions?.repositoryAccess ?? "unknown")}</code></div></div>
+          <div><strong>Workspace Writes</strong><div><code>${(executionPolicy?.permissions.workspaceWriteAccess ?? executionReadiness?.requiredPermissions?.workspaceWriteAccess) ? "allowed" : "not allowed"}</code></div></div>
+        </div>
+        ${executionPolicy
+          ? `
+            <div class="phase-policy-list">
+              <h4>Execution Eligibility Rules</h4>
+              ${renderSpecPolicyItems(
+                executionPolicy.eligibilityRules.map((rule) => ({
+                  id: rule.id,
+                  description: rule.description,
+                  status: rule.isCurrentlySatisfied === false ? "blocked" : "ready",
+                  blockingReason: rule.blockingReason ?? null,
+                  currentStatusMessage: rule.currentStatusMessage ?? null
+                })),
+                escapeHtml
+              )}
+            </div>
+          `
+          : ""}
+        ${specApprovalPolicy
+          ? `
+            <div class="phase-policy-list">
+              <h4>Approval Eligibility Rules</h4>
+              ${renderSpecPolicyItems(specApprovalPolicy.approvalRules, escapeHtml)}
+            </div>
+          `
+          : ""}
+      </section>
+    `
+    : "";
 
   const phaseOperationSection = selectedPhase.phaseId === "spec"
     ? `
@@ -318,6 +364,7 @@ export function buildSpecPhaseSections(args: SpecPhaseViewArgs): PhaseSectionFra
   return {
     beforeArtifact: [
       ...(specExecutionInspectionSection ? [specExecutionInspectionSection] : []),
+      ...(specPolicySection ? [specPolicySection] : []),
       ...(specApprovalInputsSection ? [specApprovalInputsSection] : []),
       ...(specRefinementSection ? [specRefinementSection] : []),
       ...(specApprovalQuestionsSection ? [specApprovalQuestionsSection] : []),
@@ -325,6 +372,37 @@ export function buildSpecPhaseSections(args: SpecPhaseViewArgs): PhaseSectionFra
     ],
     afterArtifact: phaseOperationSection ? [phaseOperationSection] : []
   };
+}
+
+function renderSpecPolicyItems(
+  items: readonly {
+    readonly id: string;
+    readonly description: string;
+    readonly status: string;
+    readonly blockingReason?: string | null;
+    readonly currentStatusMessage?: string | null;
+  }[],
+  escapeHtml: (value: string) => string
+): string {
+  if (items.length === 0) {
+    return "<p class=\"muted\">No explicit policy rules are available.</p>";
+  }
+
+  return `
+    <div class="refinement-policy-list">
+      ${items.map((item) => `
+        <article class="refinement-policy-item">
+          <div class="refinement-policy-item__title-row">
+            <strong>${escapeHtml(item.description)}</strong>
+            <span class="badge token--${item.status === "ready" ? "success" : item.status === "attention" ? "attention" : "blocked"}">${escapeHtml(item.status)}</span>
+          </div>
+          <div class="muted"><code>${escapeHtml(item.id)}</code></div>
+          ${item.currentStatusMessage ? `<p class="muted">${escapeHtml(item.currentStatusMessage)}</p>` : ""}
+          ${item.blockingReason ? `<p class="muted">blocking reason: <code>${escapeHtml(item.blockingReason)}</code></p>` : ""}
+        </article>
+      `).join("")}
+    </div>
+  `;
 }
 
 function renderCopyQuestionIcon(): string {

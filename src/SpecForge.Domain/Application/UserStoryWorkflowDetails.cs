@@ -52,6 +52,7 @@ public sealed record WorkflowPhaseDetails(
     PhaseExecutionReadiness? ExecutionReadiness = null,
     PhaseExecutionPolicy? ExecutionPolicy = null,
     PhaseExecutionEnvelope? ExecutionEnvelope = null,
+    SpecPhaseApprovalPolicyDetails? SpecApprovalPolicy = null,
     PhaseExecutionInspectionDetails? LatestExecutionInspection = null);
 
 public sealed record PhaseExecutionBoundarySummary(
@@ -66,6 +67,25 @@ public sealed record PhaseExecutionInspectionDetails(
     RefinementGraphScopeRequest? RefinementGraphScopeRequest,
     PhaseExecutionEffectivePrompt? EffectivePrompt,
     PhaseExecutionEffectiveContext? EffectiveContext);
+
+public sealed record SpecPhaseApprovalPolicyDetails(
+    string Status,
+    bool ApprovalAvailableNow,
+    string? ApprovalBlockingReason,
+    bool HasSpecArtifact,
+    bool SchemaIsValid,
+    bool HasUnresolvedApprovalQuestions,
+    int UnresolvedApprovalQuestionCount,
+    bool DecompositionApprovalPending,
+    IReadOnlyCollection<SpecPhaseApprovalRule> ApprovalRules);
+
+public sealed record SpecPhaseApprovalRule(
+    string Id,
+    string Description,
+    string Status,
+    bool IsCurrentlySatisfied,
+    string? BlockingReason = null,
+    string? CurrentStatusMessage = null);
 
 public sealed record CurrentPhaseControls(
     bool CanContinue,

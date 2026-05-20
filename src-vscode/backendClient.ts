@@ -216,6 +216,8 @@ export interface WorkflowPhaseDetails {
   readonly executionBoundary?: PhaseExecutionBoundarySummary | null;
   readonly captureRecord?: CaptureExecutionRecord | null;
   readonly executionReadiness?: PhaseExecutionReadiness | null;
+  readonly executionPolicy?: PhaseExecutionPolicy | null;
+  readonly specApprovalPolicy?: SpecPhaseApprovalPolicyDetails | null;
   readonly latestExecutionInspection?: PhaseExecutionInspectionDetails | null;
 }
 
@@ -297,6 +299,70 @@ export interface PhaseExecutionReadiness {
   readonly requiredPermissions?: PhaseExecutionRequirements | null;
   readonly assignedModelSecurity?: PhaseExecutionModelSecurity | null;
   readonly validationMessage?: string | null;
+}
+
+export interface PhaseExecutionPolicy {
+  readonly phaseId: string;
+  readonly policyKey: string;
+  readonly summary: string;
+  readonly permissions: PhaseExecutionRequirements;
+  readonly allowedTools: readonly PhaseExecutionToolPermission[];
+  readonly writablePaths: readonly PhaseExecutionPathPolicy[];
+  readonly forbiddenPaths: readonly PhaseExecutionPathPolicy[];
+  readonly evidenceRequirements: readonly PhaseExecutionEvidenceRequirement[];
+  readonly eligibilityRules: readonly PhaseExecutionEligibilityRule[];
+}
+
+export interface PhaseExecutionToolPermission {
+  readonly tool: string;
+  readonly access: string;
+  readonly enforcement: string;
+  readonly reason: string;
+}
+
+export interface PhaseExecutionPathPolicy {
+  readonly path: string;
+  readonly access: string;
+  readonly actor: string;
+  readonly enforcement: string;
+  readonly reason: string;
+}
+
+export interface PhaseExecutionEvidenceRequirement {
+  readonly id: string;
+  readonly description: string;
+  readonly enforcement: string;
+  readonly policyInput?: string | null;
+}
+
+export interface PhaseExecutionEligibilityRule {
+  readonly id: string;
+  readonly description: string;
+  readonly enforcement: string;
+  readonly blockingReason?: string | null;
+  readonly isCurrentlySatisfied?: boolean | null;
+  readonly currentStatusMessage?: string | null;
+}
+
+export interface SpecPhaseApprovalPolicyDetails {
+  readonly status: string;
+  readonly approvalAvailableNow: boolean;
+  readonly approvalBlockingReason: string | null;
+  readonly hasSpecArtifact: boolean;
+  readonly schemaIsValid: boolean;
+  readonly hasUnresolvedApprovalQuestions: boolean;
+  readonly unresolvedApprovalQuestionCount: number;
+  readonly decompositionApprovalPending: boolean;
+  readonly approvalRules: readonly SpecPhaseApprovalRule[];
+}
+
+export interface SpecPhaseApprovalRule {
+  readonly id: string;
+  readonly description: string;
+  readonly status: string;
+  readonly isCurrentlySatisfied: boolean;
+  readonly blockingReason?: string | null;
+  readonly currentStatusMessage?: string | null;
 }
 
 export interface RefinementQuestionAnswerDetails {

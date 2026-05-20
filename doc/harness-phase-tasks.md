@@ -123,7 +123,7 @@ Current stance:
   Make spec approval inputs more inspectable.
   Output: visible link between generated spec artifact, approval prompt paths, and latest execution receipt.
 
-- [ ] `P-SPEC-01` Status: `todo`
+- [x] `P-SPEC-01` Status: `done`
   Define spec-phase eligibility and policy checks.
   Output: explicit rules for when spec can execute and when approval can proceed.
 
