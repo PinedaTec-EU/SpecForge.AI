@@ -4,7 +4,8 @@ exports.buildImplementationPhaseSections = buildImplementationPhaseSections;
 function buildImplementationPhaseSections(args) {
     const { selectedPhase, escapeHtml } = args;
     const executionReadiness = selectedPhase.executionReadiness ?? null;
-    const executionPolicy = selectedPhase.executionPolicy ?? null;
+    const implementationPolicySnapshot = selectedPhase.latestExecutionInspection?.implementationPolicySnapshot ?? null;
+    const executionPolicy = implementationPolicySnapshot ?? selectedPhase.executionPolicy ?? null;
     const evidenceRecord = selectedPhase.latestExecutionInspection?.evidenceRecord ?? null;
     const implementationPolicySection = selectedPhase.phaseId === "implementation" && (executionReadiness || executionPolicy)
         ? `
@@ -14,8 +15,8 @@ function buildImplementationPhaseSections(args) {
           Inspect the explicit repository-access semantics, writable scope rules, forbidden mutation zones, and evidence requirements that govern implementation runs.
         </p>
         <div class="detail-grid">
-          <div><strong>Execution Readiness</strong><div><code>${executionReadiness?.canExecute ? "ready" : "blocked"}</code></div></div>
-          <div><strong>Blocking Reason</strong><div><code>${escapeHtml(executionReadiness?.blockingReason ?? "none")}</code></div></div>
+          <div><strong>Execution Readiness</strong><div><code>${implementationPolicySnapshot ? (implementationPolicySnapshot.executionAllowed ? "ready" : "blocked") : executionReadiness?.canExecute ? "ready" : "blocked"}</code></div></div>
+          <div><strong>Blocking Reason</strong><div><code>${escapeHtml(implementationPolicySnapshot?.executionBlockingReason ?? executionReadiness?.blockingReason ?? "none")}</code></div></div>
           <div><strong>Repository Access</strong><div><code>${escapeHtml(executionPolicy?.permissions.repositoryAccess ?? executionReadiness?.requiredPermissions?.repositoryAccess ?? "unknown")}</code></div></div>
           <div><strong>Workspace Writes</strong><div><code>${(executionPolicy?.permissions.workspaceWriteAccess ?? executionReadiness?.requiredPermissions?.workspaceWriteAccess) ? "allowed" : "not allowed"}</code></div></div>
           <div><strong>Writable Paths</strong><div><code>${executionPolicy?.writablePaths.length ?? 0}</code></div></div>
@@ -23,6 +24,9 @@ function buildImplementationPhaseSections(args) {
           <div><strong>Evidence Requirements</strong><div><code>${executionPolicy?.evidenceRequirements.length ?? 0}</code></div></div>
           <div><strong>Eligibility Rules</strong><div><code>${executionPolicy?.eligibilityRules.length ?? 0}</code></div></div>
         </div>
+        ${implementationPolicySnapshot
+            ? `<p class="muted">Showing the latest receipt-linked implementation policy snapshot that governed the persisted run.</p>`
+            : ""}
         ${executionPolicy
             ? `
             <div class="refinement-suggestions">
