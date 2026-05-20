@@ -415,8 +415,11 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
 
         Assert.Equal("native-cli", implementationEnvelope.ExecutionMode);
         Assert.Equal("workspace-write", implementationEnvelope.SandboxMode);
+        Assert.Contains(implementationEnvelope.ToolPermissions, item => item.Tool == "workspace-write" && item.Actor == "phase-agent");
         Assert.Contains(implementationEnvelope.WriteScopes, item => item.Actor == "phase-agent");
+        Assert.Contains(implementationEnvelope.RepositoryBoundaries, item => item.Kind == "forbidden-path" && item.Path == "<workspace-root>/.git/**");
         Assert.Equal("extended", implementationEnvelope.Budget.ComputeTier);
+        Assert.Equal("phase-scoped-repository-mutation", implementationEnvelope.Budget.MutationBudget);
 
         Assert.Equal("managed-provider", specEnvelope.ExecutionMode);
         Assert.Equal("provider-managed", specEnvelope.SandboxMode);

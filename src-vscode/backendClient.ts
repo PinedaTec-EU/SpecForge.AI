@@ -217,6 +217,7 @@ export interface WorkflowPhaseDetails {
   readonly captureRecord?: CaptureExecutionRecord | null;
   readonly executionReadiness?: PhaseExecutionReadiness | null;
   readonly executionPolicy?: PhaseExecutionPolicy | null;
+  readonly executionEnvelope?: PhaseExecutionEnvelope | null;
   readonly specApprovalPolicy?: SpecPhaseApprovalPolicyDetails | null;
   readonly latestExecutionInspection?: PhaseExecutionInspectionDetails | null;
 }
@@ -450,6 +451,46 @@ export interface PhaseExecutionEligibilityRule {
   readonly blockingReason?: string | null;
   readonly isCurrentlySatisfied?: boolean | null;
   readonly currentStatusMessage?: string | null;
+}
+
+export interface PhaseExecutionEnvelope {
+  readonly phaseId: string;
+  readonly envelopeKey: string;
+  readonly executionMode: string;
+  readonly sandboxMode: string;
+  readonly toolPermissions: readonly PhaseExecutionEnvelopeToolPermission[];
+  readonly writeScopes: readonly PhaseExecutionEnvelopeWriteScope[];
+  readonly repositoryBoundaries: readonly PhaseExecutionEnvelopeBoundary[];
+  readonly budget: PhaseExecutionEnvelopeBudget;
+}
+
+export interface PhaseExecutionEnvelopeToolPermission {
+  readonly actor: string;
+  readonly tool: string;
+  readonly access: string;
+  readonly enforcement: string;
+}
+
+export interface PhaseExecutionEnvelopeWriteScope {
+  readonly actor: string;
+  readonly path: string;
+  readonly access: string;
+  readonly enforcement: string;
+}
+
+export interface PhaseExecutionEnvelopeBoundary {
+  readonly kind: string;
+  readonly path: string;
+  readonly access: string;
+  readonly summary: string;
+}
+
+export interface PhaseExecutionEnvelopeBudget {
+  readonly computeTier: string;
+  readonly tokenBudget: string;
+  readonly timeBudget: string;
+  readonly mutationBudget: string;
+  readonly notes: string;
 }
 
 export interface SpecPhaseApprovalPolicyDetails {

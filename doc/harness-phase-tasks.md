@@ -215,7 +215,7 @@ Current stance:
   Persist and expose the effective implementation policy snapshot.
   Output: operator can see which implementation policy governed the run and why an action was allowed or blocked.
 
-- [ ] `P-IMP-03` Status: `todo`
+- [x] `P-IMP-03` Status: `done`
   Introduce the first implementation execution envelope.
   Output: declared tool permissions, writable paths, repo boundaries, and budget model for implementation runs.
 

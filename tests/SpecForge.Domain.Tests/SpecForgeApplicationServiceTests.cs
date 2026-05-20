@@ -823,6 +823,8 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
         Assert.Equal("provider-managed", implementationPhase.ExecutionEnvelope.SandboxMode);
         Assert.Contains(implementationPhase.ExecutionEnvelope.ToolPermissions, item => item.Tool == "context-materialization");
         Assert.Equal("extended", implementationPhase.ExecutionEnvelope.Budget.ComputeTier);
+        Assert.Equal("artifact-only", implementationPhase.ExecutionEnvelope.Budget.MutationBudget);
+        Assert.Contains(implementationPhase.ExecutionEnvelope.RepositoryBoundaries, item => item.Kind == "forbidden-path" && item.Path == "<workspace-root>/.git/**");
     }
 
     [Fact]
