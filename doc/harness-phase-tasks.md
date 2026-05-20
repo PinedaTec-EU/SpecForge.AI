@@ -54,11 +54,11 @@ Use this document as the operational backlog for implementation.
   Output: explicit structure for repository access, allowed tools, writable paths, forbidden paths, evidence requirements, and eligibility rules.
   Notes: policy must be inspectable before it becomes strongly enforced.
 
-- [ ] `H-SHARED-05` Status: `todo`
+- [x] `H-SHARED-05` Status: `done`
   Define the structured evidence record contract.
   Output: actor, inputs, outputs, settings, tools used, blocking reason, validation summary, and evidence links.
 
-- [ ] `H-SHARED-06` Status: `todo`
+- [x] `H-SHARED-06` Status: `done`
   Define the execution-envelope contract.
   Output: per-phase declared boundaries for tools, write scope, repo boundaries, and budget.
 
