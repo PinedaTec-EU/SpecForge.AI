@@ -133,7 +133,7 @@ Current stance:
 
 ### Technical Design
 
-- [ ] `H-TD-01` Status: `todo`
+- [x] `H-TD-01` Status: `done`
   Expose the effective prompt and context for `technical-design`.
   Output: latest-execution inspector with prompt, warnings, artifacts, and context files.
 

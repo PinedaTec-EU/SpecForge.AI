@@ -793,7 +793,12 @@ function buildPhaseSpecificSections(
         renderChevronIcon
       });
     case "technical-design":
-      return buildTechnicalDesignPhaseSections();
+      return buildTechnicalDesignPhaseSections({
+        workflow,
+        selectedPhase,
+        escapeHtml,
+        escapeHtmlAttribute
+      });
     case "implementation":
       return buildImplementationPhaseSections();
     case "review":
