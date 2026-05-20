@@ -5,6 +5,51 @@ function buildRefinementPhaseSections(args) {
     const { workflow, selectedPhase, state, heroTokenClass, escapeHtml, escapeHtmlAttribute } = args;
     const effectiveContext = selectedPhase.latestExecutionInspection?.effectiveContext ?? null;
     const refinementPolicy = selectedPhase.latestExecutionInspection?.refinementPolicySnapshot ?? workflow.refinement?.policy ?? null;
+    const skillPreselection = selectedPhase.latestExecutionInspection?.refinementSkillPreselection ?? null;
+    const skillPreselectionSection = skillPreselection
+        ? `
+      <div class="refinement-context">
+        <div class="refinement-context__copy">
+          <h4>Skill Preselection</h4>
+          <p>
+            This persisted refinement snapshot records which skills should be mandatory, which ones may help, which ones were ruled out, and which context gaps still block confident scope handoff.
+          </p>
+        </div>
+        <div class="detail-grid">
+          <div><strong>Required</strong><div><code>${skillPreselection.requiredSkills.length}</code></div></div>
+          <div><strong>Candidate</strong><div><code>${skillPreselection.candidateSkills.length}</code></div></div>
+          <div><strong>Rejected</strong><div><code>${skillPreselection.rejectedSkills.length}</code></div></div>
+          <div><strong>Context Gaps</strong><div><code>${skillPreselection.contextGaps.length}</code></div></div>
+        </div>
+        <div class="refinement-suggestions">
+          <div class="refinement-suggestion refinement-suggestion--static">
+            <div class="refinement-suggestion__body">
+              <strong>Required Skills</strong>
+              ${renderSkillSelectionList(skillPreselection.requiredSkills, escapeHtml)}
+            </div>
+          </div>
+          <div class="refinement-suggestion refinement-suggestion--static">
+            <div class="refinement-suggestion__body">
+              <strong>Candidate Skills</strong>
+              ${renderSkillSelectionList(skillPreselection.candidateSkills, escapeHtml)}
+            </div>
+          </div>
+          <div class="refinement-suggestion refinement-suggestion--static">
+            <div class="refinement-suggestion__body">
+              <strong>Rejected Skills</strong>
+              ${renderSkillSelectionList(skillPreselection.rejectedSkills, escapeHtml)}
+            </div>
+          </div>
+          <div class="refinement-suggestion refinement-suggestion--static">
+            <div class="refinement-suggestion__body">
+              <strong>Context Gaps</strong>
+              ${renderContextGapList(skillPreselection.contextGaps, escapeHtml)}
+            </div>
+          </div>
+        </div>
+      </div>
+    `
+        : "";
     const refinementPolicySection = refinementPolicy
         ? `
       <div class="refinement-context">
@@ -146,6 +191,7 @@ function buildRefinementPhaseSections(args) {
         </div>
         ${workflow.refinement.reason ? `<p class="refinement-reason">${escapeHtml(workflow.refinement.reason)}</p>` : ""}
         ${refinementPolicySection}
+        ${skillPreselectionSection}
         ${refinementInspectionSection}
         ${refinementContextSummarySection}
         ${workflow.refinement.items.length > 0
@@ -194,6 +240,32 @@ function buildRefinementPhaseSections(args) {
             ]
             : []
     };
+}
+function renderSkillSelectionList(items, escapeHtml) {
+    if (items.length === 0) {
+        return `<p class="muted">None.</p>`;
+    }
+    return `
+    <ul class="detail-list">
+      ${items.map((item) => `
+        <li>
+          <strong>${escapeHtml(fileNameFromPath(item.skillPath))}</strong><br>
+          <code>${escapeHtml(item.skillPath)}</code><br>
+          <span class="muted">${escapeHtml(item.rationale)}</span>
+        </li>
+      `).join("")}
+    </ul>
+  `;
+}
+function renderContextGapList(items, escapeHtml) {
+    if (items.length === 0) {
+        return `<p class="muted">No unresolved context gaps remain in this persisted refinement run.</p>`;
+    }
+    return `
+    <ul class="detail-list">
+      ${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+    </ul>
+  `;
 }
 function renderRefinementBlockingConditions(items, escapeHtml) {
     if (items.length === 0) {
