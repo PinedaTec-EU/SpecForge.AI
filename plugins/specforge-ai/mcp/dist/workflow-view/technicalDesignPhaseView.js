@@ -115,6 +115,7 @@ function buildTechnicalDesignPhaseSections(args) {
           <div><strong>Graph Available</strong><div><code>${contextPack.graphAvailable ? "true" : "false"}</code></div></div>
           <div><strong>Fallback Used</strong><div><code>${contextPack.fallbackUsed ? "true" : "false"}</code></div></div>
           <div><strong>Graph Expansions</strong><div><code>${contextPack.graphBackedExpansions.length}</code></div></div>
+          <div><strong>Graph Queries</strong><div><code>${contextPack.graphQueryEvidence.length}</code></div></div>
         </div>
         <div class="refinement-suggestions">
           <div class="refinement-suggestion refinement-suggestion--static">
@@ -147,6 +148,14 @@ function buildTechnicalDesignPhaseSections(args) {
               ${contextPack.impactSummaryPath
             ? `<span>Impact summary: <code>${escapeHtml(contextPack.impactSummaryPath)}</code></span>`
             : ""}
+            </div>
+          </div>
+          <div class="refinement-suggestion refinement-suggestion--static">
+            <div class="refinement-suggestion__body">
+              <strong>Graph Query Evidence</strong>
+              ${contextPack.graphQueryEvidence.length === 0
+            ? "<span>No bounded graph query evidence was recorded for this execution.</span>"
+            : contextPack.graphQueryEvidence.map((item) => `<span><code>${escapeHtml(item.queryKind)}</code> via <code>${escapeHtml(item.tooling)}</code> · source <code>${escapeHtml(item.sourceGraphUsed)}</code> · freshness <code>${escapeHtml(item.freshnessState)}</code> · latency <code>${item.latencyMs} ms</code> · ${escapeHtml(item.purpose)}</span>`).join("")}
             </div>
           </div>
         </div>
