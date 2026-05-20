@@ -664,6 +664,39 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesTechnicalDesignPolicyVisibility()
+    {
+        var readiness = new PhaseExecutionReadiness(
+            PhaseId.TechnicalDesign,
+            CanExecute: true,
+            RequiredPermissions: PhaseExecutionPermissionCatalog.Describe(PhaseId.TechnicalDesign),
+            AssignedModelSecurity: new PhaseExecutionModelSecurity(
+                "openai-compatible",
+                "gpt-5",
+                "technical-design",
+                "read",
+                NativeCliRequired: false,
+                NativeCliAvailable: false,
+                AgentName: "designer",
+                AgentRole: "technical-design"),
+            ValidationMessage: "Phase permission precheck passed for the assigned agent profile.",
+            PhaseSubagentsEnabled: true);
+        var runner = new WorkflowRunner(new CapabilityAwarePhaseExecutionProvider(readiness));
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var technicalDesignPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "technical-design");
+
+        Assert.NotNull(technicalDesignPhase.ExecutionReadiness);
+        Assert.True(technicalDesignPhase.ExecutionReadiness!.PhaseSubagentsEnabled);
+        Assert.NotNull(technicalDesignPhase.ExecutionPolicy);
+        Assert.Contains(technicalDesignPhase.ExecutionPolicy!.EvidenceRequirements, item => item.Id == "design_receipt_evidence");
+        Assert.Contains(technicalDesignPhase.ExecutionPolicy.EligibilityRules, item => item.Id == "technical_design_subagent_mode_declared");
+    }
+
+    [Fact]
     public async Task GetUserStoryWorkflowAsync_ExposesExecutionEnvelopePerPhase()
     {
         var runner = new WorkflowRunner(new InspectionAwarePhaseExecutionProvider());

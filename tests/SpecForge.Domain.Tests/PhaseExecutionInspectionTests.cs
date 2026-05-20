@@ -230,6 +230,33 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
     }
 
     [Fact]
+    public void PhaseExecutionPolicyCatalog_DescribesTechnicalDesignPolicyVisibility()
+    {
+        var readiness = new PhaseExecutionReadiness(
+            PhaseId.TechnicalDesign,
+            CanExecute: true,
+            RequiredPermissions: PhaseExecutionPermissionCatalog.Describe(PhaseId.TechnicalDesign),
+            AssignedModelSecurity: new PhaseExecutionModelSecurity(
+                "openai-compatible",
+                "gpt-5",
+                "technical-design",
+                "read",
+                NativeCliRequired: false,
+                NativeCliAvailable: false,
+                AgentName: "designer",
+                AgentRole: "technical-design"),
+            ValidationMessage: "Phase permission precheck passed for the assigned agent profile.",
+            PhaseSubagentsEnabled: true);
+        var policy = PhaseExecutionPolicyCatalog.Describe(PhaseId.TechnicalDesign, readiness);
+
+        Assert.Equal("technical-design", policy.PhaseId);
+        Assert.Contains(policy.EvidenceRequirements, item => item.Id == "design_receipt_evidence");
+        Assert.Contains(policy.EvidenceRequirements, item => item.Id == "refinement_graph_handoff");
+        Assert.Contains(policy.EligibilityRules, rule => rule.Id == "technical_design_subagent_mode_declared");
+        Assert.Contains(policy.EligibilityRules, rule => rule.Id == "technical_design_quality_gate_visible");
+    }
+
+    [Fact]
     public void PhaseExecutionEvidenceBuilder_CapturesSharedEvidenceShape()
     {
         var inputManifest = new PhaseExecutionInputManifest(

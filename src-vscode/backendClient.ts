@@ -351,6 +351,7 @@ export interface PhaseExecutionReadiness {
   readonly requiredPermissions?: PhaseExecutionRequirements | null;
   readonly assignedModelSecurity?: PhaseExecutionModelSecurity | null;
   readonly validationMessage?: string | null;
+  readonly phaseSubagentsEnabled?: boolean | null;
 }
 
 export interface PhaseExecutionPolicy {

@@ -97,13 +97,21 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
     public PhaseExecutionReadiness GetPhaseExecutionReadiness(PhaseId phaseId)
     {
         var requirements = PhaseExecutionPermissionCatalog.Describe(phaseId);
+        var phaseSubagentsEnabled = phaseId switch
+        {
+            PhaseId.TechnicalDesign => options.PhaseSubagents?.TechnicalDesignEnabled,
+            PhaseId.Review => options.PhaseSubagents?.ReviewEnabled,
+            _ => null
+        };
+
         if (!requirements.ModelExecutionRequired)
         {
             return new PhaseExecutionReadiness(
                 phaseId,
                 CanExecute: true,
                 RequiredPermissions: requirements,
-                ValidationMessage: "Phase does not require a model-backed execution precheck.");
+                ValidationMessage: "Phase does not require a model-backed execution precheck.",
+                PhaseSubagentsEnabled: phaseSubagentsEnabled);
         }
 
         var modelSelection = ResolveModelSelection(phaseId);
@@ -127,7 +135,8 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
                 ResolveNativeCliBlockingReason(modelSelection.ProviderKind),
                 RequiredPermissions: requirements,
                 AssignedModelSecurity: assignedModelSecurity,
-                ValidationMessage: "Phase permission precheck failed because the assigned native model runner is not available.");
+                ValidationMessage: "Phase permission precheck failed because the assigned native model runner is not available.",
+                PhaseSubagentsEnabled: phaseSubagentsEnabled);
         }
 
         var canExecute = HasRequiredRepositoryAccess(effectiveRepositoryAccess, requirements.RepositoryAccess);
@@ -138,14 +147,16 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
                 CanExecute: true,
                 RequiredPermissions: requirements,
                 AssignedModelSecurity: assignedModelSecurity,
-                ValidationMessage: "Phase permission precheck passed for the assigned agent profile.")
+                ValidationMessage: "Phase permission precheck passed for the assigned agent profile.",
+                PhaseSubagentsEnabled: phaseSubagentsEnabled)
             : new PhaseExecutionReadiness(
                 phaseId,
                 CanExecute: false,
                 PhaseExecutionPermissionCatalog.ResolveRepositoryAccessBlockingReason(phaseId),
                 RequiredPermissions: requirements,
                 AssignedModelSecurity: assignedModelSecurity,
-                ValidationMessage: $"Phase permission precheck failed because the assigned agent only has repository access '{effectiveRepositoryAccess}' but phase '{phaseId}' requires '{requirements.RepositoryAccess}'.");
+                ValidationMessage: $"Phase permission precheck failed because the assigned agent only has repository access '{effectiveRepositoryAccess}' but phase '{phaseId}' requires '{requirements.RepositoryAccess}'.",
+                PhaseSubagentsEnabled: phaseSubagentsEnabled);
     }
 
     public RefinementAutoAnswerCapability DescribeRefinementAutoAnswerCapability()

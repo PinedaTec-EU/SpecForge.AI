@@ -262,6 +262,17 @@ public static class PhaseExecutionPolicyCatalog
                     "Implementation iterations must preserve the operated artifact and operation log chain.",
                     EnforcementEnforced)
             ],
+            PhaseId.TechnicalDesign =>
+            [
+                new PhaseExecutionEvidenceRequirement(
+                    "design_receipt_evidence",
+                    "Technical design must persist a receipt-backed evidence record that captures the design input chain, orchestration settings, and generated artifact.",
+                    EnforcementEnforced),
+                new PhaseExecutionEvidenceRequirement(
+                    "refinement_graph_handoff",
+                    "Technical design should consume the refinement graph-scope handoff when it exists so design exploration starts from declared scope anchors.",
+                    EnforcementDeclared)
+            ],
             PhaseId.Review =>
             [
                 new PhaseExecutionEvidenceRequirement(
@@ -337,6 +348,26 @@ public static class PhaseExecutionPolicyCatalog
                 EnforcementEnforced,
                 IsCurrentlySatisfied: true,
                 CurrentStatusMessage: $"Active review evidence policy: `{ReviewEvidencePolicy.Normalize(reviewEvidencePolicy)}`."));
+        }
+
+        if (phaseId == PhaseId.TechnicalDesign)
+        {
+            rules.Add(new PhaseExecutionEligibilityRule(
+                "technical_design_subagent_mode_declared",
+                "Technical design must expose whether specialist subagents are enabled so operators can interpret design synthesis depth and receipts consistently.",
+                EnforcementDeclared,
+                IsCurrentlySatisfied: readiness.PhaseSubagentsEnabled is not null,
+                CurrentStatusMessage: readiness.PhaseSubagentsEnabled is null
+                    ? "The active provider does not declare technical-design subagent mode."
+                    : readiness.PhaseSubagentsEnabled.Value
+                        ? "Technical-design subagents are enabled for the assigned provider profile."
+                        : "Technical-design subagents are disabled for the assigned provider profile."));
+            rules.Add(new PhaseExecutionEligibilityRule(
+                "technical_design_quality_gate_visible",
+                "Technical design must expose whether an explicit design gate is required or whether downstream review remains the active quality gate.",
+                EnforcementDeclared,
+                IsCurrentlySatisfied: true,
+                CurrentStatusMessage: "No explicit technical-design approval gate is enforced yet; downstream review remains the active quality gate unless repository-specific gating is introduced."));
         }
 
         return rules;

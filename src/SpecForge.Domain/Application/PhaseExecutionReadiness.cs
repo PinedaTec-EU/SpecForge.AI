@@ -8,7 +8,8 @@ public sealed record PhaseExecutionReadiness(
     string? BlockingReason = null,
     PhaseExecutionRequirements? RequiredPermissions = null,
     PhaseExecutionModelSecurity? AssignedModelSecurity = null,
-    string? ValidationMessage = null);
+    string? ValidationMessage = null,
+    bool? PhaseSubagentsEnabled = null);
 
 public sealed record PhaseExecutionRequirements(
     bool ModelExecutionRequired,

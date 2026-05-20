@@ -141,7 +141,7 @@ Current stance:
   Define the first design evidence record.
   Output: structured summary of design inputs, output artifact, and any orchestration metadata.
 
-- [ ] `P-TD-01` Status: `todo`
+- [x] `P-TD-01` Status: `done`
   Define design policy visibility.
   Output: inspectable rules for repository access, subagent usage, and design-quality gating when required.
 
