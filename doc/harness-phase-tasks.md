@@ -93,7 +93,7 @@ Use this document as the operational backlog for implementation.
   Notes: MCP and CLI must support first-time graph creation from zero, explicit rebuild, dry-run status, and confirmation before overwriting an existing graph.
   Notes: depends on `G-DESIGN-01`, `G-DESIGN-02`, and `G-DESIGN-03`.
 
-- [ ] `H-SHARED-09` Status: `todo`
+- [x] `H-SHARED-09` Status: `done`
   Define graph runtime controls and configuration surfaces.
   Output: settings model, portal configuration switches, MCP/CLI flag mapping, and default behavior for when graph artifacts exist versus when they must be created.
   Notes: minimum switches are `use semantic graph when available` and `allow graph build/refresh for touched US scope`.

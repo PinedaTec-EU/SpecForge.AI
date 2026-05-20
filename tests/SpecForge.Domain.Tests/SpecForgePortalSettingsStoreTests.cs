@@ -26,6 +26,8 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
         Assert.True(settings.AutoReviewEnabled);
         Assert.Equal(5, settings.MaxImplementationReviewCycles);
         Assert.True(settings.PauseOnFailedReview);
+        Assert.True(settings.UseSemanticGraphWhenAvailable);
+        Assert.False(settings.AllowGraphBuildRefreshForTouchedUserStoryScope);
         Assert.True(settings.ReviewLearningEnabled);
         Assert.False(settings.CompletedUsLockOnCompleted);
     }
@@ -59,6 +61,8 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
         Assert.True(settings.AutoPlayEnabled);
         Assert.True(settings.AutoReviewEnabled);
         Assert.True(settings.PauseOnFailedReview);
+        Assert.True(settings.UseSemanticGraphWhenAvailable);
+        Assert.False(settings.AllowGraphBuildRefreshForTouchedUserStoryScope);
         Assert.True(settings.ReviewLearningEnabled);
     }
 
@@ -84,6 +88,8 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
               "maxImplementationReviewCycles": 5,
               "destructiveRewindEnabled": false,
               "pauseOnFailedReview": true,
+              "useSemanticGraphWhenAvailable": true,
+              "allowGraphBuildRefreshForTouchedUserStoryScope": false,
               "reviewLearningEnabled": true,
               "reviewLearningSkillPath": ".codex/skills/sdd-phase-agents/SKILL.md",
               "completedUsLockOnCompleted": false
@@ -132,6 +138,8 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
               "maxImplementationReviewCycles": 5,
               "destructiveRewindEnabled": false,
               "pauseOnFailedReview": true,
+              "useSemanticGraphWhenAvailable": true,
+              "allowGraphBuildRefreshForTouchedUserStoryScope": false,
               "reviewLearningEnabled": true,
               "reviewLearningSkillPath": ".codex/skills/sdd-phase-agents/SKILL.md",
               "completedUsLockOnCompleted": false
@@ -163,7 +171,9 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
                     RepositoryAccess: "read")
             ],
             MvpRigor = "high",
-            AutoPlayEnabled = false
+            AutoPlayEnabled = false,
+            UseSemanticGraphWhenAvailable = false,
+            AllowGraphBuildRefreshForTouchedUserStoryScope = true
         };
 
         SpecForgePortalSettingsStore.Save(workspaceRoot, settings);
@@ -172,6 +182,8 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
         Assert.NotNull(loaded);
         Assert.Equal("high", loaded.MvpRigor);
         Assert.False(loaded.AutoPlayEnabled);
+        Assert.False(loaded.UseSemanticGraphWhenAvailable);
+        Assert.True(loaded.AllowGraphBuildRefreshForTouchedUserStoryScope);
         Assert.Equal("local", Assert.Single(loaded.ModelProfiles).Name);
     }
 

@@ -450,6 +450,16 @@
           "default": false,
           "description": "When enabled, automatically pause workflow playback on a failed review and show the review warning overlay for developer inspection."
         },
+        "specForge.features.useSemanticGraphWhenAvailable": {
+          "type": "boolean",
+          "default": true,
+          "description": "When enabled, workflow runtime reuses compatible semantic graph artifacts whenever they already exist."
+        },
+        "specForge.features.allowGraphBuildRefreshForTouchedUserStoryScope": {
+          "type": "boolean",
+          "default": false,
+          "description": "When enabled, SpecForge may build or refresh semantic graph state for the touched user story scope when impact graph materialization is needed."
+        },
         "specForge.features.reviewLearningEnabled": {
           "type": "boolean",
           "default": true,

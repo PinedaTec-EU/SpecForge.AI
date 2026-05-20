@@ -27,6 +27,8 @@ export interface SpecForgeSettings {
   readonly maxImplementationReviewCycles: number | null;
   readonly destructiveRewindEnabled: boolean;
   readonly pauseOnFailedReview: boolean;
+  readonly useSemanticGraphWhenAvailable: boolean;
+  readonly allowGraphBuildRefreshForTouchedUserStoryScope: boolean;
   readonly reviewLearningEnabled?: boolean;
   readonly reviewLearningSkillPath?: string | null;
   readonly completedUsLockOnCompleted: boolean;
@@ -174,6 +176,8 @@ export function readSpecForgeSettings(configuration: ConfigurationReader): SpecF
     maxImplementationReviewCycles: normalizeOptionalPositiveInteger(configuration.get<unknown>("features.maxImplementationReviewCycles", 5)),
     destructiveRewindEnabled: configuration.get<boolean>("features.destructiveRewindEnabled", false),
     pauseOnFailedReview: configuration.get<boolean>("features.pauseOnFailedReview", false),
+    useSemanticGraphWhenAvailable: configuration.get<boolean>("features.useSemanticGraphWhenAvailable", true),
+    allowGraphBuildRefreshForTouchedUserStoryScope: configuration.get<boolean>("features.allowGraphBuildRefreshForTouchedUserStoryScope", false),
     reviewLearningEnabled,
     reviewLearningSkillPath,
     completedUsLockOnCompleted: configuration.get<boolean>("features.completedUsLockOnCompleted", false)
@@ -205,6 +209,9 @@ export function buildBackendEnvironment(settings: SpecForgeSettings): NodeJS.Pro
   env.SPECFORGE_REVIEW_SUBAGENTS_ENABLED = settings.reviewSubagentsEnabled === true ? "true" : "false";
   env.SPECFORGE_AUTO_REFINEMENT_ANSWERS_ENABLED = settings.autoRefinementAnswersEnabled ? "true" : "false";
   env.SPECFORGE_PHASE_SKILL_USAGE_REPORTING_ENABLED = settings.phaseSkillUsageReportingEnabled === false ? "false" : "true";
+  env.SPECFORGE_USE_SEMANTIC_GRAPH_WHEN_AVAILABLE = settings.useSemanticGraphWhenAvailable ? "true" : "false";
+  env.SPECFORGE_ALLOW_GRAPH_BUILD_REFRESH_FOR_TOUCHED_US_SCOPE =
+    settings.allowGraphBuildRefreshForTouchedUserStoryScope ? "true" : "false";
   env.SPECFORGE_REVIEW_LEARNING_ENABLED = settings.reviewLearningEnabled === false ? "false" : "true";
   env.SPECFORGE_REVIEW_LEARNING_SKILL_PATH =
     settings.reviewLearningSkillPath ?? ".codex/skills/sdd-phase-agents/SKILL.md";
@@ -459,6 +466,8 @@ function buildSettingsDiagnostics(settings: SpecForgeSettings): string {
     `autoRefinementAnswers.enabled=${settings.autoRefinementAnswersEnabled}`,
     `autoRefinementAnswers.agent=${settings.autoRefinementAnswersProfile ?? "<unset>"}`,
     `phaseSkillUsageReporting.enabled=${settings.phaseSkillUsageReportingEnabled !== false}`,
+    `semanticGraph.useWhenAvailable=${settings.useSemanticGraphWhenAvailable}`,
+    `semanticGraph.allowBuildRefreshForTouchedUs=${settings.allowGraphBuildRefreshForTouchedUserStoryScope}`,
     `autoReviewEnabled=${settings.autoReviewEnabled}`,
     `maxImplementationReviewCycles=${settings.maxImplementationReviewCycles ?? "<unset>"}`,
     `pauseOnFailedReview=${settings.pauseOnFailedReview}`,

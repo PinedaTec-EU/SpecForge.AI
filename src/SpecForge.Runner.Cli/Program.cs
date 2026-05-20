@@ -1040,6 +1040,8 @@ static string BuildConfigurationPortalHtml() =>
           ["autoReviewEnabled", "Auto-review after implementation"],
           ["destructiveRewindEnabled", "Destructive rewind"],
           ["pauseOnFailedReview", "Pause on failed review"],
+          ["useSemanticGraphWhenAvailable", "Use semantic graph when available"],
+          ["allowGraphBuildRefreshForTouchedUserStoryScope", "Allow graph build/refresh for touched US scope"],
           ["reviewLearningEnabled", "Review learning"],
           ["completedUsLockOnCompleted", "Lock completed user stories"],
           ["decompositionEnabled", "Complexity decomposition"]
@@ -1075,6 +1077,8 @@ static string BuildConfigurationPortalHtml() =>
           "autoReviewEnabled": "Automatically continues from implementation into review after implementation artifacts are generated or updated.",
           "destructiveRewindEnabled": "When enabled, rewinds and regressions delete later derived artifacts and branch metadata.",
           "pauseOnFailedReview": "Automatically pauses workflow playback when review fails so the developer can inspect the result.",
+          "useSemanticGraphWhenAvailable": "Reuses semantic graph artifacts during workflow runtime when they already exist and are compatible.",
+          "allowGraphBuildRefreshForTouchedUserStoryScope": "Allows SpecForge to build or refresh the impact graph for the touched user story scope when graph state needs to be materialized.",
           "reviewLearningEnabled": "Allows implementation retries after failed review to persist generalized lessons into local skills or prompt guardrails.",
           "completedUsLockOnCompleted": "Keeps completed user stories locked against direct rewind or artifact modification unless explicitly reopened.",
           "decompositionEnabled": "Evaluates generated specs for complexity and can propose or require child user stories before normal spec approval."
@@ -1370,6 +1374,14 @@ static string BuildConfigurationPortalHtml() =>
 
           if (typeof state.pauseOnFailedReview !== "boolean") {
             state.pauseOnFailedReview = true;
+          }
+
+          if (typeof state.useSemanticGraphWhenAvailable !== "boolean") {
+            state.useSemanticGraphWhenAvailable = true;
+          }
+
+          if (typeof state.allowGraphBuildRefreshForTouchedUserStoryScope !== "boolean") {
+            state.allowGraphBuildRefreshForTouchedUserStoryScope = false;
           }
 
           if (typeof state.reviewSubagentsEnabled !== "boolean") {

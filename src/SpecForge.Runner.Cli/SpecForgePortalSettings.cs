@@ -18,6 +18,8 @@ internal sealed record SpecForgePortalSettings(
     int MaxImplementationReviewCycles,
     bool DestructiveRewindEnabled,
     bool PauseOnFailedReview,
+    bool UseSemanticGraphWhenAvailable,
+    bool AllowGraphBuildRefreshForTouchedUserStoryScope,
     bool ReviewLearningEnabled,
     string ReviewLearningSkillPath,
     bool CompletedUsLockOnCompleted,
@@ -125,6 +127,16 @@ internal static class SpecForgePortalSettingsStore
             settings = settings with { PauseOnFailedReview = true };
         }
 
+        if (!document.RootElement.TryGetProperty("useSemanticGraphWhenAvailable", out _))
+        {
+            settings = settings with { UseSemanticGraphWhenAvailable = true };
+        }
+
+        if (!document.RootElement.TryGetProperty("allowGraphBuildRefreshForTouchedUserStoryScope", out _))
+        {
+            settings = settings with { AllowGraphBuildRefreshForTouchedUserStoryScope = false };
+        }
+
         if (!document.RootElement.TryGetProperty("reviewSubagentsEnabled", out _))
         {
             settings = settings with { ReviewSubagentsEnabled = true };
@@ -201,6 +213,8 @@ internal static class SpecForgePortalSettingsStore
             MaxImplementationReviewCycles: 5,
             DestructiveRewindEnabled: false,
             PauseOnFailedReview: true,
+            UseSemanticGraphWhenAvailable: true,
+            AllowGraphBuildRefreshForTouchedUserStoryScope: false,
             ReviewLearningEnabled: true,
             ReviewLearningSkillPath: ".codex/skills/sdd-phase-agents/SKILL.md",
             CompletedUsLockOnCompleted: false,

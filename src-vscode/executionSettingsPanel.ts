@@ -41,6 +41,8 @@ type ExecutionSettingsMessage =
       readonly maxImplementationReviewCycles?: number | null;
       readonly destructiveRewindEnabled?: boolean;
       readonly pauseOnFailedReview?: boolean;
+      readonly useSemanticGraphWhenAvailable?: boolean;
+      readonly allowGraphBuildRefreshForTouchedUserStoryScope?: boolean;
       readonly reviewLearningEnabled?: boolean;
       readonly reviewLearningSkillPath?: string | null;
       readonly completedUsLockOnCompleted?: boolean;
@@ -121,6 +123,8 @@ class ExecutionSettingsPanelController {
               message.maxImplementationReviewCycles ?? null,
               message.destructiveRewindEnabled ?? false,
               message.pauseOnFailedReview ?? false,
+              message.useSemanticGraphWhenAvailable ?? true,
+              message.allowGraphBuildRefreshForTouchedUserStoryScope ?? false,
               message.reviewLearningEnabled ?? true,
               message.reviewLearningSkillPath,
               message.completedUsLockOnCompleted ?? true);
@@ -167,6 +171,8 @@ class ExecutionSettingsPanelController {
       maxImplementationReviewCycles: settings.maxImplementationReviewCycles,
       destructiveRewindEnabled: settings.destructiveRewindEnabled,
       pauseOnFailedReview: settings.pauseOnFailedReview,
+      useSemanticGraphWhenAvailable: settings.useSemanticGraphWhenAvailable,
+      allowGraphBuildRefreshForTouchedUserStoryScope: settings.allowGraphBuildRefreshForTouchedUserStoryScope,
       reviewLearningEnabled: settings.reviewLearningEnabled !== false,
       reviewLearningSkillPath: settings.reviewLearningSkillPath ?? ".codex/skills/sdd-phase-agents/SKILL.md",
       completedUsLockOnCompleted: settings.completedUsLockOnCompleted,
@@ -219,6 +225,8 @@ type ExecutionSettingsViewModel = {
   readonly maxImplementationReviewCycles: number | null;
   readonly destructiveRewindEnabled: boolean;
   readonly pauseOnFailedReview: boolean;
+  readonly useSemanticGraphWhenAvailable: boolean;
+  readonly allowGraphBuildRefreshForTouchedUserStoryScope: boolean;
   readonly reviewLearningEnabled: boolean;
   readonly reviewLearningSkillPath: string;
   readonly completedUsLockOnCompleted: boolean;
@@ -756,6 +764,22 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
           </select>
           <span class="phase-field__hint">Force explicit confirmation of the proposed base branch before approving spec.</span>
         </label>
+        <label class="phase-field">
+          <span>Use semantic graph when available</span>
+          <select data-use-semantic-graph-when-available>
+            <option value="true"${model.useSemanticGraphWhenAvailable ? " selected" : ""}>Enabled</option>
+            <option value="false"${model.useSemanticGraphWhenAvailable ? "" : " selected"}>Disabled</option>
+          </select>
+          <span class="phase-field__hint">Reuse a valid semantic code graph for later phases when graph artifacts already exist.</span>
+        </label>
+        <label class="phase-field">
+          <span>Allow graph build or refresh for touched US scope</span>
+          <select data-allow-graph-build-refresh-for-touched-us-scope>
+            <option value="false"${model.allowGraphBuildRefreshForTouchedUserStoryScope ? "" : " selected"}>Disabled</option>
+            <option value="true"${model.allowGraphBuildRefreshForTouchedUserStoryScope ? " selected" : ""}>Enabled</option>
+          </select>
+          <span class="phase-field__hint">Allow runtime or operator flows to materialize or refresh graph state for the touched user story when needed.</span>
+        </label>
       </div>
       <div class="section-header">
         <div>
@@ -932,6 +956,8 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
       maxImplementationReviewCycles: ${JSON.stringify(model.maxImplementationReviewCycles ?? 5)},
       destructiveRewindEnabled: ${JSON.stringify(model.destructiveRewindEnabled)},
       pauseOnFailedReview: ${JSON.stringify(model.pauseOnFailedReview)},
+      useSemanticGraphWhenAvailable: ${JSON.stringify(model.useSemanticGraphWhenAvailable)},
+      allowGraphBuildRefreshForTouchedUserStoryScope: ${JSON.stringify(model.allowGraphBuildRefreshForTouchedUserStoryScope)},
       reviewLearningEnabled: ${JSON.stringify(model.reviewLearningEnabled)},
       reviewLearningSkillPath: ${JSON.stringify(model.reviewLearningSkillPath)},
       completedUsLockOnCompleted: ${JSON.stringify(model.completedUsLockOnCompleted)},
@@ -1086,6 +1112,8 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
       const maxImplementationReviewCycles = document.querySelector("[data-max-implementation-review-cycles]");
       const destructiveRewindEnabled = document.querySelector("[data-destructive-rewind-enabled]");
       const pauseOnFailedReview = document.querySelector("[data-pause-on-failed-review]");
+      const useSemanticGraphWhenAvailable = document.querySelector("[data-use-semantic-graph-when-available]");
+      const allowGraphBuildRefreshForTouchedUserStoryScope = document.querySelector("[data-allow-graph-build-refresh-for-touched-us-scope]");
       const reviewLearningEnabled = document.querySelector("[data-review-learning-enabled]");
       const reviewLearningSkillPath = document.querySelector("[data-review-learning-skill-path]");
       const completedUsLockOnCompleted = document.querySelector("[data-completed-us-lock-on-completed]");
@@ -1315,6 +1343,20 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
         pauseOnFailedReview.value = state.pauseOnFailedReview ? "true" : "false";
         pauseOnFailedReview.addEventListener("change", () => {
           state.pauseOnFailedReview = pauseOnFailedReview.value === "true";
+        });
+      }
+
+      if (useSemanticGraphWhenAvailable instanceof HTMLSelectElement) {
+        useSemanticGraphWhenAvailable.value = state.useSemanticGraphWhenAvailable ? "true" : "false";
+        useSemanticGraphWhenAvailable.addEventListener("change", () => {
+          state.useSemanticGraphWhenAvailable = useSemanticGraphWhenAvailable.value === "true";
+        });
+      }
+
+      if (allowGraphBuildRefreshForTouchedUserStoryScope instanceof HTMLSelectElement) {
+        allowGraphBuildRefreshForTouchedUserStoryScope.value = state.allowGraphBuildRefreshForTouchedUserStoryScope ? "true" : "false";
+        allowGraphBuildRefreshForTouchedUserStoryScope.addEventListener("change", () => {
+          state.allowGraphBuildRefreshForTouchedUserStoryScope = allowGraphBuildRefreshForTouchedUserStoryScope.value === "true";
         });
       }
 
@@ -1749,6 +1791,8 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
         maxImplementationReviewCycles: state.maxImplementationReviewCycles,
         destructiveRewindEnabled: state.destructiveRewindEnabled,
         pauseOnFailedReview: state.pauseOnFailedReview,
+        useSemanticGraphWhenAvailable: state.useSemanticGraphWhenAvailable,
+        allowGraphBuildRefreshForTouchedUserStoryScope: state.allowGraphBuildRefreshForTouchedUserStoryScope,
         reviewLearningEnabled: state.reviewLearningEnabled,
         reviewLearningSkillPath: state.reviewLearningSkillPath,
         completedUsLockOnCompleted: state.completedUsLockOnCompleted
@@ -1786,6 +1830,8 @@ async function saveExecutionSettingsAsync(
   maxImplementationReviewCycles?: number | null,
   destructiveRewindEnabled = false,
   pauseOnFailedReview = false,
+  useSemanticGraphWhenAvailable = true,
+  allowGraphBuildRefreshForTouchedUserStoryScope = false,
   reviewLearningEnabled = true,
   reviewLearningSkillPath?: string | null,
   completedUsLockOnCompleted = false
@@ -1899,6 +1945,8 @@ async function saveExecutionSettingsAsync(
     vscode.ConfigurationTarget.Workspace);
   await configuration.update("features.destructiveRewindEnabled", destructiveRewindEnabled, vscode.ConfigurationTarget.Workspace);
   await configuration.update("features.pauseOnFailedReview", pauseOnFailedReview, vscode.ConfigurationTarget.Workspace);
+  await configuration.update("features.useSemanticGraphWhenAvailable", useSemanticGraphWhenAvailable, vscode.ConfigurationTarget.Workspace);
+  await configuration.update("features.allowGraphBuildRefreshForTouchedUserStoryScope", allowGraphBuildRefreshForTouchedUserStoryScope, vscode.ConfigurationTarget.Workspace);
   await configuration.update("features.reviewLearningEnabled", reviewLearningEnabled, vscode.ConfigurationTarget.Workspace);
   await configuration.update(
     "features.reviewLearningSkillPath",
