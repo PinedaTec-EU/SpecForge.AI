@@ -99,7 +99,7 @@ Use this document as the operational backlog for implementation.
   Notes: minimum switches are `use semantic graph when available` and `allow graph build/refresh for touched US scope`.
   Notes: depends on `G-DESIGN-01` and `G-DESIGN-04`.
 
-- [ ] `H-SHARED-10` Status: `todo`
+- [x] `H-SHARED-10` Status: `done`
   Define the graph build audit and cost ledger contract.
   Output: persisted record of who triggered graph creation or refresh, when, why, which mode ran, whether existing graph state was reused or replaced, token usage, latency, and resulting artifacts.
   Notes: must inventory expensive full rebuilds and be reusable from portal, MCP, and CLI.

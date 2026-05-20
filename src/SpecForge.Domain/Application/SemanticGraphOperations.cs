@@ -29,13 +29,19 @@ public sealed record SemanticGraphGlobalOperationRequest(
     string Actor,
     string Reason,
     bool DryRun = false,
-    bool ConfirmOverwrite = false);
+    bool ConfirmOverwrite = false,
+    string TriggerSurface = "runtime",
+    string? ModelProfile = null,
+    string? EmbeddingProfile = null);
 
 public sealed record SemanticGraphImpactOperationRequest(
     string UsId,
     string Actor,
     string Reason,
-    bool DryRun = false);
+    bool DryRun = false,
+    string TriggerSurface = "runtime",
+    string? ModelProfile = null,
+    string? EmbeddingProfile = null);
 
 public sealed record SemanticGraphOperationResult(
     string Scope,
@@ -59,7 +65,10 @@ public sealed record SemanticGraphQueryRequest(
     string? SymbolId = null,
     int MaxDepth = 1,
     bool IncludeTests = false,
-    string? SourcePreference = null);
+    string? SourcePreference = null,
+    string TriggerSurface = "runtime",
+    string? ModelProfile = null,
+    string? EmbeddingProfile = null);
 
 public sealed record SemanticGraphQueryResult(
     string QueryKind,
@@ -139,6 +148,8 @@ public static class SemanticGraphOperations
         WriteIndented = true
     };
 
+    private static readonly JsonSerializerOptions JsonLineSerializerOptions = new(JsonSerializerDefaults.Web);
+
     private static readonly string[] BaselineQueryKinds =
     [
         "status",
@@ -188,6 +199,7 @@ public static class SemanticGraphOperations
         var currentStatus = DescribeGlobalStatus(workspaceRoot, globalPaths);
         var blockedReasons = new List<string>();
         var warnings = new List<string>();
+        var startedAt = Environment.TickCount64;
         var requiresConfirmation = false;
         var targetState = request.Mode switch
         {
@@ -214,6 +226,44 @@ public static class SemanticGraphOperations
 
         if (request.DryRun || blockedReasons.Count > 0)
         {
+            if (blockedReasons.Count > 0)
+            {
+                RecordAuditEventAndRefreshLedger(
+                    workspaceRoot,
+                    new SemanticGraphAuditEvent(
+                        EventId: Guid.NewGuid().ToString("N"),
+                        Timestamp: DateTimeOffset.UtcNow.ToString("O"),
+                        EventFamily: $"graph.{request.Mode}.failed",
+                        Actor: request.Actor,
+                        TriggerSurface: request.TriggerSurface,
+                        WorkspaceRoot: PhaseExecutionReceiptStore.NormalizePath(workspaceRoot),
+                        UsId: null,
+                        Phase: null,
+                        Reason: request.Reason,
+                        RequestedMode: request.Mode,
+                        ActualMode: "blocked",
+                        SourcePreference: null,
+                        GraphStateBefore: currentStatus.State,
+                        GraphStateAfter: currentStatus.State,
+                        OverwriteRequested: request.Mode == "rebuild" && currentStatus.Exists,
+                        OverwriteConfirmed: request.ConfirmOverwrite,
+                        ReusedExistingGraph: false,
+                        ReplacedExistingGraph: false,
+                        FallbackUsed: false,
+                        FallbackReason: null,
+                        BuilderStrategy: null,
+                        ModelProfile: request.ModelProfile,
+                        EmbeddingProfile: request.EmbeddingProfile,
+                        LatencyMs: (int)(Environment.TickCount64 - startedAt),
+                        FilesProcessed: null,
+                        TokenUsage: null,
+                        ArtifactsRead: BuildGlobalArtifactsRead(globalPaths),
+                        ArtifactsWritten: [],
+                        Warnings: warnings.Concat(blockedReasons).ToArray(),
+                        ErrorCode: "operation_blocked",
+                        ErrorSummary: string.Join(" ", blockedReasons)));
+            }
+
             return new SemanticGraphOperationResult(
                 Scope: "global",
                 Mode: request.Mode,
@@ -247,20 +297,45 @@ public static class SemanticGraphOperations
         var artifactsWritten = new List<string>
         {
             WriteText(globalPaths.GlobalGraphPath, artifactJson),
-            WriteText(globalPaths.GlobalGraphMetadataPath, metadataJson)
+            WriteText(globalPaths.GlobalGraphMetadataPath, metadataJson),
+            PhaseExecutionReceiptStore.NormalizePath(globalPaths.GraphBuildLogPath),
+            PhaseExecutionReceiptStore.NormalizePath(globalPaths.GraphCostLedgerPath)
         };
 
-        var buildLogEntry = new
-        {
-            eventFamily = $"graph.{request.Mode}.completed",
-            timestamp = DateTimeOffset.UtcNow.ToString("O"),
-            actor = request.Actor,
-            reason = request.Reason,
-            overwriteConfirmed = request.ConfirmOverwrite,
-            targetState,
-            metadataPath = PhaseExecutionReceiptStore.NormalizePath(globalPaths.GlobalGraphMetadataPath)
-        };
-        artifactsWritten.Add(AppendJsonLine(globalPaths.GraphBuildLogPath, buildLogEntry));
+        RecordAuditEventAndRefreshLedger(
+            workspaceRoot,
+            new SemanticGraphAuditEvent(
+                EventId: Guid.NewGuid().ToString("N"),
+                Timestamp: DateTimeOffset.UtcNow.ToString("O"),
+                EventFamily: $"graph.{request.Mode}.completed",
+                Actor: request.Actor,
+                TriggerSurface: request.TriggerSurface,
+                WorkspaceRoot: PhaseExecutionReceiptStore.NormalizePath(workspaceRoot),
+                UsId: null,
+                Phase: null,
+                Reason: request.Reason,
+                RequestedMode: request.Mode,
+                ActualMode: request.Mode,
+                SourcePreference: null,
+                GraphStateBefore: currentStatus.State,
+                GraphStateAfter: targetState,
+                OverwriteRequested: request.Mode == "rebuild" && currentStatus.Exists,
+                OverwriteConfirmed: request.ConfirmOverwrite,
+                ReusedExistingGraph: request.Mode == "refresh" && currentStatus.Exists,
+                ReplacedExistingGraph: request.Mode == "rebuild" && currentStatus.Exists,
+                FallbackUsed: false,
+                FallbackReason: null,
+                BuilderStrategy: artifact.BuilderStrategy,
+                ModelProfile: request.ModelProfile,
+                EmbeddingProfile: request.EmbeddingProfile,
+                LatencyMs: (int)(Environment.TickCount64 - startedAt),
+                FilesProcessed: artifact.Files.Count + artifact.Projects.Count,
+                TokenUsage: null,
+                ArtifactsRead: BuildGlobalArtifactsRead(globalPaths),
+                ArtifactsWritten: artifactsWritten.ToArray(),
+                Warnings: warnings.ToArray(),
+                ErrorCode: null,
+                ErrorSummary: null));
 
         return new SemanticGraphOperationResult(
             Scope: "global",
@@ -288,6 +363,7 @@ public static class SemanticGraphOperations
         var impactStatus = DescribeImpactStatus(workspaceRoot, userStoryPaths, globalStatus);
         var warnings = new List<string>();
         var blockedReasons = new List<string>();
+        var startedAt = Environment.TickCount64;
 
         var graphScopeRequest = TryLoadGraphScopeRequest(userStoryPaths.GraphScopeRequestPath);
         if (graphScopeRequest is null)
@@ -297,6 +373,44 @@ public static class SemanticGraphOperations
 
         if (request.DryRun || blockedReasons.Count > 0)
         {
+            if (blockedReasons.Count > 0)
+            {
+                RecordAuditEventAndRefreshLedger(
+                    workspaceRoot,
+                    new SemanticGraphAuditEvent(
+                        EventId: Guid.NewGuid().ToString("N"),
+                        Timestamp: DateTimeOffset.UtcNow.ToString("O"),
+                        EventFamily: "graph.derive-impact.failed",
+                        Actor: request.Actor,
+                        TriggerSurface: request.TriggerSurface,
+                        WorkspaceRoot: PhaseExecutionReceiptStore.NormalizePath(workspaceRoot),
+                        UsId: request.UsId,
+                        Phase: "technical-design",
+                        Reason: request.Reason,
+                        RequestedMode: "derive-impact",
+                        ActualMode: "blocked",
+                        SourcePreference: null,
+                        GraphStateBefore: impactStatus.State,
+                        GraphStateAfter: impactStatus.State,
+                        OverwriteRequested: false,
+                        OverwriteConfirmed: false,
+                        ReusedExistingGraph: false,
+                        ReplacedExistingGraph: false,
+                        FallbackUsed: false,
+                        FallbackReason: null,
+                        BuilderStrategy: null,
+                        ModelProfile: request.ModelProfile,
+                        EmbeddingProfile: request.EmbeddingProfile,
+                        LatencyMs: (int)(Environment.TickCount64 - startedAt),
+                        FilesProcessed: null,
+                        TokenUsage: null,
+                        ArtifactsRead: BuildImpactArtifactsRead(workspaceRoot, userStoryPaths),
+                        ArtifactsWritten: [],
+                        Warnings: warnings.Concat(blockedReasons).ToArray(),
+                        ErrorCode: "graph_scope_request_missing",
+                        ErrorSummary: string.Join(" ", blockedReasons)));
+            }
+
             return new SemanticGraphOperationResult(
                 Scope: "impact",
                 Mode: "derive-impact-graph",
@@ -333,8 +447,47 @@ public static class SemanticGraphOperations
         {
             WriteText(userStoryPaths.ImpactGraphPath, artifactJson),
             WriteText(userStoryPaths.ImpactGraphMetadataPath, JsonSerializer.Serialize(metadata, SerializerOptions)),
-            WriteText(userStoryPaths.ImpactGraphSummaryPath, summary)
+            WriteText(userStoryPaths.ImpactGraphSummaryPath, summary),
+            PhaseExecutionReceiptStore.NormalizePath(SemanticGraphFilePaths.FromWorkspaceRoot(workspaceRoot).GraphBuildLogPath),
+            PhaseExecutionReceiptStore.NormalizePath(SemanticGraphFilePaths.FromWorkspaceRoot(workspaceRoot).GraphCostLedgerPath)
         };
+
+        RecordAuditEventAndRefreshLedger(
+            workspaceRoot,
+            new SemanticGraphAuditEvent(
+                EventId: Guid.NewGuid().ToString("N"),
+                Timestamp: DateTimeOffset.UtcNow.ToString("O"),
+                EventFamily: "graph.derive-impact.completed",
+                Actor: request.Actor,
+                TriggerSurface: request.TriggerSurface,
+                WorkspaceRoot: PhaseExecutionReceiptStore.NormalizePath(workspaceRoot),
+                UsId: request.UsId,
+                Phase: "technical-design",
+                Reason: request.Reason,
+                RequestedMode: "derive-impact",
+                ActualMode: artifact.DerivationMode,
+                SourcePreference: null,
+                GraphStateBefore: impactStatus.State,
+                GraphStateAfter: "fresh",
+                OverwriteRequested: false,
+                OverwriteConfirmed: false,
+                ReusedExistingGraph: false,
+                ReplacedExistingGraph: false,
+                FallbackUsed: string.Equals(artifact.DerivationMode, "fallback-derived", StringComparison.Ordinal),
+                FallbackReason: string.Equals(artifact.DerivationMode, "fallback-derived", StringComparison.Ordinal)
+                    ? "Global graph was unavailable during impact derivation."
+                    : null,
+                BuilderStrategy: metadata.BuilderStrategy,
+                ModelProfile: request.ModelProfile,
+                EmbeddingProfile: request.EmbeddingProfile,
+                LatencyMs: (int)(Environment.TickCount64 - startedAt),
+                FilesProcessed: artifact.IncludedFiles.Count,
+                TokenUsage: null,
+                ArtifactsRead: BuildImpactArtifactsRead(workspaceRoot, userStoryPaths),
+                ArtifactsWritten: artifactsWritten.Select(PhaseExecutionReceiptStore.NormalizePath).ToArray(),
+                Warnings: warnings.ToArray(),
+                ErrorCode: null,
+                ErrorSummary: null));
 
         return new SemanticGraphOperationResult(
             Scope: "impact",
@@ -353,16 +506,94 @@ public static class SemanticGraphOperations
     {
         var startedAt = Environment.TickCount64;
         var warnings = new List<string>();
-
-        return request.QueryKind switch
+        try
         {
-            "status" => BuildStatusQueryResult(workspaceRoot, request, startedAt, warnings),
-            "explain-freshness" => BuildFreshnessQueryResult(workspaceRoot, request, startedAt, warnings),
-            "neighbors:file" => BuildNeighborsQueryResult(workspaceRoot, request, startedAt, warnings),
-            "tests-adjacent:file" => BuildTestsAdjacentQueryResult(workspaceRoot, request, startedAt, warnings),
-            "why-included:file" => BuildWhyIncludedQueryResult(workspaceRoot, request, startedAt, warnings),
-            _ => throw new InvalidOperationException($"Query kind '{request.QueryKind}' is not supported by the baseline semantic graph contract.")
-        };
+            var result = request.QueryKind switch
+            {
+                "status" => BuildStatusQueryResult(workspaceRoot, request, startedAt, warnings),
+                "explain-freshness" => BuildFreshnessQueryResult(workspaceRoot, request, startedAt, warnings),
+                "neighbors:file" => BuildNeighborsQueryResult(workspaceRoot, request, startedAt, warnings),
+                "tests-adjacent:file" => BuildTestsAdjacentQueryResult(workspaceRoot, request, startedAt, warnings),
+                "why-included:file" => BuildWhyIncludedQueryResult(workspaceRoot, request, startedAt, warnings),
+                _ => throw new InvalidOperationException($"Query kind '{request.QueryKind}' is not supported by the baseline semantic graph contract.")
+            };
+
+            RecordAuditEventAndRefreshLedger(
+                workspaceRoot,
+                new SemanticGraphAuditEvent(
+                    EventId: Guid.NewGuid().ToString("N"),
+                    Timestamp: DateTimeOffset.UtcNow.ToString("O"),
+                    EventFamily: "graph.query.executed",
+                    Actor: request.Actor,
+                    TriggerSurface: request.TriggerSurface,
+                    WorkspaceRoot: PhaseExecutionReceiptStore.NormalizePath(workspaceRoot),
+                    UsId: request.UsId,
+                    Phase: request.Phase,
+                    Reason: request.Reason,
+                    RequestedMode: request.QueryKind,
+                    ActualMode: result.SourceGraphUsed,
+                    SourcePreference: request.SourcePreference,
+                    GraphStateBefore: result.FreshnessState,
+                    GraphStateAfter: result.FreshnessState,
+                    OverwriteRequested: false,
+                    OverwriteConfirmed: false,
+                    ReusedExistingGraph: !result.FallbackUsed,
+                    ReplacedExistingGraph: false,
+                    FallbackUsed: result.FallbackUsed,
+                    FallbackReason: result.FallbackUsed ? string.Join(" ", result.InclusionReasons) : null,
+                    BuilderStrategy: null,
+                    ModelProfile: request.ModelProfile,
+                    EmbeddingProfile: request.EmbeddingProfile,
+                    LatencyMs: result.LatencyMs,
+                    FilesProcessed: result.IncludedFiles.Count,
+                    TokenUsage: null,
+                    ArtifactsRead: BuildQueryArtifactsRead(workspaceRoot, request, result),
+                    ArtifactsWritten: [],
+                    Warnings: result.Warnings,
+                    ErrorCode: null,
+                    ErrorSummary: null));
+
+            return result;
+        }
+        catch (Exception exception)
+        {
+            RecordAuditEventAndRefreshLedger(
+                workspaceRoot,
+                new SemanticGraphAuditEvent(
+                    EventId: Guid.NewGuid().ToString("N"),
+                    Timestamp: DateTimeOffset.UtcNow.ToString("O"),
+                    EventFamily: "graph.query.failed",
+                    Actor: request.Actor,
+                    TriggerSurface: request.TriggerSurface,
+                    WorkspaceRoot: PhaseExecutionReceiptStore.NormalizePath(workspaceRoot),
+                    UsId: request.UsId,
+                    Phase: request.Phase,
+                    Reason: request.Reason,
+                    RequestedMode: request.QueryKind,
+                    ActualMode: "failed",
+                    SourcePreference: request.SourcePreference,
+                    GraphStateBefore: DescribeStatus(workspaceRoot, request.UsId).ImpactGraph?.State
+                        ?? DescribeStatus(workspaceRoot, request.UsId).GlobalGraph.State,
+                    GraphStateAfter: "failed",
+                    OverwriteRequested: false,
+                    OverwriteConfirmed: false,
+                    ReusedExistingGraph: false,
+                    ReplacedExistingGraph: false,
+                    FallbackUsed: false,
+                    FallbackReason: null,
+                    BuilderStrategy: null,
+                    ModelProfile: request.ModelProfile,
+                    EmbeddingProfile: request.EmbeddingProfile,
+                    LatencyMs: (int)(Environment.TickCount64 - startedAt),
+                    FilesProcessed: null,
+                    TokenUsage: null,
+                    ArtifactsRead: BuildQueryArtifactsRead(workspaceRoot, request, result: null),
+                    ArtifactsWritten: [],
+                    Warnings: warnings.ToArray(),
+                    ErrorCode: "query_failed",
+                    ErrorSummary: exception.Message));
+            throw;
+        }
     }
 
     private static SemanticGraphArtifactStatus DescribeGlobalStatus(string workspaceRoot, SemanticGraphFilePaths globalPaths)
@@ -934,11 +1165,157 @@ public static class SemanticGraphOperations
         return path;
     }
 
-    private static string AppendJsonLine(string path, object entry)
+    private static void RecordAuditEventAndRefreshLedger(string workspaceRoot, SemanticGraphAuditEvent auditEvent)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        File.AppendAllText(path, JsonSerializer.Serialize(entry, SerializerOptions) + Environment.NewLine, Encoding.UTF8);
-        return path;
+        var globalPaths = SemanticGraphFilePaths.FromWorkspaceRoot(workspaceRoot);
+        Directory.CreateDirectory(Path.GetDirectoryName(globalPaths.GraphBuildLogPath)!);
+        File.AppendAllText(
+            globalPaths.GraphBuildLogPath,
+            JsonSerializer.Serialize(auditEvent, JsonLineSerializerOptions) + Environment.NewLine,
+            Encoding.UTF8);
+        RefreshCostLedger(globalPaths);
+    }
+
+    private static void RefreshCostLedger(SemanticGraphFilePaths globalPaths)
+    {
+        var auditEvents = TryReadAuditEvents(globalPaths.GraphBuildLogPath).ToArray();
+        var ledger = BuildCostLedger(auditEvents);
+        WriteText(globalPaths.GraphCostLedgerPath, JsonSerializer.Serialize(ledger, SerializerOptions));
+    }
+
+    private static IEnumerable<SemanticGraphAuditEvent> TryReadAuditEvents(string path)
+    {
+        if (!File.Exists(path))
+        {
+            return [];
+        }
+
+        var events = new List<SemanticGraphAuditEvent>();
+        foreach (var line in File.ReadLines(path, Encoding.UTF8))
+        {
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+
+            var entry = JsonSerializer.Deserialize<SemanticGraphAuditEvent>(line, SerializerOptions);
+            if (entry is not null)
+            {
+                events.Add(entry);
+            }
+        }
+
+        return events;
+    }
+
+    private static SemanticGraphCostLedger BuildCostLedger(IReadOnlyCollection<SemanticGraphAuditEvent> auditEvents)
+    {
+        var generatedAt = DateTimeOffset.UtcNow.ToString("O");
+        var builds = BuildOperationLedger(auditEvents.Where(static entry => entry.EventFamily == "graph.build.completed").ToArray());
+        var refreshes = BuildOperationLedger(auditEvents.Where(static entry => entry.EventFamily == "graph.refresh.completed").ToArray());
+        var rebuilds = BuildOperationLedger(auditEvents.Where(static entry => entry.EventFamily == "graph.rebuild.completed").ToArray());
+        var impactDerivations = BuildOperationLedger(auditEvents.Where(static entry => entry.EventFamily == "graph.derive-impact.completed").ToArray());
+        var queries = BuildOperationLedger(auditEvents.Where(static entry => entry.EventFamily == "graph.query.executed").ToArray());
+        var totalInputTokens = auditEvents.Sum(static entry => entry.TokenUsage?.InputTokens ?? 0);
+        var totalOutputTokens = auditEvents.Sum(static entry => entry.TokenUsage?.OutputTokens ?? 0);
+        var totalTokens = auditEvents.Sum(static entry => entry.TokenUsage?.TotalTokens ?? 0);
+        var lastSuccessfulGlobalGraphBuild = auditEvents
+            .Where(static entry =>
+                entry.EventFamily is "graph.build.completed" or "graph.refresh.completed" or "graph.rebuild.completed")
+            .OrderByDescending(static entry => entry.Timestamp, StringComparer.Ordinal)
+            .Select(ToLedgerPointer)
+            .FirstOrDefault();
+        var lastFailedGraphMutation = auditEvents
+            .Where(static entry =>
+                entry.EventFamily is "graph.build.failed" or "graph.refresh.failed" or "graph.rebuild.failed" or "graph.derive-impact.failed")
+            .OrderByDescending(static entry => entry.Timestamp, StringComparer.Ordinal)
+            .Select(ToLedgerPointer)
+            .FirstOrDefault();
+
+        return new SemanticGraphCostLedger(
+            ContractKey: SemanticGraphLifecycleCatalog.ContractKey,
+            GeneratedAtUtc: generatedAt,
+            Builds: builds,
+            Refreshes: refreshes,
+            Rebuilds: rebuilds,
+            ImpactDerivations: impactDerivations,
+            Queries: queries,
+            TotalTokenUsage: new SemanticGraphTokenUsage(totalInputTokens, totalOutputTokens, totalTokens),
+            LastSuccessfulGlobalGraphBuild: lastSuccessfulGlobalGraphBuild,
+            LastFailedGraphMutation: lastFailedGraphMutation);
+    }
+
+    private static SemanticGraphOperationLedger BuildOperationLedger(IReadOnlyCollection<SemanticGraphAuditEvent> auditEvents)
+    {
+        if (auditEvents.Count == 0)
+        {
+            return new SemanticGraphOperationLedger(0, 0, 0, 0);
+        }
+
+        var totalLatency = auditEvents.Sum(static entry => (long)entry.LatencyMs);
+        var totalFilesProcessed = auditEvents.Sum(static entry => entry.FilesProcessed ?? 0);
+        return new SemanticGraphOperationLedger(
+            Count: auditEvents.Count,
+            TotalLatencyMs: totalLatency,
+            AverageLatencyMs: Math.Round(totalLatency / (double)auditEvents.Count, 2),
+            TotalFilesProcessed: totalFilesProcessed);
+    }
+
+    private static SemanticGraphAuditLedgerPointer ToLedgerPointer(SemanticGraphAuditEvent auditEvent) =>
+        new(
+            EventId: auditEvent.EventId,
+            Timestamp: auditEvent.Timestamp,
+            EventFamily: auditEvent.EventFamily,
+            Actor: auditEvent.Actor,
+            RequestedMode: auditEvent.RequestedMode,
+            ActualMode: auditEvent.ActualMode,
+            GraphStateAfter: auditEvent.GraphStateAfter,
+            ErrorCode: auditEvent.ErrorCode);
+
+    private static IReadOnlyCollection<string> BuildGlobalArtifactsRead(SemanticGraphFilePaths globalPaths) =>
+    [
+        PhaseExecutionReceiptStore.NormalizePath(globalPaths.GlobalGraphPath),
+        PhaseExecutionReceiptStore.NormalizePath(globalPaths.GlobalGraphMetadataPath)
+    ];
+
+    private static IReadOnlyCollection<string> BuildImpactArtifactsRead(string workspaceRoot, UserStoryFilePaths userStoryPaths)
+    {
+        var globalPaths = SemanticGraphFilePaths.FromWorkspaceRoot(workspaceRoot);
+        return
+        [
+            PhaseExecutionReceiptStore.NormalizePath(userStoryPaths.GraphScopeRequestPath),
+            PhaseExecutionReceiptStore.NormalizePath(globalPaths.GlobalGraphPath),
+            PhaseExecutionReceiptStore.NormalizePath(globalPaths.GlobalGraphMetadataPath),
+            PhaseExecutionReceiptStore.NormalizePath(userStoryPaths.ImpactGraphPath),
+            PhaseExecutionReceiptStore.NormalizePath(userStoryPaths.ImpactGraphMetadataPath)
+        ];
+    }
+
+    private static IReadOnlyCollection<string> BuildQueryArtifactsRead(
+        string workspaceRoot,
+        SemanticGraphQueryRequest request,
+        SemanticGraphQueryResult? result)
+    {
+        var globalPaths = SemanticGraphFilePaths.FromWorkspaceRoot(workspaceRoot);
+        var artifacts = new List<string>
+        {
+            PhaseExecutionReceiptStore.NormalizePath(globalPaths.GlobalGraphPath),
+            PhaseExecutionReceiptStore.NormalizePath(globalPaths.GlobalGraphMetadataPath)
+        };
+
+        if (!string.IsNullOrWhiteSpace(request.UsId))
+        {
+            var userStoryPaths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, request.UsId);
+            artifacts.Add(PhaseExecutionReceiptStore.NormalizePath(userStoryPaths.ImpactGraphPath));
+            artifacts.Add(PhaseExecutionReceiptStore.NormalizePath(userStoryPaths.ImpactGraphMetadataPath));
+        }
+
+        if (result?.FallbackUsed == true)
+        {
+            artifacts.Add("fallback-mini-graph-pack");
+        }
+
+        return artifacts.Distinct(StringComparer.Ordinal).ToArray();
     }
 
     private static string BuildImpactSummaryMarkdown(SemanticImpactGraphArtifact artifact, string reason)

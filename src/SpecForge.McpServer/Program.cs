@@ -180,14 +180,16 @@ static async Task<JsonNode> HandleToolCallAsync(
                     Actor: GetOptional(arguments, "actor") ?? "user",
                     Reason: GetRequired(arguments, "reason"),
                     DryRun: GetOptionalBoolean(arguments, "dryRun"),
-                    ConfirmOverwrite: GetOptionalBoolean(arguments, "confirmOverwrite"))),
+                    ConfirmOverwrite: GetOptionalBoolean(arguments, "confirmOverwrite"),
+                    TriggerSurface: "mcp")),
             "materialize_semantic_impact_graph" => await SemanticGraphOperations.MaterializeImpactGraphAsync(
                 workspaceRoot: GetRequired(arguments, "workspaceRoot"),
                 request: new SemanticGraphImpactOperationRequest(
                     UsId: GetRequired(arguments, "usId"),
                     Actor: GetOptional(arguments, "actor") ?? "user",
                     Reason: GetRequired(arguments, "reason"),
-                    DryRun: GetOptionalBoolean(arguments, "dryRun"))),
+                    DryRun: GetOptionalBoolean(arguments, "dryRun"),
+                    TriggerSurface: "mcp")),
             "query_semantic_graph" => SemanticGraphOperations.ExecuteQuery(
                 workspaceRoot: GetRequired(arguments, "workspaceRoot"),
                 request: new SemanticGraphQueryRequest(
@@ -198,7 +200,8 @@ static async Task<JsonNode> HandleToolCallAsync(
                     Reason: GetOptional(arguments, "reason"),
                     FilePath: GetOptional(arguments, "filePath"),
                     MaxDepth: GetOptionalInt(arguments, "maxDepth", 1),
-                    IncludeTests: GetOptionalBoolean(arguments, "includeTests"))),
+                    IncludeTests: GetOptionalBoolean(arguments, "includeTests"),
+                    TriggerSurface: "mcp")),
             "analyze_user_story_lineage" => await applicationService.AnalyzeUserStoryLineageAsync(
                 workspaceRoot: GetRequired(arguments, "workspaceRoot"),
                 usId: GetRequired(arguments, "usId")),

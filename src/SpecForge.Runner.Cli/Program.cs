@@ -199,7 +199,8 @@ static async Task HandleGraphGlobalAsync(IReadOnlyList<string> args)
         Actor: args[3],
         Reason: args[4],
         DryRun: args.Count >= 7 && bool.TryParse(args[6], out var dryRun) && dryRun,
-        ConfirmOverwrite: args.Count >= 6 && bool.TryParse(args[5], out var confirmOverwrite) && confirmOverwrite);
+        ConfirmOverwrite: args.Count >= 6 && bool.TryParse(args[5], out var confirmOverwrite) && confirmOverwrite,
+        TriggerSurface: "cli");
     var result = await SemanticGraphOperations.RunGlobalOperationAsync(args[1], request);
     WriteJson(result);
 }
@@ -215,7 +216,8 @@ static async Task HandleGraphImpactAsync(IReadOnlyList<string> args)
         UsId: args[2],
         Actor: args[3],
         Reason: args[4],
-        DryRun: args.Count == 6 && bool.TryParse(args[5], out var dryRun) && dryRun);
+        DryRun: args.Count == 6 && bool.TryParse(args[5], out var dryRun) && dryRun,
+        TriggerSurface: "cli");
     var result = await SemanticGraphOperations.MaterializeImpactGraphAsync(args[1], request);
     WriteJson(result);
 }
@@ -235,7 +237,8 @@ static void HandleGraphQuery(IReadOnlyList<string> args)
         Phase: NormalizeOptionalArgument(args[6]),
         Reason: NormalizeOptionalArgument(args[7]),
         MaxDepth: args.Count >= 9 && int.TryParse(args[8], out var maxDepth) ? maxDepth : 1,
-        IncludeTests: args.Count >= 10 && bool.TryParse(args[9], out var includeTests) && includeTests);
+        IncludeTests: args.Count >= 10 && bool.TryParse(args[9], out var includeTests) && includeTests,
+        TriggerSurface: "cli");
     WriteJson(SemanticGraphOperations.ExecuteQuery(args[1], request));
 }
 
