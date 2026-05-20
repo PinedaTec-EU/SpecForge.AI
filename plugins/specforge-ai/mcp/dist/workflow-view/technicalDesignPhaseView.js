@@ -7,6 +7,8 @@ function buildTechnicalDesignPhaseSections(args) {
     const effectiveContext = selectedPhase.latestExecutionInspection?.effectiveContext ?? null;
     const evidenceRecord = selectedPhase.latestExecutionInspection?.evidenceRecord ?? null;
     const receiptPath = selectedPhase.latestExecutionInspection?.receiptPath?.trim() || null;
+    const executionReadiness = selectedPhase.executionReadiness ?? null;
+    const executionPolicy = selectedPhase.executionPolicy ?? null;
     const technicalDesignInspectionSection = selectedPhase.phaseId === "technical-design"
         ? `
       <section class="detail-card">
@@ -96,9 +98,46 @@ function buildTechnicalDesignPhaseSections(args) {
       </section>
     `
         : "";
+    const technicalDesignPolicySection = selectedPhase.phaseId === "technical-design" && (executionReadiness || executionPolicy)
+        ? `
+      <section class="detail-card">
+        <h3>Technical Design Policy</h3>
+        <p class="panel-copy">
+          Inspect the explicit repository-access, subagent, and quality-gate rules that currently govern the technical-design phase.
+        </p>
+        <div class="detail-grid">
+          <div><strong>Execution Readiness</strong><div><code>${executionReadiness?.canExecute ? "ready" : "blocked"}</code></div></div>
+          <div><strong>Blocking Reason</strong><div><code>${escapeHtml(executionReadiness?.blockingReason ?? "none")}</code></div></div>
+          <div><strong>Repository Access</strong><div><code>${escapeHtml(executionPolicy?.permissions.repositoryAccess ?? executionReadiness?.requiredPermissions?.repositoryAccess ?? "unknown")}</code></div></div>
+          <div><strong>Workspace Writes</strong><div><code>${(executionPolicy?.permissions.workspaceWriteAccess ?? executionReadiness?.requiredPermissions?.workspaceWriteAccess) ? "allowed" : "not allowed"}</code></div></div>
+          <div><strong>Subagents</strong><div><code>${executionReadiness?.phaseSubagentsEnabled == null ? "not-declared" : executionReadiness.phaseSubagentsEnabled ? "enabled" : "disabled"}</code></div></div>
+          <div><strong>Quality Gate</strong><div><code>review-driven</code></div></div>
+        </div>
+        ${executionPolicy
+            ? `
+            <div class="refinement-suggestions">
+              <div class="refinement-suggestion refinement-suggestion--static">
+                <div class="refinement-suggestion__body">
+                  <strong>Eligibility Rules</strong>
+                  ${renderPolicyRuleList(executionPolicy.eligibilityRules, escapeHtml)}
+                </div>
+              </div>
+              <div class="refinement-suggestion refinement-suggestion--static">
+                <div class="refinement-suggestion__body">
+                  <strong>Evidence Requirements</strong>
+                  ${renderEvidenceRequirementList(executionPolicy.evidenceRequirements, escapeHtml)}
+                </div>
+              </div>
+            </div>
+          `
+            : ""}
+      </section>
+    `
+        : "";
     return {
         beforeArtifact: [
             ...(technicalDesignInspectionSection ? [technicalDesignInspectionSection] : []),
+            ...(technicalDesignPolicySection ? [technicalDesignPolicySection] : []),
             ...(technicalDesignEvidenceSection ? [technicalDesignEvidenceSection] : [])
         ],
         afterArtifact: []
@@ -118,6 +157,22 @@ function renderEvidenceSettings(items, escapeHtml) {
     }
     return items
         .map((item) => `<span><code>${escapeHtml(item.name)}</code>: ${escapeHtml(item.value)}</span>`)
+        .join("");
+}
+function renderPolicyRuleList(items, escapeHtml) {
+    if (items.length === 0) {
+        return "<span>No eligibility rules declared.</span>";
+    }
+    return items
+        .map((item) => `<span><code>${escapeHtml(item.id)}</code> · ${escapeHtml(item.description)} · status <code>${item.isCurrentlySatisfied === false ? "blocked" : "ready"}</code>${item.currentStatusMessage ? ` · ${escapeHtml(item.currentStatusMessage)}` : ""}${item.blockingReason ? ` · reason <code>${escapeHtml(item.blockingReason)}</code>` : ""}</span>`)
+        .join("");
+}
+function renderEvidenceRequirementList(items, escapeHtml) {
+    if (items.length === 0) {
+        return "<span>No evidence requirements declared.</span>";
+    }
+    return items
+        .map((item) => `<span><code>${escapeHtml(item.id)}</code> · ${escapeHtml(item.description)} · enforcement <code>${escapeHtml(item.enforcement)}</code>${item.policyInput ? ` · input <code>${escapeHtml(item.policyInput)}</code>` : ""}</span>`)
         .join("");
 }
 //# sourceMappingURL=technicalDesignPhaseView.js.map
