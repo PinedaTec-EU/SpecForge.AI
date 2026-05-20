@@ -82,7 +82,7 @@ Use this document as the operational backlog for implementation.
   Output: approved first query families, bounded query rules, and how `technical-design`, `implementation`, and `review` consume graph artifacts.
   Notes: this closes what the graph is actually allowed to answer before MCP and CLI tools are implemented.
 
-- [ ] `G-DESIGN-04` Status: `todo`
+- [x] `G-DESIGN-04` Status: `done`
   Define graph governance, freshness, and audit semantics.
   Output: overwrite confirmation policy, failure fallback policy, freshness model, and the event model for graph cost and build traceability.
   Notes: `H-SHARED-10` depends on this being explicit.

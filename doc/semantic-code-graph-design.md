@@ -300,6 +300,263 @@ Constraints:
 - explicit reason required
 - explicit confirmation required if a global graph already exists
 
+## Governance Model
+
+The graph subsystem must behave like governed infrastructure, not like an opaque cache.
+
+### Governance Principles
+
+- graph consumption and graph mutation are separate permissions
+- expensive mutation must be attributable and explainable
+- overwrite of existing durable graph state must be explicit
+- fallback behavior must be visible, not silent
+- graph-assisted outputs must declare confidence boundaries when fallback or stale data was used
+
+### Mutation Authority
+
+The system should distinguish four authority levels.
+
+1. `inspect`
+   - may read status, freshness, metadata, and prior ledger events
+   - may not mutate graph artifacts
+
+2. `derive impact`
+   - may derive or refresh per-user-story impact graph when mutation is allowed
+   - may not rebuild global graph from zero
+
+3. `refresh global`
+   - may incrementally refresh global graph and dependent impact graphs
+   - may not replace existing global graph baseline from zero without explicit overwrite confirmation
+
+4. `rebuild global`
+   - may request full replacement of global graph baseline
+   - requires explicit reason and explicit overwrite confirmation
+
+### Overwrite Confirmation Policy
+
+If a global graph already exists, `rebuild from zero` must require:
+
+- visible warning that existing graph state will be replaced
+- explicit confirmation token or flag
+- actor identity
+- reason
+- persisted audit event before or during execution
+
+The system must record:
+
+- whether overwrite was requested
+- whether overwrite was confirmed
+- whether overwrite actually occurred
+
+### Human Versus Model Authority
+
+For v1:
+
+- a model may recommend refresh or rebuild
+- a model may not silently replace existing global graph state
+- rebuild-from-zero of an existing global graph should require human confirmation
+
+## Freshness Model
+
+Freshness must be metadata-driven and deterministic enough to explain.
+
+### Freshness States
+
+Both global graph and impact graph should report one of:
+
+- `missing`
+- `fresh`
+- `stale-refreshable`
+- `stale-rebuild-required`
+- `incompatible`
+- `failed`
+
+### Global Graph Freshness Inputs
+
+Minimum metadata inputs:
+
+- graph build timestamp
+- builder version or schema version
+- repository root fingerprint
+- repository HEAD when available
+- selected extractor strategy
+- selected model or enrichment profile when applicable
+
+### Impact Graph Freshness Inputs
+
+Minimum metadata inputs:
+
+- impact graph build timestamp
+- parent global graph identity or fingerprint when applicable
+- `graph_scope_request` fingerprint
+- touched file fingerprint when available
+- selected derivation mode:
+  - global graph derived
+  - fallback derived
+
+### Freshness Evaluation Rules
+
+Recommended v1 posture:
+
+- `missing` when artifact does not exist
+- `fresh` when all required fingerprints are compatible and no refresh trigger is present
+- `stale-refreshable` when inputs changed but incremental refresh is still semantically valid
+- `stale-rebuild-required` when compatibility or baseline guarantees no longer hold
+- `incompatible` when schema, builder family, or source assumptions no longer match
+- `failed` when the last attempted build or refresh did not complete successfully
+
+### Reuse Rules
+
+Global graph may be reused when:
+
+- state is `fresh`
+- graph usage is enabled
+
+Impact graph may be reused when:
+
+- state is `fresh`
+- graph usage is enabled
+- current user-story scope still matches its scope fingerprint
+
+### Refresh Rules
+
+Incremental refresh is preferred over rebuild when:
+
+- a graph exists
+- state is `stale-refreshable`
+- mutation is allowed for the caller
+
+### Rebuild Rules
+
+Rebuild-from-zero is required when:
+
+- no global graph exists and creation is requested
+- state is `stale-rebuild-required`
+- state is `incompatible`
+- operator explicitly chooses full replacement
+
+## Failure And Fallback Policy
+
+Failure must be explicit and phase-aware.
+
+### Failure Classes
+
+- `build_failed`
+- `refresh_failed`
+- `query_failed`
+- `schema_incompatible`
+- `scope_incompatible`
+- `permission_denied`
+- `confirmation_missing`
+
+### Fallback Policy By Phase
+
+#### Refinement
+
+- graph failure must not block refinement completion
+- refinement may still persist `graph_scope_request`
+
+#### Technical Design
+
+- may fall back to mini-graph pack when graph usage is disabled, missing, stale beyond allowed tolerance, or failed
+- fallback use must be declared in evidence and query responses
+
+#### Implementation
+
+- may fall back to mini-graph pack or direct bounded repository inspection when graph usage is unavailable
+- must not pretend graph-backed narrowing occurred when it did not
+
+#### Review
+
+- may fall back to mini-graph pack or direct bounded inspection
+- review outputs must not present graph-assisted coverage as exhaustive when fallback mode was active
+
+### Fallback Visibility Rule
+
+Every graph-assisted phase or query response should declare:
+
+- whether fallback was used
+- why fallback was used
+- what source was used instead
+
+## Audit Event Model
+
+Every graph mutation and every graph-relevant failure should be representable as an event.
+
+### Event Families
+
+- `graph.inspect`
+- `graph.derive-impact.requested`
+- `graph.derive-impact.completed`
+- `graph.derive-impact.failed`
+- `graph.refresh.requested`
+- `graph.refresh.completed`
+- `graph.refresh.failed`
+- `graph.rebuild.requested`
+- `graph.rebuild.confirmed`
+- `graph.rebuild.completed`
+- `graph.rebuild.failed`
+- `graph.query.executed`
+- `graph.query.failed`
+
+### Required Event Fields
+
+- `eventId`
+- `timestamp`
+- `eventFamily`
+- `actor`
+- `triggerSurface`
+- `workspaceRoot`
+- `usId` when applicable
+- `phase` when applicable
+- `reason`
+- `requestedMode`
+- `actualMode`
+- `sourcePreference`
+- `graphStateBefore`
+- `graphStateAfter`
+- `overwriteRequested`
+- `overwriteConfirmed`
+- `fallbackUsed`
+- `fallbackReason`
+- `builderStrategy`
+- `modelProfile` when applicable
+- `embeddingProfile` when applicable
+- `latencyMs`
+- `tokenUsage` when applicable
+- `artifactsRead`
+- `artifactsWritten`
+- `warnings`
+- `errorCode` when failed
+- `errorSummary` when failed
+
+### Cost Ledger Rule
+
+The cost ledger should be derivable from events, but persisted as an operator-friendly summary surface.
+
+Minimum ledger rollups:
+
+- total builds
+- total refreshes
+- total rebuilds-from-zero
+- total impact derivations
+- token totals
+- latency totals and averages
+- last successful global graph build
+- last failed graph mutation
+
+### Query Audit Rule
+
+Not every query needs the same weight as a rebuild, but graph queries that influence workflow phases should still emit traceable events with:
+
+- actor
+- phase
+- query kind
+- source graph used
+- fallback used
+- latency
+- token usage when any
+
 ## Builder Strategy
 
 The builder strategy is now constrained by the closed decisions above.
@@ -718,13 +975,16 @@ The following decisions must be explicitly closed before full implementation of 
 3. supported query families for first implementation
 
 4. freshness heuristics for:
+   - closed recommendation: metadata-driven `missing|fresh|stale-refreshable|stale-rebuild-required|incompatible|failed`
    - global graph reuse
    - impact graph reuse
    - refresh versus rebuild
 
 5. failure fallback policy by phase
+   - closed recommendation: explicit fallback visibility, no silent graph substitution
 
 6. cost attribution model and ledger schema
+   - closed recommendation: event-driven ledger with persisted operator rollups
 
 ## Recommended Implementation Sequence
 
