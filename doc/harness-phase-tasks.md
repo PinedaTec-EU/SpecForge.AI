@@ -62,7 +62,7 @@ Use this document as the operational backlog for implementation.
   Define the execution-envelope contract.
   Output: per-phase declared boundaries for tools, write scope, repo boundaries, and budget.
 
-- [ ] `H-SHARED-07` Status: `todo`
+- [x] `H-SHARED-07` Status: `done`
   Define the repository-global graph and per-user-story impact-graph lifecycle.
   Output: persistence contract, freshness model, fallback path, and ownership boundaries between workflow runtime and graph service.
   Notes: must include `use graph if available` and `allow graph materialization/refresh for this user story` feature flags, overwrite semantics, and the contract for preserving or replacing an existing global graph.

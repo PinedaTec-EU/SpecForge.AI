@@ -13,6 +13,10 @@ public sealed class UserStoryFilePathsTests
         Assert.Equal("/repo/.specs/us/US-0001/state.yaml", paths.StateFilePath);
         Assert.Equal("/repo/.specs/us/US-0001/branch.yaml", paths.BranchFilePath);
         Assert.Equal("/repo/.specs/us/US-0001/restarts", paths.RestartsDirectoryPath);
+        Assert.Equal("/repo/.specs/us/US-0001/context/graph-scope-request.json", paths.GraphScopeRequestPath);
+        Assert.Equal("/repo/.specs/us/US-0001/context/impact-graph.json", paths.ImpactGraphPath);
+        Assert.Equal("/repo/.specs/us/US-0001/context/impact-graph.meta.json", paths.ImpactGraphMetadataPath);
+        Assert.Equal("/repo/.specs/us/US-0001/context/impact-summary.md", paths.ImpactGraphSummaryPath);
     }
 
     [Fact]

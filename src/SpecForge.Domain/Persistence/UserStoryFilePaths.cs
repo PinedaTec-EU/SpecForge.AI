@@ -30,6 +30,10 @@ public sealed class UserStoryFilePaths
         RestartsDirectoryPath = Path.Combine(rootDirectory, "restarts");
         ExecutionReceiptsDirectoryPath = Path.Combine(rootDirectory, "execution-receipts");
         ContextDirectoryPath = Path.Combine(rootDirectory, "context");
+        GraphScopeRequestPath = Path.Combine(ContextDirectoryPath, "graph-scope-request.json");
+        ImpactGraphPath = Path.Combine(ContextDirectoryPath, "impact-graph.json");
+        ImpactGraphMetadataPath = Path.Combine(ContextDirectoryPath, "impact-graph.meta.json");
+        ImpactGraphSummaryPath = Path.Combine(ContextDirectoryPath, "impact-summary.md");
         AttachmentsDirectoryPath = Path.Combine(rootDirectory, "attachments");
     }
 
@@ -200,6 +204,14 @@ public sealed class UserStoryFilePaths
     public string ExecutionReceiptsDirectoryPath { get; }
 
     public string ContextDirectoryPath { get; }
+
+    public string GraphScopeRequestPath { get; }
+
+    public string ImpactGraphPath { get; }
+
+    public string ImpactGraphMetadataPath { get; }
+
+    public string ImpactGraphSummaryPath { get; }
 
     public string AttachmentsDirectoryPath { get; }
 
