@@ -49,7 +49,7 @@ Use this document as the operational backlog for implementation.
   Expose latest effective prompt and effective context through workflow detail DTOs and MCP.
   Output: read model consumable by portal and non-portal operator surfaces.
 
-- [ ] `H-SHARED-04` Status: `todo`
+- [x] `H-SHARED-04` Status: `done`
   Define the shared phase-policy contract.
   Output: explicit structure for repository access, allowed tools, writable paths, forbidden paths, evidence requirements, and eligibility rules.
   Notes: policy must be inspectable before it becomes strongly enforced.
@@ -62,6 +62,14 @@ Use this document as the operational backlog for implementation.
   Define the execution-envelope contract.
   Output: per-phase declared boundaries for tools, write scope, repo boundaries, and budget.
 
+- [ ] `H-SHARED-07` Status: `todo`
+  Define the repository-global graph and per-user-story impact-graph lifecycle.
+  Output: persistence contract, freshness model, fallback path, and ownership boundaries between workflow runtime and graph service.
+
+- [ ] `H-SHARED-08` Status: `todo`
+  Define the graph MCP tool family.
+  Output: first contract for global graph status, build, refresh, impact-graph materialization, and bounded graph queries.
+
 ## Phase Tasks
 
 ### Capture
@@ -69,11 +77,11 @@ Use this document as the operational backlog for implementation.
 Current stance:
 `capture` is the workflow entry phase. It is not a prompt-driven model execution phase and does not need the same prompt pipeline as the others.
 
-- [ ] `H-CAP-01` Status: `todo`
+- [x] `H-CAP-01` Status: `done`
   Make the `capture` boundary explicit in docs and read models.
   Output: operator surfaces must clearly show that `capture` is a non-model entry phase.
 
-- [ ] `H-CAP-02` Status: `todo`
+- [x] `H-CAP-02` Status: `done`
   Define the minimum observable execution record for `capture`.
   Output: who created the US, when, from what source, and which initial artifacts were materialized.
   Notes: do not force `effectivePrompt` onto this phase.
@@ -85,17 +93,25 @@ Current stance:
   Output: an operator can visualize the effective prompt actually sent during the latest refinement execution.
   Notes: this must include system prompt, user prompt, warnings, and source prompt paths.
 
-- [ ] `H-REF-02` Status: `todo`
+- [x] `H-REF-02` Status: `done`
   Expose the effective runtime context for `refinement`.
   Output: visible list of injected artifacts and context files with paths and hashes.
 
-- [ ] `P-REF-01` Status: `todo`
+- [x] `P-REF-01` Status: `done`
   Define visible refinement policy inputs.
   Output: inspectable refinement tolerance, blocking conditions, and auto-answer eligibility.
 
-- [ ] `P-REF-02` Status: `todo`
+- [x] `P-REF-02` Status: `done`
   Persist a policy snapshot for refinement execution.
   Output: receipt-linked record of the governing refinement policy.
+
+- [x] `H-REF-03` Status: `done`
+  Add skill preselection outputs to `refinement`.
+  Output: persisted `required`, `candidate`, and `rejected` skills plus rationale and context gaps for the user story.
+
+- [x] `H-REF-04` Status: `done`
+  Add the first graph-scope handoff to `refinement`.
+  Output: persisted graph scope request with seed nodes, seed files, depth, and unresolved scope questions for `technical-design`.
 
 ### Spec
 
@@ -132,6 +148,14 @@ Current stance:
 - [ ] `P-TD-02` Status: `todo`
   Prepare an explicit design gate contract.
   Output: reusable criteria for repositories that require design approval before implementation.
+
+- [ ] `H-TD-03` Status: `todo`
+  Feed `technical-design` from selected skills plus impact-graph context.
+  Output: first design context pack that uses selected skills, graph scope, impact summary, and graph-backed expansions when available.
+
+- [ ] `H-TD-04` Status: `todo`
+  Define the first bounded graph-query evidence contract for `technical-design`.
+  Output: traceable persistence of follow-up graph queries and returned summaries when they influenced the design artifact.
 
 ### Implementation
 
@@ -246,6 +270,23 @@ Record debt here as soon as it is discovered during implementation.
 - [ ] `TD-001` Status: `todo`
   No technical-debt items recorded yet.
   Update this placeholder with concrete debt once something real appears.
+
+## UI Bug Backlog
+
+- [ ] `BUG-REF-001` Status: `todo`
+  `Add Context Files` in the refinement detail does not trigger the expected file-attach flow.
+  Impact: operator cannot add context files from the refinement card as intended.
+  Notes: validate both workflow detail and any browser-served portal path before fixing.
+
+- [ ] `BUG-GRAPH-001` Status: `todo`
+  Workflow graph layout editing needs snap-to-grid or equivalent alignment assistance.
+  Impact: aligning phases manually is unnecessarily difficult and visually inconsistent.
+  Notes: evaluate grid snapping, guide lines, or phase-to-phase magnetic alignment.
+
+- [ ] `BUG-GRAPH-002` Status: `todo`
+  Edited workflow graph layout resets to the default layout and loses user changes.
+  Impact: layout editing is not trustworthy because persisted changes are not preserved.
+  Notes: verify save path, restore path, and any re-render/cache invalidation behavior in both VS Code and CLI-served portal flows.
 
 ## Immediate Next Slice
 

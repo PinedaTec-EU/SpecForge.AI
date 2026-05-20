@@ -126,6 +126,7 @@ Deliverables:
 18. ✅ extend UX with graph view and richer phase detail
 19. [ ] complete a richer prompt editor/inspector from the extension
 20. [ ] enrich branch lifecycle with real Git/PR integration
+    Tracking block: [tasks/branch-lifecycle.md](tasks/branch-lifecycle.md)
 21. [ ] introduce SpecForge Central managed-repository catalog and repository selection
 
 ## Risks To Watch
@@ -156,7 +157,7 @@ The next leap is not more base infrastructure. The minimum MCP backend, OpenAI-c
 
 ## MVP Roadmap
 
-Last reviewed: 2026-05-09, against implementation through `0.1.4.432`.
+Last reviewed: 2026-05-19.
 
 Goal:
 
@@ -206,11 +207,12 @@ Does not block the MVP:
 - ✅ workflow graph view
 - ✅ richer phase detail UI with graph visualization, audit, metrics, lineage, and selected-phase artifacts
 - [ ] prompt diffing and visible effective prompt inspection/editing from the extension
-- [ ] real PR/issues integration
+- [ ] provider-neutral PR/issues integration beyond the current GitHub-oriented PR publication path
+- [ ] switch Git branch automatically when the active user story changes in UI, MCP, or CLI; fall back to `main` when the user story has no recorded work branch yet
 - ✅ phase agent profiles with real repository permissions
 - [ ] customizable workflows and advanced agent strategies
-- [ ] show completed user stories through an explicit UI switch
-- [ ] add search over user stories/workflows in the side view
+- ✅ show completed user stories through an explicit UI switch
+- ✅ add search over user stories/workflows in the side view
 - [ ] link with ticketing tools (Jira, etc.)
 
 High-value additions worth considering:
@@ -267,14 +269,16 @@ Recently completed subtasks:
 - ✅ expand MCP/portal tests across happy path and edge cases
 - ✅ add packaged SpecForge MCP plugin bundle and regenerate distribution artifacts
 - ✅ create a consolidated changelog for the recent release range
+- ✅ add completed and blocked visibility toggles in the sidebar and CLI portal story lists
+- ✅ add in-sidebar user story search by title, description, category, and tags
 - [ ] complete rich prompt inspection/editing from the extension with diff or visible effective prompt
 
 Pending subtasks before the MVP is considered complete:
 
 - [ ] enrich `branch.yaml` lifecycle with real Git/PR metadata
-- [ ] add completed-story visibility controls and sidebar search
+- [ ] switch to the selected user story branch automatically, with `main` fallback before branch creation
 - [ ] add SpecForge Central repository management: catalog, readiness, create/register flow, and target repository selection
-- [ ] add PR/issue integration or an export-first bridge if direct integration is too early
+- [ ] broaden PR publication beyond the current GitHub CLI path and add issue-system integration or an export-first bridge where direct integration is still too early
 
 ## SpecForge Central Enterprise Roadmap
 
