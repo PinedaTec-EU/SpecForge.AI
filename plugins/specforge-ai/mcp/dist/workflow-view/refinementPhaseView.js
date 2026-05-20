@@ -3,6 +3,39 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildRefinementPhaseSections = buildRefinementPhaseSections;
 function buildRefinementPhaseSections(args) {
     const { workflow, selectedPhase, state, heroTokenClass, escapeHtml, escapeHtmlAttribute } = args;
+    const effectiveContext = selectedPhase.latestExecutionInspection?.effectiveContext ?? null;
+    const refinementContextSummarySection = effectiveContext
+        ? `
+      <div class="refinement-context">
+        <div class="refinement-context__copy">
+          <h4>Injected Runtime Context</h4>
+          <p>
+            These are the exact prior artifacts and context files that were injected into the latest persisted refinement run.
+          </p>
+        </div>
+        <div class="detail-grid">
+          <div><strong>Workspace Git HEAD</strong><div><code>${escapeHtml(effectiveContext.workspaceGitHeadSha ?? "unavailable")}</code></div></div>
+          <div><strong>Operation Prompt SHA256</strong><div><code>${escapeHtml(effectiveContext.operationPromptSha256 ?? "none")}</code></div></div>
+          <div><strong>Previous Artifacts</strong><div><code>${effectiveContext.previousArtifacts.length}</code></div></div>
+          <div><strong>Context Files</strong><div><code>${effectiveContext.contextFiles.length}</code></div></div>
+        </div>
+        <div class="refinement-suggestions">
+          <div class="refinement-suggestion refinement-suggestion--static">
+            <div class="refinement-suggestion__body">
+              <strong>Previous Artifacts</strong>
+              ${renderInjectedArtifactList(effectiveContext.previousArtifacts, escapeHtml)}
+            </div>
+          </div>
+          <div class="refinement-suggestion refinement-suggestion--static">
+            <div class="refinement-suggestion__body">
+              <strong>Context Files</strong>
+              ${renderInjectedArtifactList(effectiveContext.contextFiles, escapeHtml)}
+            </div>
+          </div>
+        </div>
+      </div>
+    `
+        : "";
     const refinementInspectionSection = selectedPhase.latestExecutionInspection?.effectivePrompt || selectedPhase.latestExecutionInspection?.effectiveContext
         ? `
       <div class="refinement-context">
@@ -76,6 +109,7 @@ function buildRefinementPhaseSections(args) {
         </div>
         ${workflow.refinement.reason ? `<p class="refinement-reason">${escapeHtml(workflow.refinement.reason)}</p>` : ""}
         ${refinementInspectionSection}
+        ${refinementContextSummarySection}
         ${workflow.refinement.items.length > 0
             ? `
             <div class="refinement-list">
@@ -122,6 +156,27 @@ function buildRefinementPhaseSections(args) {
             ]
             : []
     };
+}
+function renderInjectedArtifactList(items, escapeHtml) {
+    if (items.length === 0) {
+        return `<p class="muted">None.</p>`;
+    }
+    return `
+    <ul class="detail-list">
+      ${items.map((item) => `
+        <li>
+          <strong>${escapeHtml(item.phaseId ?? fileNameFromPath(item.path))}</strong><br>
+          <code>${escapeHtml(item.path)}</code><br>
+          <span class="muted">sha256: <code>${escapeHtml(item.sha256 ?? "no hash")}</code></span>
+        </li>
+      `).join("")}
+    </ul>
+  `;
+}
+function fileNameFromPath(path) {
+    const normalizedPath = path.replace(/\\/g, "/");
+    const segments = normalizedPath.split("/");
+    return segments[segments.length - 1] || normalizedPath;
 }
 function renderCopyQuestionIcon() {
     return `
