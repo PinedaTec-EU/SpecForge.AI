@@ -276,6 +276,9 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains(implementationPolicy.WritablePaths, path => path.Path == "<workspace-root>/**" && path.Actor == "phase-agent");
         Assert.Contains(implementationPolicy.ForbiddenPaths, path => path.Path == "<workspace-root>/.git/**");
         Assert.Contains(implementationPolicy.EvidenceRequirements, item => item.Id == "implementation_evidence_record");
+        Assert.Contains(implementationPolicy.EvidenceRequirements, item => item.Id == "graph_guided_scope_evidence" && item.Enforcement == "declared");
+        Assert.Contains(implementationPolicy.EligibilityRules, rule => rule.Id == "implementation_write_scope_declared");
+        Assert.Contains(implementationPolicy.EligibilityRules, rule => rule.Id == "implementation_review_loop_visible");
 
         Assert.Equal("review", reviewPolicy.PhaseId);
         Assert.Contains("`release`", reviewPolicy.Summary);

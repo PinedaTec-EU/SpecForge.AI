@@ -206,7 +206,7 @@ Current stance:
   Expose the effective prompt and context for `implementation`.
   Output: latest-execution inspector showing prompt, warnings, injected artifacts, context files, and evidence links.
 
-- [ ] `P-IMP-01` Status: `todo`
+- [x] `P-IMP-01` Status: `done`
   Define implementation phase policy requirements.
   Output: explicit evidence requirements, writable scope rules, forbidden mutation zones, and repository-access semantics.
   Notes: this is a priority item and aligns with the separate policy thread already in motion.

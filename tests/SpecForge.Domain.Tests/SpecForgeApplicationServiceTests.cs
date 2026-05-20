@@ -748,6 +748,33 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesImplementationPolicyVisibility()
+    {
+        var runner = new WorkflowRunner(
+            new InspectionAwarePhaseExecutionProvider(),
+            runtimeVersion: null,
+            refinementTolerance: "balanced",
+            completedUsLockOnCompleted: true,
+            reviewEvidencePolicy: "release");
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var implementationPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "implementation");
+
+        Assert.NotNull(implementationPhase.ExecutionReadiness);
+        Assert.True(implementationPhase.ExecutionReadiness!.CanExecute);
+        Assert.NotNull(implementationPhase.ExecutionPolicy);
+        Assert.Equal("read-write", implementationPhase.ExecutionPolicy!.Permissions.RepositoryAccess);
+        Assert.True(implementationPhase.ExecutionPolicy.Permissions.WorkspaceWriteAccess);
+        Assert.Contains(implementationPhase.ExecutionPolicy.EvidenceRequirements, item => item.Id == "implementation_evidence_record");
+        Assert.Contains(implementationPhase.ExecutionPolicy.EvidenceRequirements, item => item.Id == "graph_guided_scope_evidence");
+        Assert.Contains(implementationPhase.ExecutionPolicy.EligibilityRules, item => item.Id == "implementation_write_scope_declared");
+        Assert.Contains(implementationPhase.ExecutionPolicy.EligibilityRules, item => item.Id == "implementation_review_loop_visible");
+    }
+
+    [Fact]
     public async Task GetUserStoryWorkflowAsync_ExposesExecutionEnvelopePerPhase()
     {
         var runner = new WorkflowRunner(new InspectionAwarePhaseExecutionProvider());

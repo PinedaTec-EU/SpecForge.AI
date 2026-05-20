@@ -800,7 +800,10 @@ function buildPhaseSpecificSections(
         escapeHtmlAttribute
       });
     case "implementation":
-      return buildImplementationPhaseSections();
+      return buildImplementationPhaseSections({
+        selectedPhase,
+        escapeHtml
+      });
     case "review":
       return buildReviewPhaseSections({
         workflow,

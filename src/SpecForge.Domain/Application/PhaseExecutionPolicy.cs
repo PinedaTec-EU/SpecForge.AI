@@ -258,6 +258,10 @@ public static class PhaseExecutionPolicyCatalog
                     "Implementation must persist evidence markdown/json describing touched files and validation performed.",
                     EnforcementEnforced),
                 new PhaseExecutionEvidenceRequirement(
+                    "graph_guided_scope_evidence",
+                    "When semantic graph narrowing influenced the editable scope, implementation evidence should reference the resulting graph-backed file selection or fallback rationale.",
+                    EnforcementDeclared),
+                new PhaseExecutionEvidenceRequirement(
                     "artifact_iteration_log",
                     "Implementation iterations must preserve the operated artifact and operation log chain.",
                     EnforcementEnforced)
@@ -368,6 +372,22 @@ public static class PhaseExecutionPolicyCatalog
                 EnforcementDeclared,
                 IsCurrentlySatisfied: true,
                 CurrentStatusMessage: "No explicit technical-design approval gate is enforced yet; downstream review remains the active quality gate unless repository-specific gating is introduced."));
+        }
+
+        if (phaseId == PhaseId.Implementation)
+        {
+            rules.Add(new PhaseExecutionEligibilityRule(
+                "implementation_write_scope_declared",
+                "Implementation must expose writable scope and forbidden mutation zones so repository edits stay auditable.",
+                EnforcementDeclared,
+                IsCurrentlySatisfied: true,
+                CurrentStatusMessage: "Writable scope and forbidden mutation zones are declared through the shared implementation policy contract."));
+            rules.Add(new PhaseExecutionEligibilityRule(
+                "implementation_review_loop_visible",
+                "Implementation should declare that downstream review remains the active quality gate for correctness and validation evidence.",
+                EnforcementDeclared,
+                IsCurrentlySatisfied: true,
+                CurrentStatusMessage: "Implementation remains review-gated; review is the authoritative downstream quality decision."));
         }
 
         return rules;
