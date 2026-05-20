@@ -307,6 +307,35 @@ export interface RefinementSessionDetails {
   readonly tolerance: string;
   readonly reason: string | null;
   readonly items: readonly RefinementQuestionAnswerDetails[];
+  readonly policy?: RefinementPolicyDetails | null;
+}
+
+export interface RefinementPolicyDetails {
+  readonly tolerance: string;
+  readonly pendingQuestionCount: number;
+  readonly unansweredQuestionCount: number;
+  readonly blockingConditions: readonly RefinementBlockingCondition[];
+  readonly autoAnswer: RefinementAutoAnswerPolicy;
+}
+
+export interface RefinementBlockingCondition {
+  readonly id: string;
+  readonly description: string;
+  readonly status: string;
+  readonly isCurrentlyBlocking: boolean;
+  readonly blockingReason?: string | null;
+}
+
+export interface RefinementAutoAnswerPolicy {
+  readonly isEnabled: boolean;
+  readonly mode: string;
+  readonly summary: string;
+  readonly profileName?: string | null;
+  readonly agentName?: string | null;
+  readonly agentRole?: string | null;
+  readonly isCurrentlyEligible: boolean;
+  readonly eligibilityStatus: string;
+  readonly eligibilityReason?: string | null;
 }
 
 export interface ApprovalQuestionDetails {

@@ -148,6 +148,26 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
                 ValidationMessage: $"Phase permission precheck failed because the assigned agent only has repository access '{effectiveRepositoryAccess}' but phase '{phaseId}' requires '{requirements.RepositoryAccess}'.");
     }
 
+    public RefinementAutoAnswerCapability DescribeRefinementAutoAnswerCapability()
+    {
+        if (!options.AutoRefinementAnswersEnabled)
+        {
+            return new RefinementAutoAnswerCapability(
+                IsEnabled: false,
+                Mode: "disabled",
+                Summary: "Automatic refinement answering is disabled for the active OpenAI-compatible provider settings.");
+        }
+
+        var modelSelection = ResolveAutoRefinementAnswersModelSelection();
+        return new RefinementAutoAnswerCapability(
+            IsEnabled: true,
+            Mode: "model",
+            Summary: $"Automatic refinement answering will use agent `{modelSelection.AgentName}` on provider `{modelSelection.ProviderKind}`.",
+            ProfileName: modelSelection.ProfileName,
+            AgentName: modelSelection.AgentName,
+            AgentRole: modelSelection.AgentRole);
+    }
+
     public async Task<AutoRefinementAnswersResult?> TryAutoAnswerRefinementAsync(
         PhaseExecutionContext context,
         RefinementSession session,

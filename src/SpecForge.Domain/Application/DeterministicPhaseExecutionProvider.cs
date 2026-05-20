@@ -18,6 +18,12 @@ public sealed class DeterministicPhaseExecutionProvider : IPhaseExecutionProvide
                 NativeCliAvailable: true),
             ValidationMessage: "Phase permission precheck passed for the deterministic provider.");
 
+    public RefinementAutoAnswerCapability DescribeRefinementAutoAnswerCapability() =>
+        new(
+            IsEnabled: true,
+            Mode: "deterministic",
+            Summary: "The deterministic provider can infer a single refinement retry from the current user-story objective.");
+
     public async Task<AutoRefinementAnswersResult?> TryAutoAnswerRefinementAsync(
         PhaseExecutionContext context,
         RefinementSession session,

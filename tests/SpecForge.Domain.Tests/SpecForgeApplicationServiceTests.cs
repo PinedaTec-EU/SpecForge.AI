@@ -272,6 +272,59 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesVisibleRefinementPolicyInputs()
+    {
+        var fileStore = new UserStoryFileStore();
+        var runner = new WorkflowRunner(
+            fileStore,
+            new DeterministicPhaseExecutionProvider(),
+            new RepositoryCategoryCatalog(),
+            new NoOpWorkBranchManager(),
+            runtimeVersion: null,
+            refinementTolerance: "strict");
+        var applicationService = new SpecForgeApplicationService(fileStore, runner);
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+
+        var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0001");
+        var workflowRun = await fileStore.LoadAsync(paths.RootDirectory);
+        workflowRun.RestoreState(PhaseId.Refinement, UserStoryStatus.WaitingUser);
+        await fileStore.SaveAsync(workflowRun, paths.RootDirectory);
+        await File.WriteAllTextAsync(
+            paths.RefinementFilePath,
+            """
+            ## Refinement Log
+
+            - Status: `needs_refinement`
+            - Tolerance: `strict`
+            - Reason: Missing business details.
+
+            ### Questions
+
+            1. Which actor executes the workflow?
+            2. What visible outcome should the workflow produce?
+
+            ### Answers
+            """);
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+
+        Assert.NotNull(workflow.Refinement);
+        var policy = workflow.Refinement!.Policy;
+        Assert.NotNull(policy);
+        Assert.Equal("strict", policy!.Tolerance);
+        Assert.Equal(2, policy.PendingQuestionCount);
+        Assert.Equal(2, policy.UnansweredQuestionCount);
+        Assert.Contains(policy.BlockingConditions, condition =>
+            condition.Id == "unanswered_questions_require_resolution" &&
+            condition.IsCurrentlyBlocking &&
+            condition.BlockingReason == "refinement_pending_answers");
+        Assert.True(policy.AutoAnswer.IsEnabled);
+        Assert.Equal("deterministic", policy.AutoAnswer.Mode);
+        Assert.True(policy.AutoAnswer.IsCurrentlyEligible);
+        Assert.Equal("eligible", policy.AutoAnswer.EligibilityStatus);
+    }
+
+    [Fact]
     public async Task RewindWorkflowAsync_ToApprovedSpec_NonDestructivePreservesContinuationControls()
     {
         var runner = new WorkflowRunner();

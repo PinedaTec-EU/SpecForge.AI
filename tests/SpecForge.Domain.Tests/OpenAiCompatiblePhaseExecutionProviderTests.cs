@@ -426,6 +426,50 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
     }
 
     [Fact]
+    public void DescribeRefinementAutoAnswerCapability_ReportsConfiguredAgent()
+    {
+        var provider = new OpenAiCompatiblePhaseExecutionProvider(
+            new HttpClient(new CapturingFakeHttpMessageHandler(BuildAutoRefinementAnswersMarkdown())),
+            new OpenAiCompatibleProviderOptions(
+                AutoRefinementAnswersEnabled: true,
+                AutoRefinementAnswersProfile: "resolver",
+                ModelProfiles:
+                [
+                    new OpenAiCompatibleModelProfile(
+                        Name: "default",
+                        Provider: "openai-compatible",
+                        BaseUrl: "http://localhost:11434/v1",
+                        ApiKey: string.Empty,
+                        Model: "llama-light",
+                        RepositoryAccess: "read"),
+                    new OpenAiCompatibleModelProfile(
+                        Name: "resolver",
+                        Provider: "openai-compatible",
+                        BaseUrl: "http://localhost:22434/v1",
+                        ApiKey: string.Empty,
+                        Model: "llama-resolver",
+                        RepositoryAccess: "read")
+                ],
+                AgentProfiles:
+                [
+                    new OpenAiCompatibleAgentProfile("default", "planner", "default", "Run refinement.", "read"),
+                    new OpenAiCompatibleAgentProfile("resolver", "resolver", "resolver", "Answer refinement questions.", "read")
+                ],
+                PhaseAgentAssignments: new OpenAiCompatiblePhaseAgentAssignments(
+                    DefaultAgent: "default",
+                    RefinementAgent: "default")));
+
+        var capability = provider.DescribeRefinementAutoAnswerCapability();
+
+        Assert.True(capability.IsEnabled);
+        Assert.Equal("model", capability.Mode);
+        Assert.Equal("resolver", capability.ProfileName);
+        Assert.Equal("resolver", capability.AgentName);
+        Assert.Equal("resolver", capability.AgentRole);
+        Assert.Contains("resolver", capability.Summary, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_WhenSystemPromptHashDiffers_ReturnsExecutionWarningAndUsesModifiedPrompt()
     {
         await PrepareInitializedWorkspaceAsync();

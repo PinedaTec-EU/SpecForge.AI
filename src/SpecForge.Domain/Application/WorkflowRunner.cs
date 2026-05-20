@@ -113,6 +113,16 @@ public sealed class WorkflowRunner
         return PhaseExecutionEnvelopeCatalog.Describe(phaseId, policy, readiness);
     }
 
+    public RefinementPolicyDetails GetRefinementPolicyDetails(RefinementSession session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        return RefinementPolicyDetailsBuilder.Build(
+            refinementTolerance,
+            session,
+            phaseExecutionProvider.GetPhaseExecutionReadiness(PhaseId.Refinement),
+            phaseExecutionProvider.DescribeRefinementAutoAnswerCapability());
+    }
+
     public async Task<string> CreateUserStoryAsync(
         string workspaceRoot,
         string usId,

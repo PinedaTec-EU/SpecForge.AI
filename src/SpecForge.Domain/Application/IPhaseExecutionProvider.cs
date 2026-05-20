@@ -6,6 +6,12 @@ public interface IPhaseExecutionProvider
 {
     PhaseExecutionReadiness GetPhaseExecutionReadiness(PhaseId phaseId);
 
+    RefinementAutoAnswerCapability DescribeRefinementAutoAnswerCapability() =>
+        new(
+            IsEnabled: false,
+            Mode: "disabled",
+            Summary: "Automatic refinement answering is disabled for this provider.");
+
     Task<PhaseExecutionResult> ExecuteAsync(
         PhaseExecutionContext context,
         CancellationToken cancellationToken = default);

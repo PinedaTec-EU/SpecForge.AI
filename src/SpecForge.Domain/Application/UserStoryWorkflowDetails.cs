@@ -118,7 +118,8 @@ public sealed record RefinementSessionDetails(
     string Status,
     string Tolerance,
     string? Reason,
-    IReadOnlyCollection<RefinementQuestionAnswerDetails> Items);
+    IReadOnlyCollection<RefinementQuestionAnswerDetails> Items,
+    RefinementPolicyDetails? Policy = null);
 
 public sealed record RefinementQuestionAnswerDetails(
     int Index,
