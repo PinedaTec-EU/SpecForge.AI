@@ -119,7 +119,7 @@ Current stance:
   Expose the effective prompt and context for `spec` execution.
   Output: latest-execution inspector available through workflow detail DTOs and MCP.
 
-- [ ] `H-SPEC-02` Status: `todo`
+- [x] `H-SPEC-02` Status: `done`
   Make spec approval inputs more inspectable.
   Output: visible link between generated spec artifact, approval prompt paths, and latest execution receipt.
 
