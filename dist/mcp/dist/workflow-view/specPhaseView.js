@@ -8,6 +8,10 @@ function buildSpecPhaseSections(args) {
         && workflow.controls.requiresApproval;
     const effectivePrompt = selectedPhase.latestExecutionInspection?.effectivePrompt ?? null;
     const effectiveContext = selectedPhase.latestExecutionInspection?.effectiveContext ?? null;
+    const latestSpecArtifactPath = selectedPhase.artifactPath?.trim() || null;
+    const latestSpecReceiptPath = selectedPhase.latestExecutionInspection?.receiptPath?.trim() || null;
+    const specApprovePromptPath = selectedPhase.approvePromptPath?.trim() || null;
+    const specApproveSystemPromptPath = selectedPhase.approveSystemPromptPath?.trim() || null;
     const branchAlreadyCreated = selectedPhase.phaseId === "spec"
         && !selectedPhase.isCurrent
         && Boolean(workflow.workBranch?.trim());
@@ -216,6 +220,36 @@ function buildSpecPhaseSections(args) {
       </section>
     `
         : "";
+    const specApprovalInputsSection = selectedPhase.phaseId === "spec"
+        ? `
+      <section class="detail-card">
+        <h3>Inspect Spec Approval Inputs</h3>
+        <p class="panel-copy">
+          Review the persisted spec artifact, the approval prompt templates, and the latest spec execution receipt together before approving the baseline.
+        </p>
+        <div class="detail-grid">
+          <div><strong>Spec Artifact</strong><div><code>${latestSpecArtifactPath ? "available" : "unavailable"}</code></div></div>
+          <div><strong>Approve Prompt</strong><div><code>${specApprovePromptPath ? "available" : "unavailable"}</code></div></div>
+          <div><strong>Approve System Prompt</strong><div><code>${specApproveSystemPromptPath ? "available" : "unavailable"}</code></div></div>
+          <div><strong>Latest Execution Receipt</strong><div><code>${latestSpecReceiptPath ? "available" : "unavailable"}</code></div></div>
+        </div>
+        <div class="detail-actions">
+          ${latestSpecArtifactPath
+            ? `<button class="workflow-action-button workflow-action-button--document" data-command="openArtifact" data-path="${escapeHtmlAttribute(latestSpecArtifactPath)}">Open Current Spec</button>`
+            : ""}
+          ${specApprovePromptPath
+            ? `<button class="workflow-action-button workflow-action-button--document" data-command="openPrompt" data-path="${escapeHtmlAttribute(specApprovePromptPath)}">Open Approve Prompt</button>`
+            : ""}
+          ${specApproveSystemPromptPath
+            ? `<button class="workflow-action-button workflow-action-button--document" data-command="openPrompt" data-path="${escapeHtmlAttribute(specApproveSystemPromptPath)}">Open Approve System Prompt</button>`
+            : ""}
+          ${latestSpecReceiptPath
+            ? `<button class="workflow-action-button workflow-action-button--document" data-command="openArtifact" data-path="${escapeHtmlAttribute(latestSpecReceiptPath)}">Open Last Spec Receipt</button>`
+            : ""}
+        </div>
+      </section>
+    `
+        : "";
     const phaseOperationSection = selectedPhase.phaseId === "spec"
         ? `
       <section class="detail-card">
@@ -246,6 +280,7 @@ function buildSpecPhaseSections(args) {
     return {
         beforeArtifact: [
             ...(specExecutionInspectionSection ? [specExecutionInspectionSection] : []),
+            ...(specApprovalInputsSection ? [specApprovalInputsSection] : []),
             ...(specRefinementSection ? [specRefinementSection] : []),
             ...(specApprovalQuestionsSection ? [specApprovalQuestionsSection] : []),
             ...(approvalBranchSection ? [approvalBranchSection] : [])
