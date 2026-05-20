@@ -34,7 +34,7 @@ Use this file to see:
 
 ## Current Focus
 
-- `HARNESS`: continue the receipt-backed effective prompt/context exposure track and add skill/graph context orchestration.
+- `HARNESS`: continue the receipt-backed harness track and make the semantic code-graph real with lifecycle, flags, MCP/CLI creation, and graph-guided context orchestration.
 - `BRANCH`: add automatic Git branch switching when the active user story changes.
 - `MVP`: keep branch lifecycle and prompt inspection visible as the main near-term product gaps.
 

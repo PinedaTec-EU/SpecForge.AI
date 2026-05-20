@@ -19,6 +19,7 @@ Its purpose is operational:
 - Do not optimize for headline percentage. Optimize for real control, auditability, and operator trust.
 - Avoid starting Central-specific work until local harness capabilities justify it.
 - Treat each wave as decision-gated: finish scope review before opening the next one.
+- Treat the semantic code-graph as a first-class harness accelerator, not as an optional side note, because it directly affects token cost, context selection quality, and auditability for `technical-design`, `implementation`, and `review`.
 
 ## Progress Summary
 
@@ -32,6 +33,68 @@ Its purpose is operational:
 - [ ] Wave 8: SpecForge Central harness governance
 
 ## Wave Plan
+
+### Graph Delivery Track · Semantic Code Graph
+
+- Status: `planned`
+- Priority: `highest`
+- Cost: `M-L`
+- Expected value: `very high`
+- Why now: this is the main lever for reducing token-heavy file discovery and improving context precision in later phases.
+
+Scope:
+
+- formalize `global graph` and `impact graph` persistence;
+- define operator controls and feature flags for graph usage and graph mutation;
+- expose graph build, refresh, status, and bounded query operations through MCP and CLI;
+- make graph build cost auditable and reviewable;
+- feed `technical-design`, `implementation`, and `review` from graph-guided scope instead of broad repository reading.
+
+Primary outcomes:
+
+- models stop exploring the repository blindly in expensive phases;
+- graph-backed context selection becomes inspectable and optional by policy;
+- expensive rebuilds become traceable, confirmable, and measurable;
+- local or on-prem model capacity can be preferred for graph creation when available.
+
+Mandatory controls:
+
+- feature flag: `use semantic graph when available`
+- feature flag: `allow graph build or refresh for touched user-story scope`
+- confirmation gate before rebuilding the global graph from zero when one already exists
+- explicit overwrite semantics for full rebuild versus incremental refresh
+
+Required operator surfaces:
+
+- settings panel switches for graph usage and graph mutation
+- workflow-visible graph status and freshness
+- MCP and CLI entrypoints to create the graph from zero, refresh it, materialize an impact graph, and query it
+- receipt or audit record of who triggered graph work, why, when, with which model, and at what cost
+
+Required observability:
+
+- token usage when graph construction or graph-assisted queries use model calls
+- elapsed time and throughput for graph build and refresh
+- graph size and freshness metadata
+- overwrite, reuse, refresh, and fallback outcomes
+
+Recommended sequencing:
+
+1. `H-SHARED-07`
+2. `H-SHARED-08`
+3. `H-SHARED-09`
+4. `H-SHARED-10`
+5. `H-TD-03`
+6. `H-TD-04`
+7. graph-guided `implementation`
+8. graph-guided `review`
+
+Model strategy direction:
+
+- prefer local or on-prem configured model capacity first when graph extraction requires model assistance
+- do not assume embeddings are automatically required; confirm extractor needs before locking architecture
+- if embeddings are needed, keep the embedding model explicitly configurable and independently auditable from phase-execution models
+- separate graph-construction cost accounting from normal phase-execution cost accounting
 
 ### Wave 1 · Effective Prompt And Context Inspection
 

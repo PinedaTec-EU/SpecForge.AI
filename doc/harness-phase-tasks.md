@@ -65,10 +65,22 @@ Use this document as the operational backlog for implementation.
 - [ ] `H-SHARED-07` Status: `todo`
   Define the repository-global graph and per-user-story impact-graph lifecycle.
   Output: persistence contract, freshness model, fallback path, and ownership boundaries between workflow runtime and graph service.
+  Notes: must include `use graph if available` and `allow graph materialization/refresh for this user story` feature flags, overwrite semantics, and the contract for preserving or replacing an existing global graph.
 
 - [ ] `H-SHARED-08` Status: `todo`
   Define the graph MCP tool family.
   Output: first contract for global graph status, build, refresh, impact-graph materialization, and bounded graph queries.
+  Notes: MCP and CLI must support first-time graph creation from zero, explicit rebuild, dry-run status, and confirmation before overwriting an existing graph.
+
+- [ ] `H-SHARED-09` Status: `todo`
+  Define graph runtime controls and configuration surfaces.
+  Output: settings model, portal configuration switches, MCP/CLI flag mapping, and default behavior for when graph artifacts exist versus when they must be created.
+  Notes: minimum switches are `use semantic graph when available` and `allow graph build/refresh for touched US scope`.
+
+- [ ] `H-SHARED-10` Status: `todo`
+  Define the graph build audit and cost ledger contract.
+  Output: persisted record of who triggered graph creation or refresh, when, why, which mode ran, whether existing graph state was reused or replaced, token usage, latency, and resulting artifacts.
+  Notes: must inventory expensive full rebuilds and be reusable from portal, MCP, and CLI.
 
 ## Phase Tasks
 
@@ -152,10 +164,12 @@ Current stance:
 - [ ] `H-TD-03` Status: `todo`
   Feed `technical-design` from selected skills plus impact-graph context.
   Output: first design context pack that uses selected skills, graph scope, impact summary, and graph-backed expansions when available.
+  Notes: must respect graph feature flags and fall back cleanly when graph usage is disabled, missing, stale, or failed.
 
 - [ ] `H-TD-04` Status: `todo`
   Define the first bounded graph-query evidence contract for `technical-design`.
   Output: traceable persistence of follow-up graph queries and returned summaries when they influenced the design artifact.
+  Notes: should capture query purpose, actor, selected model/tooling, token usage if any, latency, and whether the answer came from global graph, impact graph, or fallback analysis.
 
 ### Implementation
 
@@ -163,6 +177,7 @@ Current stance:
   Unify implementation evidence into a structured execution evidence record.
   Output: implementation evidence should be queryable beyond appended markdown sections.
   Notes: preserve current evidence markdown/json outputs while introducing the structured substrate.
+  Notes: implementation evidence should also be able to reference graph-guided file selection and graph refresh actions when they influenced change scope.
 
 - [ ] `H-IMP-02` Status: `todo`
   Expose the effective prompt and context for `implementation`.
@@ -190,6 +205,7 @@ Current stance:
 - [ ] `H-REV-02` Status: `todo`
   Promote review outputs toward reusable structured gate results.
   Output: machine-readable verdict, findings summary, correction targets, and linked evidence.
+  Notes: review should be able to reference final impact-graph slices or graph deltas when they were part of the decision path.
 
 - [ ] `P-REV-01` Status: `todo`
   Define review policy visibility.

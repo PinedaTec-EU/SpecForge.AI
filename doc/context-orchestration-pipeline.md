@@ -45,6 +45,27 @@ SpecForge should treat graph context as two linked artifacts:
 
 The global graph is the structural substrate. The impact graph is the phase-oriented working set.
 
+## Graph Runtime Controls
+
+Graph consumption and graph mutation should be separately controllable.
+
+Minimum required controls:
+
+- `use semantic graph when available`
+  - later phases may consume a valid existing graph
+  - if disabled, workflow phases must skip graph-backed context and use fallback analysis instead
+- `allow graph build or refresh for touched user-story scope`
+  - workflow or operator actions may create or refresh graph artifacts needed for the current user story
+  - if disabled, the runtime may only reuse already-existing graph artifacts
+
+These controls should exist as settings-panel switches and also map to MCP and CLI flags.
+
+Default posture:
+
+- reuse a fresh enough graph when one already exists;
+- prefer incremental refresh over full replacement;
+- do not silently trigger an expensive full rebuild from zero.
+
 ## Pipeline Overview
 
 ```mermaid
@@ -203,6 +224,7 @@ Rules:
 - if it exists but is stale, refresh incrementally;
 - if it does not exist, build a first baseline graph;
 - if graph extraction fails, fall back to a mini-graph pack built from direct repository inspection.
+- if a caller requests `build from zero` while a global graph already exists, warn and require explicit confirmation before replacing it.
 
 Recommended contract for the graph artifact:
 
@@ -220,6 +242,7 @@ Implementation note:
 
 - a semantic graph extractor such as the open-source `code-graph` project can act as the extraction engine;
 - SpecForge still needs its own orchestration, persistence, and retrieval contracts around that engine.
+- graph creation from zero is expected to be materially more expensive than ordinary phase context assembly and must be audited separately.
 
 ### 6. US Impact Graph Materialization
 
@@ -360,6 +383,21 @@ Minimum tool family:
 - `graph_query`
   - answer bounded graph questions for later phases
 
+Recommended command semantics:
+
+- `graph_build_global`
+  - support `create-if-missing`
+  - support `rebuild-from-zero`
+  - `rebuild-from-zero` must require confirmation when graph artifacts already exist
+- `graph_refresh_global`
+  - prefer incremental refresh instead of full replacement
+- `graph_build_impact`
+  - support reuse when the impact graph is still valid for the current user story inputs
+- `graph_query`
+  - record whether the answer came from global graph, impact graph, or fallback analysis
+
+The CLI should expose the same behaviors and confirmation rules as MCP.
+
 Minimum response qualities:
 
 - bounded payloads;
@@ -381,11 +419,24 @@ Recommended repository-global artifacts:
 
 - `.specs/cache/graphs/global-graph.json`
 - `.specs/cache/graphs/global-graph.meta.json`
+- `.specs/cache/graphs/graph-build-log.jsonl`
+- `.specs/cache/graphs/graph-cost-ledger.json`
 
 The exact storage format can change later. The important rule is lifecycle separation:
 
 - global graph for repository reuse;
 - impact graph for user-story execution.
+
+Minimum audit fields:
+
+- who triggered graph build or refresh;
+- when it ran;
+- why it ran;
+- which mode ran: reuse, incremental refresh, create-if-missing, rebuild-from-zero;
+- whether previous graph artifacts were preserved or replaced;
+- which extractor and model configuration were used;
+- token usage when model calls were involved;
+- elapsed time, graph size, and high-level throughput.
 
 ## Guardrails
 
@@ -400,8 +451,11 @@ The exact storage format can change later. The important rule is lifecycle separ
 1. Add `skill preselection` outputs to `refinement`.
 2. Add `graph scope request` outputs to `refinement`.
 3. Define the global-graph and impact-graph persistence contract.
-4. Add a first graph MCP tool that can report status and build the global graph from zero.
-5. Feed `technical-design` from selected skills plus impact graph or fallback mini-graph pack.
+4. Add graph runtime controls and settings-panel switches.
+5. Add a first graph MCP/CLI tool that can report status and build the global graph from zero.
+6. Require confirmation before `rebuild-from-zero` replaces an existing graph.
+7. Persist graph build audit and cost records.
+8. Feed `technical-design` from selected skills plus impact graph or fallback mini-graph pack.
 
 ## Open Decisions
 
@@ -409,3 +463,23 @@ The exact storage format can change later. The important rule is lifecycle separ
 - how much of the graph query surface should be phase-generic versus repository-language-specific;
 - whether graph refresh should run on demand only or also as a background cache warmer;
 - whether impact graph generation should happen already in `refinement` or immediately after spec approval.
+- whether the chosen graph engine needs embeddings, an LLM, both, or neither in the target repository modes;
+- if embeddings are required, which local, on-prem, or remote embedding model should be configurable independently from phase-execution models.
+
+## Model Strategy
+
+Do not hard-code a hosted remote model assumption for graph creation.
+
+Preferred order:
+
+1. local or on-prem configured capacity when it satisfies extractor requirements;
+2. repository-approved remote model capacity when local options are unavailable;
+3. explicit embedding model only if the selected graph engine actually requires embeddings.
+
+The graph engine may not need the same model type as `technical-design`, `implementation`, or `review`.
+
+Therefore:
+
+- graph-construction model selection should be explicit;
+- embedding-model selection should also be explicit if embeddings are needed;
+- both choices should be persisted in graph audit and cost records.
