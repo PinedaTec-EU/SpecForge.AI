@@ -609,6 +609,34 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesReceiptLinkedTechnicalDesignEvidenceRecord()
+    {
+        var runner = new WorkflowRunner(new InspectionAwarePhaseExecutionProvider());
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var technicalDesignPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "technical-design");
+
+        Assert.NotNull(technicalDesignPhase.LatestExecutionInspection);
+        Assert.NotNull(technicalDesignPhase.LatestExecutionInspection!.EvidenceRecord);
+        Assert.Contains(
+            technicalDesignPhase.LatestExecutionInspection.EvidenceRecord!.Inputs,
+            item => item.Kind == "previous-artifact" && item.PhaseId == "spec");
+        Assert.Contains(
+            technicalDesignPhase.LatestExecutionInspection.EvidenceRecord.Outputs,
+            item => item.Kind == "result-artifact");
+        Assert.Contains(
+            technicalDesignPhase.LatestExecutionInspection.EvidenceRecord.Settings,
+            item => item.Name == "phase-id" && item.Value == "technical-design");
+    }
+
+    [Fact]
     public async Task GetUserStoryWorkflowAsync_ExposesExecutionPolicyPerPhase()
     {
         var runner = new WorkflowRunner(

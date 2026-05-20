@@ -268,12 +268,63 @@ export interface PhaseExecutionEffectiveContext {
 
 export interface PhaseExecutionInspectionDetails {
   readonly receiptPath?: string | null;
+  readonly evidenceRecord?: PhaseExecutionEvidenceRecord | null;
   readonly refinementPolicySnapshot?: RefinementPolicyDetails | null;
   readonly refinementSkillPreselection?: RefinementSkillPreselection | null;
   readonly refinementGraphScopeRequest?: RefinementGraphScopeRequest | null;
   readonly specApprovalPolicySnapshot?: SpecPhaseApprovalPolicyDetails | null;
   readonly effectivePrompt?: PhaseExecutionEffectivePrompt | null;
   readonly effectiveContext?: PhaseExecutionEffectiveContext | null;
+}
+
+export interface PhaseExecutionEvidenceRecord {
+  readonly actor: PhaseExecutionEvidenceActor;
+  readonly inputs: readonly PhaseExecutionEvidenceReference[];
+  readonly outputs: readonly PhaseExecutionEvidenceReference[];
+  readonly settings: readonly PhaseExecutionEvidenceSetting[];
+  readonly toolsUsed: readonly PhaseExecutionEvidenceTool[];
+  readonly blockingReason?: string | null;
+  readonly validationSummary: PhaseExecutionValidationSummary;
+  readonly evidenceLinks: readonly PhaseExecutionEvidenceLink[];
+}
+
+export interface PhaseExecutionEvidenceActor {
+  readonly kind: string;
+  readonly providerKind?: string | null;
+  readonly model?: string | null;
+  readonly profileName?: string | null;
+  readonly agentName?: string | null;
+  readonly agentRole?: string | null;
+}
+
+export interface PhaseExecutionEvidenceReference {
+  readonly kind: string;
+  readonly path: string;
+  readonly sha256?: string | null;
+  readonly phaseId?: string | null;
+}
+
+export interface PhaseExecutionEvidenceSetting {
+  readonly name: string;
+  readonly value: string;
+}
+
+export interface PhaseExecutionEvidenceTool {
+  readonly name: string;
+  readonly access: string;
+  readonly source: string;
+}
+
+export interface PhaseExecutionEvidenceLink {
+  readonly label: string;
+  readonly path: string;
+  readonly kind: string;
+}
+
+export interface PhaseExecutionValidationSummary {
+  readonly status: string;
+  readonly summary: string;
+  readonly checks: readonly string[];
 }
 
 export interface PhaseExecutionRequirements {

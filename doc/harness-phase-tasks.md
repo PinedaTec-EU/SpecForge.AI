@@ -137,7 +137,7 @@ Current stance:
   Expose the effective prompt and context for `technical-design`.
   Output: latest-execution inspector with prompt, warnings, artifacts, and context files.
 
-- [ ] `H-TD-02` Status: `todo`
+- [x] `H-TD-02` Status: `done`
   Define the first design evidence record.
   Output: structured summary of design inputs, output artifact, and any orchestration metadata.
 
