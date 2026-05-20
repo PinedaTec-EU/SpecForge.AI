@@ -115,7 +115,7 @@ Current stance:
 
 ### Spec
 
-- [ ] `H-SPEC-01` Status: `todo`
+- [x] `H-SPEC-01` Status: `done`
   Expose the effective prompt and context for `spec` execution.
   Output: latest-execution inspector available through workflow detail DTOs and MCP.
 
