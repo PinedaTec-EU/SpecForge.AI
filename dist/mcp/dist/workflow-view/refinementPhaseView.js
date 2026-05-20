@@ -4,6 +4,43 @@ exports.buildRefinementPhaseSections = buildRefinementPhaseSections;
 function buildRefinementPhaseSections(args) {
     const { workflow, selectedPhase, state, heroTokenClass, escapeHtml, escapeHtmlAttribute } = args;
     const effectiveContext = selectedPhase.latestExecutionInspection?.effectiveContext ?? null;
+    const refinementPolicy = workflow.refinement?.policy ?? null;
+    const refinementPolicySection = refinementPolicy
+        ? `
+      <div class="refinement-context">
+        <div class="refinement-context__copy">
+          <h4>Refinement Policy Inputs</h4>
+          <p>
+            This is the active policy snapshot that governs how refinement blocks spec progression and whether auto-answer can retry from repository context.
+          </p>
+        </div>
+        <div class="detail-grid">
+          <div><strong>Active Tolerance</strong><div><code>${escapeHtml(refinementPolicy.tolerance)}</code></div></div>
+          <div><strong>Pending Questions</strong><div><code>${refinementPolicy.pendingQuestionCount}</code></div></div>
+          <div><strong>Unanswered Questions</strong><div><code>${refinementPolicy.unansweredQuestionCount}</code></div></div>
+          <div><strong>Auto-Answer Eligibility</strong><div><code>${escapeHtml(refinementPolicy.autoAnswer.eligibilityStatus)}</code></div></div>
+        </div>
+        <div class="refinement-suggestions">
+          <div class="refinement-suggestion refinement-suggestion--static">
+            <div class="refinement-suggestion__body">
+              <strong>Auto-Answer Policy</strong>
+              <span>${escapeHtml(refinementPolicy.autoAnswer.summary)}</span>
+              <span>Status: <code>${escapeHtml(refinementPolicy.autoAnswer.isEnabled ? "enabled" : "disabled")}</code> · Eligibility: <code>${escapeHtml(refinementPolicy.autoAnswer.eligibilityStatus)}</code></span>
+              ${refinementPolicy.autoAnswer.agentName ? `<span>Agent: <code>${escapeHtml(refinementPolicy.autoAnswer.agentName)}</code>${refinementPolicy.autoAnswer.agentRole ? ` · Role: <code>${escapeHtml(refinementPolicy.autoAnswer.agentRole)}</code>` : ""}</span>` : ""}
+              ${refinementPolicy.autoAnswer.profileName ? `<span>Model profile: <code>${escapeHtml(refinementPolicy.autoAnswer.profileName)}</code></span>` : ""}
+              ${refinementPolicy.autoAnswer.eligibilityReason ? `<span>${escapeHtml(refinementPolicy.autoAnswer.eligibilityReason)}</span>` : ""}
+            </div>
+          </div>
+          <div class="refinement-suggestion refinement-suggestion--static">
+            <div class="refinement-suggestion__body">
+              <strong>Blocking Conditions</strong>
+              ${renderRefinementBlockingConditions(refinementPolicy.blockingConditions, escapeHtml)}
+            </div>
+          </div>
+        </div>
+      </div>
+    `
+        : "";
     const refinementContextSummarySection = effectiveContext
         ? `
       <div class="refinement-context">
@@ -108,6 +145,7 @@ function buildRefinementPhaseSections(args) {
           <span class="badge">${escapeHtml(workflow.refinement.tolerance)}</span>
         </div>
         ${workflow.refinement.reason ? `<p class="refinement-reason">${escapeHtml(workflow.refinement.reason)}</p>` : ""}
+        ${refinementPolicySection}
         ${refinementInspectionSection}
         ${refinementContextSummarySection}
         ${workflow.refinement.items.length > 0
@@ -156,6 +194,22 @@ function buildRefinementPhaseSections(args) {
             ]
             : []
     };
+}
+function renderRefinementBlockingConditions(items, escapeHtml) {
+    if (items.length === 0) {
+        return `<p class="muted">None.</p>`;
+    }
+    return `
+    <ul class="detail-list">
+      ${items.map((item) => `
+        <li>
+          <strong>${escapeHtml(item.description)}</strong><br>
+          <span class="muted">status: <code>${escapeHtml(item.status)}</code>${item.isCurrentlyBlocking ? " · blocking now" : " · not blocking now"}</span>
+          ${item.blockingReason ? `<br><span class="muted">reason: <code>${escapeHtml(item.blockingReason)}</code></span>` : ""}
+        </li>
+      `).join("")}
+    </ul>
+  `;
 }
 function renderInjectedArtifactList(items, escapeHtml) {
     if (items.length === 0) {
