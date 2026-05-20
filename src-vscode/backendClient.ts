@@ -271,6 +271,7 @@ export interface PhaseExecutionInspectionDetails {
   readonly refinementPolicySnapshot?: RefinementPolicyDetails | null;
   readonly refinementSkillPreselection?: RefinementSkillPreselection | null;
   readonly refinementGraphScopeRequest?: RefinementGraphScopeRequest | null;
+  readonly specApprovalPolicySnapshot?: SpecPhaseApprovalPolicyDetails | null;
   readonly effectivePrompt?: PhaseExecutionEffectivePrompt | null;
   readonly effectiveContext?: PhaseExecutionEffectiveContext | null;
 }

@@ -44,7 +44,9 @@ export function buildSpecPhaseSections(args: SpecPhaseViewArgs): PhaseSectionFra
   const effectiveContext = selectedPhase.latestExecutionInspection?.effectiveContext ?? null;
   const executionReadiness = selectedPhase.executionReadiness ?? null;
   const executionPolicy = selectedPhase.executionPolicy ?? null;
-  const specApprovalPolicy = selectedPhase.specApprovalPolicy ?? null;
+  const specApprovalPolicy = selectedPhase.latestExecutionInspection?.specApprovalPolicySnapshot
+    ?? selectedPhase.specApprovalPolicy
+    ?? null;
   const latestSpecArtifactPath = selectedPhase.artifactPath?.trim() || null;
   const latestSpecReceiptPath = selectedPhase.latestExecutionInspection?.receiptPath?.trim() || null;
   const specApprovePromptPath = selectedPhase.approvePromptPath?.trim() || null;
@@ -294,7 +296,7 @@ export function buildSpecPhaseSections(args: SpecPhaseViewArgs): PhaseSectionFra
       <section class="detail-card">
         <h3>Spec Eligibility And Policy</h3>
         <p class="panel-copy">
-          Inspect the explicit execution and approval rules that currently govern the spec phase before continuing or approving.
+          Inspect the explicit execution and approval rules that govern the spec phase. When a persisted receipt snapshot exists, this panel shows the last recorded approval policy from that execution.
         </p>
         <div class="detail-grid">
           <div><strong>Execution Readiness</strong><div><code>${executionReadiness?.canExecute ? "ready" : "blocked"}</code></div></div>

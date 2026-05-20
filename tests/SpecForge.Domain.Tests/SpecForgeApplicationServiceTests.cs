@@ -588,6 +588,27 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesReceiptLinkedSpecApprovalPolicySnapshot()
+    {
+        var runner = new WorkflowRunner();
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var specPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "spec");
+
+        Assert.NotNull(specPhase.LatestExecutionInspection);
+        Assert.NotNull(specPhase.LatestExecutionInspection!.SpecApprovalPolicySnapshot);
+        Assert.Equal("blocked", specPhase.LatestExecutionInspection.SpecApprovalPolicySnapshot!.Status);
+        Assert.Equal("spec_approval_questions_unresolved", specPhase.LatestExecutionInspection.SpecApprovalPolicySnapshot.ApprovalBlockingReason);
+        Assert.Contains(
+            specPhase.LatestExecutionInspection.SpecApprovalPolicySnapshot.ApprovalRules,
+            rule => rule.Id == "human_approval_questions_resolved");
+    }
+
+    [Fact]
     public async Task GetUserStoryWorkflowAsync_ExposesExecutionPolicyPerPhase()
     {
         var runner = new WorkflowRunner(

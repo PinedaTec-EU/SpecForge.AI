@@ -1789,6 +1789,9 @@ public sealed class WorkflowRunner
         var refinementPolicySnapshot = TryBuildRefinementPolicySnapshot(workflowRun.CurrentPhase, result.Content);
         var refinementSkillPreselection = TryBuildRefinementSkillPreselection(workspaceRoot, executionContext, workflowRun.CurrentPhase, result.Content);
         var refinementGraphScopeRequest = TryBuildRefinementGraphScopeRequest(executionContext, workflowRun.CurrentPhase, artifactPath, result.Content, refinementSkillPreselection);
+        var specApprovalPolicySnapshot = workflowRun.CurrentPhase == PhaseId.Spec
+            ? await SpecPhaseApprovalPolicyBuilder.BuildAsync(workflowRun, paths, cancellationToken)
+            : null;
         var receiptPath = Path.Combine(paths.ExecutionReceiptsDirectoryPath, $"{executionId}.json");
         var outputManifest = new PhaseExecutionOutputManifest(
             PhaseExecutionReceiptStore.NormalizePath(artifactPath),
@@ -1819,6 +1822,7 @@ public sealed class WorkflowRunner
             refinementPolicySnapshot,
             refinementSkillPreselection,
             refinementGraphScopeRequest,
+            specApprovalPolicySnapshot,
             result.EffectivePrompt,
             result.EffectivePrompt is null ? null : effectiveContext);
         receiptPath = await PhaseExecutionReceiptStore.PersistAsync(paths.ExecutionReceiptsDirectoryPath, receipt, cancellationToken);

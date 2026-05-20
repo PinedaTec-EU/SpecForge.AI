@@ -1363,6 +1363,26 @@ public sealed class WorkflowRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task ContinuePhaseAsync_PersistsSpecApprovalPolicySnapshotInReceipt()
+    {
+        var runner = new WorkflowRunner();
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Test story", "feature", "workflow", "Initial source text");
+
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var receiptsDirectoryPath = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0001").ExecutionReceiptsDirectoryPath;
+        var receiptJson = Directory
+            .GetFiles(receiptsDirectoryPath, "*.json")
+            .Select(File.ReadAllText)
+            .Single(content => content.Contains("\"phaseId\": \"spec\"", StringComparison.Ordinal));
+
+        Assert.Contains("\"specApprovalPolicySnapshot\": {", receiptJson);
+        Assert.Contains("\"status\": \"blocked\"", receiptJson);
+        Assert.Contains("\"approvalBlockingReason\": \"spec_approval_questions_unresolved\"", receiptJson);
+        Assert.Contains("\"approvalRules\": [", receiptJson);
+    }
+
+    [Fact]
     public async Task ContinuePhaseAsync_WhenImplementationExecutionIsCanceled_PersistsImplementationAsCurrentPhase()
     {
         var provider = new BlockingPhaseExecutionProvider(PhaseId.Implementation);

@@ -127,7 +127,7 @@ Current stance:
   Define spec-phase eligibility and policy checks.
   Output: explicit rules for when spec can execute and when approval can proceed.
 
-- [ ] `P-SPEC-02` Status: `todo`
+- [x] `P-SPEC-02` Status: `done`
   Persist the effective spec policy snapshot.
   Output: audit-ready record of the rules that governed spec execution and approval.
 

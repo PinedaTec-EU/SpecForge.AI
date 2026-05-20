@@ -20,6 +20,7 @@ public sealed record PhaseExecutionReceipt(
     RefinementPolicyDetails? RefinementPolicySnapshot = null,
     RefinementSkillPreselection? RefinementSkillPreselection = null,
     RefinementGraphScopeRequest? RefinementGraphScopeRequest = null,
+    SpecPhaseApprovalPolicyDetails? SpecApprovalPolicySnapshot = null,
     PhaseExecutionEffectivePrompt? EffectivePrompt = null,
     PhaseExecutionEffectiveContext? EffectiveContext = null);
 

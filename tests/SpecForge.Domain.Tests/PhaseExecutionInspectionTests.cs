@@ -149,6 +149,25 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
                 [new RefinementGraphSeedNode("user-story-intent", "User Story Intent", "Primary intent source.")],
                 [new PhaseExecutionArtifactInput("/repo/.specs/us/US-0001/us.md", "us-hash", "capture")],
                 ["Which actor executes the workflow?"]),
+            SpecApprovalPolicySnapshot: new SpecPhaseApprovalPolicyDetails(
+                "blocked",
+                false,
+                "spec_approval_questions_unresolved",
+                HasSpecArtifact: true,
+                SchemaIsValid: true,
+                HasUnresolvedApprovalQuestions: true,
+                UnresolvedApprovalQuestionCount: 2,
+                DecompositionApprovalPending: false,
+                ApprovalRules:
+                [
+                    new SpecPhaseApprovalRule(
+                        "human_approval_questions_resolved",
+                        "All human approval questions must be answered before the spec baseline can be approved.",
+                        "blocked",
+                        false,
+                        "spec_approval_questions_unresolved",
+                        "2 unresolved approval question(s) remain.")
+                ]),
             EffectivePrompt: new PhaseExecutionEffectivePrompt("system", "user"),
             EffectiveContext: new PhaseExecutionEffectiveContext(
                 "/repo",
@@ -166,6 +185,7 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("\"refinementPolicySnapshot\":{", json);
         Assert.Contains("\"refinementSkillPreselection\":{", json);
         Assert.Contains("\"refinementGraphScopeRequest\":{", json);
+        Assert.Contains("\"specApprovalPolicySnapshot\":{", json);
         Assert.Contains("\"evidenceRecord\":{", json);
         Assert.Contains("\"executionEnvelope\":{", json);
         Assert.Contains("\"systemPrompt\":\"system\"", json);
@@ -173,6 +193,7 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("\"eligibilityStatus\":\"eligible\"", json);
         Assert.Contains("\"requiredSkills\":[", json);
         Assert.Contains("\"seedNodes\":[", json);
+        Assert.Contains("\"approvalBlockingReason\":\"spec_approval_questions_unresolved\"", json);
         Assert.Contains("\"workspaceRoot\":\"/repo\"", json);
         Assert.Contains("\"validationSummary\":{", json);
         Assert.Contains("\"sandboxMode\":\"provider-managed\"", json);
