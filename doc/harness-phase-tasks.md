@@ -77,7 +77,7 @@ Use this document as the operational backlog for implementation.
   Output: agreed first-cut stance for parser extraction, optional model assistance, local/on-prem preference, and whether embeddings are required at all.
   Notes: implementation must not assume embeddings or remote model dependence before this is closed.
 
-- [ ] `G-DESIGN-03` Status: `todo`
+- [x] `G-DESIGN-03` Status: `done`
   Define graph query and phase-consumption semantics.
   Output: approved first query families, bounded query rules, and how `technical-design`, `implementation`, and `review` consume graph artifacts.
   Notes: this closes what the graph is actually allowed to answer before MCP and CLI tools are implemented.

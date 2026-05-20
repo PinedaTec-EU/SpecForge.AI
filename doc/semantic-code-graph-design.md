@@ -167,6 +167,16 @@ Reasoning:
 - better fit with current SpecForge artifact and receipt model
 - easier local portability and auditability
 
+### Decision 6: Storage and exchange formats are separated
+
+The local storage implementation and the Central exchange contract must not be treated as the same thing.
+
+Recommended posture:
+
+- local persistence may evolve for performance
+- exchange with SpecForge Central should stay stable and portable
+- Central should depend on graph snapshot and ledger contracts, not on the local storage engine
+
 ## Artifact Model
 
 Artifacts already anchored by lifecycle contract:
@@ -212,6 +222,42 @@ Minimum expected content:
   - fallback analysis
   - explicit operator seed
   - phase carry-forward
+
+## Persistence Strategy
+
+The persistence strategy should evolve in stages.
+
+### V1: Fragmented JSON Artifacts
+
+Recommended first cut:
+
+- file-backed graph artifacts under `.specs/cache/graphs/`
+- per-user-story graph artifacts under `.specs/us/<US>/context/`
+- JSON as the canonical machine-readable contract
+- Markdown only for operator summaries
+
+This avoids a single oversized monolithic file while keeping the graph inspectable and easy to move between local runtime, MCP, CLI, portal, and future Central APIs.
+
+### V2: Hybrid Local Store
+
+If graph size or query cost becomes a real issue:
+
+- SQLite may become the local operational store
+- JSON remains the export and interchange contract
+- Markdown remains the operator-facing summary format
+
+In that model:
+
+- local runtime optimizes for fast queries
+- Central synchronization still receives stable JSON snapshots or event exports
+
+### Storage Rule
+
+For design purposes, treat:
+
+- JSON as the canonical exchange format
+- SQLite as an optional future local execution optimization
+- external graph databases as out of scope for v1
 
 ## Build Modes
 
@@ -323,6 +369,120 @@ This first query family is intentionally structural and explainable.
 
 Queries such as full functional impact inference, semantic intent clustering, or embedding-led similarity should be treated as later extensions, not as baseline graph requirements.
 
+### First-Cut Query Contract
+
+Each query should declare:
+
+- `queryKind`
+- `scope`
+- `actor`
+- `phase` when applicable
+- `reason`
+- `sourcePreference`
+- `maxDepth` when traversal applies
+- `includeTests` when relevant
+
+Each response should declare:
+
+- `sourceGraphUsed`
+- `freshnessState`
+- `fallbackUsed`
+- `includedNodes`
+- `includedFiles`
+- `includedEdges`
+- `inclusionReasons`
+- `warnings`
+- `latency`
+- `tokenUsage` when applicable
+
+### Supported Query Semantics For V1
+
+#### `status`
+
+Answers:
+
+- whether global graph exists
+- whether impact graph exists for the requested user story
+- freshness metadata
+- last build or refresh metadata
+
+Does not answer:
+
+- semantic neighborhood questions
+- impact scope
+
+#### `explain freshness`
+
+Answers:
+
+- why a graph is fresh, stale, missing, or incompatible with current scope
+- which fingerprints or timestamps were used
+
+Does not answer:
+
+- whether a rebuild should be automatically approved
+
+#### `derive impact graph`
+
+Answers:
+
+- bounded scoped subgraph for a user story from current seeds
+- whether derivation came from global graph or fallback analysis
+
+Does not answer:
+
+- arbitrary repository-wide semantic search
+
+#### `neighbors(file|symbol)`
+
+Answers:
+
+- directly or depth-bounded adjacent files or symbols
+- inclusion reasons per neighbor
+
+Does not answer:
+
+- free-form explanations of system behavior beyond returned structure
+
+#### `implementers(symbol)`
+
+Answers:
+
+- concrete implementing types, methods, or handlers when derivable
+
+#### `callers(symbol)` and `callees(symbol)`
+
+Answers:
+
+- direct or depth-bounded call relationships when derivable
+
+Constraints:
+
+- depth must stay bounded
+- recursion or huge fan-out must be surfaced as warning, not silently expanded forever
+
+#### `tests adjacent to file or symbol`
+
+Answers:
+
+- nearby test files, projects, or symbols with reason for adjacency
+
+#### `why included(file|symbol)`
+
+Answers:
+
+- exact provenance for inclusion into an impact graph or query response
+- whether inclusion came from seed, traversal, framework enrichment, fallback analysis, or carry-forward
+
+### Explicitly Deferred Query Semantics
+
+Not part of v1:
+
+- embedding-led similarity search
+- semantic “intent” clustering
+- unconstrained natural-language graph reasoning
+- full business-impact inference with no bounded structural basis
+
 Every graph query should declare:
 
 - actor
@@ -346,6 +506,7 @@ Responsibilities:
 - produce `graph_scope_request`
 - persist seeds, depth, and open questions
 - identify whether later phases would benefit from graph use
+- do not treat graph output as mandatory to let refinement complete
 
 ### Technical Design
 
@@ -356,6 +517,28 @@ Expected usage:
 - seed from refinement graph scope request
 - derive or load impact graph
 - use bounded follow-up queries when design ambiguity remains
+
+Allowed first-cut queries:
+
+- `status`
+- `derive impact graph`
+- `neighbors`
+- `implementers`
+- `callers`
+- `tests adjacent`
+- `why included`
+
+Expected output use:
+
+- design context pack
+- module and symbol scoping
+- affected implementation surfaces
+- candidate test surfaces
+
+Must not do in v1:
+
+- delegate broad repository exploration to graph queries with no seed discipline
+- claim business semantics not grounded in returned structure
 
 ### Implementation
 
@@ -368,6 +551,26 @@ Expected usage:
 - test adjacency discovery
 - graph refresh only if allowed by feature flags and required by changed scope
 
+Allowed first-cut queries:
+
+- `status`
+- `neighbors`
+- `callers`
+- `callees`
+- `tests adjacent`
+- `why included`
+
+Expected output use:
+
+- narrowing editable file set
+- finding nearby contracts and implementations
+- finding likely tests before broad repository reads
+
+Must not do in v1:
+
+- auto-expand to repository-wide “impact” with no bounded scope
+- silently refresh graph state when mutation is not allowed
+
 ### Review
 
 Should use final impact graph and graph-derived adjacency to inspect likely regression surface more precisely.
@@ -378,6 +581,26 @@ Expected usage:
 - downstream consumers
 - nearby tests
 - graph delta when available later
+
+Allowed first-cut queries:
+
+- `status`
+- `neighbors`
+- `callers`
+- `callees`
+- `tests adjacent`
+- `why included`
+
+Expected output use:
+
+- identify probable regression surface
+- identify likely missing validation zones
+- justify why a file or downstream consumer is being considered
+
+Must not do in v1:
+
+- present graph-assisted findings as if they were exhaustive proof
+- hide fallback mode when no valid graph was available
 
 ## Runtime Controls
 
