@@ -78,7 +78,7 @@ class ExecutionSettingsPanelController {
                     return;
                 case "saveExecutionSettings":
                     try {
-                        await saveExecutionSettingsAsync(message.modelProfiles ?? [], message.agentProfiles ?? [], message.phaseAgentAssignments ?? {}, message.refinementTolerance ?? "balanced", message.mvpRigor ?? "medium", message.reviewTolerance ?? "balanced", message.reviewEvidencePolicy ?? "balanced", message.technicalDesignSubagentsEnabled ?? false, message.reviewSubagentsEnabled ?? false, message.watcherEnabled ?? true, message.attentionNotificationsEnabled ?? true, message.contextSuggestionsEnabled ?? true, message.workflowGraphLayoutMode ?? "vertical", message.workflowGraphInitialZoomMode ?? "actual-size", message.userStoryListViewMode ?? "category", message.visualTimelineEnabled ?? false, message.requireExplicitApprovalBranchAcceptance ?? false, message.autoRefinementAnswersEnabled ?? false, message.autoRefinementAnswersProfile, message.autoPlayEnabled ?? false, message.autoReviewEnabled ?? false, message.maxImplementationReviewCycles ?? null, message.destructiveRewindEnabled ?? false, message.pauseOnFailedReview ?? false, message.reviewLearningEnabled ?? true, message.reviewLearningSkillPath, message.completedUsLockOnCompleted ?? true);
+                        await saveExecutionSettingsAsync(message.modelProfiles ?? [], message.agentProfiles ?? [], message.phaseAgentAssignments ?? {}, message.refinementTolerance ?? "balanced", message.mvpRigor ?? "medium", message.reviewTolerance ?? "balanced", message.reviewEvidencePolicy ?? "balanced", message.technicalDesignSubagentsEnabled ?? false, message.reviewSubagentsEnabled ?? false, message.watcherEnabled ?? true, message.attentionNotificationsEnabled ?? true, message.contextSuggestionsEnabled ?? true, message.workflowGraphLayoutMode ?? "vertical", message.workflowGraphInitialZoomMode ?? "actual-size", message.userStoryListViewMode ?? "category", message.visualTimelineEnabled ?? false, message.requireExplicitApprovalBranchAcceptance ?? false, message.autoRefinementAnswersEnabled ?? false, message.autoRefinementAnswersProfile, message.autoPlayEnabled ?? false, message.autoReviewEnabled ?? false, message.maxImplementationReviewCycles ?? null, message.destructiveRewindEnabled ?? false, message.pauseOnFailedReview ?? false, message.useSemanticGraphWhenAvailable ?? true, message.allowGraphBuildRefreshForTouchedUserStoryScope ?? false, message.reviewLearningEnabled ?? true, message.reviewLearningSkillPath, message.completedUsLockOnCompleted ?? true);
                         await this.onDidSave();
                         await this.refreshAsync();
                     }
@@ -121,6 +121,8 @@ class ExecutionSettingsPanelController {
             maxImplementationReviewCycles: settings.maxImplementationReviewCycles,
             destructiveRewindEnabled: settings.destructiveRewindEnabled,
             pauseOnFailedReview: settings.pauseOnFailedReview,
+            useSemanticGraphWhenAvailable: settings.useSemanticGraphWhenAvailable,
+            allowGraphBuildRefreshForTouchedUserStoryScope: settings.allowGraphBuildRefreshForTouchedUserStoryScope,
             reviewLearningEnabled: settings.reviewLearningEnabled !== false,
             reviewLearningSkillPath: settings.reviewLearningSkillPath ?? ".codex/skills/sdd-phase-agents/SKILL.md",
             completedUsLockOnCompleted: settings.completedUsLockOnCompleted,
@@ -661,6 +663,22 @@ function buildExecutionSettingsHtml(model) {
           </select>
           <span class="phase-field__hint">Force explicit confirmation of the proposed base branch before approving spec.</span>
         </label>
+        <label class="phase-field">
+          <span>Use semantic graph when available</span>
+          <select data-use-semantic-graph-when-available>
+            <option value="true"${model.useSemanticGraphWhenAvailable ? " selected" : ""}>Enabled</option>
+            <option value="false"${model.useSemanticGraphWhenAvailable ? "" : " selected"}>Disabled</option>
+          </select>
+          <span class="phase-field__hint">Reuse a valid semantic code graph for later phases when graph artifacts already exist.</span>
+        </label>
+        <label class="phase-field">
+          <span>Allow graph build or refresh for touched US scope</span>
+          <select data-allow-graph-build-refresh-for-touched-us-scope>
+            <option value="false"${model.allowGraphBuildRefreshForTouchedUserStoryScope ? "" : " selected"}>Disabled</option>
+            <option value="true"${model.allowGraphBuildRefreshForTouchedUserStoryScope ? " selected" : ""}>Enabled</option>
+          </select>
+          <span class="phase-field__hint">Allow runtime or operator flows to materialize or refresh graph state for the touched user story when needed.</span>
+        </label>
       </div>
       <div class="section-header">
         <div>
@@ -837,6 +855,8 @@ function buildExecutionSettingsHtml(model) {
       maxImplementationReviewCycles: ${JSON.stringify(model.maxImplementationReviewCycles ?? 5)},
       destructiveRewindEnabled: ${JSON.stringify(model.destructiveRewindEnabled)},
       pauseOnFailedReview: ${JSON.stringify(model.pauseOnFailedReview)},
+      useSemanticGraphWhenAvailable: ${JSON.stringify(model.useSemanticGraphWhenAvailable)},
+      allowGraphBuildRefreshForTouchedUserStoryScope: ${JSON.stringify(model.allowGraphBuildRefreshForTouchedUserStoryScope)},
       reviewLearningEnabled: ${JSON.stringify(model.reviewLearningEnabled)},
       reviewLearningSkillPath: ${JSON.stringify(model.reviewLearningSkillPath)},
       completedUsLockOnCompleted: ${JSON.stringify(model.completedUsLockOnCompleted)},
@@ -991,6 +1011,8 @@ function buildExecutionSettingsHtml(model) {
       const maxImplementationReviewCycles = document.querySelector("[data-max-implementation-review-cycles]");
       const destructiveRewindEnabled = document.querySelector("[data-destructive-rewind-enabled]");
       const pauseOnFailedReview = document.querySelector("[data-pause-on-failed-review]");
+      const useSemanticGraphWhenAvailable = document.querySelector("[data-use-semantic-graph-when-available]");
+      const allowGraphBuildRefreshForTouchedUserStoryScope = document.querySelector("[data-allow-graph-build-refresh-for-touched-us-scope]");
       const reviewLearningEnabled = document.querySelector("[data-review-learning-enabled]");
       const reviewLearningSkillPath = document.querySelector("[data-review-learning-skill-path]");
       const completedUsLockOnCompleted = document.querySelector("[data-completed-us-lock-on-completed]");
@@ -1220,6 +1242,20 @@ function buildExecutionSettingsHtml(model) {
         pauseOnFailedReview.value = state.pauseOnFailedReview ? "true" : "false";
         pauseOnFailedReview.addEventListener("change", () => {
           state.pauseOnFailedReview = pauseOnFailedReview.value === "true";
+        });
+      }
+
+      if (useSemanticGraphWhenAvailable instanceof HTMLSelectElement) {
+        useSemanticGraphWhenAvailable.value = state.useSemanticGraphWhenAvailable ? "true" : "false";
+        useSemanticGraphWhenAvailable.addEventListener("change", () => {
+          state.useSemanticGraphWhenAvailable = useSemanticGraphWhenAvailable.value === "true";
+        });
+      }
+
+      if (allowGraphBuildRefreshForTouchedUserStoryScope instanceof HTMLSelectElement) {
+        allowGraphBuildRefreshForTouchedUserStoryScope.value = state.allowGraphBuildRefreshForTouchedUserStoryScope ? "true" : "false";
+        allowGraphBuildRefreshForTouchedUserStoryScope.addEventListener("change", () => {
+          state.allowGraphBuildRefreshForTouchedUserStoryScope = allowGraphBuildRefreshForTouchedUserStoryScope.value === "true";
         });
       }
 
@@ -1654,6 +1690,8 @@ function buildExecutionSettingsHtml(model) {
         maxImplementationReviewCycles: state.maxImplementationReviewCycles,
         destructiveRewindEnabled: state.destructiveRewindEnabled,
         pauseOnFailedReview: state.pauseOnFailedReview,
+        useSemanticGraphWhenAvailable: state.useSemanticGraphWhenAvailable,
+        allowGraphBuildRefreshForTouchedUserStoryScope: state.allowGraphBuildRefreshForTouchedUserStoryScope,
         reviewLearningEnabled: state.reviewLearningEnabled,
         reviewLearningSkillPath: state.reviewLearningSkillPath,
         completedUsLockOnCompleted: state.completedUsLockOnCompleted
@@ -1665,7 +1703,7 @@ function buildExecutionSettingsHtml(model) {
 </body>
 </html>`;
 }
-async function saveExecutionSettingsAsync(modelProfiles, agentProfiles, phaseAgentAssignments, refinementTolerance = "balanced", mvpRigor = "medium", reviewTolerance = "balanced", reviewEvidencePolicy = "balanced", technicalDesignSubagentsEnabled = false, reviewSubagentsEnabled = false, watcherEnabled = true, attentionNotificationsEnabled = true, contextSuggestionsEnabled = true, workflowGraphLayoutMode = "vertical", workflowGraphInitialZoomMode = "actual-size", userStoryListViewMode = "category", visualTimelineEnabled = false, requireExplicitApprovalBranchAcceptance = false, autoRefinementAnswersEnabled = false, autoRefinementAnswersProfile, autoPlayEnabled = false, autoReviewEnabled = false, maxImplementationReviewCycles, destructiveRewindEnabled = false, pauseOnFailedReview = false, reviewLearningEnabled = true, reviewLearningSkillPath, completedUsLockOnCompleted = false) {
+async function saveExecutionSettingsAsync(modelProfiles, agentProfiles, phaseAgentAssignments, refinementTolerance = "balanced", mvpRigor = "medium", reviewTolerance = "balanced", reviewEvidencePolicy = "balanced", technicalDesignSubagentsEnabled = false, reviewSubagentsEnabled = false, watcherEnabled = true, attentionNotificationsEnabled = true, contextSuggestionsEnabled = true, workflowGraphLayoutMode = "vertical", workflowGraphInitialZoomMode = "actual-size", userStoryListViewMode = "category", visualTimelineEnabled = false, requireExplicitApprovalBranchAcceptance = false, autoRefinementAnswersEnabled = false, autoRefinementAnswersProfile, autoPlayEnabled = false, autoReviewEnabled = false, maxImplementationReviewCycles, destructiveRewindEnabled = false, pauseOnFailedReview = false, useSemanticGraphWhenAvailable = true, allowGraphBuildRefreshForTouchedUserStoryScope = false, reviewLearningEnabled = true, reviewLearningSkillPath, completedUsLockOnCompleted = false) {
     const configuration = vscode.workspace.getConfiguration("specForge");
     const normalizedProfiles = modelProfiles
         .map((profile) => ({
@@ -1761,6 +1799,8 @@ async function saveExecutionSettingsAsync(modelProfiles, agentProfiles, phaseAge
     await configuration.update("features.maxImplementationReviewCycles", normalizePositiveInteger(maxImplementationReviewCycles) ?? 5, vscode.ConfigurationTarget.Workspace);
     await configuration.update("features.destructiveRewindEnabled", destructiveRewindEnabled, vscode.ConfigurationTarget.Workspace);
     await configuration.update("features.pauseOnFailedReview", pauseOnFailedReview, vscode.ConfigurationTarget.Workspace);
+    await configuration.update("features.useSemanticGraphWhenAvailable", useSemanticGraphWhenAvailable, vscode.ConfigurationTarget.Workspace);
+    await configuration.update("features.allowGraphBuildRefreshForTouchedUserStoryScope", allowGraphBuildRefreshForTouchedUserStoryScope, vscode.ConfigurationTarget.Workspace);
     await configuration.update("features.reviewLearningEnabled", reviewLearningEnabled, vscode.ConfigurationTarget.Workspace);
     await configuration.update("features.reviewLearningSkillPath", normalizeOptionalAssignment(reviewLearningSkillPath) ?? ".codex/skills/sdd-phase-agents/SKILL.md", vscode.ConfigurationTarget.Workspace);
     await configuration.update("features.completedUsLockOnCompleted", completedUsLockOnCompleted, vscode.ConfigurationTarget.Workspace);

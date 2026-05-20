@@ -93,6 +93,8 @@ function readSpecForgeSettings(configuration) {
         maxImplementationReviewCycles: normalizeOptionalPositiveInteger(configuration.get("features.maxImplementationReviewCycles", 5)),
         destructiveRewindEnabled: configuration.get("features.destructiveRewindEnabled", false),
         pauseOnFailedReview: configuration.get("features.pauseOnFailedReview", false),
+        useSemanticGraphWhenAvailable: configuration.get("features.useSemanticGraphWhenAvailable", true),
+        allowGraphBuildRefreshForTouchedUserStoryScope: configuration.get("features.allowGraphBuildRefreshForTouchedUserStoryScope", false),
         reviewLearningEnabled,
         reviewLearningSkillPath,
         completedUsLockOnCompleted: configuration.get("features.completedUsLockOnCompleted", false)
@@ -119,6 +121,9 @@ function buildBackendEnvironment(settings) {
     env.SPECFORGE_REVIEW_SUBAGENTS_ENABLED = settings.reviewSubagentsEnabled === true ? "true" : "false";
     env.SPECFORGE_AUTO_REFINEMENT_ANSWERS_ENABLED = settings.autoRefinementAnswersEnabled ? "true" : "false";
     env.SPECFORGE_PHASE_SKILL_USAGE_REPORTING_ENABLED = settings.phaseSkillUsageReportingEnabled === false ? "false" : "true";
+    env.SPECFORGE_USE_SEMANTIC_GRAPH_WHEN_AVAILABLE = settings.useSemanticGraphWhenAvailable ? "true" : "false";
+    env.SPECFORGE_ALLOW_GRAPH_BUILD_REFRESH_FOR_TOUCHED_US_SCOPE =
+        settings.allowGraphBuildRefreshForTouchedUserStoryScope ? "true" : "false";
     env.SPECFORGE_REVIEW_LEARNING_ENABLED = settings.reviewLearningEnabled === false ? "false" : "true";
     env.SPECFORGE_REVIEW_LEARNING_SKILL_PATH =
         settings.reviewLearningSkillPath ?? ".codex/skills/sdd-phase-agents/SKILL.md";
@@ -320,6 +325,8 @@ function buildSettingsDiagnostics(settings) {
         `autoRefinementAnswers.enabled=${settings.autoRefinementAnswersEnabled}`,
         `autoRefinementAnswers.agent=${settings.autoRefinementAnswersProfile ?? "<unset>"}`,
         `phaseSkillUsageReporting.enabled=${settings.phaseSkillUsageReportingEnabled !== false}`,
+        `semanticGraph.useWhenAvailable=${settings.useSemanticGraphWhenAvailable}`,
+        `semanticGraph.allowBuildRefreshForTouchedUs=${settings.allowGraphBuildRefreshForTouchedUserStoryScope}`,
         `autoReviewEnabled=${settings.autoReviewEnabled}`,
         `maxImplementationReviewCycles=${settings.maxImplementationReviewCycles ?? "<unset>"}`,
         `pauseOnFailedReview=${settings.pauseOnFailedReview}`,
