@@ -1,6 +1,6 @@
 # SpecForge · Harness Implementation Plan
 
-Last reviewed: 2026-05-18.
+Last reviewed: 2026-05-21.
 
 This document tracks the implementation plan derived from the harness-engineering baseline in [harness-engineering-checklist.md](harness-engineering-checklist.md).
 
@@ -44,6 +44,7 @@ Its purpose is operational:
 
 Scope:
 
+- settle the graph architecture before implementing graph tooling and runtime integration;
 - formalize `global graph` and `impact graph` persistence;
 - define operator controls and feature flags for graph usage and graph mutation;
 - expose graph build, refresh, status, and bounded query operations through MCP and CLI;
@@ -81,13 +82,17 @@ Required observability:
 Recommended sequencing:
 
 1. `H-SHARED-07`
-2. `H-SHARED-08`
-3. `H-SHARED-09`
-4. `H-SHARED-10`
-5. `H-TD-03`
-6. `H-TD-04`
-7. graph-guided `implementation`
-8. graph-guided `review`
+2. `G-DESIGN-01`
+3. `G-DESIGN-02`
+4. `G-DESIGN-03`
+5. `G-DESIGN-04`
+6. `H-SHARED-08`
+7. `H-SHARED-09`
+8. `H-SHARED-10`
+9. `H-TD-03`
+10. `H-TD-04`
+11. graph-guided `implementation`
+12. graph-guided `review`
 
 Model strategy direction:
 
@@ -95,6 +100,8 @@ Model strategy direction:
 - do not assume embeddings are automatically required; confirm extractor needs before locking architecture
 - if embeddings are needed, keep the embedding model explicitly configurable and independently auditable from phase-execution models
 - separate graph-construction cost accounting from normal phase-execution cost accounting
+- do not implement graph MCP/CLI mutation tools as if the builder were settled before the design track closes
+- current recommended first-cut builder posture is `.NET-first`, `Roslyn/SCIP`-first for C#, with parser-based fallback and no embeddings in v1
 
 ### Wave 1 · Effective Prompt And Context Inspection
 

@@ -1,6 +1,6 @@
 # SpecForge · Task Map
 
-Last reviewed: 2026-05-19.
+Last reviewed: 2026-05-20.
 
 This is the central task entrypoint for repository work.
 
@@ -28,13 +28,13 @@ Use this file to see:
 
 | Block | Status | Detailed tracking | Scope |
 | --- | --- | --- | --- |
-| `HARNESS` | `doing` | [harness-phase-tasks.md](harness-phase-tasks.md), [harness-implementation-plan.md](harness-implementation-plan.md), [harness-engineering-checklist.md](harness-engineering-checklist.md) | Harness governance, effective prompt/context inspection, policy visibility, evidence, metrics, profiles |
+| `HARNESS` | `doing` | [harness-phase-tasks.md](harness-phase-tasks.md), [harness-implementation-plan.md](harness-implementation-plan.md), [harness-engineering-checklist.md](harness-engineering-checklist.md), [semantic-code-graph-design.md](semantic-code-graph-design.md) | Harness governance, effective prompt/context inspection, policy visibility, evidence, metrics, profiles, and semantic code-graph design plus rollout |
 | `MVP` | `doing` | [implementation-plan.md](implementation-plan.md), [roadmap.md](roadmap.md) | Product MVP sequencing, extension/MCP/portal gaps, medium-term product delivery |
 | `BRANCH` | `doing` | [tasks/branch-lifecycle.md](tasks/branch-lifecycle.md) | Branch lifecycle, branch activation, Git context switching, PR-oriented branch metadata |
 
 ## Current Focus
 
-- `HARNESS`: continue the receipt-backed harness track and make the semantic code-graph real with lifecycle, flags, MCP/CLI creation, and graph-guided context orchestration.
+- `HARNESS`: finish semantic code-graph design first, then implement lifecycle, flags, MCP/CLI creation, and graph-guided context orchestration on top of explicit decisions.
 - `BRANCH`: add automatic Git branch switching when the active user story changes.
 - `MVP`: keep branch lifecycle and prompt inspection visible as the main near-term product gaps.
 

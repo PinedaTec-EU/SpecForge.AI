@@ -2,6 +2,10 @@
 
 Last reviewed: 2026-05-19.
 
+Design reference:
+
+- [semantic-code-graph-design.md](semantic-code-graph-design.md)
+
 ## Goal
 
 Define how SpecForge should select and expand runtime context for each workflow phase so the model receives:
@@ -17,6 +21,8 @@ This document focuses on two new responsibilities:
 - `graph scope` and graph-backed context expansion during `technical-design`.
 
 It also defines how a repository-global semantic graph and a per-user-story impact graph should coexist.
+
+This document focuses on orchestration behavior. The graph subsystem architecture, builder posture, governance, and audit model are defined in the dedicated semantic graph design document.
 
 ## Main Rule
 
