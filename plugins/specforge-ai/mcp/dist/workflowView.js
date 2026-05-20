@@ -540,7 +540,12 @@ function buildPhaseSpecificSections(workflow, selectedPhase, state, artifactPrev
                 renderChevronIcon
             });
         case "technical-design":
-            return (0, technicalDesignPhaseView_1.buildTechnicalDesignPhaseSections)();
+            return (0, technicalDesignPhaseView_1.buildTechnicalDesignPhaseSections)({
+                workflow,
+                selectedPhase,
+                escapeHtml: htmlEscape_1.escapeHtml,
+                escapeHtmlAttribute: htmlEscape_1.escapeHtmlAttr
+            });
         case "implementation":
             return (0, implementationPhaseView_1.buildImplementationPhaseSections)();
         case "review":
