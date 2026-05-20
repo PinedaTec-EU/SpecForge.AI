@@ -13,7 +13,7 @@ interface RefinementPhaseViewArgs {
 export function buildRefinementPhaseSections(args: RefinementPhaseViewArgs): PhaseSectionFragments {
   const { workflow, selectedPhase, state, heroTokenClass, escapeHtml, escapeHtmlAttribute } = args;
   const effectiveContext = selectedPhase.latestExecutionInspection?.effectiveContext ?? null;
-  const refinementPolicy = workflow.refinement?.policy ?? null;
+  const refinementPolicy = selectedPhase.latestExecutionInspection?.refinementPolicySnapshot ?? workflow.refinement?.policy ?? null;
   const refinementPolicySection = refinementPolicy
     ? `
       <div class="refinement-context">

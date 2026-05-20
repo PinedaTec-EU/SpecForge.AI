@@ -133,6 +133,12 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
                 [new PhaseExecutionEnvelopeWriteScope("specforge-runtime", "<workspace-root>/.specs/us/**/phases/*", "write", "enforced")],
                 [new PhaseExecutionEnvelopeBoundary("workspace-root", "<workspace-root>", "scoped", "Execution is scoped to the current workspace root.")],
                 new PhaseExecutionEnvelopeBudget("standard", "medium", "standard", "artifact-only", "Declared budget only.")),
+            RefinementPolicySnapshot: new RefinementPolicyDetails(
+                "strict",
+                2,
+                2,
+                [new RefinementBlockingCondition("unanswered_questions_require_resolution", "Questions remain unanswered.", "blocking", true, "refinement_pending_answers")],
+                new RefinementAutoAnswerPolicy(true, "model", "Auto-answer will retry once.", "resolver", "resolver", "resolver", true, "eligible", "Context is sufficient for one retry.")),
             EffectivePrompt: new PhaseExecutionEffectivePrompt("system", "user"),
             EffectiveContext: new PhaseExecutionEffectiveContext(
                 "/repo",
@@ -147,10 +153,12 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
 
         Assert.Contains("\"effectivePrompt\":{", json);
         Assert.Contains("\"effectiveContext\":{", json);
+        Assert.Contains("\"refinementPolicySnapshot\":{", json);
         Assert.Contains("\"evidenceRecord\":{", json);
         Assert.Contains("\"executionEnvelope\":{", json);
         Assert.Contains("\"systemPrompt\":\"system\"", json);
         Assert.Contains("\"userPrompt\":\"user\"", json);
+        Assert.Contains("\"eligibilityStatus\":\"eligible\"", json);
         Assert.Contains("\"workspaceRoot\":\"/repo\"", json);
         Assert.Contains("\"validationSummary\":{", json);
         Assert.Contains("\"sandboxMode\":\"provider-managed\"", json);

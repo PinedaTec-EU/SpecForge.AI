@@ -266,6 +266,7 @@ export interface PhaseExecutionEffectiveContext {
 
 export interface PhaseExecutionInspectionDetails {
   readonly receiptPath?: string | null;
+  readonly refinementPolicySnapshot?: RefinementPolicyDetails | null;
   readonly effectivePrompt?: PhaseExecutionEffectivePrompt | null;
   readonly effectiveContext?: PhaseExecutionEffectiveContext | null;
 }

@@ -527,6 +527,27 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesReceiptLinkedRefinementPolicySnapshot()
+    {
+        var runner = new WorkflowRunner();
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var refinementPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "refinement");
+
+        Assert.NotNull(refinementPhase.LatestExecutionInspection);
+        Assert.NotNull(refinementPhase.LatestExecutionInspection!.RefinementPolicySnapshot);
+        Assert.Equal("balanced", refinementPhase.LatestExecutionInspection.RefinementPolicySnapshot!.Tolerance);
+        Assert.Equal("not-needed", refinementPhase.LatestExecutionInspection.RefinementPolicySnapshot.AutoAnswer.EligibilityStatus);
+        Assert.Contains(
+            refinementPhase.LatestExecutionInspection.RefinementPolicySnapshot.BlockingConditions,
+            condition => condition.Id == "unanswered_questions_require_resolution");
+    }
+
+    [Fact]
     public async Task GetUserStoryWorkflowAsync_ExposesExecutionPolicyPerPhase()
     {
         var runner = new WorkflowRunner(

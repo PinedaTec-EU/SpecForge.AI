@@ -1786,6 +1786,7 @@ public sealed class WorkflowRunner
 
         var executionPolicy = GetPhaseExecutionPolicy(workflowRun.CurrentPhase);
         var executionEnvelope = GetPhaseExecutionEnvelope(workflowRun.CurrentPhase);
+        var refinementPolicySnapshot = TryBuildRefinementPolicySnapshot(workflowRun.CurrentPhase, result.Content);
         var receiptPath = Path.Combine(paths.ExecutionReceiptsDirectoryPath, $"{executionId}.json");
         var outputManifest = new PhaseExecutionOutputManifest(
             PhaseExecutionReceiptStore.NormalizePath(artifactPath),
@@ -1813,6 +1814,7 @@ public sealed class WorkflowRunner
                 executionPolicy,
                 receiptPath),
             executionEnvelope,
+            refinementPolicySnapshot,
             result.EffectivePrompt,
             result.EffectivePrompt is null ? null : effectiveContext);
         receiptPath = await PhaseExecutionReceiptStore.PersistAsync(paths.ExecutionReceiptsDirectoryPath, receipt, cancellationToken);
@@ -1839,6 +1841,24 @@ public sealed class WorkflowRunner
             receiptPath,
             generatedFiles.Distinct(StringComparer.Ordinal).ToArray(),
             repositoryEvidencePaths);
+    }
+
+    private RefinementPolicyDetails? TryBuildRefinementPolicySnapshot(PhaseId phaseId, string content)
+    {
+        if (phaseId != PhaseId.Refinement || string.IsNullOrWhiteSpace(content))
+        {
+            return null;
+        }
+
+        var refinement = ParseRefinementArtifact(content);
+        var session = new RefinementSession(
+            refinement.IsReady ? "ready_for_spec" : "needs_refinement",
+            refinementTolerance,
+            refinement.Reason,
+            refinement.Questions
+                .Select((question, index) => new RefinementItem(index + 1, question, null))
+                .ToArray());
+        return GetRefinementPolicyDetails(session);
     }
 
     private async Task EvaluateSpecDecompositionAsync(

@@ -923,13 +923,16 @@ public sealed class SpecForgeApplicationService
         try
         {
             var receipt = await PhaseExecutionReceiptStore.TryLoadAsync(receiptPath, cancellationToken);
-            if (receipt?.EffectivePrompt is null && receipt?.EffectiveContext is null)
+            if (receipt?.EffectivePrompt is null &&
+                receipt?.EffectiveContext is null &&
+                receipt?.RefinementPolicySnapshot is null)
             {
                 return null;
             }
 
             return new PhaseExecutionInspectionDetails(
                 receiptPath,
+                receipt?.RefinementPolicySnapshot,
                 receipt?.EffectivePrompt,
                 receipt?.EffectiveContext);
         }

@@ -17,6 +17,7 @@ public sealed record PhaseExecutionReceipt(
     PhaseExecutionMetadata? Execution,
     PhaseExecutionEvidenceRecord? EvidenceRecord = null,
     PhaseExecutionEnvelope? ExecutionEnvelope = null,
+    RefinementPolicyDetails? RefinementPolicySnapshot = null,
     PhaseExecutionEffectivePrompt? EffectivePrompt = null,
     PhaseExecutionEffectiveContext? EffectiveContext = null);
 
