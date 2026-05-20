@@ -125,6 +125,7 @@ static async Task<JsonNode> HandleToolCallAsync(
             "specforge_query" => await HandleSpecForgeQueryAsync(arguments, applicationService),
             "specforge_action" => await HandleSpecForgeActionAsync(arguments, applicationService),
             "specforge_prompts" => await HandleSpecForgePromptsAsync(arguments, applicationService),
+            "specforge_graph" => await HandleSpecForgeGraphAsync(arguments),
             "open_workflow_portal" => HandleOpenWorkflowPortal(arguments),
             "create_us_from_chat" => await applicationService.CreateUserStoryAsync(
                 workspaceRoot: GetRequired(arguments, "workspaceRoot"),
@@ -169,6 +170,35 @@ static async Task<JsonNode> HandleToolCallAsync(
             "get_user_story_runtime_status" => await applicationService.GetUserStoryRuntimeStatusAsync(
                 workspaceRoot: GetRequired(arguments, "workspaceRoot"),
                 usId: GetRequired(arguments, "usId")),
+            "get_semantic_graph_status" => SemanticGraphOperations.DescribeStatus(
+                workspaceRoot: GetRequired(arguments, "workspaceRoot"),
+                usId: GetOptional(arguments, "usId")),
+            "run_semantic_graph_global_operation" => await SemanticGraphOperations.RunGlobalOperationAsync(
+                workspaceRoot: GetRequired(arguments, "workspaceRoot"),
+                request: new SemanticGraphGlobalOperationRequest(
+                    Mode: GetRequired(arguments, "mode"),
+                    Actor: GetOptional(arguments, "actor") ?? "user",
+                    Reason: GetRequired(arguments, "reason"),
+                    DryRun: GetOptionalBoolean(arguments, "dryRun"),
+                    ConfirmOverwrite: GetOptionalBoolean(arguments, "confirmOverwrite"))),
+            "materialize_semantic_impact_graph" => await SemanticGraphOperations.MaterializeImpactGraphAsync(
+                workspaceRoot: GetRequired(arguments, "workspaceRoot"),
+                request: new SemanticGraphImpactOperationRequest(
+                    UsId: GetRequired(arguments, "usId"),
+                    Actor: GetOptional(arguments, "actor") ?? "user",
+                    Reason: GetRequired(arguments, "reason"),
+                    DryRun: GetOptionalBoolean(arguments, "dryRun"))),
+            "query_semantic_graph" => SemanticGraphOperations.ExecuteQuery(
+                workspaceRoot: GetRequired(arguments, "workspaceRoot"),
+                request: new SemanticGraphQueryRequest(
+                    QueryKind: GetRequired(arguments, "queryKind"),
+                    Actor: GetOptional(arguments, "actor") ?? "user",
+                    UsId: GetOptional(arguments, "usId"),
+                    Phase: GetOptional(arguments, "phase"),
+                    Reason: GetOptional(arguments, "reason"),
+                    FilePath: GetOptional(arguments, "filePath"),
+                    MaxDepth: GetOptionalInt(arguments, "maxDepth", 1),
+                    IncludeTests: GetOptionalBoolean(arguments, "includeTests"))),
             "analyze_user_story_lineage" => await applicationService.AnalyzeUserStoryLineageAsync(
                 workspaceRoot: GetRequired(arguments, "workspaceRoot"),
                 usId: GetRequired(arguments, "usId")),
@@ -731,6 +761,62 @@ static async Task<object> HandleSpecForgePromptsAsync(
     };
 }
 
+static async Task<object> HandleSpecForgeGraphAsync(JsonObject arguments)
+{
+    var workspaceRoot = GetRequired(arguments, "workspaceRoot");
+    var operation = GetRequired(arguments, "operation");
+
+    return operation switch
+    {
+        "status" => SemanticGraphOperations.DescribeStatus(
+            workspaceRoot,
+            GetOptional(arguments, "usId")),
+        "build_global" => await SemanticGraphOperations.RunGlobalOperationAsync(
+            workspaceRoot,
+            new SemanticGraphGlobalOperationRequest(
+                Mode: "build",
+                Actor: GetOptional(arguments, "actor") ?? "user",
+                Reason: GetRequired(arguments, "reason"),
+                DryRun: GetOptionalBoolean(arguments, "dryRun"),
+                ConfirmOverwrite: GetOptionalBoolean(arguments, "confirmOverwrite"))),
+        "refresh_global" => await SemanticGraphOperations.RunGlobalOperationAsync(
+            workspaceRoot,
+            new SemanticGraphGlobalOperationRequest(
+                Mode: "refresh",
+                Actor: GetOptional(arguments, "actor") ?? "user",
+                Reason: GetRequired(arguments, "reason"),
+                DryRun: GetOptionalBoolean(arguments, "dryRun"),
+                ConfirmOverwrite: GetOptionalBoolean(arguments, "confirmOverwrite"))),
+        "rebuild_global" => await SemanticGraphOperations.RunGlobalOperationAsync(
+            workspaceRoot,
+            new SemanticGraphGlobalOperationRequest(
+                Mode: "rebuild",
+                Actor: GetOptional(arguments, "actor") ?? "user",
+                Reason: GetRequired(arguments, "reason"),
+                DryRun: GetOptionalBoolean(arguments, "dryRun"),
+                ConfirmOverwrite: GetOptionalBoolean(arguments, "confirmOverwrite"))),
+        "derive_impact_graph" => await SemanticGraphOperations.MaterializeImpactGraphAsync(
+            workspaceRoot,
+            new SemanticGraphImpactOperationRequest(
+                UsId: GetRequired(arguments, "usId"),
+                Actor: GetOptional(arguments, "actor") ?? "user",
+                Reason: GetRequired(arguments, "reason"),
+                DryRun: GetOptionalBoolean(arguments, "dryRun"))),
+        "query" => SemanticGraphOperations.ExecuteQuery(
+            workspaceRoot,
+            new SemanticGraphQueryRequest(
+                QueryKind: GetRequired(arguments, "queryKind"),
+                Actor: GetOptional(arguments, "actor") ?? "user",
+                UsId: GetOptional(arguments, "usId"),
+                Phase: GetOptional(arguments, "phase"),
+                Reason: GetOptional(arguments, "reason"),
+                FilePath: GetOptional(arguments, "filePath"),
+                MaxDepth: GetOptionalInt(arguments, "maxDepth", 1),
+                IncludeTests: GetOptionalBoolean(arguments, "includeTests"))),
+        _ => throw new InvalidOperationException($"SpecForge graph operation '{operation}' is not supported.")
+    };
+}
+
 static string GetRequired(JsonObject arguments, string key)
 {
     var value = arguments[key]?.GetValue<string>();
@@ -752,6 +838,12 @@ static bool GetOptionalBoolean(JsonObject arguments, string key, bool defaultVal
 {
     var value = arguments[key];
     return value is not null ? value.GetValue<bool>() : defaultValue;
+}
+
+static int GetOptionalInt(JsonObject arguments, string key, int defaultValue = 0)
+{
+    var value = arguments[key];
+    return value is not null ? value.GetValue<int>() : defaultValue;
 }
 
 static string[] GetStringArray(JsonObject arguments, string key)

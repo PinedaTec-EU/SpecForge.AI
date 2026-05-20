@@ -54,6 +54,18 @@ try
             await HandleApprovePhaseAsync(applicationService, args);
             return 0;
         }
+        case "graph-status":
+            HandleGraphStatus(args);
+            return 0;
+        case "graph-global":
+            await HandleGraphGlobalAsync(args);
+            return 0;
+        case "graph-impact":
+            await HandleGraphImpactAsync(args);
+            return 0;
+        case "graph-query":
+            HandleGraphQuery(args);
+            return 0;
         case "serve-workflow":
             await HandleServeWorkflowAsync(args);
             return 0;
@@ -163,6 +175,70 @@ static async Task HandleApprovePhaseAsync(
     WriteJson(result);
 }
 
+static void HandleGraphStatus(IReadOnlyList<string> args)
+{
+    if (args.Count is < 2 or > 3)
+    {
+        throw new InvalidOperationException("Expected workspace root and optional user story id for command 'graph-status'.");
+    }
+
+    var workspaceRoot = args[1];
+    var usId = args.Count == 3 ? NormalizeOptionalArgument(args[2]) : null;
+    WriteJson(SemanticGraphOperations.DescribeStatus(workspaceRoot, usId));
+}
+
+static async Task HandleGraphGlobalAsync(IReadOnlyList<string> args)
+{
+    if (args.Count is < 5 or > 7)
+    {
+        throw new InvalidOperationException("Expected workspace root, mode, actor, reason, optional confirm-overwrite, and optional dry-run for command 'graph-global'.");
+    }
+
+    var request = new SemanticGraphGlobalOperationRequest(
+        Mode: args[2],
+        Actor: args[3],
+        Reason: args[4],
+        DryRun: args.Count >= 7 && bool.TryParse(args[6], out var dryRun) && dryRun,
+        ConfirmOverwrite: args.Count >= 6 && bool.TryParse(args[5], out var confirmOverwrite) && confirmOverwrite);
+    var result = await SemanticGraphOperations.RunGlobalOperationAsync(args[1], request);
+    WriteJson(result);
+}
+
+static async Task HandleGraphImpactAsync(IReadOnlyList<string> args)
+{
+    if (args.Count is < 5 or > 6)
+    {
+        throw new InvalidOperationException("Expected workspace root, user story id, actor, reason, and optional dry-run for command 'graph-impact'.");
+    }
+
+    var request = new SemanticGraphImpactOperationRequest(
+        UsId: args[2],
+        Actor: args[3],
+        Reason: args[4],
+        DryRun: args.Count == 6 && bool.TryParse(args[5], out var dryRun) && dryRun);
+    var result = await SemanticGraphOperations.MaterializeImpactGraphAsync(args[1], request);
+    WriteJson(result);
+}
+
+static void HandleGraphQuery(IReadOnlyList<string> args)
+{
+    if (args.Count is < 8 or > 10)
+    {
+        throw new InvalidOperationException("Expected workspace root, query kind, actor, user story id or '-', file path or '-', phase or '-', reason or '-', and optional max-depth plus include-tests for command 'graph-query'.");
+    }
+
+    var request = new SemanticGraphQueryRequest(
+        QueryKind: args[2],
+        Actor: args[3],
+        UsId: NormalizeOptionalArgument(args[4]),
+        FilePath: NormalizeOptionalArgument(args[5]),
+        Phase: NormalizeOptionalArgument(args[6]),
+        Reason: NormalizeOptionalArgument(args[7]),
+        MaxDepth: args.Count >= 9 && int.TryParse(args[8], out var maxDepth) ? maxDepth : 1,
+        IncludeTests: args.Count >= 10 && bool.TryParse(args[9], out var includeTests) && includeTests);
+    WriteJson(SemanticGraphOperations.ExecuteQuery(args[1], request));
+}
+
 static async Task HandleServeWorkflowAsync(IReadOnlyList<string> args)
 {
     if (args.Count is < 2 or > 4)
@@ -197,6 +273,11 @@ static async Task HandleServeWorkflowAsync(IReadOnlyList<string> args)
         _ = Task.Run(() => HandleWorkflowPortalRequestAsync(context, applicationService, workspaceRoot, usId, renderCache));
     }
 }
+
+static string? NormalizeOptionalArgument(string? value) =>
+    string.IsNullOrWhiteSpace(value) || string.Equals(value, "-", StringComparison.Ordinal)
+        ? null
+        : value;
 
 static async Task HandleWorkflowPortalRequestAsync(
     HttpListenerContext context,

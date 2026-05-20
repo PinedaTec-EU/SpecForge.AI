@@ -13,6 +13,7 @@ public sealed class McpToolRegistryTests
         Assert.Contains("specforge_query", toolNames);
         Assert.Contains("specforge_action", toolNames);
         Assert.Contains("specforge_prompts", toolNames);
+        Assert.Contains("specforge_graph", toolNames);
         Assert.Contains("open_workflow_portal", toolNames);
         Assert.Contains("create_us_from_chat", toolNames);
         Assert.Contains("generate_next_phase", toolNames);
@@ -57,6 +58,15 @@ public sealed class McpToolRegistryTests
     }
 
     [Fact]
+    public void BuildToolsList_SpecForgeGraphRequiresWorkspaceRootAndOperation()
+    {
+        var tool = GetTool(McpToolRegistry.BuildToolsList(), "specforge_graph");
+        var required = GetRequiredProperties(tool);
+
+        Assert.Equal(["workspaceRoot", "operation"], required);
+    }
+
+    [Fact]
     public void BuildToolsList_OpenWorkflowPortalRequiresWorkspaceRootAndUsId()
     {
         var tool = GetTool(McpToolRegistry.BuildToolsList(), "open_workflow_portal");
@@ -94,6 +104,41 @@ public sealed class McpToolRegistryTests
                 "files"
             ],
             queryEnum);
+    }
+
+    [Fact]
+    public void BuildToolsList_SpecForgeGraphExposesBoundedGraphOperations()
+    {
+        var tool = GetTool(McpToolRegistry.BuildToolsList(), "specforge_graph");
+        var operations = GetEnumValues(tool, "operation");
+
+        Assert.Equal(
+            [
+                "status",
+                "build_global",
+                "refresh_global",
+                "rebuild_global",
+                "derive_impact_graph",
+                "query"
+            ],
+            operations);
+    }
+
+    [Fact]
+    public void BuildToolsList_QuerySemanticGraphExposesBaselineFileScopedQueryKinds()
+    {
+        var tool = GetTool(McpToolRegistry.BuildToolsList(), "query_semantic_graph");
+        var queryKinds = GetEnumValues(tool, "queryKind");
+
+        Assert.Equal(
+            [
+                "status",
+                "explain-freshness",
+                "neighbors:file",
+                "tests-adjacent:file",
+                "why-included:file"
+            ],
+            queryKinds);
     }
 
     [Fact]

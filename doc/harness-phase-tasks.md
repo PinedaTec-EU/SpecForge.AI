@@ -87,7 +87,7 @@ Use this document as the operational backlog for implementation.
   Output: overwrite confirmation policy, failure fallback policy, freshness model, and the event model for graph cost and build traceability.
   Notes: `H-SHARED-10` depends on this being explicit.
 
-- [ ] `H-SHARED-08` Status: `todo`
+- [x] `H-SHARED-08` Status: `done`
   Define the graph MCP tool family.
   Output: first contract for global graph status, build, refresh, impact-graph materialization, and bounded graph queries.
   Notes: MCP and CLI must support first-time graph creation from zero, explicit rebuild, dry-run status, and confirmation before overwriting an existing graph.

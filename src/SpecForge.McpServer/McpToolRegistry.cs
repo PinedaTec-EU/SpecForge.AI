@@ -37,6 +37,23 @@ public static class McpToolRegistry
                             ("promptPath",    Prop("string", "Template path for export_prompt_template.")),
                             ("overwrite",     Prop("boolean", "If true, overwrite existing prompt files. Defaults to false."))))),
 
+                Tool("specforge_graph", "Compact semantic code-graph facade for status, global graph operations, impact graph materialization, and bounded graph queries.",
+                    Schema(
+                        required: ["workspaceRoot", "operation"],
+                        Props(
+                            ("workspaceRoot",    Prop("string", "Absolute path to the workspace root.")),
+                            ("operation",        EnumProp("Graph operation.", "status", "build_global", "refresh_global", "rebuild_global", "derive_impact_graph", "query")),
+                            ("usId",             Prop("string", "User story identifier when the operation targets an impact graph or scoped query.")),
+                            ("actor",            Prop("string", "Actor requesting the graph operation. Defaults to 'user'.")),
+                            ("reason",           Prop("string", "Audit reason for the graph operation.")),
+                            ("confirmOverwrite", Prop("boolean", "Required when rebuilding an existing global graph from zero.")),
+                            ("dryRun",           Prop("boolean", "If true, return the operation plan without mutating graph artifacts.")),
+                            ("queryKind",        EnumProp("Bounded query kind.", "status", "explain-freshness", "neighbors:file", "tests-adjacent:file", "why-included:file")),
+                            ("filePath",         Prop("string", "Workspace-relative or absolute file path for file-scoped graph queries.")),
+                            ("phase",            PhaseSlugProp("Phase slug for phase-aware graph queries when applicable.")),
+                            ("maxDepth",         Prop("integer", "Maximum traversal depth for bounded neighbor queries. Defaults to 1.")),
+                            ("includeTests",     Prop("boolean", "Whether the query should include adjacent tests when the query kind supports it."))))),
+
                 Tool("open_workflow_portal", "Open the native SpecForge workflow portal for a user story. Starts the packaged CLI portal when available, then opens the portal URL.",
                     Schema(
                         required: ["workspaceRoot", "usId"],
@@ -98,6 +115,40 @@ public static class McpToolRegistry
                     Schema(required: ["workspaceRoot", "usId"], Props(("workspaceRoot", Prop("string", "Absolute path to the workspace root.")), ("usId", Prop("string", "User story identifier."))))),
                 Tool("get_user_story_runtime_status", "Get the persisted runtime status, including whether a phase generation is still running.",
                     Schema(required: ["workspaceRoot", "usId"], Props(("workspaceRoot", Prop("string", "Absolute path to the workspace root.")), ("usId", Prop("string", "User story identifier."))))),
+                Tool("get_semantic_graph_status", "Inspect semantic code-graph status, freshness, and available query capabilities.",
+                    Schema(required: ["workspaceRoot"], Props(("workspaceRoot", Prop("string", "Absolute path to the workspace root.")), ("usId", Prop("string", "Optional user story identifier for impact-graph status."))))),
+                Tool("run_semantic_graph_global_operation", "Build, refresh, or rebuild the repository-global semantic graph baseline.",
+                    Schema(
+                        required: ["workspaceRoot", "mode", "reason"],
+                        Props(
+                            ("workspaceRoot",    Prop("string", "Absolute path to the workspace root.")),
+                            ("mode",             EnumProp("Global graph operation mode.", "build", "refresh", "rebuild")),
+                            ("reason",           Prop("string", "Audit reason for the global graph operation.")),
+                            ("actor",            Prop("string", "Actor requesting the graph operation. Defaults to 'user'.")),
+                            ("confirmOverwrite", Prop("boolean", "Required when rebuilding an existing global graph from zero.")),
+                            ("dryRun",           Prop("boolean", "If true, return the operation plan without mutating graph artifacts."))))),
+                Tool("materialize_semantic_impact_graph", "Materialize or refresh the user-story impact graph from the current graph scope request.",
+                    Schema(
+                        required: ["workspaceRoot", "usId", "reason"],
+                        Props(
+                            ("workspaceRoot", Prop("string", "Absolute path to the workspace root.")),
+                            ("usId",          Prop("string", "User story identifier.")),
+                            ("reason",        Prop("string", "Audit reason for impact graph materialization.")),
+                            ("actor",         Prop("string", "Actor requesting the operation. Defaults to 'user'.")),
+                            ("dryRun",        Prop("boolean", "If true, return the operation plan without mutating graph artifacts."))))),
+                Tool("query_semantic_graph", "Run a bounded semantic graph query over the global graph or user-story impact graph.",
+                    Schema(
+                        required: ["workspaceRoot", "queryKind"],
+                        Props(
+                            ("workspaceRoot", Prop("string", "Absolute path to the workspace root.")),
+                            ("queryKind",     EnumProp("Bounded query kind.", "status", "explain-freshness", "neighbors:file", "tests-adjacent:file", "why-included:file")),
+                            ("actor",         Prop("string", "Actor requesting the graph query. Defaults to 'user'.")),
+                            ("usId",          Prop("string", "User story identifier when the query targets an impact graph.")),
+                            ("filePath",      Prop("string", "Workspace-relative or absolute file path for file-scoped graph queries.")),
+                            ("phase",         PhaseSlugProp("Phase slug for phase-aware graph queries when applicable.")),
+                            ("reason",        Prop("string", "Optional purpose for the query.")),
+                            ("maxDepth",      Prop("integer", "Maximum traversal depth for bounded neighbor queries. Defaults to 1.")),
+                            ("includeTests",  Prop("boolean", "Whether the query should include adjacent tests when the query kind supports it."))))),
                 Tool("analyze_user_story_lineage", "Analyze a user story timeline and artifacts for workflow lineage inconsistencies.",
                     Schema(required: ["workspaceRoot", "usId"], Props(("workspaceRoot", Prop("string", "Absolute path to the workspace root.")), ("usId", Prop("string", "User story identifier."))))),
                 Tool("repair_user_story_lineage", "Repair lineage inconsistencies by archiving deprecated artifacts and returning the user story to the recommended phase.",
