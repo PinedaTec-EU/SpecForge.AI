@@ -925,7 +925,8 @@ public sealed class SpecForgeApplicationService
             var receipt = await PhaseExecutionReceiptStore.TryLoadAsync(receiptPath, cancellationToken);
             if (receipt?.EffectivePrompt is null &&
                 receipt?.EffectiveContext is null &&
-                receipt?.RefinementPolicySnapshot is null)
+                receipt?.RefinementPolicySnapshot is null &&
+                receipt?.RefinementSkillPreselection is null)
             {
                 return null;
             }
@@ -933,6 +934,7 @@ public sealed class SpecForgeApplicationService
             return new PhaseExecutionInspectionDetails(
                 receiptPath,
                 receipt?.RefinementPolicySnapshot,
+                receipt?.RefinementSkillPreselection,
                 receipt?.EffectivePrompt,
                 receipt?.EffectiveContext);
         }

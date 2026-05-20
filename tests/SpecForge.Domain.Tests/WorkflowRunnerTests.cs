@@ -1322,6 +1322,26 @@ public sealed class WorkflowRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task ContinuePhaseAsync_PersistsRefinementSkillPreselectionInReceipt()
+    {
+        var runner = new WorkflowRunner();
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Test story", "feature", "workflow", "Initial source text");
+
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var receiptsDirectoryPath = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0001").ExecutionReceiptsDirectoryPath;
+        var receiptJson = Directory
+            .GetFiles(receiptsDirectoryPath, "*.json")
+            .Select(File.ReadAllText)
+            .Single(content => content.Contains("\"phaseId\": \"refinement\"", StringComparison.Ordinal));
+
+        Assert.Contains("\"refinementSkillPreselection\": {", receiptJson);
+        Assert.Contains(".codex/skills/sdd-phase-agents/SKILL.md", receiptJson);
+        Assert.Contains("../ai-skills-shared/.shared-skills/skills/dotnet/SKILL.md", receiptJson);
+        Assert.Contains("\"contextGaps\": [", receiptJson);
+    }
+
+    [Fact]
     public async Task ContinuePhaseAsync_WhenImplementationExecutionIsCanceled_PersistsImplementationAsCurrentPhase()
     {
         var provider = new BlockingPhaseExecutionProvider(PhaseId.Implementation);

@@ -139,6 +139,11 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
                 2,
                 [new RefinementBlockingCondition("unanswered_questions_require_resolution", "Questions remain unanswered.", "blocking", true, "refinement_pending_answers")],
                 new RefinementAutoAnswerPolicy(true, "model", "Auto-answer will retry once.", "resolver", "resolver", "resolver", true, "eligible", "Context is sufficient for one retry.")),
+            RefinementSkillPreselection: new RefinementSkillPreselection(
+                [new RefinementSkillSelectionItem(".codex/skills/sdd-phase-agents/SKILL.md", "Required by local SDD workflow.")],
+                [new RefinementSkillSelectionItem("../ai-skills-shared/.shared-skills/skills/dotnet/SKILL.md", "Candidate for .NET repository scope.")],
+                [new RefinementSkillSelectionItem(".codex/skills/functional-commit-version-bump/SKILL.md", "Not part of refinement.")],
+                ["No repository context files are attached yet for this refinement run."]),
             EffectivePrompt: new PhaseExecutionEffectivePrompt("system", "user"),
             EffectiveContext: new PhaseExecutionEffectiveContext(
                 "/repo",
@@ -154,11 +159,13 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("\"effectivePrompt\":{", json);
         Assert.Contains("\"effectiveContext\":{", json);
         Assert.Contains("\"refinementPolicySnapshot\":{", json);
+        Assert.Contains("\"refinementSkillPreselection\":{", json);
         Assert.Contains("\"evidenceRecord\":{", json);
         Assert.Contains("\"executionEnvelope\":{", json);
         Assert.Contains("\"systemPrompt\":\"system\"", json);
         Assert.Contains("\"userPrompt\":\"user\"", json);
         Assert.Contains("\"eligibilityStatus\":\"eligible\"", json);
+        Assert.Contains("\"requiredSkills\":[", json);
         Assert.Contains("\"workspaceRoot\":\"/repo\"", json);
         Assert.Contains("\"validationSummary\":{", json);
         Assert.Contains("\"sandboxMode\":\"provider-managed\"", json);

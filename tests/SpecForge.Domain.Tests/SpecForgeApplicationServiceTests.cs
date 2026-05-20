@@ -548,6 +548,26 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesReceiptLinkedRefinementSkillPreselection()
+    {
+        var runner = new WorkflowRunner();
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "TODO");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var refinementPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "refinement");
+
+        Assert.NotNull(refinementPhase.LatestExecutionInspection);
+        Assert.NotNull(refinementPhase.LatestExecutionInspection!.RefinementSkillPreselection);
+        Assert.Contains(
+            refinementPhase.LatestExecutionInspection.RefinementSkillPreselection!.RequiredSkills,
+            skill => skill.SkillPath == ".codex/skills/sdd-phase-agents/SKILL.md");
+        Assert.NotEmpty(refinementPhase.LatestExecutionInspection.RefinementSkillPreselection.ContextGaps);
+    }
+
+    [Fact]
     public async Task GetUserStoryWorkflowAsync_ExposesExecutionPolicyPerPhase()
     {
         var runner = new WorkflowRunner(

@@ -62,6 +62,7 @@ public sealed record PhaseExecutionBoundarySummary(
 public sealed record PhaseExecutionInspectionDetails(
     string? ReceiptPath,
     RefinementPolicyDetails? RefinementPolicySnapshot,
+    RefinementSkillPreselection? RefinementSkillPreselection,
     PhaseExecutionEffectivePrompt? EffectivePrompt,
     PhaseExecutionEffectiveContext? EffectiveContext);
 

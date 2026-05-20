@@ -267,6 +267,7 @@ export interface PhaseExecutionEffectiveContext {
 export interface PhaseExecutionInspectionDetails {
   readonly receiptPath?: string | null;
   readonly refinementPolicySnapshot?: RefinementPolicyDetails | null;
+  readonly refinementSkillPreselection?: RefinementSkillPreselection | null;
   readonly effectivePrompt?: PhaseExecutionEffectivePrompt | null;
   readonly effectiveContext?: PhaseExecutionEffectiveContext | null;
 }
@@ -337,6 +338,18 @@ export interface RefinementAutoAnswerPolicy {
   readonly isCurrentlyEligible: boolean;
   readonly eligibilityStatus: string;
   readonly eligibilityReason?: string | null;
+}
+
+export interface RefinementSkillPreselection {
+  readonly requiredSkills: readonly RefinementSkillSelectionItem[];
+  readonly candidateSkills: readonly RefinementSkillSelectionItem[];
+  readonly rejectedSkills: readonly RefinementSkillSelectionItem[];
+  readonly contextGaps: readonly string[];
+}
+
+export interface RefinementSkillSelectionItem {
+  readonly skillPath: string;
+  readonly rationale: string;
 }
 
 export interface ApprovalQuestionDetails {
