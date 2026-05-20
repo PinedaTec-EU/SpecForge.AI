@@ -12,6 +12,7 @@ public sealed record TechnicalDesignContextPack(
     bool GraphAvailable,
     bool FallbackUsed,
     IReadOnlyCollection<TechnicalDesignGraphExpansion> GraphBackedExpansions,
+    IReadOnlyCollection<TechnicalDesignGraphQueryEvidence> GraphQueryEvidence,
     IReadOnlyCollection<string> Warnings);
 
 public sealed record TechnicalDesignGraphExpansion(
@@ -20,6 +21,22 @@ public sealed record TechnicalDesignGraphExpansion(
     string Source,
     string? ProjectPath = null,
     string? Sha256 = null);
+
+public sealed record TechnicalDesignGraphQueryEvidence(
+    string QueryKind,
+    string Purpose,
+    string Actor,
+    string Tooling,
+    string? ModelProfile,
+    string SourceGraphUsed,
+    string FreshnessState,
+    bool FallbackUsed,
+    int LatencyMs,
+    SemanticGraphTokenUsage? TokenUsage,
+    IReadOnlyCollection<string> IncludedFiles,
+    IReadOnlyCollection<string> IncludedNodes,
+    IReadOnlyCollection<string> InclusionReasons,
+    IReadOnlyCollection<string> Warnings);
 
 internal static class TechnicalDesignContextPackBuilder
 {
@@ -46,6 +63,7 @@ internal static class TechnicalDesignContextPackBuilder
         var fallbackUsed = false;
         string? impactSummaryPath = null;
         IReadOnlyCollection<TechnicalDesignGraphExpansion> expansions = [];
+        var queryEvidence = new List<TechnicalDesignGraphQueryEvidence>();
 
         if (controls.UseSemanticGraphWhenAvailable)
         {
@@ -77,6 +95,18 @@ internal static class TechnicalDesignContextPackBuilder
                     status = SemanticGraphOperations.DescribeStatus(workspaceRoot, usId);
                 }
 
+                queryEvidence.Add(MapQueryEvidence(
+                    purpose: "Inspect graph readiness before technical-design narrowing begins.",
+                    queryResult: SemanticGraphOperations.ExecuteQuery(
+                        workspaceRoot,
+                        new SemanticGraphQueryRequest(
+                            QueryKind: "status",
+                            Actor: "workflow-runtime",
+                            UsId: usId,
+                            Phase: "technical-design",
+                            Reason: "Inspect graph readiness for the technical-design context pack.",
+                            TriggerSurface: "workflow-runtime"))));
+
                 graphState = status.ImpactGraph?.State ?? effectiveImpactState;
                 graphAvailable = status.ImpactGraph?.Exists == true;
                 impactSummaryPath = File.Exists(paths.ImpactGraphSummaryPath)
@@ -99,6 +129,24 @@ internal static class TechnicalDesignContextPackBuilder
                                     Path.Combine(workspaceRoot, item.Path.Replace('/', Path.DirectorySeparatorChar)))))
                         .ToArray();
                     warnings.AddRange(impactGraph.Warnings);
+                    foreach (var seedFile in graphScopeRequest.SeedFiles
+                                 .Where(static item => !string.IsNullOrWhiteSpace(item.Path))
+                                 .Take(3))
+                    {
+                        var queryResult = SemanticGraphOperations.ExecuteQuery(
+                            workspaceRoot,
+                            new SemanticGraphQueryRequest(
+                                QueryKind: "why-included:file",
+                                Actor: "workflow-runtime",
+                                UsId: usId,
+                                Phase: "technical-design",
+                                Reason: $"Justify why `{seedFile.Path}` is part of the current design scope.",
+                                FilePath: seedFile.Path,
+                                TriggerSurface: "workflow-runtime"));
+                        queryEvidence.Add(MapQueryEvidence(
+                            purpose: $"Justify why `{seedFile.Path}` belongs in the technical-design scope.",
+                            queryResult: queryResult));
+                    }
                 }
                 else if (graphAvailable)
                 {
@@ -116,11 +164,31 @@ internal static class TechnicalDesignContextPackBuilder
             GraphAvailable: graphAvailable,
             FallbackUsed: fallbackUsed,
             GraphBackedExpansions: expansions,
+            GraphQueryEvidence: queryEvidence,
             Warnings: warnings
                 .Where(static item => !string.IsNullOrWhiteSpace(item))
                 .Distinct(StringComparer.Ordinal)
                 .ToArray());
     }
+
+    private static TechnicalDesignGraphQueryEvidence MapQueryEvidence(
+        string purpose,
+        SemanticGraphQueryResult queryResult) =>
+        new(
+            QueryKind: queryResult.QueryKind,
+            Purpose: purpose,
+            Actor: "workflow-runtime",
+            Tooling: "semantic-graph",
+            ModelProfile: null,
+            SourceGraphUsed: queryResult.SourceGraphUsed,
+            FreshnessState: queryResult.FreshnessState,
+            FallbackUsed: queryResult.FallbackUsed,
+            LatencyMs: queryResult.LatencyMs,
+            TokenUsage: null,
+            IncludedFiles: queryResult.IncludedFiles,
+            IncludedNodes: queryResult.IncludedNodes,
+            InclusionReasons: queryResult.InclusionReasons,
+            Warnings: queryResult.Warnings);
 
     private static IReadOnlyCollection<RefinementSkillSelectionItem> BuildSelectedSkills(
         string workspaceRoot,

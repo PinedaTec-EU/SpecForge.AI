@@ -189,7 +189,7 @@ Current stance:
   Output: first design context pack that uses selected skills, graph scope, impact summary, and graph-backed expansions when available.
   Notes: must respect graph feature flags and fall back cleanly when graph usage is disabled, missing, stale, or failed.
 
-- [ ] `H-TD-04` Status: `todo`
+- [x] `H-TD-04` Status: `done`
   Define the first bounded graph-query evidence contract for `technical-design`.
   Output: traceable persistence of follow-up graph queries and returned summaries when they influenced the design artifact.
   Notes: should capture query purpose, actor, selected model/tooling, token usage if any, latency, and whether the answer came from global graph, impact graph, or fallback analysis.

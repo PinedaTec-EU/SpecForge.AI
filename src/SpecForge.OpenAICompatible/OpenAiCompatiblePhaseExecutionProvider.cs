@@ -1059,6 +1059,34 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
                 builder.AppendLine();
             }
 
+            if (context.TechnicalDesignContextPack.GraphQueryEvidence.Count > 0)
+            {
+                builder
+                    .AppendLine("### Graph Query Evidence")
+                    .AppendLine();
+
+                foreach (var evidence in context.TechnicalDesignContextPack.GraphQueryEvidence)
+                {
+                    builder.AppendLine($"- `{evidence.QueryKind}` via `{evidence.Tooling}`");
+                    builder.AppendLine($"  Purpose: {evidence.Purpose}");
+                    builder.AppendLine($"  Source graph: `{evidence.SourceGraphUsed}`");
+                    builder.AppendLine($"  Freshness: `{evidence.FreshnessState}`");
+                    builder.AppendLine($"  Fallback used: `{(evidence.FallbackUsed ? "true" : "false")}`");
+                    builder.AppendLine($"  Latency: `{evidence.LatencyMs} ms`");
+                    if (evidence.IncludedFiles.Count > 0)
+                    {
+                        builder.AppendLine($"  Included files: {string.Join(", ", evidence.IncludedFiles.Select(path => $"`{path}`"))}");
+                    }
+
+                    if (evidence.InclusionReasons.Count > 0)
+                    {
+                        builder.AppendLine($"  Reasons: {string.Join(" | ", evidence.InclusionReasons)}");
+                    }
+                }
+
+                builder.AppendLine();
+            }
+
             if (context.TechnicalDesignContextPack.Warnings.Count > 0)
             {
                 builder

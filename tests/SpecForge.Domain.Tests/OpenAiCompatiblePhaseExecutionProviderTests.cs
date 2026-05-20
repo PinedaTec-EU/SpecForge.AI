@@ -609,6 +609,24 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
                         "src/App/App.csproj",
                         "service-hash")
                 ],
+                GraphQueryEvidence:
+                [
+                    new TechnicalDesignGraphQueryEvidence(
+                        "why-included:file",
+                        "Justify why `src/App/Service.cs` belongs in the technical-design scope.",
+                        "workflow-runtime",
+                        "semantic-graph",
+                        null,
+                        "impact-graph",
+                        "fresh",
+                        false,
+                        12,
+                        null,
+                        ["src/App/Service.cs"],
+                        [],
+                        ["Seed file from graph scope request."],
+                        [])
+                ],
                 Warnings: ["No global graph refresh was required."]));
 
         await provider.ExecuteAsync(context);
@@ -618,6 +636,8 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
         Assert.Contains("../ai-skills-shared/.shared-skills/skills/dotnet/SKILL.md", userPrompt);
         Assert.Contains("### Impact Summary", userPrompt);
         Assert.Contains("src/App/Service.cs", userPrompt);
+        Assert.Contains("### Graph Query Evidence", userPrompt);
+        Assert.Contains("why-included:file", userPrompt);
         Assert.Contains("No global graph refresh was required.", userPrompt);
     }
 

@@ -675,6 +675,10 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
             Assert.True(technicalDesignPhase.LatestExecutionInspection.TechnicalDesignContextPack!.GraphEnabled);
             Assert.NotEmpty(technicalDesignPhase.LatestExecutionInspection.TechnicalDesignContextPack.SelectedSkills);
             Assert.NotNull(technicalDesignPhase.LatestExecutionInspection.TechnicalDesignContextPack.GraphScopeRequest);
+            Assert.NotEmpty(technicalDesignPhase.LatestExecutionInspection.TechnicalDesignContextPack.GraphQueryEvidence);
+            Assert.Contains(
+                technicalDesignPhase.LatestExecutionInspection.TechnicalDesignContextPack.GraphQueryEvidence,
+                item => item.QueryKind == "status");
         }
         finally
         {

@@ -288,6 +288,7 @@ export interface TechnicalDesignContextPack {
   readonly graphAvailable: boolean;
   readonly fallbackUsed: boolean;
   readonly graphBackedExpansions: readonly TechnicalDesignGraphExpansion[];
+  readonly graphQueryEvidence: readonly TechnicalDesignGraphQueryEvidence[];
   readonly warnings: readonly string[];
 }
 
@@ -297,6 +298,23 @@ export interface TechnicalDesignGraphExpansion {
   readonly source: string;
   readonly projectPath?: string | null;
   readonly sha256?: string | null;
+}
+
+export interface TechnicalDesignGraphQueryEvidence {
+  readonly queryKind: string;
+  readonly purpose: string;
+  readonly actor: string;
+  readonly tooling: string;
+  readonly modelProfile?: string | null;
+  readonly sourceGraphUsed: string;
+  readonly freshnessState: string;
+  readonly fallbackUsed: boolean;
+  readonly latencyMs: number;
+  readonly tokenUsage?: TokenUsage | null;
+  readonly includedFiles: readonly string[];
+  readonly includedNodes: readonly string[];
+  readonly inclusionReasons: readonly string[];
+  readonly warnings: readonly string[];
 }
 
 export interface PhaseExecutionEvidenceRecord {

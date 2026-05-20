@@ -189,6 +189,24 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
                         "/repo/src/App/App.csproj",
                         "service-hash")
                 ],
+                GraphQueryEvidence:
+                [
+                    new TechnicalDesignGraphQueryEvidence(
+                        "status",
+                        "Inspect graph readiness before technical-design narrowing begins.",
+                        "workflow-runtime",
+                        "semantic-graph",
+                        null,
+                        "impact-graph",
+                        "fresh",
+                        false,
+                        8,
+                        null,
+                        [],
+                        [],
+                        ["Impact graph metadata matches the current graph-scope request and parent graph fingerprint."],
+                        [])
+                ],
                 Warnings: []),
             EffectivePrompt: new PhaseExecutionEffectivePrompt("system", "user"),
             EffectiveContext: new PhaseExecutionEffectiveContext(
@@ -208,6 +226,7 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
                     GraphAvailable: true,
                     FallbackUsed: false,
                     GraphBackedExpansions: [],
+                    GraphQueryEvidence: [],
                     Warnings: [])));
 
         var json = JsonSerializer.Serialize(receipt, new JsonSerializerOptions(JsonSerializerDefaults.Web));
@@ -229,6 +248,7 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("\"approvalBlockingReason\":\"spec_approval_questions_unresolved\"", json);
         Assert.Contains("\"workspaceRoot\":\"/repo\"", json);
         Assert.Contains("\"impactGraphState\":\"fresh\"", json);
+        Assert.Contains("\"graphQueryEvidence\":[", json);
         Assert.Contains("\"validationSummary\":{", json);
         Assert.Contains("\"sandboxMode\":\"provider-managed\"", json);
     }

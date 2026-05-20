@@ -52,6 +52,10 @@ public sealed class TechnicalDesignContextPackBuilderTests : IDisposable
         Assert.NotNull(pack.ImpactSummaryPath);
         Assert.Contains(pack.SelectedSkills, item => item.SkillPath.Contains("/dotnet/", StringComparison.Ordinal));
         Assert.Contains(pack.GraphBackedExpansions, item => item.Path == "src/App/Service.cs");
+        Assert.NotEmpty(pack.GraphQueryEvidence);
+        Assert.Contains(pack.GraphQueryEvidence, item => item.QueryKind == "status");
+        Assert.Contains(pack.GraphQueryEvidence, item => item.QueryKind == "why-included:file");
+        Assert.Contains(pack.GraphQueryEvidence, item => item.SourceGraphUsed == "impact-graph");
         Assert.True(File.Exists(paths.ImpactGraphPath));
         Assert.True(File.Exists(paths.ImpactGraphSummaryPath));
     }
