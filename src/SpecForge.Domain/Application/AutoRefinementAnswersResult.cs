@@ -5,4 +5,5 @@ public sealed record AutoRefinementAnswersResult(
     IReadOnlyList<string?> Answers,
     string? Reason = null,
     TokenUsage? Usage = null,
-    PhaseExecutionMetadata? Execution = null);
+    PhaseExecutionMetadata? Execution = null,
+    PhaseExecutionEffectivePrompt? EffectivePrompt = null);

@@ -220,7 +220,8 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
                     Warnings: prompt.Warnings,
                     InputSha256: ComputeSha256(nativePrompt),
                     OutputSha256: ComputeSha256(nativeResult.Content),
-                    StructuredOutputSha256: null));
+                    StructuredOutputSha256: null),
+                EffectivePrompt: prompt);
         }
 
         var (content, usage, inputSha256, outputSha256) = await ExecuteStructuredHttpAsync(
@@ -245,7 +246,8 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
                 Warnings: prompt.Warnings,
                 InputSha256: inputSha256,
                 OutputSha256: outputSha256,
-                StructuredOutputSha256: outputSha256));
+                StructuredOutputSha256: outputSha256),
+            EffectivePrompt: prompt);
     }
 
     public async Task<PhaseExecutionResult> ExecuteAsync(

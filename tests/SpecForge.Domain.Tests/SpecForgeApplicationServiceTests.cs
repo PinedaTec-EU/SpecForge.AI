@@ -569,6 +569,124 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesLatestAutoRefinementAnswerInspectionAndPolicyAttempt()
+    {
+        var fileStore = new UserStoryFileStore();
+        var runner = new WorkflowRunner(fileStore, new AutoAnswerInspectionPhaseExecutionProvider(), new RepositoryCategoryCatalog(), new NoOpWorkBranchManager());
+        var applicationService = new SpecForgeApplicationService(fileStore, runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+        var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0001");
+        var workflowRun = await fileStore.LoadAsync(paths.RootDirectory);
+        workflowRun.RestoreState(PhaseId.Refinement, UserStoryStatus.WaitingUser);
+        await fileStore.SaveAsync(workflowRun, paths.RootDirectory);
+        await File.WriteAllTextAsync(
+            paths.RefinementFilePath,
+            """
+            ## Refinement Log
+
+            - Status: `needs_refinement`
+            - Tolerance: `balanced`
+            - Reason: Missing business details.
+
+            ### Questions
+
+            1. Which actor executes the workflow?
+            2. What visible outcome should the workflow produce?
+            3. Which repository area owns the change?
+
+            ### Answers
+            """);
+
+        var autoAnswerReceipt = new PhaseExecutionReceipt(
+            ExecutionId: "20260521T100000000Z-refinement-auto-answer",
+            UsId: "US-0001",
+            PhaseId: "refinement-auto-answer",
+            StartedAtUtc: "2026-05-21T10:00:00.0000000+00:00",
+            CompletedAtUtc: "2026-05-21T10:00:01.0000000+00:00",
+            InputManifest: new PhaseExecutionInputManifest(
+                "manifest",
+                PhaseExecutionReceiptStore.NormalizePath(workspaceRoot),
+                PhaseExecutionReceiptStore.NormalizePath(paths.MainArtifactPath),
+                "us-hash",
+                "git-head",
+                [],
+                [],
+                null,
+                null),
+            OutputManifest: new PhaseExecutionOutputManifest(
+                PhaseExecutionReceiptStore.NormalizePath(paths.RefinementFilePath),
+                "artifact-hash",
+                []),
+            Usage: new TokenUsage(10, 20, 30),
+            Execution: new PhaseExecutionMetadata("test-double", "auto-answer-model", "auto-answer-profile", "http://stub.test/v1"),
+            AutoRefinementAnswerAttempt: new AutoRefinementAnswerAttemptRecord(
+                "answered",
+                "Automatic refinement answering recorded 3 answer(s) before retrying spec readiness.",
+                "The model answered the refinement questions from the available context.",
+                3),
+            EffectivePrompt: new PhaseExecutionEffectivePrompt(
+                "auto-answer-system",
+                "auto-answer-user",
+                ["grounded-retry"],
+                [
+                    new PhaseExecutionPromptSource(
+                        "auto-refinement-task",
+                        "/repo/.specs/prompts/shared/internal.auto-refinement-answers.system.md",
+                        false,
+                        "abc",
+                        "abc")
+                ]),
+            EffectiveContext: new PhaseExecutionEffectiveContext(
+                PhaseExecutionReceiptStore.NormalizePath(workspaceRoot),
+                PhaseExecutionReceiptStore.NormalizePath(paths.MainArtifactPath),
+                "git-head",
+                [],
+                [],
+                null,
+                null));
+        var autoAnswerReceiptPath = await PhaseExecutionReceiptStore.PersistAsync(
+            paths.ExecutionReceiptsDirectoryPath,
+            autoAnswerReceipt,
+            CancellationToken.None);
+        await File.AppendAllTextAsync(
+            paths.TimelineFilePath,
+            $"""
+
+            ### 2026-05-21T10:00:01.0000000+00:00 · `refinement_auto_answered`
+
+            - Actor: `system`
+            - Phase: `refinement`
+            - Summary: Automatic refinement answering recorded 3 answer(s) before retrying spec readiness.
+            - Artifacts:
+              - `{paths.RefinementFilePath.Replace('\\', '/')}`
+            - Tokens:
+              - input: `10`
+              - output: `20`
+              - total: `30`
+            - Execution:
+              - provider: `test-double`
+              - model: `auto-answer-model`
+              <!-- specforge-execution-hashes input-sha256="input" output-sha256="output" structured-output-sha256="output" receipt="{autoAnswerReceiptPath.Replace('\\', '/')}" -->
+            """);
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var refinementPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "refinement");
+        var autoAnswerInspection = refinementPhase.LatestExecutionInspection?.AutoRefinementAnswerInspection;
+
+        Assert.NotNull(autoAnswerInspection);
+        Assert.Equal("answered", autoAnswerInspection!.Status);
+        Assert.Equal(3, autoAnswerInspection.ResolvedAnswerCount);
+        Assert.NotNull(autoAnswerInspection.EffectivePrompt);
+        Assert.NotNull(autoAnswerInspection.EffectiveContext);
+        Assert.NotNull(autoAnswerInspection.ReceiptPath);
+
+        Assert.NotNull(workflow.Refinement?.Policy?.AutoAnswer.LastAttempt);
+        Assert.Equal("answered", workflow.Refinement!.Policy!.AutoAnswer.LastAttempt!.Status);
+        Assert.Equal(autoAnswerInspection.ReceiptPath, workflow.Refinement.Policy.AutoAnswer.LastAttempt.ReceiptPath);
+    }
+
+    [Fact]
     public async Task GetUserStoryWorkflowAsync_ExposesReceiptLinkedRefinementGraphScopeRequest()
     {
         var runner = new WorkflowRunner();
@@ -1915,6 +2033,86 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
                             EmbeddedContentSha256: "embedded-hash")
                     ])
             };
+        }
+    }
+
+    private sealed class AutoAnswerInspectionPhaseExecutionProvider : IPhaseExecutionProvider
+    {
+        private readonly DeterministicPhaseExecutionProvider inner = new();
+        private int refinementExecutions;
+
+        public PhaseExecutionReadiness GetPhaseExecutionReadiness(PhaseId phaseId) =>
+            inner.GetPhaseExecutionReadiness(phaseId);
+
+        public Task<AutoRefinementAnswersResult?> TryAutoAnswerRefinementAsync(
+            PhaseExecutionContext context,
+            RefinementSession session,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<AutoRefinementAnswersResult?>(
+                new AutoRefinementAnswersResult(
+                    true,
+                    session.Items
+                        .OrderBy(static item => item.Index)
+                        .Select(item => $"Auto answer for: {item.Question}")
+                        .Cast<string?>()
+                        .ToArray(),
+                    "The model answered the refinement questions from the available context.",
+                    Execution: new PhaseExecutionMetadata("test-double", "auto-answer-model", "auto-answer-profile", "http://stub.test/v1"),
+                    EffectivePrompt: new PhaseExecutionEffectivePrompt(
+                        "auto-answer-system",
+                        "auto-answer-user",
+                        ["grounded-retry"],
+                        [
+                            new PhaseExecutionPromptSource(
+                                "auto-refinement-task",
+                                "/repo/.specs/prompts/shared/internal.auto-refinement-answers.system.md",
+                                false,
+                                "abc",
+                                "abc")
+                        ])));
+
+        public Task<PhaseExecutionResult> ExecuteAsync(PhaseExecutionContext context, CancellationToken cancellationToken = default)
+        {
+            if (context.PhaseId != PhaseId.Refinement)
+            {
+                return inner.ExecuteAsync(context, cancellationToken);
+            }
+
+            refinementExecutions++;
+            if (refinementExecutions == 1)
+            {
+                return Task.FromResult(new PhaseExecutionResult(
+                    """
+                    ## Refinement Log
+
+                    - Status: `needs_refinement`
+                    - Tolerance: `balanced`
+                    - Reason: Missing business details.
+
+                    ### Questions
+
+                    1. Which actor executes the workflow?
+                    2. What visible outcome should the workflow produce?
+                    3. Which repository area owns the change?
+
+                    ### Answers
+                    """,
+                    "deterministic"));
+            }
+
+            return Task.FromResult(new PhaseExecutionResult(
+                """
+                ## Refinement Log
+
+                - Status: `ready_for_spec`
+                - Tolerance: `balanced`
+                - Reason: Auto-answer resolved the open refinement questions.
+
+                ### Questions
+
+                ### Answers
+                """,
+                "deterministic"));
         }
     }
 

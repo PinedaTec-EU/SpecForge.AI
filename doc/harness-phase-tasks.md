@@ -272,11 +272,11 @@ Current stance:
 
 ### Auto Refinement Answers
 
-- [ ] `H-ARA-01` Status: `todo`
+- [x] `H-ARA-01` Status: `done`
   Decide whether auto-refinement answers enter the same effective-prompt inspection model in wave one or wave two.
   Output: explicit scope decision recorded before implementation diverges.
 
-- [ ] `P-ARA-01` Status: `todo`
+- [x] `P-ARA-01` Status: `done`
   Define visible policy for auto-answer eligibility.
   Output: inspectable rules for when the system may answer refinement questions automatically.
 

@@ -65,6 +65,7 @@ public sealed record PhaseExecutionBoundarySummary(
 
 public sealed record PhaseExecutionInspectionDetails(
     string? ReceiptPath,
+    AutoRefinementAnswerInspectionDetails? AutoRefinementAnswerInspection,
     PhaseExecutionEvidenceRecord? EvidenceRecord,
     RefinementPolicyDetails? RefinementPolicySnapshot,
     RefinementSkillPreselection? RefinementSkillPreselection,

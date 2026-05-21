@@ -223,6 +223,15 @@ public sealed class WorkflowRunnerTests : IDisposable
         var timeline = await File.ReadAllTextAsync(UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0001").TimelineFilePath);
         Assert.Contains("`refinement_auto_answered`", timeline);
         Assert.Contains("after automatic refinement answers", timeline);
+        var timelineEvents = TimelineMarkdownParser.ParseEvents(timeline);
+        var autoAnswerEvent = Assert.Single(timelineEvents, static item => item.Code == "refinement_auto_answered");
+        Assert.NotNull(autoAnswerEvent.Execution?.ReceiptPath);
+        var autoAnswerReceipt = await PhaseExecutionReceiptStore.TryLoadAsync(autoAnswerEvent.Execution!.ReceiptPath);
+        Assert.NotNull(autoAnswerReceipt?.AutoRefinementAnswerAttempt);
+        Assert.Equal("answered", autoAnswerReceipt!.AutoRefinementAnswerAttempt!.Status);
+        Assert.Equal(3, autoAnswerReceipt.AutoRefinementAnswerAttempt.ResolvedAnswerCount);
+        Assert.NotNull(autoAnswerReceipt.EffectivePrompt);
+        Assert.NotNull(autoAnswerReceipt.EffectiveContext);
 
         var refinement = await File.ReadAllTextAsync(UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0001").RefinementFilePath);
         Assert.Contains("- Status: `ready_for_spec`", refinement);
@@ -2614,7 +2623,19 @@ public sealed class WorkflowRunnerTests : IDisposable
                         .Cast<string?>()
                         .ToArray(),
                     "The model answered the refinement questions from the available context.",
-                    Execution: new PhaseExecutionMetadata("test-double", "auto-answer-model", "auto-answer-profile", "http://stub.test/v1")));
+                    Execution: new PhaseExecutionMetadata("test-double", "auto-answer-model", "auto-answer-profile", "http://stub.test/v1"),
+                    EffectivePrompt: new PhaseExecutionEffectivePrompt(
+                        "auto-answer-system",
+                        "auto-answer-user",
+                        ["grounded-retry"],
+                        [
+                            new PhaseExecutionPromptSource(
+                                "auto-refinement-task",
+                                "/repo/.specs/prompts/shared/internal.auto-refinement-answers.system.md",
+                                false,
+                                "abc",
+                                "abc")
+                        ])));
 
         public Task<PhaseExecutionResult> ExecuteAsync(
             PhaseExecutionContext context,

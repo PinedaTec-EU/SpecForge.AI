@@ -115,14 +115,17 @@ public sealed class WorkflowRunner
         return PhaseExecutionEnvelopeCatalog.Describe(phaseId, policy, readiness);
     }
 
-    public RefinementPolicyDetails GetRefinementPolicyDetails(RefinementSession session)
+    public RefinementPolicyDetails GetRefinementPolicyDetails(
+        RefinementSession session,
+        AutoRefinementAnswerInspectionDetails? lastAttempt = null)
     {
         ArgumentNullException.ThrowIfNull(session);
         return RefinementPolicyDetailsBuilder.Build(
             refinementTolerance,
             session,
             phaseExecutionProvider.GetPhaseExecutionReadiness(PhaseId.Refinement),
-            phaseExecutionProvider.DescribeRefinementAutoAnswerCapability());
+            phaseExecutionProvider.DescribeRefinementAutoAnswerCapability(),
+            lastAttempt);
     }
 
     public async Task<string> CreateUserStoryAsync(
@@ -1551,35 +1554,57 @@ public sealed class WorkflowRunner
 
         if (!autoAnswers.CanResolve || resolvedAnswers == 0)
         {
+            var skippedSummary = string.IsNullOrWhiteSpace(autoAnswers.Reason)
+                ? "Automatic refinement answering could not resolve any pending question."
+                : $"Automatic refinement answering left the phase with the user. Reason: {autoAnswers.Reason}";
+            var skippedExecution = await PersistAutoRefinementAnswerReceiptAsync(
+                workspaceRoot,
+                paths,
+                executionContext,
+                autoAnswers,
+                "skipped",
+                skippedSummary,
+                resolvedAnswers,
+                [],
+                cancellationToken);
             await AppendTimelineEventAsync(
                 paths.TimelineFilePath,
                 "refinement_auto_answer_skipped",
                 "system",
                 PhaseId.Refinement,
-                string.IsNullOrWhiteSpace(autoAnswers.Reason)
-                    ? "Automatic refinement answering could not resolve any pending question."
-                    : $"Automatic refinement answering left the phase with the user. Reason: {autoAnswers.Reason}",
+                skippedSummary,
                 cancellationToken,
                 paths.RefinementFilePath,
                 autoAnswers.Usage,
                 durationMs: null,
-                autoAnswers.Execution);
+                skippedExecution);
             return null;
         }
 
         var autoAnsweredSession = UserStoryRefinementMarkdown.WithAnswers(session, normalizedAnswers);
         await PersistRefinementSessionAsync(paths, autoAnsweredSession, cancellationToken);
+        var answeredSummary = $"Automatic refinement answering recorded {resolvedAnswers} answer(s) before retrying spec readiness.";
+        var answeredExecution = await PersistAutoRefinementAnswerReceiptAsync(
+            workspaceRoot,
+            paths,
+            executionContext,
+            autoAnswers,
+            "answered",
+            answeredSummary,
+            resolvedAnswers,
+            [paths.RefinementFilePath],
+            cancellationToken);
         await AppendTimelineEventAsync(
             paths.TimelineFilePath,
             "refinement_auto_answered",
             "system",
             PhaseId.Refinement,
-            $"Automatic refinement answering recorded {resolvedAnswers} answer(s) before retrying spec readiness.",
+            answeredSummary,
             cancellationToken,
             paths.RefinementFilePath,
             autoAnswers.Usage,
             durationMs: null,
-            autoAnswers.Execution);
+            answeredExecution);
 
         workflowRun.RestoreState(PhaseId.Refinement, UserStoryStatus.Active);
         var retryGeneration = await MaterializePhaseArtifactAsync(workspaceRoot, paths, workflowRun, currentArtifactPath: null, operationPrompt: null, includeReviewArtifactInContext: true, cancellationToken);
@@ -1874,6 +1899,7 @@ public sealed class WorkflowRunner
             executionPolicy,
             receiptPath),
             executionEnvelope,
+            null,
             refinementPolicySnapshot,
             refinementSkillPreselection,
             refinementGraphScopeRequest,
@@ -1930,6 +1956,56 @@ public sealed class WorkflowRunner
                 .Select((question, index) => new RefinementItem(index + 1, question, null))
                 .ToArray());
         return GetRefinementPolicyDetails(session);
+    }
+
+    private async Task<PhaseExecutionMetadata?> PersistAutoRefinementAnswerReceiptAsync(
+        string workspaceRoot,
+        UserStoryFilePaths paths,
+        PhaseExecutionContext executionContext,
+        AutoRefinementAnswersResult autoAnswers,
+        string status,
+        string summary,
+        int resolvedAnswers,
+        IReadOnlyCollection<string> generatedFiles,
+        CancellationToken cancellationToken)
+    {
+        if (autoAnswers.Execution is null)
+        {
+            return null;
+        }
+
+        var executionId = BuildAutoRefinementAnswerExecutionId();
+        var inputManifest = PhaseExecutionReceiptStore.BuildInputManifest(workspaceRoot, executionContext);
+        var effectiveContext = PhaseExecutionInspectionBuilder.BuildEffectiveContext(workspaceRoot, executionContext);
+        var receipt = new PhaseExecutionReceipt(
+            ExecutionId: executionId,
+            UsId: executionContext.UsId,
+            PhaseId: "refinement-auto-answer",
+            StartedAtUtc: DateTimeOffset.UtcNow.ToString("O"),
+            CompletedAtUtc: DateTimeOffset.UtcNow.ToString("O"),
+            InputManifest: inputManifest,
+            OutputManifest: new PhaseExecutionOutputManifest(
+                ResultArtifactPath: PhaseExecutionReceiptStore.NormalizePath(paths.RefinementFilePath),
+                ResultArtifactSha256: PhaseExecutionReceiptStore.TryComputeFileSha256(paths.RefinementFilePath),
+                GeneratedFiles: generatedFiles
+                    .Select(path => new PhaseExecutionArtifactInput(
+                        PhaseExecutionReceiptStore.NormalizePath(path),
+                        PhaseExecutionReceiptStore.TryComputeFileSha256(path)))
+                    .ToArray()),
+            Usage: autoAnswers.Usage,
+            Execution: autoAnswers.Execution,
+            AutoRefinementAnswerAttempt: new AutoRefinementAnswerAttemptRecord(
+                status,
+                summary,
+                autoAnswers.Reason,
+                resolvedAnswers),
+            EffectivePrompt: autoAnswers.EffectivePrompt,
+            EffectiveContext: autoAnswers.EffectivePrompt is null ? null : effectiveContext);
+        var receiptPath = await PhaseExecutionReceiptStore.PersistAsync(
+            paths.ExecutionReceiptsDirectoryPath,
+            receipt,
+            cancellationToken);
+        return autoAnswers.Execution with { ReceiptPath = receiptPath };
     }
 
     private RefinementSkillPreselection? TryBuildRefinementSkillPreselection(
@@ -2146,6 +2222,9 @@ public sealed class WorkflowRunner
 
     private static string BuildExecutionId(PhaseId phaseId) =>
         $"{DateTimeOffset.UtcNow.UtcDateTime:yyyyMMdd'T'HHmmssfff'Z'}-{WorkflowPresentation.ToPhaseSlug(phaseId)}";
+
+    private static string BuildAutoRefinementAnswerExecutionId() =>
+        $"{DateTimeOffset.UtcNow.UtcDateTime:yyyyMMdd'T'HHmmssfff'Z'}-refinement-auto-answer";
 
     private static string BuildRawReviewArtifactPath(string artifactPath)
     {

@@ -235,6 +235,9 @@ public sealed class SpecForgeApplicationService
         var currentPhase = await GetCurrentPhaseAsync(workspaceRoot, usId, cancellationToken);
 
         var timelineEvents = TimelineMarkdownParser.ParseEvents(rawTimeline);
+        var latestRefinementAutoAnswerInspection = await TryReadLatestAutoRefinementAnswerInspectionAsync(
+            timelineEvents,
+            cancellationToken);
         return new UserStoryWorkflowDetails(
             workflowRun.UsId,
             title,
@@ -283,7 +286,7 @@ public sealed class SpecForgeApplicationService
                     refinement.Tolerance,
                     refinement.Reason,
                     refinement.Items.Select(item => new RefinementQuestionAnswerDetails(item.Index, item.Question, item.Answer)).ToArray(),
-                    workflowRunner.GetRefinementPolicyDetails(refinement)),
+                    workflowRunner.GetRefinementPolicyDetails(refinement, latestRefinementAutoAnswerInspection)),
             approvalQuestions,
             timelineEvents,
             WorkflowIterationDetailsBuilder.Build(paths, timelineEvents),
@@ -870,10 +873,37 @@ public sealed class SpecForgeApplicationService
             var specApprovalPolicy = phaseId == PhaseId.Spec
                 ? await SpecPhaseApprovalPolicyBuilder.BuildAsync(workflowRun, paths, cancellationToken)
                 : null;
+            var autoRefinementAnswerInspection = phaseId == PhaseId.Refinement
+                ? await TryReadLatestAutoRefinementAnswerInspectionAsync(timelineEvents, cancellationToken)
+                : null;
             var latestExecutionInspection = await TryReadLatestExecutionInspectionAsync(
                 timelineEvents,
                 phaseSlug,
+                autoRefinementAnswerInspection,
                 cancellationToken);
+            if (phaseId == PhaseId.Refinement &&
+                latestExecutionInspection is null &&
+                autoRefinementAnswerInspection is not null)
+            {
+                latestExecutionInspection = new PhaseExecutionInspectionDetails(
+                    ReceiptPath: null,
+                    AutoRefinementAnswerInspection: autoRefinementAnswerInspection,
+                    EvidenceRecord: null,
+                    RefinementPolicySnapshot: null,
+                    RefinementSkillPreselection: null,
+                    RefinementGraphScopeRequest: null,
+                    SpecApprovalPolicySnapshot: null,
+                    ImplementationPolicySnapshot: null,
+                    ReviewPolicySnapshot: null,
+                    ReleaseApprovalPolicySnapshot: null,
+                    ImplementationStructuredEvidence: null,
+                    ReviewStructuredGateResult: null,
+                    ReleaseApprovalEvidencePack: null,
+                    PrPreparationStructuredEvidence: null,
+                    TechnicalDesignContextPack: null,
+                    EffectivePrompt: null,
+                    EffectiveContext: null);
+            }
             var reviewPolicy = phaseId == PhaseId.Review
                 ? ReviewPhasePolicyDetailsBuilder.Build(
                     workflowRunner.GetReviewEvidencePolicy(),
@@ -979,6 +1009,7 @@ public sealed class SpecForgeApplicationService
     private static async Task<PhaseExecutionInspectionDetails?> TryReadLatestExecutionInspectionAsync(
         IReadOnlyCollection<TimelineEventDetails> timelineEvents,
         string phaseSlug,
+        AutoRefinementAnswerInspectionDetails? autoRefinementAnswerInspection,
         CancellationToken cancellationToken)
     {
         var receiptPath = timelineEvents
@@ -998,6 +1029,7 @@ public sealed class SpecForgeApplicationService
         {
             var receipt = await PhaseExecutionReceiptStore.TryLoadAsync(receiptPath, cancellationToken);
             if (receipt?.EffectivePrompt is null &&
+                receipt?.AutoRefinementAnswerAttempt is null &&
                 receipt?.EffectiveContext is null &&
                 receipt?.EvidenceRecord is null &&
                 receipt?.RefinementPolicySnapshot is null &&
@@ -1018,6 +1050,7 @@ public sealed class SpecForgeApplicationService
 
             return new PhaseExecutionInspectionDetails(
                 receiptPath,
+                autoRefinementAnswerInspection,
                 receipt?.EvidenceRecord,
                 receipt?.RefinementPolicySnapshot,
                 receipt?.RefinementSkillPreselection,
@@ -1046,6 +1079,72 @@ public sealed class SpecForgeApplicationService
         {
             return null;
         }
+    }
+
+    private static async Task<AutoRefinementAnswerInspectionDetails?> TryReadLatestAutoRefinementAnswerInspectionAsync(
+        IReadOnlyCollection<TimelineEventDetails> timelineEvents,
+        CancellationToken cancellationToken)
+    {
+        var timelineEvent = timelineEvents
+            .Where(static timelineEvent =>
+                string.Equals(timelineEvent.Code, "refinement_auto_answered", StringComparison.Ordinal) ||
+                string.Equals(timelineEvent.Code, "refinement_auto_answer_skipped", StringComparison.Ordinal) ||
+                string.Equals(timelineEvent.Code, "refinement_auto_answer_failed", StringComparison.Ordinal))
+            .OrderByDescending(static timelineEvent => timelineEvent.TimestampUtc)
+            .FirstOrDefault();
+
+        if (timelineEvent is null)
+        {
+            return null;
+        }
+
+        AutoRefinementAnswerAttemptRecord? attempt = null;
+        PhaseExecutionEffectivePrompt? effectivePrompt = null;
+        PhaseExecutionEffectiveContext? effectiveContext = null;
+
+        if (!string.IsNullOrWhiteSpace(timelineEvent.Execution?.ReceiptPath))
+        {
+            try
+            {
+                var receipt = await PhaseExecutionReceiptStore.TryLoadAsync(timelineEvent.Execution.ReceiptPath, cancellationToken);
+                attempt = receipt?.AutoRefinementAnswerAttempt;
+                effectivePrompt = receipt?.EffectivePrompt;
+                effectiveContext = receipt?.EffectiveContext;
+            }
+            catch (JsonException)
+            {
+                attempt = null;
+            }
+            catch (IOException)
+            {
+                attempt = null;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                attempt = null;
+            }
+        }
+
+        var fallbackStatus = timelineEvent.Code switch
+        {
+            "refinement_auto_answered" => "answered",
+            "refinement_auto_answer_skipped" => "skipped",
+            "refinement_auto_answer_failed" => "failed",
+            _ => "unknown"
+        };
+        var fallbackSummary = string.IsNullOrWhiteSpace(timelineEvent.Summary)
+            ? "Automatic refinement answering attempt recorded."
+            : timelineEvent.Summary!;
+
+        return new AutoRefinementAnswerInspectionDetails(
+            attempt?.Status ?? fallbackStatus,
+            attempt?.Summary ?? fallbackSummary,
+            attempt?.Reason,
+            attempt?.ResolvedAnswerCount ?? 0,
+            timelineEvent.TimestampUtc,
+            timelineEvent.Execution?.ReceiptPath,
+            effectivePrompt,
+            effectiveContext);
     }
 
     private static async Task<CaptureExecutionRecord?> TryReadCaptureExecutionRecordAsync(

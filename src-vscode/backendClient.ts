@@ -273,6 +273,7 @@ export interface PhaseExecutionEffectiveContext {
 
 export interface PhaseExecutionInspectionDetails {
   readonly receiptPath?: string | null;
+  readonly autoRefinementAnswerInspection?: AutoRefinementAnswerInspectionDetails | null;
   readonly evidenceRecord?: PhaseExecutionEvidenceRecord | null;
   readonly refinementPolicySnapshot?: RefinementPolicyDetails | null;
   readonly refinementSkillPreselection?: RefinementSkillPreselection | null;
@@ -286,6 +287,17 @@ export interface PhaseExecutionInspectionDetails {
   readonly releaseApprovalEvidencePack?: ReleaseApprovalEvidencePack | null;
   readonly prPreparationStructuredEvidence?: PrPreparationStructuredEvidence | null;
   readonly technicalDesignContextPack?: TechnicalDesignContextPack | null;
+  readonly effectivePrompt?: PhaseExecutionEffectivePrompt | null;
+  readonly effectiveContext?: PhaseExecutionEffectiveContext | null;
+}
+
+export interface AutoRefinementAnswerInspectionDetails {
+  readonly status: string;
+  readonly summary: string;
+  readonly reason?: string | null;
+  readonly resolvedAnswerCount: number;
+  readonly timestampUtc?: string | null;
+  readonly receiptPath?: string | null;
   readonly effectivePrompt?: PhaseExecutionEffectivePrompt | null;
   readonly effectiveContext?: PhaseExecutionEffectiveContext | null;
 }
@@ -843,6 +855,7 @@ export interface RefinementAutoAnswerPolicy {
   readonly isCurrentlyEligible: boolean;
   readonly eligibilityStatus: string;
   readonly eligibilityReason?: string | null;
+  readonly lastAttempt?: AutoRefinementAnswerInspectionDetails | null;
 }
 
 export interface RefinementSkillPreselection {

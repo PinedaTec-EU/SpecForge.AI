@@ -133,12 +133,35 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
                 [new PhaseExecutionEnvelopeWriteScope("specforge-runtime", "<workspace-root>/.specs/us/**/phases/*", "write", "enforced")],
                 [new PhaseExecutionEnvelopeBoundary("workspace-root", "<workspace-root>", "scoped", "Execution is scoped to the current workspace root.")],
                 new PhaseExecutionEnvelopeBudget("standard", "medium", "standard", "artifact-only", "Declared budget only.")),
+            AutoRefinementAnswerAttempt: new AutoRefinementAnswerAttemptRecord(
+                "answered",
+                "Automatic refinement answering recorded 2 answer(s) before retrying spec readiness.",
+                "Grounded retry succeeded.",
+                2),
             RefinementPolicySnapshot: new RefinementPolicyDetails(
                 "strict",
                 2,
                 2,
                 [new RefinementBlockingCondition("unanswered_questions_require_resolution", "Questions remain unanswered.", "blocking", true, "refinement_pending_answers")],
-                new RefinementAutoAnswerPolicy(true, "model", "Auto-answer will retry once.", "resolver", "resolver", "resolver", true, "eligible", "Context is sufficient for one retry.")),
+                new RefinementAutoAnswerPolicy(
+                    true,
+                    "model",
+                    "Auto-answer will retry once.",
+                    "resolver",
+                    "resolver",
+                    "resolver",
+                    true,
+                    "eligible",
+                    "Context is sufficient for one retry.",
+                    new AutoRefinementAnswerInspectionDetails(
+                        "answered",
+                        "Automatic refinement answering recorded 2 answer(s) before retrying spec readiness.",
+                        "Grounded retry succeeded.",
+                        2,
+                        "2026-05-19T10:00:00.5000000+00:00",
+                        "/repo/.specs/us/US-0001/execution-receipts/execution-1-auto-answer.json",
+                        new PhaseExecutionEffectivePrompt("auto-system", "auto-user"),
+                        new PhaseExecutionEffectiveContext("/repo", "/repo/.specs/us/US-0001/us.md", "git-head", [], [], null, null)))),
             RefinementSkillPreselection: new RefinementSkillPreselection(
                 [new RefinementSkillSelectionItem(".codex/skills/sdd-phase-agents/SKILL.md", "Required by local SDD workflow.")],
                 [new RefinementSkillSelectionItem("../ai-skills-shared/.shared-skills/skills/dotnet/SKILL.md", "Candidate for .NET repository scope.")],
@@ -419,9 +442,11 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("\"technicalDesignContextPack\":{", json);
         Assert.Contains("\"evidenceRecord\":{", json);
         Assert.Contains("\"executionEnvelope\":{", json);
+        Assert.Contains("\"autoRefinementAnswerAttempt\":{", json);
         Assert.Contains("\"systemPrompt\":\"system\"", json);
         Assert.Contains("\"userPrompt\":\"user\"", json);
         Assert.Contains("\"eligibilityStatus\":\"eligible\"", json);
+        Assert.Contains("\"resolvedAnswerCount\":2", json);
         Assert.Contains("\"requiredSkills\":[", json);
         Assert.Contains("\"seedNodes\":[", json);
         Assert.Contains("\"approvalBlockingReason\":\"spec_approval_questions_unresolved\"", json);

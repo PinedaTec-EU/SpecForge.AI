@@ -17,6 +17,7 @@ public sealed record PhaseExecutionReceipt(
     PhaseExecutionMetadata? Execution,
     PhaseExecutionEvidenceRecord? EvidenceRecord = null,
     PhaseExecutionEnvelope? ExecutionEnvelope = null,
+    AutoRefinementAnswerAttemptRecord? AutoRefinementAnswerAttempt = null,
     RefinementPolicyDetails? RefinementPolicySnapshot = null,
     RefinementSkillPreselection? RefinementSkillPreselection = null,
     RefinementGraphScopeRequest? RefinementGraphScopeRequest = null,

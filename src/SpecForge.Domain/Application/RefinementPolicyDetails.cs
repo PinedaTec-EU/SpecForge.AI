@@ -23,7 +23,8 @@ public sealed record RefinementAutoAnswerPolicy(
     string? AgentRole,
     bool IsCurrentlyEligible,
     string EligibilityStatus,
-    string? EligibilityReason = null);
+    string? EligibilityReason = null,
+    AutoRefinementAnswerInspectionDetails? LastAttempt = null);
 
 public sealed record RefinementAutoAnswerCapability(
     bool IsEnabled,
@@ -39,7 +40,8 @@ public static class RefinementPolicyDetailsBuilder
         string tolerance,
         RefinementSession session,
         PhaseExecutionReadiness readiness,
-        RefinementAutoAnswerCapability autoAnswerCapability)
+        RefinementAutoAnswerCapability autoAnswerCapability,
+        AutoRefinementAnswerInspectionDetails? lastAttempt = null)
     {
         var normalizedTolerance = string.IsNullOrWhiteSpace(tolerance) ? "balanced" : tolerance.Trim();
         var orderedItems = session.Items
@@ -84,7 +86,8 @@ public static class RefinementPolicyDetailsBuilder
                 autoAnswerCapability.AgentRole,
                 autoAnswerEligibility.IsEligible,
                 autoAnswerEligibility.Status,
-                autoAnswerEligibility.Reason));
+                autoAnswerEligibility.Reason,
+                lastAttempt));
     }
 
     private static (bool IsEligible, string Status, string? Reason) ResolveAutoAnswerEligibility(

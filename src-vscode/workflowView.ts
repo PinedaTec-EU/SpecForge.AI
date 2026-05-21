@@ -1,4 +1,12 @@
-import type { PhaseExecutionReadiness, UserStoryDependencySummary, UserStoryWorkflowDetails, WorkflowPhaseDetails } from "./backendClient";
+import type {
+  AutoRefinementAnswerInspectionDetails,
+  PhaseExecutionEffectiveContext,
+  PhaseExecutionEffectivePrompt,
+  PhaseExecutionReadiness,
+  UserStoryDependencySummary,
+  UserStoryWorkflowDetails,
+  WorkflowPhaseDetails
+} from "./backendClient";
 import { escapeHtml, escapeHtmlAttr as escapeHtmlAttribute } from "./htmlEscape";
 import { buildCapturePhaseSections } from "./workflow-view/capturePhaseView";
 import { extractArtifactQuestionBlock, type ArtifactQuestionBlock } from "./workflow-view/artifactQuestions";
@@ -1572,11 +1580,13 @@ function buildEmbeddedArtifactSection(
   `;
 }
 
-function buildEffectivePromptModalContent(selectedPhase: WorkflowPhaseDetails): string {
-  const inspection = selectedPhase.latestExecutionInspection;
-  const prompt = inspection?.effectivePrompt;
+function buildInspectionPromptModalContent(
+  receiptPath: string | null | undefined,
+  prompt: PhaseExecutionEffectivePrompt | null | undefined,
+  emptyMessage: string
+): string {
   if (!prompt) {
-    return "<p class=\"muted\">No effective prompt is available for this phase.</p>";
+    return `<p class="muted">${escapeHtml(emptyMessage)}</p>`;
   }
 
   const sourcePrompts = (prompt.sourcePrompts ?? []).map((item) => `
@@ -1590,7 +1600,7 @@ function buildEffectivePromptModalContent(selectedPhase: WorkflowPhaseDetails): 
 
   return `
     <div class="inspection-stack">
-      ${inspection?.receiptPath ? `<p class="muted">Receipt: <code>${escapeHtml(inspection.receiptPath)}</code></p>` : ""}
+      ${receiptPath ? `<p class="muted">Receipt: <code>${escapeHtml(receiptPath)}</code></p>` : ""}
       ${sourcePrompts ? `<section class="detail-card detail-card--embedded-artifact"><h3>Prompt Sources</h3><div class="inspection-grid">${sourcePrompts}</div></section>` : ""}
       ${warnings ? `<section class="detail-card detail-card--embedded-artifact"><h3>Warnings</h3><ul>${warnings}</ul></section>` : ""}
       <section class="detail-card detail-card--embedded-artifact">
@@ -1605,11 +1615,21 @@ function buildEffectivePromptModalContent(selectedPhase: WorkflowPhaseDetails): 
   `;
 }
 
-function buildEffectiveContextModalContent(selectedPhase: WorkflowPhaseDetails): string {
+function buildEffectivePromptModalContent(selectedPhase: WorkflowPhaseDetails): string {
   const inspection = selectedPhase.latestExecutionInspection;
-  const context = inspection?.effectiveContext;
+  return buildInspectionPromptModalContent(
+    inspection?.receiptPath,
+    inspection?.effectivePrompt,
+    "No effective prompt is available for this phase.");
+}
+
+function buildInspectionContextModalContent(
+  receiptPath: string | null | undefined,
+  context: PhaseExecutionEffectiveContext | null | undefined,
+  emptyMessage: string
+): string {
   if (!context) {
-    return "<p class=\"muted\">No effective context is available for this phase.</p>";
+    return `<p class="muted">${escapeHtml(emptyMessage)}</p>`;
   }
 
   const renderArtifacts = (items: readonly { path: string; phaseId?: string | null; sha256?: string | null }[]) =>
@@ -1625,7 +1645,7 @@ function buildEffectiveContextModalContent(selectedPhase: WorkflowPhaseDetails):
 
   return `
     <div class="inspection-stack">
-      ${inspection?.receiptPath ? `<p class="muted">Receipt: <code>${escapeHtml(inspection.receiptPath)}</code></p>` : ""}
+      ${receiptPath ? `<p class="muted">Receipt: <code>${escapeHtml(receiptPath)}</code></p>` : ""}
       <section class="detail-card detail-card--embedded-artifact">
         <h3>Runtime Context</h3>
         <div class="inspection-grid">
@@ -1646,6 +1666,27 @@ function buildEffectiveContextModalContent(selectedPhase: WorkflowPhaseDetails):
       </section>
     </div>
   `;
+}
+
+function buildEffectiveContextModalContent(selectedPhase: WorkflowPhaseDetails): string {
+  const inspection = selectedPhase.latestExecutionInspection;
+  return buildInspectionContextModalContent(
+    inspection?.receiptPath,
+    inspection?.effectiveContext,
+    "No effective context is available for this phase.");
+}
+
+function getAutoRefinementAnswerInspection(
+  workflow: UserStoryWorkflowDetails,
+  selectedPhase: WorkflowPhaseDetails
+): AutoRefinementAnswerInspectionDetails | null {
+  if (selectedPhase.phaseId !== "refinement") {
+    return null;
+  }
+
+  return workflow.refinement?.policy?.autoAnswer.lastAttempt
+    ?? selectedPhase.latestExecutionInspection?.autoRefinementAnswerInspection
+    ?? null;
 }
 
 function buildArtifactCollectionSection(
@@ -6849,6 +6890,52 @@ export function buildWorkflowHtml(
       </div>
     </div>
   </div>
+  <div class="workflow-files-overlay" data-auto-refinement-prompt-overlay hidden>
+    <div class="workflow-files-dialog panel" role="dialog" aria-modal="true" aria-labelledby="workflow-auto-refinement-prompt-title">
+      <div class="workflow-files-dialog__head">
+        <div>
+          <p class="eyebrow">Execution Inspection</p>
+          <h2 id="workflow-auto-refinement-prompt-title">Refinement auto-answer effective prompt</h2>
+          <p>Inspect the final prompt payload used by the latest automatic refinement answering attempt.</p>
+        </div>
+        <button class="workflow-files-dialog__close" type="button" data-close-auto-refinement-prompt-modal aria-label="Close auto refinement prompt dialog">
+          Close
+        </button>
+      </div>
+      <div class="workflow-files-shell">
+        ${(() => {
+          const inspection = getAutoRefinementAnswerInspection(workflow, selectedPhase);
+          return buildInspectionPromptModalContent(
+            inspection?.receiptPath,
+            inspection?.effectivePrompt,
+            "No auto-answer effective prompt is available for this user story.");
+        })()}
+      </div>
+    </div>
+  </div>
+  <div class="workflow-files-overlay" data-auto-refinement-context-overlay hidden>
+    <div class="workflow-files-dialog panel" role="dialog" aria-modal="true" aria-labelledby="workflow-auto-refinement-context-title">
+      <div class="workflow-files-dialog__head">
+        <div>
+          <p class="eyebrow">Execution Inspection</p>
+          <h2 id="workflow-auto-refinement-context-title">Refinement auto-answer effective context</h2>
+          <p>Inspect the runtime context used by the latest automatic refinement answering attempt.</p>
+        </div>
+        <button class="workflow-files-dialog__close" type="button" data-close-auto-refinement-context-modal aria-label="Close auto refinement context dialog">
+          Close
+        </button>
+      </div>
+      <div class="workflow-files-shell">
+        ${(() => {
+          const inspection = getAutoRefinementAnswerInspection(workflow, selectedPhase);
+          return buildInspectionContextModalContent(
+            inspection?.receiptPath,
+            inspection?.effectiveContext,
+            "No auto-answer effective context is available for this user story.");
+        })()}
+      </div>
+    </div>
+  </div>
   <div class="shell" data-workflow-shell data-us-id="${escapeHtmlAttribute(workflow.usId)}">
     <section class="panel hero">
       <div class="hero-head">
@@ -8950,6 +9037,8 @@ export function buildWorkflowHtml(
     const reviewApproveAnywayOverlay = document.querySelector("[data-review-approve-anyway-overlay]");
     const effectivePromptOverlay = document.querySelector("[data-effective-prompt-overlay]");
     const effectiveContextOverlay = document.querySelector("[data-effective-context-overlay]");
+    const autoRefinementPromptOverlay = document.querySelector("[data-auto-refinement-prompt-overlay]");
+    const autoRefinementContextOverlay = document.querySelector("[data-auto-refinement-context-overlay]");
     const rejectTextarea = document.querySelector("#workflow-reject-textarea");
     const reviewApproveAnywayTextarea = document.querySelector("#workflow-review-approve-anyway-textarea");
     const rejectTitle = document.querySelector("#workflow-reject-title");
@@ -9164,6 +9253,30 @@ export function buildWorkflowHtml(
       }
     };
 
+    const toggleAutoRefinementPromptModal = (open) => {
+      if (!(autoRefinementPromptOverlay instanceof HTMLElement)) {
+        return;
+      }
+
+      autoRefinementPromptOverlay.hidden = !open;
+      autoRefinementPromptOverlay.classList.toggle("is-open", open);
+      if (workflowShell instanceof HTMLElement) {
+        workflowShell.classList.toggle("shell--interaction-locked", open);
+      }
+    };
+
+    const toggleAutoRefinementContextModal = (open) => {
+      if (!(autoRefinementContextOverlay instanceof HTMLElement)) {
+        return;
+      }
+
+      autoRefinementContextOverlay.hidden = !open;
+      autoRefinementContextOverlay.classList.toggle("is-open", open);
+      if (workflowShell instanceof HTMLElement) {
+        workflowShell.classList.toggle("shell--interaction-locked", open);
+      }
+    };
+
     for (const element of document.querySelectorAll("[data-open-reject-modal]")) {
       element.addEventListener("click", () => {
         toggleRejectModal(true, {
@@ -9267,6 +9380,46 @@ export function buildWorkflowHtml(
       effectiveContextOverlay.addEventListener("click", (event) => {
         if (event.target === effectiveContextOverlay) {
           toggleEffectiveContextModal(false);
+        }
+      });
+    }
+
+    for (const element of document.querySelectorAll("[data-open-auto-refinement-prompt-modal]")) {
+      element.addEventListener("click", () => {
+        toggleAutoRefinementPromptModal(true);
+      });
+    }
+
+    for (const element of document.querySelectorAll("[data-close-auto-refinement-prompt-modal]")) {
+      element.addEventListener("click", () => {
+        toggleAutoRefinementPromptModal(false);
+      });
+    }
+
+    if (autoRefinementPromptOverlay instanceof HTMLElement) {
+      autoRefinementPromptOverlay.addEventListener("click", (event) => {
+        if (event.target === autoRefinementPromptOverlay) {
+          toggleAutoRefinementPromptModal(false);
+        }
+      });
+    }
+
+    for (const element of document.querySelectorAll("[data-open-auto-refinement-context-modal]")) {
+      element.addEventListener("click", () => {
+        toggleAutoRefinementContextModal(true);
+      });
+    }
+
+    for (const element of document.querySelectorAll("[data-close-auto-refinement-context-modal]")) {
+      element.addEventListener("click", () => {
+        toggleAutoRefinementContextModal(false);
+      });
+    }
+
+    if (autoRefinementContextOverlay instanceof HTMLElement) {
+      autoRefinementContextOverlay.addEventListener("click", (event) => {
+        if (event.target === autoRefinementContextOverlay) {
+          toggleAutoRefinementContextModal(false);
         }
       });
     }
