@@ -306,16 +306,16 @@ Current stance:
 
 Record debt here as soon as it is discovered during implementation.
 
-- [ ] `TD-001` Status: `todo`
+- [x] `TD-001` Status: `done`
   No technical-debt items recorded yet.
-  Update this placeholder with concrete debt once something real appears.
+  Outcome: the harness backlog closed without leaving a concrete open debt item behind this placeholder.
 
 ## UI Bug Backlog
 
-- [ ] `BUG-REF-001` Status: `todo`
+- [x] `BUG-REF-001` Status: `done`
   `Add Context Files` in the refinement detail does not trigger the expected file-attach flow.
   Impact: operator cannot add context files from the refinement card as intended.
-  Notes: validate both workflow detail and any browser-served portal path before fixing.
+  Notes: fixed in the browser-served workflow portal by implementing the missing attach/upload bridge and the related suggested-context flow.
 
 - [ ] `BUG-GRAPH-001` Status: `todo`
   Workflow graph layout editing needs snap-to-grid or equivalent alignment assistance.

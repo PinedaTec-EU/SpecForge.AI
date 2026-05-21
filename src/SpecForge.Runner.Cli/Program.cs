@@ -425,6 +425,32 @@ static async Task HandleWorkflowPortalRequestAsync(
                         request.Actor ?? "cli-user"));
                 return;
             }
+            case ("POST", "/api/attach-files"):
+            {
+                using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var payload = await reader.ReadToEndAsync();
+                var request = JsonSerializer.Deserialize<AttachWorkflowFilesRequest>(
+                    payload,
+                    SpecForgePortalSettingsStore.JsonOptions)
+                    ?? throw new InvalidOperationException("Attach files payload could not be parsed.");
+                await WriteJsonResponseAsync(
+                    context.Response,
+                    await AttachWorkflowFilesAsync(workspaceRoot, requestUsId, request));
+                return;
+            }
+            case ("POST", "/api/add-context-files"):
+            {
+                using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var payload = await reader.ReadToEndAsync();
+                var request = JsonSerializer.Deserialize<AddContextFilesRequest>(
+                    payload,
+                    SpecForgePortalSettingsStore.JsonOptions)
+                    ?? throw new InvalidOperationException("Add context files payload could not be parsed.");
+                await WriteJsonResponseAsync(
+                    context.Response,
+                    await AddContextFilesAsync(workspaceRoot, requestUsId, request));
+                return;
+            }
             case ("POST", "/api/approve"):
             {
                 using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
@@ -595,6 +621,76 @@ static async Task HandleDropOrRecoverUserStoryAsync(
     await WriteJsonResponseAsync(context.Response, new { usId = request.UsId, dropped = drop });
 }
 
+static async Task<object> AttachWorkflowFilesAsync(
+    string workspaceRoot,
+    string usId,
+    AttachWorkflowFilesRequest request)
+{
+    var normalizedKind = string.Equals(request.Kind, "context", StringComparison.OrdinalIgnoreCase)
+        ? "context"
+        : "attachment";
+    var paths = ResolveUserStoryDirectoryForPortal(workspaceRoot, usId);
+    var targetDirectoryPath = Path.Combine(paths.RootDirectory, normalizedKind == "context" ? "context" : "attachments");
+    Directory.CreateDirectory(targetDirectoryPath);
+
+    var addedPaths = new List<string>();
+    foreach (var file in request.Files)
+    {
+        var safeName = Path.GetFileName(file.Name?.Trim());
+        if (string.IsNullOrWhiteSpace(safeName) || string.IsNullOrWhiteSpace(file.Base64Content))
+        {
+            continue;
+        }
+
+        var bytes = Convert.FromBase64String(file.Base64Content);
+        var targetPath = GetNextPortalFilePath(targetDirectoryPath, safeName);
+        await File.WriteAllBytesAsync(targetPath, bytes);
+        addedPaths.Add(targetPath);
+    }
+
+    return new
+    {
+        usId,
+        kind = normalizedKind,
+        addedCount = addedPaths.Count,
+        addedPaths
+    };
+}
+
+static async Task<object> AddContextFilesAsync(
+    string workspaceRoot,
+    string usId,
+    AddContextFilesRequest request)
+{
+    var paths = ResolveUserStoryDirectoryForPortal(workspaceRoot, usId);
+    var contextDirectoryPath = Path.Combine(paths.RootDirectory, "context");
+    Directory.CreateDirectory(contextDirectoryPath);
+
+    var addedPaths = new List<string>();
+    foreach (var sourcePath in request.Paths
+                 .Where(static item => !string.IsNullOrWhiteSpace(item))
+                 .Select(Path.GetFullPath)
+                 .Distinct(StringComparer.Ordinal))
+    {
+        if (!File.Exists(sourcePath))
+        {
+            continue;
+        }
+
+        var targetPath = GetNextPortalFilePath(contextDirectoryPath, Path.GetFileName(sourcePath));
+        await CopyFileAsync(sourcePath, targetPath);
+        addedPaths.Add(targetPath);
+    }
+
+    return new
+    {
+        usId,
+        kind = "context",
+        addedCount = addedPaths.Count,
+        addedPaths
+    };
+}
+
 static UserStoryFilePaths ResolveUserStoryDirectoryForPortal(string workspaceRoot, string usId)
 {
     var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, usId);
@@ -607,6 +703,41 @@ static UserStoryFilePaths ResolveUserStoryDirectoryForPortal(string workspaceRoo
     }
 
     return paths;
+}
+
+static async Task CopyFileAsync(string sourcePath, string targetPath)
+{
+    await using var source = File.OpenRead(sourcePath);
+    await using var target = File.Create(targetPath);
+    await source.CopyToAsync(target);
+}
+
+static string GetNextPortalFilePath(string targetDirectoryPath, string fileName)
+{
+    var normalizedFileName = Path.GetFileName(fileName);
+    if (string.IsNullOrWhiteSpace(normalizedFileName))
+    {
+        throw new InvalidOperationException("Cannot attach a file without a valid name.");
+    }
+
+    var stem = Path.GetFileNameWithoutExtension(normalizedFileName);
+    var extension = Path.GetExtension(normalizedFileName);
+    var candidatePath = Path.Combine(targetDirectoryPath, normalizedFileName);
+    if (!File.Exists(candidatePath))
+    {
+        return candidatePath;
+    }
+
+    for (var index = 2; index < 10_000; index++)
+    {
+        candidatePath = Path.Combine(targetDirectoryPath, $"{stem}-{index}{extension}");
+        if (!File.Exists(candidatePath))
+        {
+            return candidatePath;
+        }
+    }
+
+    throw new InvalidOperationException($"Could not allocate a unique target path for '{normalizedFileName}'.");
 }
 
 static string? ParseQueryValue(string query, string key)
@@ -1504,6 +1635,12 @@ internal sealed record ApprovalAnswerSuggestionRequest(string Question, string? 
 internal sealed record ApprovalAnswerSubmitRequest(string Question, string Answer, string? Actor);
 
 internal sealed record RefinementAnswersSubmitRequest(IReadOnlyList<string> Answers, string? Actor);
+
+internal sealed record WorkflowFileUploadItem(string Name, string Base64Content);
+
+internal sealed record AttachWorkflowFilesRequest(string Kind, IReadOnlyList<WorkflowFileUploadItem> Files, string? Actor);
+
+internal sealed record AddContextFilesRequest(IReadOnlyList<string> Paths, string? Actor);
 
 internal sealed record ApprovalSubmitRequest(string? BaseBranch, string? WorkBranch, string? Actor);
 
