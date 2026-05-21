@@ -567,7 +567,12 @@ function buildPhaseSpecificSections(workflow, selectedPhase, state, artifactPrev
                 escapeHtmlAttribute: htmlEscape_1.escapeHtmlAttr
             });
         case "pr-preparation":
-            return (0, prPreparationPhaseView_1.buildPrPreparationPhaseSections)();
+            return (0, prPreparationPhaseView_1.buildPrPreparationPhaseSections)({
+                workflow,
+                selectedPhase,
+                escapeHtml: htmlEscape_1.escapeHtml,
+                escapeHtmlAttribute: htmlEscape_1.escapeHtmlAttr
+            });
         case "completed":
             return (0, completedPhaseView_1.buildCompletedPhaseSections)({
                 workflow,
