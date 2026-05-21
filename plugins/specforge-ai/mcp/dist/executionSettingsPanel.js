@@ -78,7 +78,7 @@ class ExecutionSettingsPanelController {
                     return;
                 case "saveExecutionSettings":
                     try {
-                        await saveExecutionSettingsAsync(message.modelProfiles ?? [], message.agentProfiles ?? [], message.phaseAgentAssignments ?? {}, message.defaultHarnessProfile ?? "balanced", message.phaseHarnessProfiles ?? {}, message.harnessProfileAuthority ?? "workspace", message.harnessProfileLockMode ?? "none", message.lockedHarnessPhaseIds ?? [], message.allowPerUserStoryHarnessProfileOverrides ?? true, message.refinementTolerance ?? "balanced", message.mvpRigor ?? "medium", message.reviewTolerance ?? "balanced", message.reviewEvidencePolicy ?? "balanced", message.technicalDesignSubagentsEnabled ?? false, message.reviewSubagentsEnabled ?? false, message.watcherEnabled ?? true, message.attentionNotificationsEnabled ?? true, message.contextSuggestionsEnabled ?? true, message.workflowGraphLayoutMode ?? "vertical", message.workflowGraphInitialZoomMode ?? "actual-size", message.userStoryListViewMode ?? "category", message.visualTimelineEnabled ?? false, message.requireExplicitApprovalBranchAcceptance ?? false, message.autoRefinementAnswersEnabled ?? false, message.autoRefinementAnswersProfile, message.autoPlayEnabled ?? false, message.autoReviewEnabled ?? false, message.maxImplementationReviewCycles ?? null, message.destructiveRewindEnabled ?? false, message.pauseOnFailedReview ?? false, message.useSemanticGraphWhenAvailable ?? true, message.allowGraphBuildRefreshForTouchedUserStoryScope ?? false, message.reviewLearningEnabled ?? true, message.reviewLearningSkillPath, message.completedUsLockOnCompleted ?? true);
+                        await saveExecutionSettingsAsync(message.modelProfiles ?? [], message.agentProfiles ?? [], message.phaseAgentAssignments ?? {}, message.defaultHarnessProfile ?? "balanced", message.phaseHarnessProfiles ?? {}, message.harnessProfileAuthority ?? "workspace", message.harnessProfileLockMode ?? "none", message.lockedHarnessPhaseIds ?? [], message.allowPerUserStoryHarnessProfileOverrides ?? true, message.refinementTolerance ?? "balanced", message.mvpRigor ?? "medium", message.reviewTolerance ?? "balanced", message.reviewEvidencePolicy ?? "balanced", message.technicalDesignSubagentsEnabled ?? false, message.reviewSubagentsEnabled ?? false, message.watcherEnabled ?? true, message.attentionNotificationsEnabled ?? true, message.contextSuggestionsEnabled ?? true, message.workflowGraphLayoutMode ?? "vertical", message.workflowGraphInitialZoomMode ?? "actual-size", message.userStoryListViewMode ?? "category", message.visualTimelineEnabled ?? false, message.requireExplicitApprovalBranchAcceptance ?? false, message.autoRefinementAnswersEnabled ?? false, message.autoRefinementAnswersProfile, message.autoPlayEnabled ?? false, message.autoReviewEnabled ?? false, message.maxRefinementCycles ?? null, message.maxImplementationReviewCycles ?? null, message.destructiveRewindEnabled ?? false, message.pauseOnFailedReview ?? false, message.useSemanticGraphWhenAvailable ?? true, message.allowGraphBuildRefreshForTouchedUserStoryScope ?? false, message.reviewLearningEnabled ?? true, message.reviewLearningSkillPath, message.completedUsLockOnCompleted ?? true);
                         await this.onDidSave();
                         await this.refreshAsync();
                     }
@@ -124,6 +124,7 @@ class ExecutionSettingsPanelController {
             autoRefinementAnswersProfile: settings.autoRefinementAnswersProfile,
             autoPlayEnabled: settings.autoPlayEnabled,
             autoReviewEnabled: settings.autoReviewEnabled,
+            maxRefinementCycles: settings.maxRefinementCycles,
             maxImplementationReviewCycles: settings.maxImplementationReviewCycles,
             destructiveRewindEnabled: settings.destructiveRewindEnabled,
             pauseOnFailedReview: settings.pauseOnFailedReview,
@@ -765,7 +766,7 @@ function buildExecutionSettingsHtml(model) {
         <div>
           <p class="eyebrow">Automation</p>
           <h2>Playback and review loop</h2>
-          <p class="copy">Control when SpecForge resumes automatically after manual checkpoints and how far the implementation/review loop is allowed to run without intervention.</p>
+          <p class="copy">Control when SpecForge resumes automatically after manual checkpoints and how far the refinement and implementation/review loops are allowed to run without intervention.</p>
         </div>
       </div>
       <div class="feature-grid">
@@ -783,6 +784,11 @@ function buildExecutionSettingsHtml(model) {
             <option value="false"${model.autoReviewEnabled ? "" : " selected"}>Disabled</option>
             <option value="true"${model.autoReviewEnabled ? " selected" : ""}>Enabled</option>
           </select>
+        </label>
+        <label class="phase-field">
+          <span>Max refinement cycles</span>
+          <input type="number" min="1" step="1" data-max-refinement-cycles value="${(0, htmlEscape_1.escapeHtmlAttr)(String(model.maxRefinementCycles ?? 5))}" />
+          <span class="phase-field__hint">Automatic refinement stops when this many refinement artifacts have been produced without human intervention.</span>
         </label>
         <label class="phase-field">
           <span>Max implementation/review cycles</span>
@@ -907,7 +913,7 @@ function buildExecutionSettingsHtml(model) {
         { assignmentKey: "specAgent", label: "Spec", requiredRepositoryAccess: "read" },
         { assignmentKey: "technicalDesignAgent", label: "Technical Design", requiredRepositoryAccess: "read" },
         { assignmentKey: "implementationAgent", label: "Implementation", requiredRepositoryAccess: "read-write" },
-        { assignmentKey: "reviewAgent", label: "Review", requiredRepositoryAccess: "read-write" },
+        { assignmentKey: "reviewAgent", label: "Review", requiredRepositoryAccess: "read" },
         { assignmentKey: "releaseApprovalAgent", label: "Release Approval", requiredRepositoryAccess: "read" },
         { assignmentKey: "prPreparationAgent", label: "PR Preparation", requiredRepositoryAccess: "read" }
     ])};
@@ -939,6 +945,7 @@ function buildExecutionSettingsHtml(model) {
       autoRefinementAnswersProfile: ${JSON.stringify(model.autoRefinementAnswersProfile)},
       autoPlayEnabled: ${JSON.stringify(model.autoPlayEnabled)},
       autoReviewEnabled: ${JSON.stringify(model.autoReviewEnabled)},
+      maxRefinementCycles: ${JSON.stringify(model.maxRefinementCycles ?? 5)},
       maxImplementationReviewCycles: ${JSON.stringify(model.maxImplementationReviewCycles ?? 5)},
       destructiveRewindEnabled: ${JSON.stringify(model.destructiveRewindEnabled)},
       pauseOnFailedReview: ${JSON.stringify(model.pauseOnFailedReview)},
@@ -1133,6 +1140,7 @@ function buildExecutionSettingsHtml(model) {
       const autoRefinementEnabled = document.querySelector("[data-auto-refinement-enabled]");
       const autoPlayEnabled = document.querySelector("[data-auto-play-enabled]");
       const autoReviewEnabled = document.querySelector("[data-auto-review-enabled]");
+      const maxRefinementCycles = document.querySelector("[data-max-refinement-cycles]");
       const maxImplementationReviewCycles = document.querySelector("[data-max-implementation-review-cycles]");
       const destructiveRewindEnabled = document.querySelector("[data-destructive-rewind-enabled]");
       const pauseOnFailedReview = document.querySelector("[data-pause-on-failed-review]");
@@ -1406,6 +1414,17 @@ function buildExecutionSettingsHtml(model) {
         autoReviewEnabled.addEventListener("change", () => {
           state.autoReviewEnabled = autoReviewEnabled.value === "true";
         });
+      }
+
+      if (maxRefinementCycles instanceof HTMLInputElement) {
+        maxRefinementCycles.value = String(state.maxRefinementCycles || 5);
+        const syncMaxRefinementCycles = () => {
+          const parsed = Number.parseInt(maxRefinementCycles.value, 10);
+          state.maxRefinementCycles = Number.isFinite(parsed) && parsed > 0 ? parsed : 5;
+          maxRefinementCycles.value = String(state.maxRefinementCycles);
+        };
+        maxRefinementCycles.addEventListener("input", syncMaxRefinementCycles);
+        maxRefinementCycles.addEventListener("change", syncMaxRefinementCycles);
       }
 
       if (maxImplementationReviewCycles instanceof HTMLInputElement) {
@@ -1881,6 +1900,7 @@ function buildExecutionSettingsHtml(model) {
         autoRefinementAnswersProfile: state.autoRefinementAnswersProfile,
         autoPlayEnabled: state.autoPlayEnabled,
         autoReviewEnabled: state.autoReviewEnabled,
+        maxRefinementCycles: state.maxRefinementCycles,
         maxImplementationReviewCycles: state.maxImplementationReviewCycles,
         destructiveRewindEnabled: state.destructiveRewindEnabled,
         pauseOnFailedReview: state.pauseOnFailedReview,
@@ -1897,7 +1917,7 @@ function buildExecutionSettingsHtml(model) {
 </body>
 </html>`;
 }
-async function saveExecutionSettingsAsync(modelProfiles, agentProfiles, phaseAgentAssignments, defaultHarnessProfile = "balanced", phaseHarnessProfiles = {}, harnessProfileAuthority = "workspace", harnessProfileLockMode = "none", lockedHarnessPhaseIds = [], allowPerUserStoryHarnessProfileOverrides = true, refinementTolerance = "balanced", mvpRigor = "medium", reviewTolerance = "balanced", reviewEvidencePolicy = "balanced", technicalDesignSubagentsEnabled = false, reviewSubagentsEnabled = false, watcherEnabled = true, attentionNotificationsEnabled = true, contextSuggestionsEnabled = true, workflowGraphLayoutMode = "vertical", workflowGraphInitialZoomMode = "actual-size", userStoryListViewMode = "category", visualTimelineEnabled = false, requireExplicitApprovalBranchAcceptance = false, autoRefinementAnswersEnabled = false, autoRefinementAnswersProfile, autoPlayEnabled = false, autoReviewEnabled = false, maxImplementationReviewCycles, destructiveRewindEnabled = false, pauseOnFailedReview = false, useSemanticGraphWhenAvailable = true, allowGraphBuildRefreshForTouchedUserStoryScope = false, reviewLearningEnabled = true, reviewLearningSkillPath, completedUsLockOnCompleted = false) {
+async function saveExecutionSettingsAsync(modelProfiles, agentProfiles, phaseAgentAssignments, defaultHarnessProfile = "balanced", phaseHarnessProfiles = {}, harnessProfileAuthority = "workspace", harnessProfileLockMode = "none", lockedHarnessPhaseIds = [], allowPerUserStoryHarnessProfileOverrides = true, refinementTolerance = "balanced", mvpRigor = "medium", reviewTolerance = "balanced", reviewEvidencePolicy = "balanced", technicalDesignSubagentsEnabled = false, reviewSubagentsEnabled = false, watcherEnabled = true, attentionNotificationsEnabled = true, contextSuggestionsEnabled = true, workflowGraphLayoutMode = "vertical", workflowGraphInitialZoomMode = "actual-size", userStoryListViewMode = "category", visualTimelineEnabled = false, requireExplicitApprovalBranchAcceptance = false, autoRefinementAnswersEnabled = false, autoRefinementAnswersProfile, autoPlayEnabled = false, autoReviewEnabled = false, maxRefinementCycles, maxImplementationReviewCycles, destructiveRewindEnabled = false, pauseOnFailedReview = false, useSemanticGraphWhenAvailable = true, allowGraphBuildRefreshForTouchedUserStoryScope = false, reviewLearningEnabled = true, reviewLearningSkillPath, completedUsLockOnCompleted = false) {
     const configuration = vscode.workspace.getConfiguration("specForge");
     const normalizedProfiles = modelProfiles
         .map((profile) => ({
@@ -2017,6 +2037,7 @@ async function saveExecutionSettingsAsync(modelProfiles, agentProfiles, phaseAge
     await configuration.update("execution.autoRefinementAnswersProfile", normalizeOptionalAssignment(autoRefinementAnswersProfile), vscode.ConfigurationTarget.Workspace);
     await configuration.update("features.autoPlayEnabled", autoPlayEnabled, vscode.ConfigurationTarget.Workspace);
     await configuration.update("features.autoReviewEnabled", autoReviewEnabled, vscode.ConfigurationTarget.Workspace);
+    await configuration.update("features.maxRefinementCycles", normalizePositiveInteger(maxRefinementCycles) ?? 5, vscode.ConfigurationTarget.Workspace);
     await configuration.update("features.maxImplementationReviewCycles", normalizePositiveInteger(maxImplementationReviewCycles) ?? 5, vscode.ConfigurationTarget.Workspace);
     await configuration.update("features.destructiveRewindEnabled", destructiveRewindEnabled, vscode.ConfigurationTarget.Workspace);
     await configuration.update("features.pauseOnFailedReview", pauseOnFailedReview, vscode.ConfigurationTarget.Workspace);

@@ -28,7 +28,7 @@ exports.recommendedBootstrapAgentProfiles = [
         role: "reviewer",
         modelProfile: "",
         instructions: "Review implementation changes for correctness, regressions, missing tests, and release risk.",
-        repositoryAccess: "read-write"
+        repositoryAccess: "read"
     },
     {
         name: "release-preparer",
@@ -97,6 +97,7 @@ function readSpecForgeSettings(configuration) {
         phaseSkillUsageReportingEnabled: configuration.get("features.phaseSkillUsageReportingEnabled", true),
         autoPlayEnabled: configuration.get("features.autoPlayEnabled", false),
         autoReviewEnabled: configuration.get("features.autoReviewEnabled", false),
+        maxRefinementCycles: normalizeOptionalPositiveInteger(configuration.get("features.maxRefinementCycles", 5)),
         maxImplementationReviewCycles: normalizeOptionalPositiveInteger(configuration.get("features.maxImplementationReviewCycles", 5)),
         destructiveRewindEnabled: configuration.get("features.destructiveRewindEnabled", false),
         pauseOnFailedReview: configuration.get("features.pauseOnFailedReview", false),
@@ -142,6 +143,8 @@ function buildBackendEnvironment(settings) {
     env.SPECFORGE_REVIEW_LEARNING_SKILL_PATH =
         settings.reviewLearningSkillPath ?? ".codex/skills/sdd-phase-agents/SKILL.md";
     env.SPECFORGE_COMPLETED_US_LOCK_ON_COMPLETED = settings.completedUsLockOnCompleted ? "true" : "false";
+    env.SPECFORGE_MAX_REFINEMENT_CYCLES = String(settings.maxRefinementCycles ?? 5);
+    env.SPECFORGE_MAX_IMPLEMENTATION_REVIEW_CYCLES = String(settings.maxImplementationReviewCycles ?? 5);
     if (settings.autoRefinementAnswersProfile) {
         env.SPECFORGE_AUTO_REFINEMENT_ANSWERS_PROFILE = settings.autoRefinementAnswersProfile;
     }
@@ -342,6 +345,7 @@ function buildSettingsDiagnostics(settings) {
         `semanticGraph.useWhenAvailable=${settings.useSemanticGraphWhenAvailable}`,
         `semanticGraph.allowBuildRefreshForTouchedUs=${settings.allowGraphBuildRefreshForTouchedUserStoryScope}`,
         `autoReviewEnabled=${settings.autoReviewEnabled}`,
+        `maxRefinementCycles=${settings.maxRefinementCycles ?? "<unset>"}`,
         `maxImplementationReviewCycles=${settings.maxImplementationReviewCycles ?? "<unset>"}`,
         `pauseOnFailedReview=${settings.pauseOnFailedReview}`,
         `reviewLearningEnabled=${settings.reviewLearningEnabled === false ? false : true}`,
