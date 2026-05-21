@@ -53,6 +53,7 @@ public sealed record WorkflowPhaseDetails(
     PhaseExecutionPolicy? ExecutionPolicy = null,
     PhaseExecutionEnvelope? ExecutionEnvelope = null,
     SpecPhaseApprovalPolicyDetails? SpecApprovalPolicy = null,
+    ReviewPhasePolicyDetails? ReviewPolicy = null,
     PhaseExecutionInspectionDetails? LatestExecutionInspection = null);
 
 public sealed record PhaseExecutionBoundarySummary(

@@ -775,6 +775,37 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesReviewPolicyVisibility()
+    {
+        var runner = new WorkflowRunner(
+            new InspectionAwarePhaseExecutionProvider(),
+            runtimeVersion: null,
+            refinementTolerance: "balanced",
+            completedUsLockOnCompleted: true,
+            reviewEvidencePolicy: "release");
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var reviewPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "review");
+
+        Assert.NotNull(reviewPhase.ReviewPolicy);
+        Assert.Equal("release", reviewPhase.ReviewPolicy!.ActiveEvidencePolicy);
+        Assert.True(reviewPhase.ReviewPolicy.ForceApprovalAvailableNow);
+        Assert.True(reviewPhase.ReviewPolicy.ForceApprovalRequiresReason);
+        Assert.Contains(reviewPhase.ReviewPolicy.EvidenceRules, item => item.EvidenceKind == "automated" && item.IsBlocking);
+        Assert.Contains(reviewPhase.ReviewPolicy.EvidenceRules, item => item.EvidenceKind == "operational" && !item.IsBlocking);
+        Assert.Contains(reviewPhase.ReviewPolicy.OverrideConditions, item => item.Id == "review_must_be_current_phase" && item.IsCurrentlySatisfied);
+    }
+
+    [Fact]
     public async Task GetUserStoryWorkflowAsync_ExposesReceiptLinkedImplementationPolicySnapshot()
     {
         var runner = new WorkflowRunner(new InspectionAwarePhaseExecutionProvider());
@@ -902,6 +933,32 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
         Assert.Contains(
             reviewPhase.LatestExecutionInspection.ReviewStructuredGateResult.LinkedEvidence,
             item => item.Kind == "implementation-evidence-markdown");
+    }
+
+    [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesReviewForceApprovalDecision()
+    {
+        var runner = new WorkflowRunner(new PassingReviewPhaseExecutionProvider());
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Review override", "feature", "workflow", "Initial source");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ApproveReviewAnywayAsync(workspaceRoot, "US-0001", "User accepts the remaining review risk for this release.");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var reviewPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "review");
+
+        Assert.NotNull(reviewPhase.ReviewPolicy);
+        Assert.False(reviewPhase.ReviewPolicy!.ForceApprovalAvailableNow);
+        Assert.Equal("review_force_approval_requires_current_review_phase", reviewPhase.ReviewPolicy.ForceApprovalBlockingReason);
+        Assert.NotNull(reviewPhase.ReviewPolicy.LastForceApprovalDecision);
+        Assert.Equal("release-approval", reviewPhase.ReviewPolicy.LastForceApprovalDecision!.TargetPhase);
+        Assert.Contains("remaining review risk for this release", reviewPhase.ReviewPolicy.LastForceApprovalDecision.Reason);
     }
 
     [Fact]

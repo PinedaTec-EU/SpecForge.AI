@@ -219,6 +219,7 @@ export interface WorkflowPhaseDetails {
   readonly executionPolicy?: PhaseExecutionPolicy | null;
   readonly executionEnvelope?: PhaseExecutionEnvelope | null;
   readonly specApprovalPolicy?: SpecPhaseApprovalPolicyDetails | null;
+  readonly reviewPolicy?: ReviewPhasePolicyDetails | null;
   readonly latestExecutionInspection?: PhaseExecutionInspectionDetails | null;
 }
 
@@ -364,6 +365,40 @@ export interface ReviewEvidenceLink {
   readonly kind: string;
   readonly path: string;
   readonly summary?: string | null;
+}
+
+export interface ReviewPhasePolicyDetails {
+  readonly activeEvidencePolicy: string;
+  readonly latestGateVerdict?: string | null;
+  readonly latestHasBlockingFindings?: boolean | null;
+  readonly forceApprovalAvailableNow: boolean;
+  readonly forceApprovalRequiresReason: boolean;
+  readonly forceApprovalBlockingReason?: string | null;
+  readonly evidenceRules: readonly ReviewEvidencePolicyRule[];
+  readonly overrideConditions: readonly ReviewPhaseOverrideCondition[];
+  readonly lastForceApprovalDecision?: ReviewForceApprovalDecision | null;
+}
+
+export interface ReviewEvidencePolicyRule {
+  readonly evidenceKind: string;
+  readonly isBlocking: boolean;
+  readonly currentStatusMessage: string;
+}
+
+export interface ReviewPhaseOverrideCondition {
+  readonly id: string;
+  readonly description: string;
+  readonly status: string;
+  readonly isCurrentlySatisfied: boolean;
+  readonly blockingReason?: string | null;
+  readonly currentStatusMessage?: string | null;
+}
+
+export interface ReviewForceApprovalDecision {
+  readonly actor: string;
+  readonly timestampUtc: string;
+  readonly targetPhase: string;
+  readonly reason: string;
 }
 
 export interface TechnicalDesignContextPack {

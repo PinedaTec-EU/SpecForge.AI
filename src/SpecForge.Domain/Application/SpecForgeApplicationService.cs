@@ -842,6 +842,13 @@ public sealed class SpecForgeApplicationService
                 timelineEvents,
                 phaseSlug,
                 cancellationToken);
+            var reviewPolicy = phaseId == PhaseId.Review
+                ? ReviewPhasePolicyDetailsBuilder.Build(
+                    workflowRunner.GetReviewEvidencePolicy(),
+                    isCurrent,
+                    latestExecutionInspection?.ReviewStructuredGateResult,
+                    timelineEvents)
+                : null;
 
             materializedPhases.Add(new WorkflowPhaseDetails(
                 phaseSlug,
@@ -864,6 +871,7 @@ public sealed class SpecForgeApplicationService
                 executionPolicy,
                 executionEnvelope,
                 specApprovalPolicy,
+                reviewPolicy,
                 latestExecutionInspection));
         }
 
@@ -890,6 +898,7 @@ public sealed class SpecForgeApplicationService
                 ExecutionPolicy: null,
                 ExecutionEnvelope: null,
                 SpecApprovalPolicy: null,
+                ReviewPolicy: null,
                 LatestExecutionInspection: null));
         }
 

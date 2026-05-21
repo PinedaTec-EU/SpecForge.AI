@@ -15,6 +15,7 @@ export function buildReviewPhaseSections(args: ReviewPhaseViewArgs): PhaseSectio
   const effectiveContext = args.selectedPhase.latestExecutionInspection?.effectiveContext ?? null;
   const evidenceRecord = args.selectedPhase.latestExecutionInspection?.evidenceRecord ?? null;
   const structuredGateResult = args.selectedPhase.latestExecutionInspection?.reviewStructuredGateResult ?? null;
+  const reviewPolicy = args.selectedPhase.reviewPolicy ?? null;
   const receiptPath = args.selectedPhase.latestExecutionInspection?.receiptPath?.trim() || null;
   const implementationAttempts = countImplementationAttempts(args.workflow);
   const currentPhaseIsReview = args.selectedPhase.isCurrent && args.selectedPhase.phaseId === "review";
@@ -109,17 +110,73 @@ export function buildReviewPhaseSections(args: ReviewPhaseViewArgs): PhaseSectio
       </section>
     `
     : "";
+  const reviewPolicySection = reviewPolicy
+    ? `
+      <section class="detail-card">
+        <h3>Review Policy</h3>
+        <p class="panel-copy">
+          Live review policy visibility for evidence classification, override conditions, and force-approval audit semantics.
+        </p>
+        <div class="detail-grid">
+          <div><strong>Evidence Policy</strong><div><code>${args.escapeHtml(reviewPolicy.activeEvidencePolicy)}</code></div></div>
+          <div><strong>Latest Verdict</strong><div><code>${args.escapeHtml(reviewPolicy.latestGateVerdict ?? "unknown")}</code></div></div>
+          <div><strong>Blocking Findings</strong><div><code>${reviewPolicy.latestHasBlockingFindings === true ? "yes" : reviewPolicy.latestHasBlockingFindings === false ? "no" : "unknown"}</code></div></div>
+          <div><strong>Force Approve Now</strong><div><code>${reviewPolicy.forceApprovalAvailableNow ? "available" : "blocked"}</code></div></div>
+          <div><strong>Reason Required</strong><div><code>${reviewPolicy.forceApprovalRequiresReason ? "yes" : "no"}</code></div></div>
+          <div><strong>Last Override</strong><div><code>${reviewPolicy.lastForceApprovalDecision ? "recorded" : "none"}</code></div></div>
+        </div>
+        <div class="detail-stack">
+          <div>
+            <strong>Evidence Rules</strong>
+            <ul class="detail-list">
+              ${reviewPolicy.evidenceRules.map(item => `
+                <li>
+                  <code>${args.escapeHtml(item.evidenceKind)}</code>: ${item.isBlocking ? "blocking" : "non-blocking"}
+                  <div class="muted">${args.escapeHtml(item.currentStatusMessage)}</div>
+                </li>
+              `).join("")}
+            </ul>
+          </div>
+          <div>
+            <strong>Override Conditions</strong>
+            <ul class="detail-list">
+              ${reviewPolicy.overrideConditions.map(item => `
+                <li>
+                  <strong>${args.escapeHtml(item.status)}</strong>: ${args.escapeHtml(item.description)}
+                  ${item.currentStatusMessage ? `<div class="muted">${args.escapeHtml(item.currentStatusMessage)}</div>` : ""}
+                  ${item.blockingReason ? `<div class="muted"><code>${args.escapeHtml(item.blockingReason)}</code></div>` : ""}
+                </li>
+              `).join("")}
+            </ul>
+          </div>
+          ${reviewPolicy.lastForceApprovalDecision
+            ? `
+              <div>
+                <strong>Last Force Approval Decision</strong>
+                <p class="panel-copy">
+                  <code>${args.escapeHtml(reviewPolicy.lastForceApprovalDecision.actor)}</code> forced review into
+                  <code>${args.escapeHtml(reviewPolicy.lastForceApprovalDecision.targetPhase)}</code> on
+                  <code>${args.escapeHtml(reviewPolicy.lastForceApprovalDecision.timestampUtc)}</code>.
+                </p>
+                <p class="panel-copy">${args.escapeHtml(reviewPolicy.lastForceApprovalDecision.reason)}</p>
+              </div>
+            `
+            : ""}
+        </div>
+      </section>
+    `
+    : "";
 
   if (!currentPhaseIsReview) {
     return {
-      beforeArtifact: [reviewInspectionSection, reviewGateResultSection].filter(Boolean),
+      beforeArtifact: [reviewInspectionSection, reviewGateResultSection, reviewPolicySection].filter(Boolean),
       afterArtifact: []
     };
   }
 
   return {
     beforeArtifact: [
-      ...([reviewInspectionSection, reviewGateResultSection].filter(Boolean)),
+      ...([reviewInspectionSection, reviewGateResultSection, reviewPolicySection].filter(Boolean)),
       `
       <section class="detail-card detail-card--review-regression">
         <div class="review-regression">

@@ -106,6 +106,8 @@ public sealed class WorkflowRunner
             phaseExecutionProvider.GetPhaseExecutionReadiness(phaseId),
             reviewEvidencePolicy);
 
+    public string GetReviewEvidencePolicy() => reviewEvidencePolicy;
+
     public PhaseExecutionEnvelope GetPhaseExecutionEnvelope(PhaseId phaseId)
     {
         var readiness = phaseExecutionProvider.GetPhaseExecutionReadiness(phaseId);

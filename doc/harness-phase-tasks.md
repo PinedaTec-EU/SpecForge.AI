@@ -230,7 +230,7 @@ Current stance:
   Output: machine-readable verdict, findings summary, correction targets, and linked evidence.
   Notes: review should be able to reference final impact-graph slices or graph deltas when they were part of the decision path.
 
-- [ ] `P-REV-01` Status: `todo`
+- [x] `P-REV-01` Status: `done`
   Define review policy visibility.
   Output: inspectable review evidence policy, approval override conditions, and force-approval rationale capture.
 
