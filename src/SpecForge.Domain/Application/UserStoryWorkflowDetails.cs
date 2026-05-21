@@ -55,6 +55,7 @@ public sealed record WorkflowPhaseDetails(
     SpecPhaseApprovalPolicyDetails? SpecApprovalPolicy = null,
     ReviewPhasePolicyDetails? ReviewPolicy = null,
     ReleaseApprovalPolicyDetails? ReleaseApprovalPolicy = null,
+    PrPreparationPolicyDetails? PrPreparationPolicy = null,
     PhaseExecutionInspectionDetails? LatestExecutionInspection = null);
 
 public sealed record PhaseExecutionBoundarySummary(
@@ -75,6 +76,7 @@ public sealed record PhaseExecutionInspectionDetails(
     ImplementationStructuredEvidence? ImplementationStructuredEvidence,
     ReviewStructuredGateResult? ReviewStructuredGateResult,
     ReleaseApprovalEvidencePack? ReleaseApprovalEvidencePack,
+    PrPreparationStructuredEvidence? PrPreparationStructuredEvidence,
     TechnicalDesignContextPack? TechnicalDesignContextPack,
     PhaseExecutionEffectivePrompt? EffectivePrompt,
     PhaseExecutionEffectiveContext? EffectiveContext);

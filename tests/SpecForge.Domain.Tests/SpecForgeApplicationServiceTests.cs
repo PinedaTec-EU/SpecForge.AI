@@ -1146,6 +1146,119 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesPrPreparationExecutionInspection()
+    {
+        var runner = new WorkflowRunner(
+            new UserStoryFileStore(),
+            new InspectionAwarePassingReviewPhaseExecutionProvider(),
+            new RepositoryCategoryCatalog(),
+            new NoOpWorkBranchManager(),
+            new RecordingPullRequestPublisher());
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var prPreparationPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "pr-preparation");
+
+        Assert.NotNull(prPreparationPhase.LatestExecutionInspection);
+        Assert.NotNull(prPreparationPhase.LatestExecutionInspection!.EffectivePrompt);
+        Assert.NotNull(prPreparationPhase.LatestExecutionInspection.EffectiveContext);
+        Assert.Contains(
+            prPreparationPhase.LatestExecutionInspection.EffectiveContext!.ContextFiles,
+            item => item.Path.EndsWith("/branch.yaml", StringComparison.Ordinal));
+        Assert.Contains(
+            prPreparationPhase.LatestExecutionInspection.EffectiveContext.ContextFiles,
+            item => item.Path.EndsWith("/timeline.md", StringComparison.Ordinal));
+        Assert.NotNull(prPreparationPhase.LatestExecutionInspection.ReceiptPath);
+    }
+
+    [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesReceiptLinkedPrPreparationStructuredEvidence()
+    {
+        var runner = new WorkflowRunner(
+            new UserStoryFileStore(),
+            new InspectionAwarePassingReviewPhaseExecutionProvider(),
+            new RepositoryCategoryCatalog(),
+            new NoOpWorkBranchManager(),
+            new RecordingPullRequestPublisher());
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var prPreparationPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "pr-preparation");
+
+        Assert.NotNull(prPreparationPhase.LatestExecutionInspection);
+        Assert.NotNull(prPreparationPhase.LatestExecutionInspection!.PrPreparationStructuredEvidence);
+        Assert.Equal("ready_to_publish", prPreparationPhase.LatestExecutionInspection.PrPreparationStructuredEvidence!.State);
+        Assert.Equal("main", prPreparationPhase.LatestExecutionInspection.PrPreparationStructuredEvidence.BaseBranch);
+        Assert.True(prPreparationPhase.LatestExecutionInspection.PrPreparationStructuredEvidence.ReleaseApprovalArtifactAvailable);
+        Assert.True(prPreparationPhase.LatestExecutionInspection.PrPreparationStructuredEvidence.ReleaseApprovalEvidencePackAvailable);
+        Assert.Contains(
+            prPreparationPhase.LatestExecutionInspection.PrPreparationStructuredEvidence.LinkedEvidence,
+            item => item.Kind == "branch-context");
+    }
+
+    [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesPrPreparationPolicyVisibility()
+    {
+        var runner = new WorkflowRunner(
+            new UserStoryFileStore(),
+            new InspectionAwarePassingReviewPhaseExecutionProvider(),
+            new RepositoryCategoryCatalog(),
+            new NoOpWorkBranchManager(),
+            new RecordingPullRequestPublisher());
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var prPreparationPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "pr-preparation");
+
+        Assert.NotNull(prPreparationPhase.PrPreparationPolicy);
+        Assert.Equal("ready", prPreparationPhase.PrPreparationPolicy!.Status);
+        Assert.True(prPreparationPhase.PrPreparationPolicy.PublicationReadyNow);
+        Assert.Equal("publish-draft-pull-request", prPreparationPhase.PrPreparationPolicy.PublicationMode);
+        Assert.True(prPreparationPhase.PrPreparationPolicy.HasBranchMetadata);
+        Assert.True(prPreparationPhase.PrPreparationPolicy.HasReleaseApprovalArtifact);
+        Assert.True(prPreparationPhase.PrPreparationPolicy.HasReleaseApprovalEvidencePack);
+        Assert.Contains(
+            prPreparationPhase.PrPreparationPolicy.RequirementRules,
+            item => item.Id == "pr_preparation_artifact_publishable" && item.IsRequired);
+        Assert.Contains(
+            prPreparationPhase.PrPreparationPolicy.PublicationConditions,
+            item => item.Id == "pr_preparation_publication_mode_declared" && item.IsCurrentlySatisfied);
+    }
+
+    [Fact]
     public async Task GetUserStoryWorkflowAsync_ExposesExecutionEnvelopePerPhase()
     {
         var runner = new WorkflowRunner(new InspectionAwarePhaseExecutionProvider());
@@ -1273,6 +1386,50 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
         Assert.False(currentPhase.CanApprove);
         Assert.False(currentPhase.RequiresApproval);
         Assert.Equal("workflow_completed", currentPhase.BlockingReason);
+    }
+
+    [Fact]
+    public async Task GetCurrentPhaseAsync_PrPreparation_BlocksWhenArtifactIsNotPublishable()
+    {
+        var runner = new WorkflowRunner(
+            new UserStoryFileStore(),
+            new PassingReviewPhaseExecutionProvider(),
+            new RepositoryCategoryCatalog(),
+            new NoOpWorkBranchManager(),
+            new RecordingPullRequestPublisher());
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0001");
+        var prPreparationArtifactPath = paths.GetLatestExistingPhaseArtifactPath(PhaseId.PrPreparation);
+        Assert.NotNull(prPreparationArtifactPath);
+        await File.WriteAllTextAsync(prPreparationArtifactPath!, """
+            # PR Preparation · US-0001 · v01
+
+            ## State
+            - State: `...`
+
+            ## PR Title
+            ...
+
+            ## PR Summary
+            ...
+            """);
+
+        var currentPhase = await applicationService.GetCurrentPhaseAsync(workspaceRoot, "US-0001");
+
+        Assert.Equal("pr-preparation", currentPhase.CurrentPhase);
+        Assert.False(currentPhase.CanAdvance);
+        Assert.Equal("pr_preparation_artifact_not_publishable", currentPhase.BlockingReason);
     }
 
     [Fact]

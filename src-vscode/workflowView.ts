@@ -820,7 +820,12 @@ function buildPhaseSpecificSections(
         escapeHtmlAttribute
       });
     case "pr-preparation":
-      return buildPrPreparationPhaseSections();
+      return buildPrPreparationPhaseSections({
+        workflow,
+        selectedPhase,
+        escapeHtml,
+        escapeHtmlAttribute
+      });
     case "completed":
       return buildCompletedPhaseSections({
         workflow,

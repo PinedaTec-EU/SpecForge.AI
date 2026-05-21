@@ -488,6 +488,26 @@ public sealed class SpecForgeApplicationService
             blockingReason = releaseApprovalPolicy.ApprovalBlockingReason;
         }
 
+        if (workflowRun.CurrentPhase == Workflow.PhaseId.PrPreparation)
+        {
+            var prPreparationPolicy = PrPreparationPolicyDetailsBuilder.Build(
+                workflowRun,
+                paths,
+                await TryReadLatestPrPreparationStructuredEvidenceAsync(paths, cancellationToken),
+                workflowRun.Branch?.PullRequest is null
+                    ? null
+                    : new PullRequestDetails(
+                        workflowRun.Branch.PullRequest.Status,
+                        workflowRun.Branch.PullRequest.Title,
+                        workflowRun.Branch.PullRequest.IsDraft,
+                        workflowRun.Branch.PullRequest.Number,
+                        workflowRun.Branch.PullRequest.Url,
+                        workflowRun.Branch.PullRequest.RemoteBranch,
+                        workflowRun.Branch.PullRequest.PublishedAtUtc?.ToString("O")));
+            canAdvance = prPreparationPolicy.PublicationReadyNow;
+            blockingReason = prPreparationPolicy.PublicationBlockingReason;
+        }
+
         if (workflowRun.CurrentPhase == Workflow.PhaseId.Review)
         {
             var replayPending = WorkflowRunner.IsReviewReplayPending(paths);
@@ -869,6 +889,22 @@ public sealed class SpecForgeApplicationService
                     latestExecutionInspection?.ReleaseApprovalEvidencePack,
                     timelineEvents)
                 : null;
+            var prPreparationPolicy = phaseId == PhaseId.PrPreparation
+                ? PrPreparationPolicyDetailsBuilder.Build(
+                    workflowRun,
+                    paths,
+                    latestExecutionInspection?.PrPreparationStructuredEvidence,
+                    workflowRun.Branch?.PullRequest is null
+                        ? null
+                        : new PullRequestDetails(
+                            workflowRun.Branch.PullRequest.Status,
+                            workflowRun.Branch.PullRequest.Title,
+                            workflowRun.Branch.PullRequest.IsDraft,
+                            workflowRun.Branch.PullRequest.Number,
+                            workflowRun.Branch.PullRequest.Url,
+                            workflowRun.Branch.PullRequest.RemoteBranch,
+                            workflowRun.Branch.PullRequest.PublishedAtUtc?.ToString("O")))
+                : null;
 
             materializedPhases.Add(new WorkflowPhaseDetails(
                 phaseSlug,
@@ -893,6 +929,7 @@ public sealed class SpecForgeApplicationService
                 specApprovalPolicy,
                 reviewPolicy,
                 releaseApprovalPolicy,
+                prPreparationPolicy,
                 latestExecutionInspection));
         }
 
@@ -921,6 +958,7 @@ public sealed class SpecForgeApplicationService
                 SpecApprovalPolicy: null,
                 ReviewPolicy: null,
                 ReleaseApprovalPolicy: null,
+                PrPreparationPolicy: null,
                 LatestExecutionInspection: null));
         }
 
@@ -972,6 +1010,7 @@ public sealed class SpecForgeApplicationService
                 receipt?.ImplementationStructuredEvidence is null &&
                 receipt?.ReviewStructuredGateResult is null &&
                 receipt?.ReleaseApprovalEvidencePack is null &&
+                receipt?.PrPreparationStructuredEvidence is null &&
                 receipt?.TechnicalDesignContextPack is null)
             {
                 return null;
@@ -990,6 +1029,7 @@ public sealed class SpecForgeApplicationService
                 receipt?.ImplementationStructuredEvidence,
                 receipt?.ReviewStructuredGateResult,
                 receipt?.ReleaseApprovalEvidencePack,
+                receipt?.PrPreparationStructuredEvidence,
                 receipt?.TechnicalDesignContextPack,
                 receipt?.EffectivePrompt,
                 receipt?.EffectiveContext);
@@ -1054,6 +1094,23 @@ public sealed class SpecForgeApplicationService
             .LastOrDefault();
         var receipt = await PhaseExecutionReceiptStore.TryLoadAsync(receiptPath, cancellationToken);
         return receipt?.ReleaseApprovalEvidencePack;
+    }
+
+    private static async Task<PrPreparationStructuredEvidence?> TryReadLatestPrPreparationStructuredEvidenceAsync(
+        UserStoryFilePaths paths,
+        CancellationToken cancellationToken)
+    {
+        if (!Directory.Exists(paths.ExecutionReceiptsDirectoryPath))
+        {
+            return null;
+        }
+
+        var receiptPath = Directory
+            .GetFiles(paths.ExecutionReceiptsDirectoryPath, "*-pr-preparation.json")
+            .OrderBy(static path => path, StringComparer.Ordinal)
+            .LastOrDefault();
+        var receipt = await PhaseExecutionReceiptStore.TryLoadAsync(receiptPath, cancellationToken);
+        return receipt?.PrPreparationStructuredEvidence;
     }
 
     private async Task<IReadOnlyCollection<UserStorySummary>> BuildChildStorySummariesAsync(

@@ -258,15 +258,15 @@ Current stance:
 
 ### PR Preparation
 
-- [ ] `H-PR-01` Status: `todo`
+- [x] `H-PR-01` Status: `done`
   Expose the effective prompt and context for `pr-preparation`.
   Output: latest-execution inspector tied to the generated PR artifact.
 
-- [ ] `H-PR-02` Status: `todo`
+- [x] `H-PR-02` Status: `done`
   Link PR preparation output to the structured evidence substrate.
   Output: reusable evidence references for PR description generation and later audit.
 
-- [ ] `P-PR-01` Status: `todo`
+- [x] `P-PR-01` Status: `done`
   Define PR preparation policy visibility.
   Output: inspectable policy for PR metadata requirements and publication readiness.
 

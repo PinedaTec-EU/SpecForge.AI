@@ -933,6 +933,45 @@ public sealed class WorkflowRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task ContinuePhaseAsync_PersistsPrPreparationStructuredEvidenceInReceipt()
+    {
+        var runner = new WorkflowRunner(
+            new UserStoryFileStore(),
+            new PassingReviewPhaseExecutionProvider(),
+            new RepositoryCategoryCatalog(),
+            new NoOpWorkBranchManager(),
+            new RecordingPullRequestPublisher());
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "PR preparation evidence", "feature", "workflow", "Initial source text");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0001");
+        var receiptPath = Directory
+            .GetFiles(paths.ExecutionReceiptsDirectoryPath, "*-pr-preparation.json")
+            .OrderBy(static path => path, StringComparer.Ordinal)
+            .Last();
+        var receipt = await PhaseExecutionReceiptStore.TryLoadAsync(receiptPath);
+
+        Assert.NotNull(receipt);
+        Assert.NotNull(receipt!.PrPreparationStructuredEvidence);
+        Assert.Equal("ready_to_publish", receipt.PrPreparationStructuredEvidence!.State);
+        Assert.Equal("main", receipt.PrPreparationStructuredEvidence.BaseBranch);
+        Assert.True(receipt.PrPreparationStructuredEvidence.ReleaseApprovalArtifactAvailable);
+        Assert.True(receipt.PrPreparationStructuredEvidence.ReleaseApprovalEvidencePackAvailable);
+        Assert.NotEmpty(receipt.PrPreparationStructuredEvidence.ValidationSummary);
+        Assert.NotEmpty(receipt.PrPreparationStructuredEvidence.ReviewerChecklist);
+        Assert.Contains(receipt.PrPreparationStructuredEvidence.LinkedEvidence, item => item.Kind == "branch-context");
+        Assert.Contains(receipt.PrPreparationStructuredEvidence.LinkedEvidence, item => item.Kind == "release-approval-artifact");
+    }
+
+    [Fact]
     public async Task ContinuePhaseAsync_FromPrPreparation_DoesNotCompleteWorkflowWhenPublicationLacksUrlOrNumber()
     {
         var publisher = new IncompletePullRequestPublisher();

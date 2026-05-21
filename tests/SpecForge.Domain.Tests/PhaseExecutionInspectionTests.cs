@@ -320,6 +320,21 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
                         "/repo/.specs/us/US-0001/branch.yaml",
                         "Branch metadata injected into release approval.")
                 ]),
+            PrPreparationStructuredEvidence: new PrPreparationStructuredEvidence(
+                "2026-05-19T10:00:03.0000000+00:00",
+                "/repo/.specs/us/US-0001/phases/06-pr-preparation.md",
+                "ready_to_publish",
+                "US-0001: deliver approved workflow scope",
+                "This PR packages the approved workflow scope into a draft pull request ready for reviewer validation.",
+                "main",
+                "feature/us-0001",
+                ReleaseApprovalArtifactAvailable: true,
+                ReleaseApprovalEvidencePackAvailable: true,
+                ["release-approval", "04-review.md", "03-implementation.md"],
+                [new PrPreparationParticipant("alice", ["capture", "spec", "review"])],
+                ["Validated through review artifact `04-review.md`."],
+                ["Verify claimed validation evidence"],
+                [new PrPreparationEvidenceLink("branch-context", "/repo/.specs/us/US-0001/branch.yaml", "Workflow branch metadata used for PR publication.")]),
             TechnicalDesignContextPack: new TechnicalDesignContextPack(
                 [new RefinementSkillSelectionItem("../ai-skills-shared/.shared-skills/skills/dotnet/SKILL.md", "Selected for .NET repository scope.")],
                 new RefinementGraphScopeRequest(
@@ -396,6 +411,7 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("\"implementationStructuredEvidence\":{", json);
         Assert.Contains("\"reviewStructuredGateResult\":{", json);
         Assert.Contains("\"releaseApprovalEvidencePack\":{", json);
+        Assert.Contains("\"prPreparationStructuredEvidence\":{", json);
         Assert.Contains("\"reviewVerdict\":\"fail\"", json);
         Assert.Contains("\"verdict\":\"fail\"", json);
         Assert.Contains("\"correctionTargets\":[", json);
@@ -420,7 +436,7 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
     }
 
     [Fact]
-    public void PhaseExecutionPolicyCatalog_DescribesImplementationReviewAndReleaseApprovalPolicies()
+    public void PhaseExecutionPolicyCatalog_DescribesImplementationReviewReleaseApprovalAndPrPreparationPolicies()
     {
         var implementationPolicy = PhaseExecutionPolicyCatalog.Describe(
             PhaseId.Implementation,
@@ -441,6 +457,12 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
                 PhaseId.ReleaseApproval,
                 CanExecute: true,
                 RequiredPermissions: PhaseExecutionPermissionCatalog.Describe(PhaseId.ReleaseApproval)));
+        var prPreparationPolicy = PhaseExecutionPolicyCatalog.Describe(
+            PhaseId.PrPreparation,
+            new PhaseExecutionReadiness(
+                PhaseId.PrPreparation,
+                CanExecute: true,
+                RequiredPermissions: PhaseExecutionPermissionCatalog.Describe(PhaseId.PrPreparation)));
 
         Assert.Equal("implementation", implementationPolicy.PhaseId);
         Assert.Equal("shared-phase-policy/v1", implementationPolicy.PolicyKey);
@@ -459,6 +481,9 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains(releaseApprovalPolicy.EvidenceRequirements, item => item.Id == "release_evidence_bundle" && item.Enforcement == "enforced");
         Assert.Contains(releaseApprovalPolicy.EvidenceRequirements, item => item.Id == "branch_and_timeline_context");
         Assert.Contains(releaseApprovalPolicy.EligibilityRules, rule => rule.Id == "release_approval_review_entry_visible");
+        Assert.Contains(prPreparationPolicy.EvidenceRequirements, item => item.Id == "pr_preparation_structured_evidence");
+        Assert.Contains(prPreparationPolicy.EvidenceRequirements, item => item.Id == "branch_publication_context");
+        Assert.Contains(prPreparationPolicy.EligibilityRules, rule => rule.Id == "pr_preparation_publication_mode_visible");
     }
 
     [Fact]

@@ -1708,6 +1708,7 @@ public sealed class WorkflowRunner
         ImplementationStructuredEvidence? implementationStructuredEvidenceSnapshot = null;
         ReviewStructuredGateResult? reviewStructuredGateResult = null;
         ReleaseApprovalEvidencePack? releaseApprovalEvidencePack = null;
+        PrPreparationStructuredEvidence? prPreparationStructuredEvidence = null;
         SpecForgeDiagnostics.Log(
             $"[runner.materialize] usId={workflowRun.UsId} phase={WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)} providerReturned executionKind={result.ExecutionKind} durationMs={stopwatch.ElapsedMilliseconds}");
 
@@ -1761,6 +1762,10 @@ public sealed class WorkflowRunner
                 EnsurePrPreparationArtifactIsPublishable(document);
                 var renderedMarkdown = PrPreparationArtifactJson.RenderMarkdown(document, workflowRun.UsId, version);
                 await File.WriteAllTextAsync(artifactPath, StampRuntimeVersion(renderedMarkdown, executionMetadata?.RuntimeVersion), cancellationToken);
+                prPreparationStructuredEvidence = PrPreparationStructuredEvidenceBuilder.Build(
+                    workflowRun,
+                    paths,
+                    artifactPath);
                 workflowRun.Branch?.RecordPreparedPullRequest(document.PrTitle, artifactPath);
             }
             else
@@ -1879,6 +1884,7 @@ public sealed class WorkflowRunner
             implementationStructuredEvidenceSnapshot,
             reviewStructuredGateResult,
             releaseApprovalEvidencePack,
+            prPreparationStructuredEvidence,
             technicalDesignContextPack,
             result.EffectivePrompt,
             result.EffectivePrompt is null ? null : effectiveContext);
@@ -2301,7 +2307,7 @@ public sealed class WorkflowRunner
             ? null
             : execution with { RuntimeVersion = execution.RuntimeVersion ?? runtimeVersion };
 
-    private static void EnsurePrPreparationArtifactIsPublishable(PrPreparationArtifactDocument document)
+    internal static IReadOnlyCollection<string> ValidatePrPreparationArtifact(PrPreparationArtifactDocument document)
     {
         var errors = new List<string>();
         if (string.IsNullOrWhiteSpace(document.State) || document.State == "...")
@@ -2339,6 +2345,12 @@ public sealed class WorkflowRunner
             errors.Add("prBody");
         }
 
+        return errors;
+    }
+
+    private static void EnsurePrPreparationArtifactIsPublishable(PrPreparationArtifactDocument document)
+    {
+        var errors = ValidatePrPreparationArtifact(document);
         if (errors.Count > 0)
         {
             throw new WorkflowDomainException(

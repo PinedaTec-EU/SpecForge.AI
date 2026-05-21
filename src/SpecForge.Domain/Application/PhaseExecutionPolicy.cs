@@ -304,6 +304,21 @@ public static class PhaseExecutionPolicyCatalog
                     "Release approval must expose implementation evidence and the upstream review verdict before the operator can approve it.",
                     EnforcementEnforced)
             ],
+            PhaseId.PrPreparation =>
+            [
+                new PhaseExecutionEvidenceRequirement(
+                    "pr_preparation_structured_evidence",
+                    "PR preparation must persist structured evidence describing publication metadata, linked workflow evidence, and reviewer-facing validation context.",
+                    EnforcementEnforced),
+                new PhaseExecutionEvidenceRequirement(
+                    "release_approval_lineage",
+                    "PR preparation must link back to the approved release artifact and structured release evidence pack.",
+                    EnforcementEnforced),
+                new PhaseExecutionEvidenceRequirement(
+                    "branch_publication_context",
+                    "PR preparation must surface workflow branch metadata and any reusable draft pull request state before publication.",
+                    EnforcementEnforced)
+            ],
             _ =>
             [
                 new PhaseExecutionEvidenceRequirement(
@@ -412,6 +427,22 @@ public static class PhaseExecutionPolicyCatalog
                 EnforcementDeclared,
                 IsCurrentlySatisfied: true,
                 CurrentStatusMessage: "Release-approval policy details and snapshots declare the required upstream evidence pack components."));
+        }
+
+        if (phaseId == PhaseId.PrPreparation)
+        {
+            rules.Add(new PhaseExecutionEligibilityRule(
+                "pr_preparation_publication_mode_visible",
+                "PR preparation must expose whether it will publish a draft pull request or reuse an existing one.",
+                EnforcementDeclared,
+                IsCurrentlySatisfied: true,
+                CurrentStatusMessage: "PR preparation policy details declare the current publication mode and readiness."));
+            rules.Add(new PhaseExecutionEligibilityRule(
+                "pr_preparation_release_lineage_visible",
+                "PR preparation must expose the approved release artifact, release evidence pack, and branch metadata that justify publication.",
+                EnforcementDeclared,
+                IsCurrentlySatisfied: true,
+                CurrentStatusMessage: "PR preparation policy details and structured evidence declare the upstream release lineage used for publication."));
         }
 
         return rules;

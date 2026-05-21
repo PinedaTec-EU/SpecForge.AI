@@ -221,6 +221,7 @@ export interface WorkflowPhaseDetails {
   readonly specApprovalPolicy?: SpecPhaseApprovalPolicyDetails | null;
   readonly reviewPolicy?: ReviewPhasePolicyDetails | null;
   readonly releaseApprovalPolicy?: ReleaseApprovalPolicyDetails | null;
+  readonly prPreparationPolicy?: PrPreparationPolicyDetails | null;
   readonly latestExecutionInspection?: PhaseExecutionInspectionDetails | null;
 }
 
@@ -283,6 +284,7 @@ export interface PhaseExecutionInspectionDetails {
   readonly implementationStructuredEvidence?: ImplementationStructuredEvidence | null;
   readonly reviewStructuredGateResult?: ReviewStructuredGateResult | null;
   readonly releaseApprovalEvidencePack?: ReleaseApprovalEvidencePack | null;
+  readonly prPreparationStructuredEvidence?: PrPreparationStructuredEvidence | null;
   readonly technicalDesignContextPack?: TechnicalDesignContextPack | null;
   readonly effectivePrompt?: PhaseExecutionEffectivePrompt | null;
   readonly effectiveContext?: PhaseExecutionEffectiveContext | null;
@@ -496,6 +498,71 @@ export interface ReleaseApprovalPhasePolicySnapshot {
   readonly evidenceRules: readonly ReleaseApprovalEvidenceRule[];
   readonly executionConditions: readonly ReleaseApprovalPolicyCondition[];
   readonly approvalConditions: readonly ReleaseApprovalPolicyCondition[];
+}
+
+export interface PrPreparationStructuredEvidence {
+  readonly generatedAtUtc: string;
+  readonly prPreparationArtifactPath: string;
+  readonly state: string;
+  readonly prTitle: string;
+  readonly prSummary: string;
+  readonly baseBranch: string;
+  readonly workBranch: string;
+  readonly releaseApprovalArtifactAvailable: boolean;
+  readonly releaseApprovalEvidencePackAvailable: boolean;
+  readonly basedOn: readonly string[];
+  readonly participants: readonly PrPreparationParticipant[];
+  readonly validationSummary: readonly string[];
+  readonly reviewerChecklist: readonly string[];
+  readonly linkedEvidence: readonly PrPreparationEvidenceLink[];
+}
+
+export interface PrPreparationParticipant {
+  readonly actor: string;
+  readonly phases: readonly string[];
+}
+
+export interface PrPreparationEvidenceLink {
+  readonly kind: string;
+  readonly path: string;
+  readonly summary?: string | null;
+}
+
+export interface PrPreparationPolicyDetails {
+  readonly status: string;
+  readonly publicationReadyNow: boolean;
+  readonly publicationBlockingReason?: string | null;
+  readonly publicationMode: string;
+  readonly hasPrPreparationArtifact: boolean;
+  readonly hasBranchMetadata: boolean;
+  readonly hasReleaseApprovalArtifact: boolean;
+  readonly hasReleaseApprovalEvidencePack: boolean;
+  readonly hasValidationSummary: boolean;
+  readonly hasReviewerChecklist: boolean;
+  readonly hasPrBody: boolean;
+  readonly existingPullRequestReusable: boolean;
+  readonly existingPullRequestStatus?: string | null;
+  readonly existingPullRequestUrl?: string | null;
+  readonly baseBranch?: string | null;
+  readonly workBranch?: string | null;
+  readonly requirementRules: readonly PrPreparationRequirementRule[];
+  readonly publicationConditions: readonly PrPreparationPublicationCondition[];
+}
+
+export interface PrPreparationRequirementRule {
+  readonly id: string;
+  readonly description: string;
+  readonly isRequired: boolean;
+  readonly currentStatusMessage: string;
+}
+
+export interface PrPreparationPublicationCondition {
+  readonly id: string;
+  readonly description: string;
+  readonly status: string;
+  readonly isCurrentlySatisfied: boolean;
+  readonly blockingReason?: string | null;
+  readonly currentStatusMessage?: string | null;
 }
 
 export interface ReleaseApprovalChangedFile {
