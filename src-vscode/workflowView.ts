@@ -7471,6 +7471,21 @@ export function buildWorkflowHtml(
       : "vertical";
     const getCurrentPhaseNodeWidth = () => isCompactGraphViewport() ? ${mobilePhaseNodeWidth} : ${phaseNodeWidth};
     const getCurrentPhaseNodeHeight = () => ${phaseNodeHeight};
+    const getGraphSnapStep = () => {
+      if (isAggregateGraphView()) {
+        return isCompactGraphViewport() ? 20 : 28;
+      }
+
+      return isCompactGraphViewport() ? 20 : 24;
+    };
+    const snapGraphCoordinate = (value) => {
+      const snapStep = Math.max(1, getGraphSnapStep());
+      return Math.max(0, Math.round(value / snapStep) * snapStep);
+    };
+    const snapGraphPosition = (left, top) => ({
+      left: snapGraphCoordinate(left),
+      top: snapGraphCoordinate(top)
+    });
     const getGraphPositionVarPrefix = () => {
       const compact = isCompactGraphViewport();
       const layoutMode = getActiveGraphLayoutMode();
@@ -7792,8 +7807,10 @@ export function buildWorkflowHtml(
             }
 
             const scale = Math.max(0.001, getGraphZoomScale());
-            const nextLeft = Math.max(0, start.left + (moveEvent.clientX - startClientX) / scale);
-            const nextTop = Math.max(0, start.top + (moveEvent.clientY - startClientY) / scale);
+            const snappedPosition = snapGraphPosition(
+              start.left + (moveEvent.clientX - startClientX) / scale,
+              start.top + (moveEvent.clientY - startClientY) / scale
+            );
             if (!dragging && (Math.abs(moveEvent.clientX - startClientX) > 3 || Math.abs(moveEvent.clientY - startClientY) > 3)) {
               dragging = true;
               node.classList.add("phase-node--dragging");
@@ -7803,7 +7820,7 @@ export function buildWorkflowHtml(
               return;
             }
 
-            writePhaseNodePosition(node, nextLeft, nextTop);
+            writePhaseNodePosition(node, snappedPosition.left, snappedPosition.top);
             updateDynamicGraphLinks();
           };
 
@@ -7863,8 +7880,10 @@ export function buildWorkflowHtml(
             }
 
             const scale = Math.max(0.001, getGraphZoomScale());
-            const nextLeft = Math.max(0, start.left + (moveEvent.clientX - startClientX) / scale);
-            const nextTop = Math.max(0, start.top + (moveEvent.clientY - startClientY) / scale);
+            const snappedPosition = snapGraphPosition(
+              start.left + (moveEvent.clientX - startClientX) / scale,
+              start.top + (moveEvent.clientY - startClientY) / scale
+            );
             if (!dragging && (Math.abs(moveEvent.clientX - startClientX) > 3 || Math.abs(moveEvent.clientY - startClientY) > 3)) {
               dragging = true;
             }
@@ -7873,7 +7892,7 @@ export function buildWorkflowHtml(
               return;
             }
 
-            writeGraphLegendPosition(legendElement, nextLeft, nextTop);
+            writeGraphLegendPosition(legendElement, snappedPosition.left, snappedPosition.top);
           };
 
           const finishDrag = (finishEvent) => {

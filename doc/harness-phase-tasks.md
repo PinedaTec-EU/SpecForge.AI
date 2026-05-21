@@ -317,10 +317,10 @@ Record debt here as soon as it is discovered during implementation.
   Impact: operator cannot add context files from the refinement card as intended.
   Notes: fixed in the browser-served workflow portal by implementing the missing attach/upload bridge and the related suggested-context flow.
 
-- [ ] `BUG-GRAPH-001` Status: `todo`
+- [x] `BUG-GRAPH-001` Status: `done`
   Workflow graph layout editing needs snap-to-grid or equivalent alignment assistance.
   Impact: aligning phases manually is unnecessarily difficult and visually inconsistent.
-  Notes: evaluate grid snapping, guide lines, or phase-to-phase magnetic alignment.
+  Notes: fixed with runtime snap-to-grid during layout dragging for both phase nodes and legend placement.
 
 - [ ] `BUG-GRAPH-002` Status: `todo`
   Edited workflow graph layout resets to the default layout and loses user changes.
