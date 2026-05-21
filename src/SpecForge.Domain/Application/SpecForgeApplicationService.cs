@@ -235,6 +235,13 @@ public sealed class SpecForgeApplicationService
         var currentPhase = await GetCurrentPhaseAsync(workspaceRoot, usId, cancellationToken);
 
         var timelineEvents = TimelineMarkdownParser.ParseEvents(rawTimeline);
+        var phaseIterations = WorkflowIterationDetailsBuilder.Build(paths, timelineEvents);
+        var metrics = await WorkflowRuntimeMetricsBuilder.BuildAsync(
+            workflowRun,
+            paths,
+            timelineEvents,
+            phaseIterations,
+            cancellationToken);
         var latestRefinementAutoAnswerInspection = await TryReadLatestAutoRefinementAnswerInspectionAsync(
             timelineEvents,
             cancellationToken);
@@ -268,7 +275,7 @@ public sealed class SpecForgeApplicationService
                     workflowRun.Branch.PullRequest.Url,
                     workflowRun.Branch.PullRequest.RemoteBranch,
                     workflowRun.Branch.PullRequest.PublishedAtUtc?.ToString("O")),
-            await BuildPhaseDetailsAsync(workspaceRoot, workflowRun, paths, timelineEvents, cancellationToken),
+            await BuildPhaseDetailsAsync(workspaceRoot, workflowRun, paths, timelineEvents, metrics.ByPhase, cancellationToken),
             new CurrentPhaseControls(
                 currentPhase.CanAdvance,
                 currentPhase.CanApprove,
@@ -279,6 +286,7 @@ public sealed class SpecForgeApplicationService
                 BuildRewindTargets(workflowRun),
                 currentPhase.ExecutionPhase,
                 currentPhase.ExecutionReadiness),
+            metrics.Workflow,
             refinement is null
                 ? null
                 : new RefinementSessionDetails(
@@ -289,7 +297,7 @@ public sealed class SpecForgeApplicationService
                     workflowRunner.GetRefinementPolicyDetails(refinement, latestRefinementAutoAnswerInspection)),
             approvalQuestions,
             timelineEvents,
-            WorkflowIterationDetailsBuilder.Build(paths, timelineEvents),
+            phaseIterations,
             paths.ContextDirectoryPath,
             UserStoryFilesService.BuildFileDetails(paths.ContextDirectoryPath),
             paths.AttachmentsDirectoryPath,
@@ -839,6 +847,7 @@ public sealed class SpecForgeApplicationService
         Workflow.WorkflowRun workflowRun,
         UserStoryFilePaths paths,
         IReadOnlyCollection<TimelineEventDetails> timelineEvents,
+        IReadOnlyDictionary<string, PhaseRuntimeMetrics> phaseMetrics,
         CancellationToken cancellationToken)
     {
         var phases = new[]
@@ -960,7 +969,8 @@ public sealed class SpecForgeApplicationService
                 reviewPolicy,
                 releaseApprovalPolicy,
                 prPreparationPolicy,
-                latestExecutionInspection));
+                latestExecutionInspection,
+                phaseMetrics.TryGetValue(phaseSlug, out var runtimeMetrics) ? runtimeMetrics : null));
         }
 
         if (workflowRun.Status == UserStoryStatus.Completed)
@@ -989,7 +999,8 @@ public sealed class SpecForgeApplicationService
                 ReviewPolicy: null,
                 ReleaseApprovalPolicy: null,
                 PrPreparationPolicy: null,
-                LatestExecutionInspection: null));
+                LatestExecutionInspection: null,
+                RuntimeMetrics: null));
         }
 
         return materializedPhases;

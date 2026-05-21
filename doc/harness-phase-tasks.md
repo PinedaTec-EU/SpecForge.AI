@@ -284,11 +284,11 @@ Current stance:
 
 ### Metrics
 
-- [ ] `H-MET-01` Status: `todo`
+- [x] `H-MET-01` Status: `done`
   Define the first metric set.
   Output: attempt count, lead time, retries, blocked duration, waiting-user duration.
 
-- [ ] `H-MET-02` Status: `todo`
+- [x] `H-MET-02` Status: `done`
   Expose metrics in workflow operator surfaces.
   Output: phase-local and workflow-wide views derived from persisted facts.
 

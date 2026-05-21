@@ -2265,6 +2265,8 @@ export function buildWorkflowHtml(
     ?? phaseIterations[0]
     ?? null;
   const selectedPhaseTouches = summarizePhaseTouches(workflow, selectedPhase.phaseId);
+  const selectedPhaseRuntimeMetrics = selectedPhase.runtimeMetrics ?? null;
+  const workflowRuntimeMetrics = workflow.metrics ?? null;
   const selectedPhaseEvents = workflow.events.filter((event) => event.phase === selectedPhase.phaseId);
   const selectedPhaseMetricEvents = selectedPhaseEvents.filter((event) => event.usage || event.durationMs !== null);
   const workflowUsage = aggregateWorkflowUsage(workflow.events, state);
@@ -2444,14 +2446,31 @@ export function buildWorkflowHtml(
   const tokenSummary = renderTokenSummaryCard("Tokens", tokenSummaryRows, {
     modifierClass: "token-summary--wide"
   });
-  const selectedPhaseMetrics = `${durationMetric}${touchSummary}${tokenSummary}`;
+  const lifecycleSummary = selectedPhaseRuntimeMetrics
+    ? renderTokenSummaryCard("Lifecycle", [
+      renderTokenSummaryRow("Attempts", String(selectedPhaseRuntimeMetrics.attemptCount)),
+      renderTokenSummaryRow("Retries", String(selectedPhaseRuntimeMetrics.retryCount)),
+      renderTokenSummaryRow("Lead Time", selectedPhaseRuntimeMetrics.leadTimeMs && selectedPhaseRuntimeMetrics.leadTimeMs > 0
+        ? formatDuration(selectedPhaseRuntimeMetrics.leadTimeMs)
+        : "n/a"),
+      renderTokenSummaryRow("Waiting User", selectedPhaseRuntimeMetrics.waitingUserDurationMs > 0
+        ? formatDuration(selectedPhaseRuntimeMetrics.waitingUserDurationMs)
+        : "0s"),
+      renderTokenSummaryRow("Blocked", selectedPhaseRuntimeMetrics.blockedDurationMs > 0
+        ? formatDuration(selectedPhaseRuntimeMetrics.blockedDurationMs)
+        : "0s")
+    ], {
+      modifierClass: "token-summary--wide"
+    })
+    : "";
+  const selectedPhaseMetrics = `${durationMetric}${touchSummary}${tokenSummary}${lifecycleSummary}`;
   const showCompletedOnlyUsagePanels = selectedPhase.phaseId === "completed";
-  const workflowUsageDashboard = showCompletedOnlyUsagePanels ? `
+  const workflowUsageDashboard = `
     <section class="detail-card detail-card--workflow-dashboard">
       <div class="detail-card__header">
         <div>
-          <h3>Workflow Dashboard</h3>
-          <p class="panel-copy">Global usage across the full user story lifecycle, not only the selected phase.</p>
+          <h3>Workflow Metrics</h3>
+          <p class="panel-copy">Workflow-wide runtime metrics derived from persisted timeline facts, not only the selected phase.</p>
         </div>
       </div>
       <div class="token-summary-grid token-summary-grid--workflow">
@@ -2469,9 +2488,24 @@ export function buildWorkflowHtml(
           renderTokenSummaryRow("Last Event", formatUtcTimestamp(workflow.events[workflow.events.length - 1]?.timestampUtc ?? null)),
           renderTokenSummaryRow("Current Phase", (workflow.phases.find((phase) => phase.isCurrent) ?? selectedPhase).title)
         ])}
+        ${workflowRuntimeMetrics
+          ? renderTokenSummaryCard("Lifecycle", [
+            renderTokenSummaryRow("Attempts", String(workflowRuntimeMetrics.attemptCount)),
+            renderTokenSummaryRow("Retries", String(workflowRuntimeMetrics.retryCount)),
+            renderTokenSummaryRow("Lead Time", workflowRuntimeMetrics.leadTimeMs && workflowRuntimeMetrics.leadTimeMs > 0
+              ? formatDuration(workflowRuntimeMetrics.leadTimeMs)
+              : "n/a"),
+            renderTokenSummaryRow("Waiting User", workflowRuntimeMetrics.waitingUserDurationMs > 0
+              ? formatDuration(workflowRuntimeMetrics.waitingUserDurationMs)
+              : "0s"),
+            renderTokenSummaryRow("Blocked", workflowRuntimeMetrics.blockedDurationMs > 0
+              ? formatDuration(workflowRuntimeMetrics.blockedDurationMs)
+              : "0s")
+          ])
+          : ""}
       </div>
     </section>
-  ` : "";
+  `;
   const modelUsageTable = showCompletedOnlyUsagePanels
     ? renderUsageDashboardTable(
       "Usage by Model",

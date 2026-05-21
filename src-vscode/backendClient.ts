@@ -223,6 +223,29 @@ export interface WorkflowPhaseDetails {
   readonly releaseApprovalPolicy?: ReleaseApprovalPolicyDetails | null;
   readonly prPreparationPolicy?: PrPreparationPolicyDetails | null;
   readonly latestExecutionInspection?: PhaseExecutionInspectionDetails | null;
+  readonly runtimeMetrics?: PhaseRuntimeMetrics | null;
+}
+
+export interface WorkflowRuntimeMetrics {
+  readonly attemptCount: number;
+  readonly retryCount: number;
+  readonly leadTimeMs?: number | null;
+  readonly waitingUserDurationMs: number;
+  readonly blockedDurationMs: number;
+  readonly firstEventAtUtc?: string | null;
+  readonly lastEventAtUtc?: string | null;
+}
+
+export interface PhaseRuntimeMetrics {
+  readonly phaseId: string;
+  readonly attemptCount: number;
+  readonly retryCount: number;
+  readonly leadTimeMs?: number | null;
+  readonly executionDurationMs: number;
+  readonly waitingUserDurationMs: number;
+  readonly blockedDurationMs: number;
+  readonly firstEventAtUtc?: string | null;
+  readonly lastEventAtUtc?: string | null;
 }
 
 export interface PhaseExecutionBoundarySummary {
@@ -990,6 +1013,7 @@ export interface UserStoryWorkflowDetails {
   readonly pullRequest?: PullRequestDetails | null;
   readonly phases: readonly WorkflowPhaseDetails[];
   readonly controls: CurrentPhaseControls;
+  readonly metrics?: WorkflowRuntimeMetrics | null;
   readonly refinement: RefinementSessionDetails | null;
   readonly approvalQuestions?: readonly ApprovalQuestionDetails[];
   readonly events: readonly TimelineEventDetails[];

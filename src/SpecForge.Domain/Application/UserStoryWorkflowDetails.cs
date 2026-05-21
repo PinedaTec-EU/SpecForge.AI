@@ -23,6 +23,7 @@ public sealed record UserStoryWorkflowDetails(
     PullRequestDetails? PullRequest,
     IReadOnlyCollection<WorkflowPhaseDetails> Phases,
     CurrentPhaseControls Controls,
+    WorkflowRuntimeMetrics? Metrics,
     RefinementSessionDetails? Refinement,
     IReadOnlyCollection<ApprovalQuestionDetails> ApprovalQuestions,
     IReadOnlyCollection<TimelineEventDetails> Events,
@@ -56,7 +57,8 @@ public sealed record WorkflowPhaseDetails(
     ReviewPhasePolicyDetails? ReviewPolicy = null,
     ReleaseApprovalPolicyDetails? ReleaseApprovalPolicy = null,
     PrPreparationPolicyDetails? PrPreparationPolicy = null,
-    PhaseExecutionInspectionDetails? LatestExecutionInspection = null);
+    PhaseExecutionInspectionDetails? LatestExecutionInspection = null,
+    PhaseRuntimeMetrics? RuntimeMetrics = null);
 
 public sealed record PhaseExecutionBoundarySummary(
     string BoundaryKind,

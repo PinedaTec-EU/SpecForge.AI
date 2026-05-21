@@ -528,6 +528,28 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesWorkflowAndPhaseRuntimeMetrics()
+    {
+        var runner = new WorkflowRunner(new InspectionAwarePhaseExecutionProvider());
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.OperateCurrentPhaseArtifactAsync(workspaceRoot, "US-0001", "Keep the spec implementation-only.", actor: "alice");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var specPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "spec");
+
+        Assert.NotNull(workflow.Metrics);
+        Assert.True(workflow.Metrics!.AttemptCount >= 2);
+        Assert.True(workflow.Metrics.RetryCount >= 1);
+        Assert.NotNull(specPhase.RuntimeMetrics);
+        Assert.Equal(2, specPhase.RuntimeMetrics!.AttemptCount);
+        Assert.Equal(1, specPhase.RuntimeMetrics.RetryCount);
+        Assert.True(specPhase.RuntimeMetrics.ExecutionDurationMs >= 0);
+    }
+
+    [Fact]
     public async Task GetUserStoryWorkflowAsync_ExposesReceiptLinkedRefinementPolicySnapshot()
     {
         var runner = new WorkflowRunner();
