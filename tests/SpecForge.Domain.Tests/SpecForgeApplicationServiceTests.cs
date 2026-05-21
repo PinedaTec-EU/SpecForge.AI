@@ -878,6 +878,33 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesReceiptLinkedReviewStructuredGateResult()
+    {
+        var runner = new WorkflowRunner(new InspectionAwarePhaseExecutionProvider());
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var reviewPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "review");
+
+        Assert.NotNull(reviewPhase.LatestExecutionInspection);
+        Assert.NotNull(reviewPhase.LatestExecutionInspection!.ReviewStructuredGateResult);
+        Assert.Equal("fail", reviewPhase.LatestExecutionInspection.ReviewStructuredGateResult!.Verdict);
+        Assert.True(reviewPhase.LatestExecutionInspection.ReviewStructuredGateResult.HasBlockingFindings);
+        Assert.NotEmpty(reviewPhase.LatestExecutionInspection.ReviewStructuredGateResult.FindingsSummary);
+        Assert.Contains(
+            reviewPhase.LatestExecutionInspection.ReviewStructuredGateResult.LinkedEvidence,
+            item => item.Kind == "implementation-evidence-markdown");
+    }
+
+    [Fact]
     public async Task GetUserStoryWorkflowAsync_ExposesExecutionEnvelopePerPhase()
     {
         var runner = new WorkflowRunner(new InspectionAwarePhaseExecutionProvider());

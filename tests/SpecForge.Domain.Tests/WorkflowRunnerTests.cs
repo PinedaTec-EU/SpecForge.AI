@@ -1679,6 +1679,48 @@ public sealed class WorkflowRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task ContinuePhaseAsync_PersistsReviewStructuredGateResultInReceipt()
+    {
+        await InitializeGitWorkspaceAsync(workspaceRoot);
+        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
+        await RunGitAsync(workspaceRoot, "add", "README.md");
+        await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
+
+        var runner = new WorkflowRunner(
+            new UserStoryFileStore(),
+            new PassingReviewPhaseExecutionProvider(),
+            new RepositoryCategoryCatalog(),
+            new NoOpWorkBranchManager());
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Review structured gate", "feature", "workflow", "Initial source text");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0001");
+        var receiptPath = Directory
+            .GetFiles(paths.ExecutionReceiptsDirectoryPath, "*-review.json")
+            .OrderBy(static path => path, StringComparer.Ordinal)
+            .Last();
+        var receipt = await PhaseExecutionReceiptStore.TryLoadAsync(receiptPath);
+
+        Assert.NotNull(receipt);
+        Assert.NotNull(receipt!.ReviewStructuredGateResult);
+        Assert.Equal("pass", receipt.ReviewStructuredGateResult!.Verdict);
+        Assert.Equal(0, receipt.ReviewStructuredGateResult.FailedValidationItemCount);
+        Assert.NotEmpty(receipt.ReviewStructuredGateResult.FindingsSummary);
+        Assert.Contains(
+            receipt.ReviewStructuredGateResult.LinkedEvidence,
+            item => item.Kind == "implementation-evidence-markdown");
+        Assert.Contains(
+            receipt.ReviewStructuredGateResult.LinkedEvidence,
+            item => item.Kind == "implementation-evidence-json");
+    }
+
+    [Fact]
     public async Task ContinuePhaseAsync_ImplementationAndReview_CreateTraceablePhaseCommits()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);

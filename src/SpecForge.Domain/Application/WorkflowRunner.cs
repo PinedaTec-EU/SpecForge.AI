@@ -1704,6 +1704,7 @@ public sealed class WorkflowRunner
         stopwatch.Stop();
         var executionMetadata = WithRuntimeVersion(result.Execution);
         ImplementationStructuredEvidence? implementationStructuredEvidenceSnapshot = null;
+        ReviewStructuredGateResult? reviewStructuredGateResult = null;
         SpecForgeDiagnostics.Log(
             $"[runner.materialize] usId={workflowRun.UsId} phase={WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)} providerReturned executionKind={result.ExecutionKind} durationMs={stopwatch.ElapsedMilliseconds}");
 
@@ -1742,6 +1743,7 @@ public sealed class WorkflowRunner
             await File.WriteAllTextAsync(rawArtifactPath, StampRuntimeVersion(result.Content, executionMetadata?.RuntimeVersion), cancellationToken);
             var reviewArtifact = EnforceReviewValidationStrategyContract(result.Content, paths, workflowRun.UsId, version, reviewEvidencePolicy);
             await File.WriteAllTextAsync(artifactPath, StampRuntimeVersion(reviewArtifact, executionMetadata?.RuntimeVersion), cancellationToken);
+            reviewStructuredGateResult = ReviewStructuredGateResultBuilder.Build(paths, reviewArtifact, reviewEvidencePolicy);
         }
         else if (workflowRun.CurrentPhase == PhaseId.TechnicalDesign)
         {
@@ -1848,6 +1850,7 @@ public sealed class WorkflowRunner
             specApprovalPolicySnapshot,
             implementationPolicySnapshot,
             implementationStructuredEvidenceSnapshot,
+            reviewStructuredGateResult,
             technicalDesignContextPack,
             result.EffectivePrompt,
             result.EffectivePrompt is null ? null : effectiveContext);

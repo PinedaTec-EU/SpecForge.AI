@@ -277,6 +277,7 @@ export interface PhaseExecutionInspectionDetails {
   readonly specApprovalPolicySnapshot?: SpecPhaseApprovalPolicyDetails | null;
   readonly implementationPolicySnapshot?: ImplementationPhasePolicySnapshot | null;
   readonly implementationStructuredEvidence?: ImplementationStructuredEvidence | null;
+  readonly reviewStructuredGateResult?: ReviewStructuredGateResult | null;
   readonly technicalDesignContextPack?: TechnicalDesignContextPack | null;
   readonly effectivePrompt?: PhaseExecutionEffectivePrompt | null;
   readonly effectiveContext?: PhaseExecutionEffectiveContext | null;
@@ -337,6 +338,32 @@ export interface ImplementationGraphOperationReference {
   readonly artifactsRead: readonly string[];
   readonly artifactsWritten: readonly string[];
   readonly warnings: readonly string[];
+}
+
+export interface ReviewStructuredGateResult {
+  readonly verdict: string;
+  readonly primaryReason: string;
+  readonly hasBlockingFindings: boolean;
+  readonly passedValidationItemCount: number;
+  readonly failedValidationItemCount: number;
+  readonly deferredValidationItemCount: number;
+  readonly findingsSummary: readonly string[];
+  readonly correctionTargets: readonly ReviewCorrectionTarget[];
+  readonly linkedEvidence: readonly ReviewEvidenceLink[];
+}
+
+export interface ReviewCorrectionTarget {
+  readonly item: string;
+  readonly status: string;
+  readonly isBlocking: boolean;
+  readonly evidence: string;
+  readonly suggestedAction: string;
+}
+
+export interface ReviewEvidenceLink {
+  readonly kind: string;
+  readonly path: string;
+  readonly summary?: string | null;
 }
 
 export interface TechnicalDesignContextPack {

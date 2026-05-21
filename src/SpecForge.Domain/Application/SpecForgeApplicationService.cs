@@ -937,6 +937,7 @@ public sealed class SpecForgeApplicationService
                 receipt?.SpecApprovalPolicySnapshot is null &&
                 receipt?.ImplementationPolicySnapshot is null &&
                 receipt?.ImplementationStructuredEvidence is null &&
+                receipt?.ReviewStructuredGateResult is null &&
                 receipt?.TechnicalDesignContextPack is null)
             {
                 return null;
@@ -951,6 +952,7 @@ public sealed class SpecForgeApplicationService
                 receipt?.SpecApprovalPolicySnapshot,
                 receipt?.ImplementationPolicySnapshot,
                 receipt?.ImplementationStructuredEvidence,
+                receipt?.ReviewStructuredGateResult,
                 receipt?.TechnicalDesignContextPack,
                 receipt?.EffectivePrompt,
                 receipt?.EffectiveContext);

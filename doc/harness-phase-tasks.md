@@ -225,7 +225,7 @@ Current stance:
   Expose the effective prompt and context for `review`.
   Output: latest-execution inspector including implementation evidence inputs.
 
-- [ ] `H-REV-02` Status: `todo`
+- [x] `H-REV-02` Status: `done`
   Promote review outputs toward reusable structured gate results.
   Output: machine-readable verdict, findings summary, correction targets, and linked evidence.
   Notes: review should be able to reference final impact-graph slices or graph deltas when they were part of the decision path.

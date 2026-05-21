@@ -14,6 +14,7 @@ export function buildReviewPhaseSections(args: ReviewPhaseViewArgs): PhaseSectio
   const effectivePrompt = args.selectedPhase.latestExecutionInspection?.effectivePrompt ?? null;
   const effectiveContext = args.selectedPhase.latestExecutionInspection?.effectiveContext ?? null;
   const evidenceRecord = args.selectedPhase.latestExecutionInspection?.evidenceRecord ?? null;
+  const structuredGateResult = args.selectedPhase.latestExecutionInspection?.reviewStructuredGateResult ?? null;
   const receiptPath = args.selectedPhase.latestExecutionInspection?.receiptPath?.trim() || null;
   const implementationAttempts = countImplementationAttempts(args.workflow);
   const currentPhaseIsReview = args.selectedPhase.isCurrent && args.selectedPhase.phaseId === "review";
@@ -51,14 +52,74 @@ export function buildReviewPhaseSections(args: ReviewPhaseViewArgs): PhaseSectio
       </section>
     `
     : "";
+  const reviewGateResultSection = structuredGateResult
+    ? `
+      <section class="detail-card">
+        <h3>Review Gate Result</h3>
+        <p class="panel-copy">
+          Structured review gate output captured from the persisted receipt, including verdict, correction targets, and linked evidence used by the review decision path.
+        </p>
+        <div class="detail-grid">
+          <div><strong>Verdict</strong><div><code>${args.escapeHtml(structuredGateResult.verdict)}</code></div></div>
+          <div><strong>Blocking Findings</strong><div><code>${structuredGateResult.hasBlockingFindings ? "yes" : "no"}</code></div></div>
+          <div><strong>Passed Items</strong><div><code>${structuredGateResult.passedValidationItemCount}</code></div></div>
+          <div><strong>Failed Items</strong><div><code>${structuredGateResult.failedValidationItemCount}</code></div></div>
+          <div><strong>Deferred Items</strong><div><code>${structuredGateResult.deferredValidationItemCount}</code></div></div>
+          <div><strong>Linked Evidence</strong><div><code>${structuredGateResult.linkedEvidence.length}</code></div></div>
+        </div>
+        <div class="detail-stack">
+          <div>
+            <strong>Primary Reason</strong>
+            <p class="panel-copy">${args.escapeHtml(structuredGateResult.primaryReason)}</p>
+          </div>
+          <div>
+            <strong>Findings Summary</strong>
+            <ul class="detail-list">
+              ${structuredGateResult.findingsSummary.map(item => `<li>${args.escapeHtml(item)}</li>`).join("")}
+            </ul>
+          </div>
+          <div>
+            <strong>Correction Targets</strong>
+            ${structuredGateResult.correctionTargets.length > 0
+              ? `
+                <ul class="detail-list">
+                  ${structuredGateResult.correctionTargets.map(item => `
+                    <li>
+                      <strong>${args.escapeHtml(item.status)}</strong>: ${args.escapeHtml(item.item)}
+                      <div class="muted">${args.escapeHtml(item.evidence)}</div>
+                      <div class="muted">${args.escapeHtml(item.suggestedAction)}</div>
+                    </li>
+                  `).join("")}
+                </ul>
+              `
+              : `<p class="muted">No corrective targets were recorded for this review execution.</p>`}
+          </div>
+          <div>
+            <strong>Linked Evidence</strong>
+            <ul class="detail-list">
+              ${structuredGateResult.linkedEvidence.map(item => `
+                <li>
+                  <code>${args.escapeHtml(item.kind)}</code>: ${args.escapeHtml(item.path)}
+                  ${item.summary ? `<div class="muted">${args.escapeHtml(item.summary)}</div>` : ""}
+                </li>
+              `).join("")}
+            </ul>
+          </div>
+        </div>
+      </section>
+    `
+    : "";
 
   if (!currentPhaseIsReview) {
-    return { beforeArtifact: reviewInspectionSection ? [reviewInspectionSection] : [], afterArtifact: [] };
+    return {
+      beforeArtifact: [reviewInspectionSection, reviewGateResultSection].filter(Boolean),
+      afterArtifact: []
+    };
   }
 
   return {
     beforeArtifact: [
-      ...(reviewInspectionSection ? [reviewInspectionSection] : []),
+      ...([reviewInspectionSection, reviewGateResultSection].filter(Boolean)),
       `
       <section class="detail-card detail-card--review-regression">
         <div class="review-regression">

@@ -220,6 +220,28 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
                             [])
                     ],
                     Warnings: [])),
+            ReviewStructuredGateResult: new ReviewStructuredGateResult(
+                "fail",
+                "Review failed because at least one validation strategy item was not validated successfully.",
+                HasBlockingFindings: true,
+                PassedValidationItemCount: 1,
+                FailedValidationItemCount: 1,
+                DeferredValidationItemCount: 0,
+                ["Review failed 1 validation strategy item(s)."],
+                [
+                    new ReviewCorrectionTarget(
+                        "Review must compare implementation back to the approved spec before final release approval.",
+                        "fail",
+                        true,
+                        "The review artifact did not validate this Technical Design validation strategy item.",
+                        "Fix the failed validation item and rerun the review phase.")
+                ],
+                [
+                    new ReviewEvidenceLink(
+                        "implementation-evidence-json",
+                        "/repo/.specs/us/US-0001/phases/03-implementation.evidence.json",
+                        "Machine-readable implementation evidence consumed by review.")
+                ]),
             TechnicalDesignContextPack: new TechnicalDesignContextPack(
                 [new RefinementSkillSelectionItem("../ai-skills-shared/.shared-skills/skills/dotnet/SKILL.md", "Selected for .NET repository scope.")],
                 new RefinementGraphScopeRequest(
@@ -291,6 +313,10 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("\"specApprovalPolicySnapshot\":{", json);
         Assert.Contains("\"implementationPolicySnapshot\":{", json);
         Assert.Contains("\"implementationStructuredEvidence\":{", json);
+        Assert.Contains("\"reviewStructuredGateResult\":{", json);
+        Assert.Contains("\"verdict\":\"fail\"", json);
+        Assert.Contains("\"correctionTargets\":[", json);
+        Assert.Contains("\"linkedEvidence\":[", json);
         Assert.Contains("\"technicalDesignContextPack\":{", json);
         Assert.Contains("\"evidenceRecord\":{", json);
         Assert.Contains("\"executionEnvelope\":{", json);
