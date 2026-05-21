@@ -962,6 +962,39 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesReceiptLinkedReviewPolicySnapshot()
+    {
+        var runner = new WorkflowRunner(
+            new InspectionAwarePhaseExecutionProvider(),
+            runtimeVersion: null,
+            refinementTolerance: "balanced",
+            completedUsLockOnCompleted: true,
+            reviewEvidencePolicy: "release");
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var reviewPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "review");
+
+        Assert.NotNull(reviewPhase.LatestExecutionInspection);
+        Assert.NotNull(reviewPhase.LatestExecutionInspection!.ReviewPolicySnapshot);
+        Assert.Equal("review", reviewPhase.LatestExecutionInspection.ReviewPolicySnapshot!.PhaseId);
+        Assert.Equal("release", reviewPhase.LatestExecutionInspection.ReviewPolicySnapshot.ActiveEvidencePolicy);
+        Assert.True(reviewPhase.LatestExecutionInspection.ReviewPolicySnapshot.ExecutionAllowed);
+        Assert.True(reviewPhase.LatestExecutionInspection.ReviewPolicySnapshot.ForceApprovalRequiresReason);
+        Assert.Contains(
+            reviewPhase.LatestExecutionInspection.ReviewPolicySnapshot.EvidenceRequirements,
+            item => item.Id == "validation_strategy_evidence" && item.PolicyInput == "release");
+    }
+
+    [Fact]
     public async Task GetUserStoryWorkflowAsync_ExposesExecutionEnvelopePerPhase()
     {
         var runner = new WorkflowRunner(new InspectionAwarePhaseExecutionProvider());

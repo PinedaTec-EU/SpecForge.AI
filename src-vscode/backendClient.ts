@@ -277,6 +277,7 @@ export interface PhaseExecutionInspectionDetails {
   readonly refinementGraphScopeRequest?: RefinementGraphScopeRequest | null;
   readonly specApprovalPolicySnapshot?: SpecPhaseApprovalPolicyDetails | null;
   readonly implementationPolicySnapshot?: ImplementationPhasePolicySnapshot | null;
+  readonly reviewPolicySnapshot?: ReviewPhasePolicySnapshot | null;
   readonly implementationStructuredEvidence?: ImplementationStructuredEvidence | null;
   readonly reviewStructuredGateResult?: ReviewStructuredGateResult | null;
   readonly technicalDesignContextPack?: TechnicalDesignContextPack | null;
@@ -399,6 +400,23 @@ export interface ReviewForceApprovalDecision {
   readonly timestampUtc: string;
   readonly targetPhase: string;
   readonly reason: string;
+}
+
+export interface ReviewPhasePolicySnapshot {
+  readonly phaseId: string;
+  readonly policyKey: string;
+  readonly summary: string;
+  readonly executionAllowed: boolean;
+  readonly executionBlockingReason?: string | null;
+  readonly permissions: PhaseExecutionRequirements;
+  readonly evidenceRequirements: readonly PhaseExecutionEvidenceRequirement[];
+  readonly eligibilityRules: readonly PhaseExecutionEligibilityRule[];
+  readonly activeEvidencePolicy: string;
+  readonly latestGateVerdict?: string | null;
+  readonly latestHasBlockingFindings?: boolean | null;
+  readonly forceApprovalRequiresReason: boolean;
+  readonly evidenceRules: readonly ReviewEvidencePolicyRule[];
+  readonly overrideConditions: readonly ReviewPhaseOverrideCondition[];
 }
 
 export interface TechnicalDesignContextPack {

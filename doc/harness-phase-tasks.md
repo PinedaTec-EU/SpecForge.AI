@@ -234,7 +234,7 @@ Current stance:
   Define review policy visibility.
   Output: inspectable review evidence policy, approval override conditions, and force-approval rationale capture.
 
-- [ ] `P-REV-02` Status: `todo`
+- [x] `P-REV-02` Status: `done`
   Persist the effective review policy snapshot.
   Output: audit-ready record of the governing review rules.
 

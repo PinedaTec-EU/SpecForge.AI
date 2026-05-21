@@ -180,6 +180,21 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
                 [new PhaseExecutionPathPolicy("<workspace-root>/.git/**", "write", "phase-agent", "enforced", "Git metadata must never be mutated by phase execution.")],
                 [new PhaseExecutionEvidenceRequirement("implementation_evidence_record", "Implementation must persist evidence markdown/json describing touched files and validation performed.", "enforced")],
                 [new PhaseExecutionEligibilityRule("implementation_write_scope_declared", "Implementation must expose writable scope and forbidden mutation zones so repository edits stay auditable.", "declared", null, true, "Writable scope and forbidden mutation zones are declared through the shared implementation policy contract.")]),
+            ReviewPolicySnapshot: new ReviewPhasePolicySnapshot(
+                "review",
+                "shared-phase-policy/v1",
+                "Phase `review` requires `read-write` repository access and applies `release` review evidence policy.",
+                ExecutionAllowed: true,
+                ExecutionBlockingReason: null,
+                new PhaseExecutionRequirements(true, "read-write", true),
+                [new PhaseExecutionEvidenceRequirement("validation_strategy_evidence", "Review must classify validation strategy items according to the active review evidence policy.", "enforced", "release")],
+                [new PhaseExecutionEligibilityRule("review_evidence_policy_selected", "Review execution must declare the active evidence policy so operators can interpret blocking evidence gaps.", "enforced", null, true, "Active review evidence policy: `release`.")],
+                "release",
+                "fail",
+                true,
+                true,
+                [new ReviewEvidencePolicyRule("automated", true, "Automated validation items are treated as blocking when they fail under the active policy.")],
+                [new ReviewPhaseOverrideCondition("force_approval_reason_required", "Operators must provide an explicit rationale before overriding review.", "required", true, null, "Approve Anyway always requires a human reason that is recorded in the workflow audit trail.")]),
             ImplementationStructuredEvidence: new ImplementationStructuredEvidence(
                 "2026-05-19T10:00:01.0000000+00:00",
                 "/repo/.specs/us/US-0001/phases/03-implementation.evidence.json",
@@ -312,6 +327,8 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("\"refinementGraphScopeRequest\":{", json);
         Assert.Contains("\"specApprovalPolicySnapshot\":{", json);
         Assert.Contains("\"implementationPolicySnapshot\":{", json);
+        Assert.Contains("\"reviewPolicySnapshot\":{", json);
+        Assert.Contains("\"activeEvidencePolicy\":\"release\"", json);
         Assert.Contains("\"implementationStructuredEvidence\":{", json);
         Assert.Contains("\"reviewStructuredGateResult\":{", json);
         Assert.Contains("\"verdict\":\"fail\"", json);

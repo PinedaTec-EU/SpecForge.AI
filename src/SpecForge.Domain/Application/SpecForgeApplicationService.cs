@@ -945,6 +945,7 @@ public sealed class SpecForgeApplicationService
                 receipt?.RefinementGraphScopeRequest is null &&
                 receipt?.SpecApprovalPolicySnapshot is null &&
                 receipt?.ImplementationPolicySnapshot is null &&
+                receipt?.ReviewPolicySnapshot is null &&
                 receipt?.ImplementationStructuredEvidence is null &&
                 receipt?.ReviewStructuredGateResult is null &&
                 receipt?.TechnicalDesignContextPack is null)
@@ -960,6 +961,7 @@ public sealed class SpecForgeApplicationService
                 receipt?.RefinementGraphScopeRequest,
                 receipt?.SpecApprovalPolicySnapshot,
                 receipt?.ImplementationPolicySnapshot,
+                receipt?.ReviewPolicySnapshot,
                 receipt?.ImplementationStructuredEvidence,
                 receipt?.ReviewStructuredGateResult,
                 receipt?.TechnicalDesignContextPack,

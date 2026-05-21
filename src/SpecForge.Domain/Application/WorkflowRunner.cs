@@ -1819,6 +1819,16 @@ public sealed class WorkflowRunner
                 GetPhaseExecutionReadiness(PhaseId.Implementation),
                 executionPolicy)
             : null;
+        var reviewPolicySnapshot = workflowRun.CurrentPhase == PhaseId.Review
+            ? ReviewPhasePolicySnapshotBuilder.Build(
+                GetPhaseExecutionReadiness(PhaseId.Review),
+                executionPolicy,
+                ReviewPhasePolicyDetailsBuilder.Build(
+                    reviewEvidencePolicy,
+                    isCurrentReviewPhase: true,
+                    reviewStructuredGateResult,
+                    []))
+            : null;
         var receiptPath = Path.Combine(paths.ExecutionReceiptsDirectoryPath, $"{executionId}.json");
         var outputManifest = new PhaseExecutionOutputManifest(
             PhaseExecutionReceiptStore.NormalizePath(artifactPath),
@@ -1851,6 +1861,7 @@ public sealed class WorkflowRunner
             refinementGraphScopeRequest,
             specApprovalPolicySnapshot,
             implementationPolicySnapshot,
+            reviewPolicySnapshot,
             implementationStructuredEvidenceSnapshot,
             reviewStructuredGateResult,
             technicalDesignContextPack,

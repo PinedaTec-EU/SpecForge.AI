@@ -22,6 +22,7 @@ public sealed record PhaseExecutionReceipt(
     RefinementGraphScopeRequest? RefinementGraphScopeRequest = null,
     SpecPhaseApprovalPolicyDetails? SpecApprovalPolicySnapshot = null,
     ImplementationPhasePolicySnapshot? ImplementationPolicySnapshot = null,
+    ReviewPhasePolicySnapshot? ReviewPolicySnapshot = null,
     ImplementationStructuredEvidence? ImplementationStructuredEvidence = null,
     ReviewStructuredGateResult? ReviewStructuredGateResult = null,
     TechnicalDesignContextPack? TechnicalDesignContextPack = null,
