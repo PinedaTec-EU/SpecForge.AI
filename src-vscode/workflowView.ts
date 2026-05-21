@@ -802,7 +802,8 @@ function buildPhaseSpecificSections(
     case "implementation":
       return buildImplementationPhaseSections({
         selectedPhase,
-        escapeHtml
+        escapeHtml,
+        escapeHtmlAttribute
       });
     case "review":
       return buildReviewPhaseSections({

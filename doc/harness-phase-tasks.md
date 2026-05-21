@@ -202,7 +202,7 @@ Current stance:
   Notes: preserve current evidence markdown/json outputs while introducing the structured substrate.
   Notes: implementation evidence should also be able to reference graph-guided file selection and graph refresh actions when they influenced change scope.
 
-- [ ] `H-IMP-02` Status: `todo`
+- [x] `H-IMP-02` Status: `done`
   Expose the effective prompt and context for `implementation`.
   Output: latest-execution inspector showing prompt, warnings, injected artifacts, context files, and evidence links.
 

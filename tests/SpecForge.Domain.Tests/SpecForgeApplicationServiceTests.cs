@@ -827,6 +827,31 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesImplementationExecutionInspection()
+    {
+        var runner = new WorkflowRunner(new InspectionAwarePhaseExecutionProvider());
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var implementationPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "implementation");
+
+        Assert.NotNull(implementationPhase.LatestExecutionInspection);
+        Assert.NotNull(implementationPhase.LatestExecutionInspection!.EffectivePrompt);
+        Assert.NotNull(implementationPhase.LatestExecutionInspection.EffectiveContext);
+        Assert.Equal("system instructions", implementationPhase.LatestExecutionInspection.EffectivePrompt!.SystemPrompt);
+        Assert.Equal("user instructions", implementationPhase.LatestExecutionInspection.EffectivePrompt.UserPrompt);
+        Assert.NotEmpty(implementationPhase.LatestExecutionInspection.EffectiveContext!.PreviousArtifacts);
+        Assert.NotNull(implementationPhase.LatestExecutionInspection.ReceiptPath);
+    }
+
+    [Fact]
     public async Task GetUserStoryWorkflowAsync_ExposesExecutionEnvelopePerPhase()
     {
         var runner = new WorkflowRunner(new InspectionAwarePhaseExecutionProvider());
