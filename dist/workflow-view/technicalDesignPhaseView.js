@@ -9,9 +9,11 @@ function buildTechnicalDesignPhaseSections(args) {
     const contextPack = selectedPhase.latestExecutionInspection?.technicalDesignContextPack
         ?? selectedPhase.latestExecutionInspection?.effectiveContext?.technicalDesignContextPack
         ?? null;
+    const gateSnapshot = selectedPhase.latestExecutionInspection?.technicalDesignGateSnapshot ?? null;
     const receiptPath = selectedPhase.latestExecutionInspection?.receiptPath?.trim() || null;
     const executionReadiness = selectedPhase.executionReadiness ?? null;
     const executionPolicy = selectedPhase.executionPolicy ?? null;
+    const technicalDesignGateContract = gateSnapshot ?? selectedPhase.technicalDesignGateContract ?? null;
     const technicalDesignInspectionSection = selectedPhase.phaseId === "technical-design"
         ? `
       <section class="detail-card">
@@ -165,7 +167,7 @@ function buildTechnicalDesignPhaseSections(args) {
       </section>
     `
         : "";
-    const technicalDesignPolicySection = selectedPhase.phaseId === "technical-design" && (executionReadiness || executionPolicy)
+    const technicalDesignPolicySection = selectedPhase.phaseId === "technical-design" && (executionReadiness || executionPolicy || technicalDesignGateContract)
         ? `
       <section class="detail-card">
         <h3>Technical Design Policy</h3>
@@ -178,8 +180,31 @@ function buildTechnicalDesignPhaseSections(args) {
           <div><strong>Repository Access</strong><div><code>${escapeHtml(executionPolicy?.permissions.repositoryAccess ?? executionReadiness?.requiredPermissions?.repositoryAccess ?? "unknown")}</code></div></div>
           <div><strong>Workspace Writes</strong><div><code>${(executionPolicy?.permissions.workspaceWriteAccess ?? executionReadiness?.requiredPermissions?.workspaceWriteAccess) ? "allowed" : "not allowed"}</code></div></div>
           <div><strong>Subagents</strong><div><code>${executionReadiness?.phaseSubagentsEnabled == null ? "not-declared" : executionReadiness.phaseSubagentsEnabled ? "enabled" : "disabled"}</code></div></div>
-          <div><strong>Quality Gate</strong><div><code>review-driven</code></div></div>
+          <div><strong>Quality Gate</strong><div><code>${escapeHtml(technicalDesignGateContract?.gateMode ?? "review-driven")}</code></div></div>
         </div>
+        ${technicalDesignGateContract
+            ? `
+            <div class="detail-grid">
+              <div><strong>Approval Required</strong><div><code>${technicalDesignGateContract.approvalRequiredNow ? "true" : "false"}</code></div></div>
+              <div><strong>Approval Ready</strong><div><code>${technicalDesignGateContract.approvalReadyNow ? "true" : "false"}</code></div></div>
+              <div><strong>Blocking Reason</strong><div><code>${escapeHtml(technicalDesignGateContract.approvalBlockingReason ?? "none")}</code></div></div>
+              <div><strong>Snapshot</strong><div><code>${gateSnapshot ? "persisted" : "live"}</code></div></div>
+              <div><strong>Structured Artifact</strong><div><code>${technicalDesignGateContract.hasStructuredTechnicalDesignArtifact ? "available" : "missing"}</code></div></div>
+              <div><strong>Validation Strategy</strong><div><code>${technicalDesignGateContract.hasValidationStrategy ? "declared" : "missing"}</code></div></div>
+              <div><strong>Evidence Record</strong><div><code>${technicalDesignGateContract.hasEvidenceRecord ? "available" : "missing"}</code></div></div>
+              <div><strong>Context Pack</strong><div><code>${technicalDesignGateContract.hasContextPack ? "available" : "missing"}</code></div></div>
+              <div><strong>Graph Intent</strong><div><code>${technicalDesignGateContract.graphIntentDeclared ? "declared" : "not-declared"}</code></div></div>
+            </div>
+            <div class="refinement-suggestions">
+              <div class="refinement-suggestion refinement-suggestion--static">
+                <div class="refinement-suggestion__body">
+                  <strong>Design Gate Rules</strong>
+                  ${renderPolicyRuleList(technicalDesignGateContract.gateRules, escapeHtml)}
+                </div>
+              </div>
+            </div>
+          `
+            : ""}
         ${executionPolicy
             ? `
             <div class="refinement-suggestions">
