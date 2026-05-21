@@ -995,6 +995,38 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesReleaseApprovalExecutionInspection()
+    {
+        var runner = new WorkflowRunner(new InspectionAwarePassingReviewPhaseExecutionProvider());
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var releaseApprovalPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "release-approval");
+
+        Assert.NotNull(releaseApprovalPhase.LatestExecutionInspection);
+        Assert.NotNull(releaseApprovalPhase.LatestExecutionInspection!.EffectivePrompt);
+        Assert.NotNull(releaseApprovalPhase.LatestExecutionInspection.EffectiveContext);
+        Assert.Equal("system instructions", releaseApprovalPhase.LatestExecutionInspection.EffectivePrompt!.SystemPrompt);
+        Assert.Equal("user instructions", releaseApprovalPhase.LatestExecutionInspection.EffectivePrompt.UserPrompt);
+        Assert.Contains(
+            releaseApprovalPhase.LatestExecutionInspection.EffectiveContext!.ContextFiles,
+            item => item.Path.EndsWith("/branch.yaml", StringComparison.Ordinal));
+        Assert.Contains(
+            releaseApprovalPhase.LatestExecutionInspection.EffectiveContext.ContextFiles,
+            item => item.Path.EndsWith("/timeline.md", StringComparison.Ordinal));
+        Assert.NotNull(releaseApprovalPhase.LatestExecutionInspection.ReceiptPath);
+    }
+
+    [Fact]
     public async Task GetUserStoryWorkflowAsync_ExposesExecutionEnvelopePerPhase()
     {
         var runner = new WorkflowRunner(new InspectionAwarePhaseExecutionProvider());
@@ -1670,6 +1702,42 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
             }
 
             return await inner.ExecuteAsync(context, cancellationToken);
+        }
+    }
+
+    private sealed class InspectionAwarePassingReviewPhaseExecutionProvider : IPhaseExecutionProvider
+    {
+        private readonly PassingReviewPhaseExecutionProvider inner = new();
+
+        public PhaseExecutionReadiness GetPhaseExecutionReadiness(PhaseId phaseId) =>
+            inner.GetPhaseExecutionReadiness(phaseId);
+
+        public Task<AutoRefinementAnswersResult?> TryAutoAnswerRefinementAsync(
+            PhaseExecutionContext context,
+            RefinementSession session,
+            CancellationToken cancellationToken = default) =>
+            inner.TryAutoAnswerRefinementAsync(context, session, cancellationToken);
+
+        public async Task<PhaseExecutionResult> ExecuteAsync(
+            PhaseExecutionContext context,
+            CancellationToken cancellationToken = default)
+        {
+            var result = await inner.ExecuteAsync(context, cancellationToken);
+            return result with
+            {
+                EffectivePrompt = new PhaseExecutionEffectivePrompt(
+                    "system instructions",
+                    "user instructions",
+                    ["prompt warning"],
+                    [
+                        new PhaseExecutionPromptSource(
+                            "phase-task",
+                            "/repo/.specs/prompts/phases/release-approval.execute.md",
+                            IsOverride: true,
+                            ContentSha256: "content-hash",
+                            EmbeddedContentSha256: "embedded-hash")
+                    ])
+            };
         }
     }
 

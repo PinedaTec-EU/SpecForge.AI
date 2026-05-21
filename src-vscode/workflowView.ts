@@ -814,7 +814,11 @@ function buildPhaseSpecificSections(
         escapeHtmlAttribute
       });
     case "release-approval":
-      return buildReleaseApprovalPhaseSections();
+      return buildReleaseApprovalPhaseSections({
+        selectedPhase,
+        escapeHtml,
+        escapeHtmlAttribute
+      });
     case "pr-preparation":
       return buildPrPreparationPhaseSections();
     case "completed":

@@ -240,7 +240,7 @@ Current stance:
 
 ### Release Approval
 
-- [ ] `H-RA-01` Status: `todo`
+- [x] `H-RA-01` Status: `done`
   Expose the effective prompt and context for `release-approval`.
   Output: latest-execution inspector including `branch.yaml`, `timeline.md`, and prior review evidence inputs.
 
