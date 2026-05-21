@@ -1058,6 +1058,94 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesReleaseApprovalPolicyVisibility()
+    {
+        await InitializeGitWorkspaceAsync(workspaceRoot);
+        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
+        await RunGitAsync(workspaceRoot, "add", "README.md");
+        await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
+
+        var runner = new WorkflowRunner(
+            new UserStoryFileStore(),
+            new InspectionAwarePassingReviewPhaseExecutionProvider(),
+            new RepositoryCategoryCatalog(),
+            new NoOpWorkBranchManager());
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var releaseApprovalPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "release-approval");
+
+        Assert.NotNull(releaseApprovalPhase.ReleaseApprovalPolicy);
+        Assert.Equal("ready", releaseApprovalPhase.ReleaseApprovalPolicy!.Status);
+        Assert.True(releaseApprovalPhase.ReleaseApprovalPolicy.ExecutionEligibleNow);
+        Assert.True(releaseApprovalPhase.ReleaseApprovalPolicy.ApprovalAvailableNow);
+        Assert.Equal("pass", releaseApprovalPhase.ReleaseApprovalPolicy.LatestReviewVerdict);
+        Assert.True(releaseApprovalPhase.ReleaseApprovalPolicy.HasReleaseEvidencePack);
+        Assert.True(releaseApprovalPhase.ReleaseApprovalPolicy.HasImplementationEvidence);
+        Assert.True(releaseApprovalPhase.ReleaseApprovalPolicy.HasBranchContext);
+        Assert.True(releaseApprovalPhase.ReleaseApprovalPolicy.HasTimelineContext);
+        Assert.Contains(
+            releaseApprovalPhase.ReleaseApprovalPolicy.EvidenceRules,
+            item => item.EvidenceKind == "release-evidence-pack" && item.IsRequired);
+        Assert.Contains(
+            releaseApprovalPhase.ReleaseApprovalPolicy.ExecutionConditions,
+            item => item.Id == "release_approval_requires_review_outcome" && item.IsCurrentlySatisfied);
+        Assert.Contains(
+            releaseApprovalPhase.ReleaseApprovalPolicy.ApprovalConditions,
+            item => item.Id == "release_approval_evidence_pack_present" && item.IsCurrentlySatisfied);
+    }
+
+    [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesReceiptLinkedReleaseApprovalPolicySnapshot()
+    {
+        await InitializeGitWorkspaceAsync(workspaceRoot);
+        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
+        await RunGitAsync(workspaceRoot, "add", "README.md");
+        await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
+
+        var runner = new WorkflowRunner(
+            new UserStoryFileStore(),
+            new InspectionAwarePassingReviewPhaseExecutionProvider(),
+            new RepositoryCategoryCatalog(),
+            new NoOpWorkBranchManager());
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var releaseApprovalPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "release-approval");
+
+        Assert.NotNull(releaseApprovalPhase.LatestExecutionInspection);
+        Assert.NotNull(releaseApprovalPhase.LatestExecutionInspection!.ReleaseApprovalPolicySnapshot);
+        Assert.Equal("release-approval", releaseApprovalPhase.LatestExecutionInspection.ReleaseApprovalPolicySnapshot!.PhaseId);
+        Assert.Equal("ready", releaseApprovalPhase.LatestExecutionInspection.ReleaseApprovalPolicySnapshot.Status);
+        Assert.True(releaseApprovalPhase.LatestExecutionInspection.ReleaseApprovalPolicySnapshot.ExecutionAllowed);
+        Assert.True(releaseApprovalPhase.LatestExecutionInspection.ReleaseApprovalPolicySnapshot.ApprovalAvailableNow);
+        Assert.True(releaseApprovalPhase.LatestExecutionInspection.ReleaseApprovalPolicySnapshot.HasReleaseEvidencePack);
+        Assert.Contains(
+            releaseApprovalPhase.LatestExecutionInspection.ReleaseApprovalPolicySnapshot.EvidenceRequirements,
+            item => item.Id == "release_evidence_bundle");
+    }
+
+    [Fact]
     public async Task GetUserStoryWorkflowAsync_ExposesExecutionEnvelopePerPhase()
     {
         var runner = new WorkflowRunner(new InspectionAwarePhaseExecutionProvider());
@@ -1860,6 +1948,47 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
 
             return await inner.ExecuteAsync(context, cancellationToken);
         }
+    }
+
+    private static async Task InitializeGitWorkspaceAsync(string workingDirectory)
+    {
+        Directory.CreateDirectory(workingDirectory);
+        await RunGitAsync(workingDirectory, "init");
+        await RunGitAsync(workingDirectory, "config", "user.email", "specforge-tests@example.com");
+        await RunGitAsync(workingDirectory, "config", "user.name", "SpecForge Tests");
+    }
+
+    private static async Task<string> RunGitAsync(string workingDirectory, params string[] arguments)
+    {
+        using var process = new System.Diagnostics.Process
+        {
+            StartInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "git",
+                WorkingDirectory = workingDirectory,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false
+            }
+        };
+
+        foreach (var argument in arguments)
+        {
+            process.StartInfo.ArgumentList.Add(argument);
+        }
+
+        process.Start();
+        var stdout = await process.StandardOutput.ReadToEndAsync();
+        var stderr = await process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+
+        if (process.ExitCode != 0)
+        {
+            throw new Xunit.Sdk.XunitException(
+                $"Git command failed in '{workingDirectory}': git {string.Join(' ', arguments)}{Environment.NewLine}{stderr}");
+        }
+
+        return stdout;
     }
 
     private sealed class NoOpWorkBranchManager : IWorkBranchManager

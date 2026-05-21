@@ -23,6 +23,7 @@ public sealed record PhaseExecutionReceipt(
     SpecPhaseApprovalPolicyDetails? SpecApprovalPolicySnapshot = null,
     ImplementationPhasePolicySnapshot? ImplementationPolicySnapshot = null,
     ReviewPhasePolicySnapshot? ReviewPolicySnapshot = null,
+    ReleaseApprovalPhasePolicySnapshot? ReleaseApprovalPolicySnapshot = null,
     ImplementationStructuredEvidence? ImplementationStructuredEvidence = null,
     ReviewStructuredGateResult? ReviewStructuredGateResult = null,
     ReleaseApprovalEvidencePack? ReleaseApprovalEvidencePack = null,

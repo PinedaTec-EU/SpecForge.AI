@@ -248,11 +248,11 @@ Current stance:
   Create the first structured release evidence pack.
   Output: bundled review verdict, changed files, validation results, release risk summary, and supporting artifact links.
 
-- [ ] `P-RA-01` Status: `todo`
+- [x] `P-RA-01` Status: `done`
   Define release-approval eligibility and evidence policy.
   Output: explicit rules for what must exist before release approval can run or be approved.
 
-- [ ] `P-RA-02` Status: `todo`
+- [x] `P-RA-02` Status: `done`
   Persist the effective release-approval policy snapshot.
   Output: audit-ready record of the governing release rules.
 

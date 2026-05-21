@@ -1800,6 +1800,87 @@ public sealed class WorkflowRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task ContinuePhaseAsync_PersistsReleaseApprovalPolicySnapshotInReceipt()
+    {
+        await InitializeGitWorkspaceAsync(workspaceRoot);
+        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
+        await RunGitAsync(workspaceRoot, "add", "README.md");
+        await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
+
+        var runner = new WorkflowRunner(
+            new UserStoryFileStore(),
+            new PassingReviewPhaseExecutionProvider(),
+            new RepositoryCategoryCatalog(),
+            new NoOpWorkBranchManager());
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Release approval snapshot", "feature", "workflow", "Initial source text");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0001");
+        var receiptPath = Directory
+            .GetFiles(paths.ExecutionReceiptsDirectoryPath, "*-release-approval.json")
+            .OrderBy(static path => path, StringComparer.Ordinal)
+            .Last();
+        var receipt = await PhaseExecutionReceiptStore.TryLoadAsync(receiptPath);
+
+        Assert.NotNull(receipt);
+        Assert.NotNull(receipt!.ReleaseApprovalPolicySnapshot);
+        Assert.Equal("release-approval", receipt.ReleaseApprovalPolicySnapshot!.PhaseId);
+        Assert.Equal("ready", receipt.ReleaseApprovalPolicySnapshot.Status);
+        Assert.True(receipt.ReleaseApprovalPolicySnapshot.ExecutionAllowed);
+        Assert.True(receipt.ReleaseApprovalPolicySnapshot.ApprovalAvailableNow);
+        Assert.True(receipt.ReleaseApprovalPolicySnapshot.HasReleaseEvidencePack);
+        Assert.Contains(receipt.ReleaseApprovalPolicySnapshot.EvidenceRequirements, item => item.Id == "release_evidence_bundle");
+    }
+
+    [Fact]
+    public async Task ApproveCurrentPhaseAsync_ReleaseApproval_RequiresStructuredEvidencePack()
+    {
+        await InitializeGitWorkspaceAsync(workspaceRoot);
+        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
+        await RunGitAsync(workspaceRoot, "add", "README.md");
+        await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
+
+        var runner = new WorkflowRunner(
+            new UserStoryFileStore(),
+            new PassingReviewPhaseExecutionProvider(),
+            new RepositoryCategoryCatalog(),
+            new NoOpWorkBranchManager());
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Release approval guard", "feature", "workflow", "Initial source text");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0001");
+        var receiptPath = Directory
+            .GetFiles(paths.ExecutionReceiptsDirectoryPath, "*-release-approval.json")
+            .OrderBy(static path => path, StringComparer.Ordinal)
+            .Last();
+        var receipt = await PhaseExecutionReceiptStore.TryLoadAsync(receiptPath);
+        Assert.NotNull(receipt);
+        await PhaseExecutionReceiptStore.PersistAsync(
+            paths.ExecutionReceiptsDirectoryPath,
+            receipt! with { ReleaseApprovalEvidencePack = null },
+            CancellationToken.None);
+
+        var error = await Assert.ThrowsAsync<WorkflowDomainException>(() =>
+            runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main"));
+
+        Assert.Contains("structured release evidence pack", error.Message);
+    }
+
+    [Fact]
     public async Task ContinuePhaseAsync_ImplementationAndReview_CreateTraceablePhaseCommits()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);

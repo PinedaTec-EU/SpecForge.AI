@@ -12,6 +12,15 @@ export function buildReleaseApprovalPhaseSections(args: ReleaseApprovalPhaseView
   const effectiveContext = args.selectedPhase.latestExecutionInspection?.effectiveContext ?? null;
   const evidenceRecord = args.selectedPhase.latestExecutionInspection?.evidenceRecord ?? null;
   const releaseEvidencePack = args.selectedPhase.latestExecutionInspection?.releaseApprovalEvidencePack ?? null;
+  const releaseApprovalPolicy = args.selectedPhase.latestExecutionInspection?.releaseApprovalPolicySnapshot
+    ?? args.selectedPhase.releaseApprovalPolicy
+    ?? null;
+  const releaseApprovalExecutionEligible = releaseApprovalPolicy
+    ? ("executionEligibleNow" in releaseApprovalPolicy
+        ? releaseApprovalPolicy.executionEligibleNow
+        : releaseApprovalPolicy.executionAllowed)
+    : false;
+  const executionPolicy = args.selectedPhase.executionPolicy ?? null;
   const receiptPath = args.selectedPhase.latestExecutionInspection?.receiptPath?.trim() || null;
 
   const releaseApprovalInspectionSection = args.selectedPhase.phaseId === "release-approval"
@@ -45,6 +54,72 @@ export function buildReleaseApprovalPhaseSections(args: ReleaseApprovalPhaseView
             </div>
           `
           : `<p class="muted">No persisted release-approval execution inspection is available yet for this user story.</p>`}
+      </section>
+    `
+    : "";
+  const releaseApprovalPolicySection = releaseApprovalPolicy
+    ? `
+      <section class="detail-card">
+        <h3>Release Approval Policy</h3>
+        <p class="panel-copy">
+          Inspect the explicit run and approval rules that currently govern release approval, including review-entry posture, commit consistency, and required supporting evidence.
+        </p>
+        <div class="detail-grid">
+          <div><strong>Status</strong><div><code>${args.escapeHtml(releaseApprovalPolicy.status ?? "unknown")}</code></div></div>
+          <div><strong>Execution Eligible</strong><div><code>${releaseApprovalExecutionEligible ? "true" : "false"}</code></div></div>
+          <div><strong>Approval Available</strong><div><code>${releaseApprovalPolicy.approvalAvailableNow ? "true" : "false"}</code></div></div>
+          <div><strong>Review Verdict</strong><div><code>${args.escapeHtml(releaseApprovalPolicy.latestReviewVerdict ?? "unknown")}</code></div></div>
+          <div><strong>Force Approved</strong><div><code>${releaseApprovalPolicy.latestReviewWasForceApproved ? "true" : "false"}</code></div></div>
+          <div><strong>HEAD Match</strong><div><code>${releaseApprovalPolicy.reviewCommitMatchesWorkspaceHead == null ? "n/a" : releaseApprovalPolicy.reviewCommitMatchesWorkspaceHead ? "true" : "false"}</code></div></div>
+          <div><strong>Release Artifact</strong><div><code>${releaseApprovalPolicy.hasReleaseArtifact ? "available" : "missing"}</code></div></div>
+          <div><strong>Evidence Pack</strong><div><code>${releaseApprovalPolicy.hasReleaseEvidencePack ? "available" : "missing"}</code></div></div>
+          <div><strong>Implementation Evidence</strong><div><code>${releaseApprovalPolicy.hasImplementationEvidence ? "available" : "missing"}</code></div></div>
+          <div><strong>Review Gate Result</strong><div><code>${releaseApprovalPolicy.hasReviewGateResult ? "available" : "missing"}</code></div></div>
+          <div><strong>Branch Context</strong><div><code>${releaseApprovalPolicy.hasBranchContext ? "available" : "missing"}</code></div></div>
+          <div><strong>Timeline Context</strong><div><code>${releaseApprovalPolicy.hasTimelineContext ? "available" : "missing"}</code></div></div>
+        </div>
+        <div class="detail-grid">
+          <div><strong>Execution Blocking Reason</strong><div><code>${args.escapeHtml(releaseApprovalPolicy.executionBlockingReason ?? "none")}</code></div></div>
+          <div><strong>Approval Blocking Reason</strong><div><code>${args.escapeHtml(releaseApprovalPolicy.approvalBlockingReason ?? "none")}</code></div></div>
+          <div><strong>Current HEAD</strong><div><code>${args.escapeHtml(releaseApprovalPolicy.currentWorkspaceHeadSha ?? "unavailable")}</code></div></div>
+          <div><strong>Approved Review Commit</strong><div><code>${args.escapeHtml(releaseApprovalPolicy.approvedReviewCommitSha ?? "unavailable")}</code></div></div>
+        </div>
+        <div class="detail-stack">
+          <div>
+            <strong>Evidence Requirements</strong>
+            <ul class="detail-list">
+              ${(releaseApprovalPolicy.evidenceRules ?? []).map(item => `
+                <li>
+                  <code>${args.escapeHtml(item.evidenceKind)}</code> · ${item.isRequired ? "required" : "optional"}
+                  <div class="muted">${args.escapeHtml(item.currentStatusMessage)}</div>
+                </li>
+              `).join("")}
+            </ul>
+          </div>
+          <div>
+            <strong>Execution Conditions</strong>
+            ${renderReleaseApprovalConditionList(releaseApprovalPolicy.executionConditions, args.escapeHtml)}
+          </div>
+          <div>
+            <strong>Approval Conditions</strong>
+            ${renderReleaseApprovalConditionList(releaseApprovalPolicy.approvalConditions, args.escapeHtml)}
+          </div>
+          ${executionPolicy
+            ? `
+              <div>
+                <strong>Shared Eligibility Rules</strong>
+                <ul class="detail-list">
+                  ${executionPolicy.eligibilityRules.map(item => `
+                    <li>
+                      <code>${args.escapeHtml(item.id)}</code> · ${args.escapeHtml(item.description)}
+                      ${item.currentStatusMessage ? `<div class="muted">${args.escapeHtml(item.currentStatusMessage)}</div>` : ""}
+                    </li>
+                  `).join("")}
+                </ul>
+              </div>
+            `
+            : ""}
+        </div>
       </section>
     `
     : "";
@@ -121,7 +196,35 @@ export function buildReleaseApprovalPhaseSections(args: ReleaseApprovalPhaseView
     : "";
 
   return {
-    beforeArtifact: [releaseApprovalInspectionSection, releaseEvidencePackSection].filter(Boolean),
+    beforeArtifact: [releaseApprovalInspectionSection, releaseApprovalPolicySection, releaseEvidencePackSection].filter(Boolean),
     afterArtifact: []
   };
+}
+
+function renderReleaseApprovalConditionList(
+  items: readonly {
+    readonly id: string;
+    readonly description: string;
+    readonly status: string;
+    readonly isCurrentlySatisfied: boolean;
+    readonly blockingReason?: string | null;
+    readonly currentStatusMessage?: string | null;
+  }[],
+  escapeHtml: (value: string) => string
+): string {
+  if (items.length === 0) {
+    return "<p class=\"muted\">No release-approval policy conditions were recorded.</p>";
+  }
+
+  return `
+    <ul class="detail-list">
+      ${items.map(item => `
+        <li>
+          <code>${escapeHtml(item.id)}</code> · ${escapeHtml(item.status)} · ${escapeHtml(item.description)}
+          ${item.currentStatusMessage ? `<div class="muted">${escapeHtml(item.currentStatusMessage)}</div>` : ""}
+          ${item.blockingReason ? `<div class="muted">Blocking reason: <code>${escapeHtml(item.blockingReason)}</code></div>` : ""}
+        </li>
+      `).join("")}
+    </ul>
+  `;
 }

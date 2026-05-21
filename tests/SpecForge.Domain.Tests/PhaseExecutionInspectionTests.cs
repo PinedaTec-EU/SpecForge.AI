@@ -195,6 +195,42 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
                 true,
                 [new ReviewEvidencePolicyRule("automated", true, "Automated validation items are treated as blocking when they fail under the active policy.")],
                 [new ReviewPhaseOverrideCondition("force_approval_reason_required", "Operators must provide an explicit rationale before overriding review.", "required", true, null, "Approve Anyway always requires a human reason that is recorded in the workflow audit trail.")]),
+            ReleaseApprovalPolicySnapshot: new ReleaseApprovalPhasePolicySnapshot(
+                "release-approval",
+                "shared-phase-policy/v1",
+                "Phase `release-approval` requires `read` repository access and does not allow repository writes by the assigned phase agent.",
+                "ready",
+                ExecutionAllowed: true,
+                ExecutionBlockingReason: null,
+                new PhaseExecutionRequirements(true, "read", false),
+                [
+                    new PhaseExecutionEvidenceRequirement("release_evidence_bundle", "Release approval must persist a structured release evidence pack bundling review outcome, changed files, validation results, residual risks, and supporting artifact links.", "enforced")
+                ],
+                [
+                    new PhaseExecutionEligibilityRule("release_approval_review_entry_visible", "Release approval must surface whether it was reached through a passing review or an explicit review force-approval decision.", "declared", null, true, "Release-approval policy details record both the latest review verdict and any force-approval transition.")
+                ],
+                ApprovalAvailableNow: true,
+                ApprovalBlockingReason: null,
+                LatestReviewVerdict: "fail",
+                LatestReviewWasForceApproved: true,
+                HasReleaseArtifact: true,
+                HasReleaseEvidencePack: true,
+                HasImplementationEvidence: true,
+                HasReviewGateResult: true,
+                HasBranchContext: true,
+                HasTimelineContext: true,
+                CurrentWorkspaceHeadSha: "abc1234",
+                ApprovedReviewCommitSha: "def5678",
+                ReviewCommitMatchesWorkspaceHead: null,
+                [
+                    new ReleaseApprovalEvidenceRule("release-evidence-pack", true, "The latest release-approval receipt contains a structured release evidence pack.")
+                ],
+                [
+                    new ReleaseApprovalPolicyCondition("release_approval_requires_review_outcome", "Release approval can only start after review passes or a human explicitly force-approves review.", "satisfied", true, null, "Release approval may run because a human force-approval decision moved the workflow out of review.")
+                ],
+                [
+                    new ReleaseApprovalPolicyCondition("release_approval_evidence_pack_present", "The latest release-approval receipt must persist a structured release evidence pack.", "satisfied", true, null, "The structured release evidence pack is available for operator inspection.")
+                ]),
             ImplementationStructuredEvidence: new ImplementationStructuredEvidence(
                 "2026-05-19T10:00:01.0000000+00:00",
                 "/repo/.specs/us/US-0001/phases/03-implementation.evidence.json",
@@ -355,6 +391,7 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("\"specApprovalPolicySnapshot\":{", json);
         Assert.Contains("\"implementationPolicySnapshot\":{", json);
         Assert.Contains("\"reviewPolicySnapshot\":{", json);
+        Assert.Contains("\"releaseApprovalPolicySnapshot\":{", json);
         Assert.Contains("\"activeEvidencePolicy\":\"release\"", json);
         Assert.Contains("\"implementationStructuredEvidence\":{", json);
         Assert.Contains("\"reviewStructuredGateResult\":{", json);
@@ -383,7 +420,7 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
     }
 
     [Fact]
-    public void PhaseExecutionPolicyCatalog_DescribesImplementationAndReviewPolicies()
+    public void PhaseExecutionPolicyCatalog_DescribesImplementationReviewAndReleaseApprovalPolicies()
     {
         var implementationPolicy = PhaseExecutionPolicyCatalog.Describe(
             PhaseId.Implementation,
@@ -398,6 +435,12 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
                 CanExecute: true,
                 RequiredPermissions: PhaseExecutionPermissionCatalog.Describe(PhaseId.Review)),
             reviewEvidencePolicy: "release");
+        var releaseApprovalPolicy = PhaseExecutionPolicyCatalog.Describe(
+            PhaseId.ReleaseApproval,
+            new PhaseExecutionReadiness(
+                PhaseId.ReleaseApproval,
+                CanExecute: true,
+                RequiredPermissions: PhaseExecutionPermissionCatalog.Describe(PhaseId.ReleaseApproval)));
 
         Assert.Equal("implementation", implementationPolicy.PhaseId);
         Assert.Equal("shared-phase-policy/v1", implementationPolicy.PolicyKey);
@@ -413,6 +456,9 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("`release`", reviewPolicy.Summary);
         Assert.Contains(reviewPolicy.EvidenceRequirements, item => item.Id == "validation_strategy_evidence" && item.PolicyInput == "release");
         Assert.Contains(reviewPolicy.EligibilityRules, rule => rule.Id == "review_evidence_policy_selected");
+        Assert.Contains(releaseApprovalPolicy.EvidenceRequirements, item => item.Id == "release_evidence_bundle" && item.Enforcement == "enforced");
+        Assert.Contains(releaseApprovalPolicy.EvidenceRequirements, item => item.Id == "branch_and_timeline_context");
+        Assert.Contains(releaseApprovalPolicy.EligibilityRules, rule => rule.Id == "release_approval_review_entry_visible");
     }
 
     [Fact]

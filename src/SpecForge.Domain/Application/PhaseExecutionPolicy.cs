@@ -293,8 +293,16 @@ public static class PhaseExecutionPolicyCatalog
             [
                 new PhaseExecutionEvidenceRequirement(
                     "release_evidence_bundle",
-                    "Release approval must inspect review output, branch metadata, and workflow timeline context.",
-                    EnforcementDeclared)
+                    "Release approval must persist a structured release evidence pack bundling review outcome, changed files, validation results, residual risks, and supporting artifact links.",
+                    EnforcementEnforced),
+                new PhaseExecutionEvidenceRequirement(
+                    "branch_and_timeline_context",
+                    "Release approval must retain both branch metadata and workflow timeline context in the supporting artifact set.",
+                    EnforcementEnforced),
+                new PhaseExecutionEvidenceRequirement(
+                    "implementation_review_lineage",
+                    "Release approval must expose implementation evidence and the upstream review verdict before the operator can approve it.",
+                    EnforcementEnforced)
             ],
             _ =>
             [
@@ -388,6 +396,22 @@ public static class PhaseExecutionPolicyCatalog
                 EnforcementDeclared,
                 IsCurrentlySatisfied: true,
                 CurrentStatusMessage: "Implementation remains review-gated; review is the authoritative downstream quality decision."));
+        }
+
+        if (phaseId == PhaseId.ReleaseApproval)
+        {
+            rules.Add(new PhaseExecutionEligibilityRule(
+                "release_approval_review_entry_visible",
+                "Release approval must surface whether it was reached through a passing review or an explicit review force-approval decision.",
+                EnforcementDeclared,
+                IsCurrentlySatisfied: true,
+                CurrentStatusMessage: "Release-approval policy details record both the latest review verdict and any force-approval transition."));
+            rules.Add(new PhaseExecutionEligibilityRule(
+                "release_approval_supporting_evidence_visible",
+                "Release approval must expose branch context, timeline context, implementation evidence, and review outcome before approval.",
+                EnforcementDeclared,
+                IsCurrentlySatisfied: true,
+                CurrentStatusMessage: "Release-approval policy details and snapshots declare the required upstream evidence pack components."));
         }
 
         return rules;

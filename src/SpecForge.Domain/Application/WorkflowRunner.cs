@@ -195,7 +195,7 @@ public sealed class WorkflowRunner
 
         await TrackRuntimeVersionChangeAsync(paths, workflowRun, NormalizeActor(actor), workflowRun.CurrentPhase, cancellationToken);
         var branchWasMissing = workflowRun.Branch is null;
-        await EnsureCurrentPhaseIsApprovableAsync(paths, workflowRun.CurrentPhase, cancellationToken);
+        await EnsureCurrentPhaseIsApprovableAsync(paths, workflowRun.CurrentPhase, workspaceRoot, cancellationToken);
         var metadata = await ReadUserStoryMetadataAsync(paths.MainArtifactPath, usId, cancellationToken);
         var workBranchName = string.IsNullOrWhiteSpace(workBranch)
             ? BuildWorkBranchName(usId, metadata.Title, metadata.Kind)
@@ -1831,6 +1831,17 @@ public sealed class WorkflowRunner
                     reviewStructuredGateResult,
                     []))
             : null;
+        var releaseApprovalPolicySnapshot = workflowRun.CurrentPhase == PhaseId.ReleaseApproval
+            ? ReleaseApprovalPhasePolicySnapshotBuilder.Build(
+                GetPhaseExecutionReadiness(PhaseId.ReleaseApproval),
+                executionPolicy,
+                ReleaseApprovalPolicyDetailsBuilder.Build(
+                    workspaceRoot,
+                    paths,
+                    isCurrentReleaseApprovalPhase: true,
+                    releaseApprovalEvidencePack,
+                    TimelineMarkdownParser.ParseEvents(File.ReadAllText(paths.TimelineFilePath)).ToArray()))
+            : null;
         var receiptPath = Path.Combine(paths.ExecutionReceiptsDirectoryPath, $"{executionId}.json");
         var outputManifest = new PhaseExecutionOutputManifest(
             PhaseExecutionReceiptStore.NormalizePath(artifactPath),
@@ -1864,6 +1875,7 @@ public sealed class WorkflowRunner
             specApprovalPolicySnapshot,
             implementationPolicySnapshot,
             reviewPolicySnapshot,
+            releaseApprovalPolicySnapshot,
             implementationStructuredEvidenceSnapshot,
             reviewStructuredGateResult,
             releaseApprovalEvidencePack,
@@ -3394,8 +3406,15 @@ public sealed class WorkflowRunner
     private static async Task EnsureCurrentPhaseIsApprovableAsync(
         UserStoryFilePaths paths,
         PhaseId currentPhase,
+        string workspaceRoot,
         CancellationToken cancellationToken)
     {
+        if (currentPhase == PhaseId.ReleaseApproval)
+        {
+            await ReleaseApprovalPolicyDetailsBuilder.EnsureApprovableAsync(workspaceRoot, paths, cancellationToken);
+            return;
+        }
+
         if (currentPhase != PhaseId.Spec)
         {
             return;

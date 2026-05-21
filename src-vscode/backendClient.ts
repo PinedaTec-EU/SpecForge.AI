@@ -220,6 +220,7 @@ export interface WorkflowPhaseDetails {
   readonly executionEnvelope?: PhaseExecutionEnvelope | null;
   readonly specApprovalPolicy?: SpecPhaseApprovalPolicyDetails | null;
   readonly reviewPolicy?: ReviewPhasePolicyDetails | null;
+  readonly releaseApprovalPolicy?: ReleaseApprovalPolicyDetails | null;
   readonly latestExecutionInspection?: PhaseExecutionInspectionDetails | null;
 }
 
@@ -278,6 +279,7 @@ export interface PhaseExecutionInspectionDetails {
   readonly specApprovalPolicySnapshot?: SpecPhaseApprovalPolicyDetails | null;
   readonly implementationPolicySnapshot?: ImplementationPhasePolicySnapshot | null;
   readonly reviewPolicySnapshot?: ReviewPhasePolicySnapshot | null;
+  readonly releaseApprovalPolicySnapshot?: ReleaseApprovalPhasePolicySnapshot | null;
   readonly implementationStructuredEvidence?: ImplementationStructuredEvidence | null;
   readonly reviewStructuredGateResult?: ReviewStructuredGateResult | null;
   readonly releaseApprovalEvidencePack?: ReleaseApprovalEvidencePack | null;
@@ -429,6 +431,71 @@ export interface ReleaseApprovalEvidencePack {
   readonly validationResults: readonly ReleaseApprovalValidationResult[];
   readonly releaseRiskSummary: readonly string[];
   readonly supportingArtifacts: readonly ReleaseApprovalArtifactLink[];
+}
+
+export interface ReleaseApprovalPolicyDetails {
+  readonly status: string;
+  readonly executionEligibleNow: boolean;
+  readonly executionBlockingReason?: string | null;
+  readonly approvalAvailableNow: boolean;
+  readonly approvalBlockingReason?: string | null;
+  readonly latestReviewVerdict?: string | null;
+  readonly latestReviewWasForceApproved: boolean;
+  readonly hasReleaseArtifact: boolean;
+  readonly hasReleaseEvidencePack: boolean;
+  readonly hasImplementationEvidence: boolean;
+  readonly hasReviewGateResult: boolean;
+  readonly hasBranchContext: boolean;
+  readonly hasTimelineContext: boolean;
+  readonly currentWorkspaceHeadSha?: string | null;
+  readonly approvedReviewCommitSha?: string | null;
+  readonly reviewCommitMatchesWorkspaceHead?: boolean | null;
+  readonly evidenceRules: readonly ReleaseApprovalEvidenceRule[];
+  readonly executionConditions: readonly ReleaseApprovalPolicyCondition[];
+  readonly approvalConditions: readonly ReleaseApprovalPolicyCondition[];
+}
+
+export interface ReleaseApprovalEvidenceRule {
+  readonly evidenceKind: string;
+  readonly isRequired: boolean;
+  readonly currentStatusMessage: string;
+}
+
+export interface ReleaseApprovalPolicyCondition {
+  readonly id: string;
+  readonly description: string;
+  readonly status: string;
+  readonly isCurrentlySatisfied: boolean;
+  readonly blockingReason?: string | null;
+  readonly currentStatusMessage?: string | null;
+}
+
+export interface ReleaseApprovalPhasePolicySnapshot {
+  readonly phaseId: string;
+  readonly policyKey: string;
+  readonly summary: string;
+  readonly status: string;
+  readonly executionAllowed: boolean;
+  readonly executionBlockingReason?: string | null;
+  readonly permissions: PhaseExecutionRequirements;
+  readonly evidenceRequirements: readonly PhaseExecutionEvidenceRequirement[];
+  readonly eligibilityRules: readonly PhaseExecutionEligibilityRule[];
+  readonly approvalAvailableNow: boolean;
+  readonly approvalBlockingReason?: string | null;
+  readonly latestReviewVerdict?: string | null;
+  readonly latestReviewWasForceApproved: boolean;
+  readonly hasReleaseArtifact: boolean;
+  readonly hasReleaseEvidencePack: boolean;
+  readonly hasImplementationEvidence: boolean;
+  readonly hasReviewGateResult: boolean;
+  readonly hasBranchContext: boolean;
+  readonly hasTimelineContext: boolean;
+  readonly currentWorkspaceHeadSha?: string | null;
+  readonly approvedReviewCommitSha?: string | null;
+  readonly reviewCommitMatchesWorkspaceHead?: boolean | null;
+  readonly evidenceRules: readonly ReleaseApprovalEvidenceRule[];
+  readonly executionConditions: readonly ReleaseApprovalPolicyCondition[];
+  readonly approvalConditions: readonly ReleaseApprovalPolicyCondition[];
 }
 
 export interface ReleaseApprovalChangedFile {

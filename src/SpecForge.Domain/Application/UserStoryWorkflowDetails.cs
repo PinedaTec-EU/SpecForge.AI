@@ -54,6 +54,7 @@ public sealed record WorkflowPhaseDetails(
     PhaseExecutionEnvelope? ExecutionEnvelope = null,
     SpecPhaseApprovalPolicyDetails? SpecApprovalPolicy = null,
     ReviewPhasePolicyDetails? ReviewPolicy = null,
+    ReleaseApprovalPolicyDetails? ReleaseApprovalPolicy = null,
     PhaseExecutionInspectionDetails? LatestExecutionInspection = null);
 
 public sealed record PhaseExecutionBoundarySummary(
@@ -70,6 +71,7 @@ public sealed record PhaseExecutionInspectionDetails(
     SpecPhaseApprovalPolicyDetails? SpecApprovalPolicySnapshot,
     ImplementationPhasePolicySnapshot? ImplementationPolicySnapshot,
     ReviewPhasePolicySnapshot? ReviewPolicySnapshot,
+    ReleaseApprovalPhasePolicySnapshot? ReleaseApprovalPolicySnapshot,
     ImplementationStructuredEvidence? ImplementationStructuredEvidence,
     ReviewStructuredGateResult? ReviewStructuredGateResult,
     ReleaseApprovalEvidencePack? ReleaseApprovalEvidencePack,

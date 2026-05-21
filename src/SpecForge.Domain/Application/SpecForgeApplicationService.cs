@@ -265,7 +265,7 @@ public sealed class SpecForgeApplicationService
                     workflowRun.Branch.PullRequest.Url,
                     workflowRun.Branch.PullRequest.RemoteBranch,
                     workflowRun.Branch.PullRequest.PublishedAtUtc?.ToString("O")),
-            await BuildPhaseDetailsAsync(workflowRun, paths, timelineEvents, cancellationToken),
+            await BuildPhaseDetailsAsync(workspaceRoot, workflowRun, paths, timelineEvents, cancellationToken),
             new CurrentPhaseControls(
                 currentPhase.CanAdvance,
                 currentPhase.CanApprove,
@@ -475,6 +475,17 @@ public sealed class SpecForgeApplicationService
                     canApprove = SpecJson.GetUnresolvedQuestions(specDocument).Count == 0;
                 }
             }
+        }
+        else if (canApprove && workflowRun.CurrentPhase == Workflow.PhaseId.ReleaseApproval)
+        {
+            var releaseApprovalPolicy = ReleaseApprovalPolicyDetailsBuilder.Build(
+                workspaceRoot,
+                paths,
+                isCurrentReleaseApprovalPhase: true,
+                releaseApprovalEvidencePack: await TryReadLatestReleaseApprovalEvidencePackAsync(paths, cancellationToken),
+                timelineEvents: TimelineMarkdownParser.ParseEvents(await File.ReadAllTextAsync(paths.TimelineFilePath, cancellationToken)).ToArray());
+            canApprove = releaseApprovalPolicy.ApprovalAvailableNow;
+            blockingReason = releaseApprovalPolicy.ApprovalBlockingReason;
         }
 
         if (workflowRun.CurrentPhase == Workflow.PhaseId.Review)
@@ -801,6 +812,7 @@ public sealed class SpecForgeApplicationService
     }
 
     private async Task<IReadOnlyCollection<WorkflowPhaseDetails>> BuildPhaseDetailsAsync(
+        string workspaceRoot,
         Workflow.WorkflowRun workflowRun,
         UserStoryFilePaths paths,
         IReadOnlyCollection<TimelineEventDetails> timelineEvents,
@@ -849,6 +861,14 @@ public sealed class SpecForgeApplicationService
                     latestExecutionInspection?.ReviewStructuredGateResult,
                     timelineEvents)
                 : null;
+            var releaseApprovalPolicy = phaseId == PhaseId.ReleaseApproval
+                ? ReleaseApprovalPolicyDetailsBuilder.Build(
+                    workspaceRoot,
+                    paths,
+                    isCurrent,
+                    latestExecutionInspection?.ReleaseApprovalEvidencePack,
+                    timelineEvents)
+                : null;
 
             materializedPhases.Add(new WorkflowPhaseDetails(
                 phaseSlug,
@@ -872,6 +892,7 @@ public sealed class SpecForgeApplicationService
                 executionEnvelope,
                 specApprovalPolicy,
                 reviewPolicy,
+                releaseApprovalPolicy,
                 latestExecutionInspection));
         }
 
@@ -899,6 +920,7 @@ public sealed class SpecForgeApplicationService
                 ExecutionEnvelope: null,
                 SpecApprovalPolicy: null,
                 ReviewPolicy: null,
+                ReleaseApprovalPolicy: null,
                 LatestExecutionInspection: null));
         }
 
@@ -946,6 +968,7 @@ public sealed class SpecForgeApplicationService
                 receipt?.SpecApprovalPolicySnapshot is null &&
                 receipt?.ImplementationPolicySnapshot is null &&
                 receipt?.ReviewPolicySnapshot is null &&
+                receipt?.ReleaseApprovalPolicySnapshot is null &&
                 receipt?.ImplementationStructuredEvidence is null &&
                 receipt?.ReviewStructuredGateResult is null &&
                 receipt?.ReleaseApprovalEvidencePack is null &&
@@ -963,6 +986,7 @@ public sealed class SpecForgeApplicationService
                 receipt?.SpecApprovalPolicySnapshot,
                 receipt?.ImplementationPolicySnapshot,
                 receipt?.ReviewPolicySnapshot,
+                receipt?.ReleaseApprovalPolicySnapshot,
                 receipt?.ImplementationStructuredEvidence,
                 receipt?.ReviewStructuredGateResult,
                 receipt?.ReleaseApprovalEvidencePack,
@@ -1013,6 +1037,23 @@ public sealed class SpecForgeApplicationService
         {
             return null;
         }
+    }
+
+    private static async Task<ReleaseApprovalEvidencePack?> TryReadLatestReleaseApprovalEvidencePackAsync(
+        UserStoryFilePaths paths,
+        CancellationToken cancellationToken)
+    {
+        if (!Directory.Exists(paths.ExecutionReceiptsDirectoryPath))
+        {
+            return null;
+        }
+
+        var receiptPath = Directory
+            .GetFiles(paths.ExecutionReceiptsDirectoryPath, "*-release-approval.json")
+            .OrderBy(static path => path, StringComparer.Ordinal)
+            .LastOrDefault();
+        var receipt = await PhaseExecutionReceiptStore.TryLoadAsync(receiptPath, cancellationToken);
+        return receipt?.ReleaseApprovalEvidencePack;
     }
 
     private async Task<IReadOnlyCollection<UserStorySummary>> BuildChildStorySummariesAsync(
