@@ -5,6 +5,7 @@ function buildRefinementPhaseSections(args) {
     const { workflow, selectedPhase, state, heroTokenClass, escapeHtml, escapeHtmlAttribute } = args;
     const effectiveContext = selectedPhase.latestExecutionInspection?.effectiveContext ?? null;
     const refinementPolicy = selectedPhase.latestExecutionInspection?.refinementPolicySnapshot ?? workflow.refinement?.policy ?? null;
+    const autoAnswerInspection = refinementPolicy?.autoAnswer.lastAttempt ?? selectedPhase.latestExecutionInspection?.autoRefinementAnswerInspection ?? null;
     const skillPreselection = selectedPhase.latestExecutionInspection?.refinementSkillPreselection ?? null;
     const graphScopeRequest = selectedPhase.latestExecutionInspection?.refinementGraphScopeRequest ?? null;
     const graphScopeSection = graphScopeRequest
@@ -125,6 +126,44 @@ function buildRefinementPhaseSections(args) {
       </div>
     `
         : "";
+    const autoAnswerInspectionSection = autoAnswerInspection
+        ? `
+      <div class="refinement-context">
+        <div class="refinement-context__copy">
+          <h4>Last Auto-Answer Attempt</h4>
+          <p>
+            This receipt-linked record captures the latest automatic refinement answering attempt separately from the normal refinement phase execution.
+          </p>
+        </div>
+        <div class="detail-grid">
+          <div><strong>Status</strong><div><code>${escapeHtml(autoAnswerInspection.status)}</code></div></div>
+          <div><strong>Resolved Answers</strong><div><code>${autoAnswerInspection.resolvedAnswerCount}</code></div></div>
+          <div><strong>Timestamp</strong><div><code>${escapeHtml(autoAnswerInspection.timestampUtc ?? "unavailable")}</code></div></div>
+          <div><strong>Receipt</strong><div><code>${escapeHtml(autoAnswerInspection.receiptPath ?? "not persisted")}</code></div></div>
+        </div>
+        <div class="refinement-suggestions">
+          <div class="refinement-suggestion refinement-suggestion--static">
+            <div class="refinement-suggestion__body">
+              <strong>Attempt Summary</strong>
+              <span>${escapeHtml(autoAnswerInspection.summary)}</span>
+              ${autoAnswerInspection.reason ? `<span>${escapeHtml(autoAnswerInspection.reason)}</span>` : ""}
+            </div>
+          </div>
+        </div>
+        <div class="detail-actions detail-actions--files detail-actions--refinement">
+          ${autoAnswerInspection.effectivePrompt
+            ? `<button class="workflow-action-button workflow-action-button--document" type="button" data-open-auto-refinement-prompt-modal>View Last Auto-Answer Prompt</button>`
+            : ""}
+          ${autoAnswerInspection.effectiveContext
+            ? `<button class="workflow-action-button workflow-action-button--document" type="button" data-open-auto-refinement-context-modal>View Last Auto-Answer Context</button>`
+            : ""}
+          ${autoAnswerInspection.receiptPath
+            ? `<button class="workflow-action-button workflow-action-button--document" data-command="openArtifact" data-path="${escapeHtmlAttribute(autoAnswerInspection.receiptPath)}">Open Auto-Answer Receipt</button>`
+            : ""}
+        </div>
+      </div>
+    `
+        : "";
     const refinementContextSummarySection = effectiveContext
         ? `
       <div class="refinement-context">
@@ -230,6 +269,7 @@ function buildRefinementPhaseSections(args) {
         </div>
         ${workflow.refinement.reason ? `<p class="refinement-reason">${escapeHtml(workflow.refinement.reason)}</p>` : ""}
         ${refinementPolicySection}
+        ${autoAnswerInspectionSection}
         ${skillPreselectionSection}
         ${graphScopeSection}
         ${refinementInspectionSection}
