@@ -7,6 +7,7 @@ function buildReviewPhaseSections(args) {
     const effectiveContext = args.selectedPhase.latestExecutionInspection?.effectiveContext ?? null;
     const evidenceRecord = args.selectedPhase.latestExecutionInspection?.evidenceRecord ?? null;
     const structuredGateResult = args.selectedPhase.latestExecutionInspection?.reviewStructuredGateResult ?? null;
+    const reviewPolicySnapshot = args.selectedPhase.latestExecutionInspection?.reviewPolicySnapshot ?? null;
     const reviewPolicy = args.selectedPhase.reviewPolicy ?? null;
     const receiptPath = args.selectedPhase.latestExecutionInspection?.receiptPath?.trim() || null;
     const implementationAttempts = (0, workflowAutomation_1.countImplementationAttempts)(args.workflow);
@@ -115,9 +116,23 @@ function buildReviewPhaseSections(args) {
           <div><strong>Blocking Findings</strong><div><code>${reviewPolicy.latestHasBlockingFindings === true ? "yes" : reviewPolicy.latestHasBlockingFindings === false ? "no" : "unknown"}</code></div></div>
           <div><strong>Force Approve Now</strong><div><code>${reviewPolicy.forceApprovalAvailableNow ? "available" : "blocked"}</code></div></div>
           <div><strong>Reason Required</strong><div><code>${reviewPolicy.forceApprovalRequiresReason ? "yes" : "no"}</code></div></div>
+          <div><strong>Snapshot</strong><div><code>${reviewPolicySnapshot ? "persisted" : "not available"}</code></div></div>
           <div><strong>Last Override</strong><div><code>${reviewPolicy.lastForceApprovalDecision ? "recorded" : "none"}</code></div></div>
         </div>
         <div class="detail-stack">
+          ${reviewPolicySnapshot
+            ? `
+              <div>
+                <strong>Receipt-Linked Policy Snapshot</strong>
+                <p class="panel-copy">
+                  <code>${args.escapeHtml(reviewPolicySnapshot.policyKey)}</code> captured
+                  execution as <code>${reviewPolicySnapshot.executionAllowed ? "allowed" : "blocked"}</code>
+                  under <code>${args.escapeHtml(reviewPolicySnapshot.activeEvidencePolicy)}</code> evidence policy.
+                </p>
+                <p class="panel-copy">${args.escapeHtml(reviewPolicySnapshot.summary)}</p>
+              </div>
+            `
+            : ""}
           <div>
             <strong>Evidence Rules</strong>
             <ul class="detail-list">

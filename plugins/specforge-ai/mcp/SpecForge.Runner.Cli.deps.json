@@ -8,24 +8,24 @@
     ".NETCoreApp,Version=v10.0": {
       "SpecForge.Runner.Cli/1.0.0": {
         "dependencies": {
-          "SpecForge.Domain": "0.1.5.584",
+          "SpecForge.Domain": "0.1.5.585",
           "SpecForge.OpenAICompatible": "1.0.0"
         },
         "runtime": {
           "SpecForge.Runner.Cli.dll": {}
         }
       },
-      "SpecForge.Domain/0.1.5.584": {
+      "SpecForge.Domain/0.1.5.585": {
         "runtime": {
           "SpecForge.Domain.dll": {
-            "assemblyVersion": "0.1.5.584",
-            "fileVersion": "0.1.5.584"
+            "assemblyVersion": "0.1.5.585",
+            "fileVersion": "0.1.5.585"
           }
         }
       },
       "SpecForge.OpenAICompatible/1.0.0": {
         "dependencies": {
-          "SpecForge.Domain": "0.1.5.584"
+          "SpecForge.Domain": "0.1.5.585"
         },
         "runtime": {
           "SpecForge.OpenAICompatible.dll": {
@@ -42,7 +42,7 @@
       "serviceable": false,
       "sha512": ""
     },
-    "SpecForge.Domain/0.1.5.584": {
+    "SpecForge.Domain/0.1.5.585": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
