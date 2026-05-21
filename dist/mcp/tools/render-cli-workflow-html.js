@@ -4,45 +4,50 @@
 const fs = require("node:fs");
 const { buildWorkflowHtml } = require("../dist/workflowView");
 const { buildSidebarHtml } = require("../dist/sidebarViewContent");
-
-const payload = JSON.parse(fs.readFileSync(0, "utf8"));
-const workflow = payload.workflow;
-const userStories = Array.isArray(payload.userStories) ? payload.userStories : [];
-const sidebarUserStories = Array.isArray(payload.sidebarUserStories) ? payload.sidebarUserStories : userStories;
-const activeSidebarUserStories = Array.isArray(payload.activeSidebarUserStories) ? payload.activeSidebarUserStories : userStories;
-const droppedSidebarUserStories = Array.isArray(payload.droppedSidebarUserStories) ? payload.droppedSidebarUserStories : [];
-const showDroppedUserStories = payload.showDroppedUserStories === true;
-const showCompletedUserStories = payload.showCompletedUserStories === true;
-const showBlockedUserStories = payload.showBlockedUserStories === true;
-const droppedUserStoryCount = Number.isFinite(payload.droppedUserStoryCount) ? payload.droppedUserStoryCount : 0;
-const configurationPortalUrl = payload.configurationPortalUrl || "http://localhost:5128/configuration";
-const configurationProvidersUrl = payload.configurationProvidersUrl || configurationPortalUrl;
-const configurationAdvancedUrl = payload.configurationAdvancedUrl || configurationPortalUrl;
-const displayRuntimeVersion = formatRuntimeVersion(payload.runtimeVersion ?? workflow.lastRuntimeVersion ?? workflow.createdWithRuntimeVersion ?? null);
-const state = {
-  selectedPhaseId: payload.selectedPhaseId ?? workflow.currentPhase,
-  selectedArtifactContent: payload.selectedArtifactContent ?? null,
-  selectedOperationContent: payload.selectedOperationContent ?? null,
-  runtimeVersion: null,
-  contextSuggestions: [],
-  settingsConfigured: true,
-  settingsMessage: null,
-  executionSettingsPending: false,
-  executionSettingsPendingMessage: null,
-  maxImplementationReviewCycles: 5,
-  completedUsLockOnCompleted: false,
-  visualTimelineEnabled: false,
-  debugMode: false,
-  requireExplicitApprovalBranchAcceptance: false,
-  graphLayoutMode: "vertical",
-  graphInitialZoomMode: "fit-width",
-  workflowGraphLayout: null
-};
+const { readWorkflowGraphLayoutConfigAsync } = require("./workflow-graph-layout-portable");
 
 function formatRuntimeVersion(runtimeVersion) {
   const value = String(runtimeVersion ?? "").trim();
   return value ? value.split("+", 1)[0] : null;
 }
+
+async function main() {
+  const payload = JSON.parse(fs.readFileSync(0, "utf8"));
+  const workflow = payload.workflow;
+  const userStories = Array.isArray(payload.userStories) ? payload.userStories : [];
+  const sidebarUserStories = Array.isArray(payload.sidebarUserStories) ? payload.sidebarUserStories : userStories;
+  const activeSidebarUserStories = Array.isArray(payload.activeSidebarUserStories) ? payload.activeSidebarUserStories : userStories;
+  const droppedSidebarUserStories = Array.isArray(payload.droppedSidebarUserStories) ? payload.droppedSidebarUserStories : [];
+  const showDroppedUserStories = payload.showDroppedUserStories === true;
+  const showCompletedUserStories = payload.showCompletedUserStories === true;
+  const showBlockedUserStories = payload.showBlockedUserStories === true;
+  const droppedUserStoryCount = Number.isFinite(payload.droppedUserStoryCount) ? payload.droppedUserStoryCount : 0;
+  const configurationPortalUrl = payload.configurationPortalUrl || "http://localhost:5128/configuration";
+  const configurationProvidersUrl = payload.configurationProvidersUrl || configurationPortalUrl;
+  const configurationAdvancedUrl = payload.configurationAdvancedUrl || configurationPortalUrl;
+  const displayRuntimeVersion = formatRuntimeVersion(payload.runtimeVersion ?? workflow.lastRuntimeVersion ?? workflow.createdWithRuntimeVersion ?? null);
+  const workflowGraphLayout = typeof payload.workspaceRoot === "string" && payload.workspaceRoot.length > 0
+    ? await readWorkflowGraphLayoutConfigAsync(payload.workspaceRoot)
+    : null;
+  const state = {
+    selectedPhaseId: payload.selectedPhaseId ?? workflow.currentPhase,
+    selectedArtifactContent: payload.selectedArtifactContent ?? null,
+    selectedOperationContent: payload.selectedOperationContent ?? null,
+    runtimeVersion: null,
+    contextSuggestions: [],
+    settingsConfigured: true,
+    settingsMessage: null,
+    executionSettingsPending: false,
+    executionSettingsPendingMessage: null,
+    maxImplementationReviewCycles: 5,
+    completedUsLockOnCompleted: false,
+    visualTimelineEnabled: false,
+    debugMode: false,
+    requireExplicitApprovalBranchAcceptance: false,
+    graphLayoutMode: "vertical",
+    graphInitialZoomMode: "fit-width",
+    workflowGraphLayout
+  };
 
 const browserShim = `
 <script>
@@ -164,6 +169,23 @@ const browserShim = `
           .then(() => {
             window.location.reload();
           })
+          .catch(error => {
+            window.postMessage({
+              command: "workflowActionFailed",
+              action: message.command,
+              detail: error instanceof Error ? error.message : String(error)
+            }, "*");
+          });
+        return;
+      }
+
+      if (message?.command === "saveWorkflowGraphLayout") {
+        fetch("/api/workflow-graph-layout", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(message)
+        })
+          .then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))))
           .catch(error => {
             window.postMessage({
               command: "workflowActionFailed",
@@ -683,3 +705,9 @@ const html = buildWorkflowHtml(workflow, state, "idle", "", "")
   .replace("</body>", `${refreshShim}\n</body>`);
 
 process.stdout.write(html);
+}
+
+main().catch((error) => {
+  process.stderr.write(error instanceof Error ? (error.stack || error.message) : String(error));
+  process.exit(1);
+});
