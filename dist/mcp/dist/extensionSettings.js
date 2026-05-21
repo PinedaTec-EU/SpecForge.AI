@@ -58,6 +58,7 @@ function readSpecForgeSettings(configuration) {
     const configuredAgentProfiles = normalizeAgentProfiles(configuration.get("execution.agentProfiles", []));
     const effectiveAgentProfiles = resolveEffectiveAgentProfiles(configuredAgentProfiles, modelProfiles);
     const configuredPhaseAgentAssignments = normalizePhaseAgentAssignments(configuration.get("execution.phaseAgents"));
+    const configuredPhaseHarnessProfiles = normalizePhaseHarnessProfiles(configuration.get("execution.phaseHarnessProfiles"));
     const phaseAgentAssignments = resolveEffectivePhaseAgentConfiguration(configuredAgentProfiles, configuredPhaseAgentAssignments);
     const autoRefinementAnswersProfile = normalizeUnknownOptional(configuration.get("execution.autoRefinementAnswersProfile"));
     const reviewEvidencePolicy = normalizeReviewEvidencePolicy(configuration.get("execution.reviewEvidencePolicy", "balanced"));
@@ -71,6 +72,12 @@ function readSpecForgeSettings(configuration) {
         agentProfiles: effectiveAgentProfiles,
         phaseAgentAssignments,
         effectivePhaseAgentAssignments: resolveEffectivePhaseAgentAssignments(effectiveAgentProfiles, phaseAgentAssignments),
+        defaultHarnessProfile: normalizeHarnessProfileKey(configuration.get("execution.defaultHarnessProfile", "balanced")),
+        phaseHarnessProfiles: configuredPhaseHarnessProfiles,
+        harnessProfileAuthority: normalizeHarnessProfileAuthority(configuration.get("execution.harnessProfileAuthority", "workspace")),
+        harnessProfileLockMode: normalizeHarnessProfileLockMode(configuration.get("execution.harnessProfileLockMode", "none")),
+        lockedHarnessPhaseIds: normalizeLockedHarnessPhaseIds(configuration.get("execution.lockedHarnessPhaseIds")),
+        allowPerUserStoryHarnessProfileOverrides: configuration.get("execution.allowPerUserStoryHarnessProfileOverrides", true),
         autoRefinementAnswersProfile,
         refinementTolerance: normalizeTolerance(configuration.get("execution.refinementTolerance", "balanced")),
         mvpRigor: normalizeMvpRigor(configuration.get("execution.mvpRigor", "medium")),
@@ -124,6 +131,13 @@ function buildBackendEnvironment(settings) {
     env.SPECFORGE_USE_SEMANTIC_GRAPH_WHEN_AVAILABLE = settings.useSemanticGraphWhenAvailable ? "true" : "false";
     env.SPECFORGE_ALLOW_GRAPH_BUILD_REFRESH_FOR_TOUCHED_US_SCOPE =
         settings.allowGraphBuildRefreshForTouchedUserStoryScope ? "true" : "false";
+    env.SPECFORGE_HARNESS_PROFILE_DEFAULT = settings.defaultHarnessProfile;
+    env.SPECFORGE_HARNESS_PHASE_PROFILES_JSON = JSON.stringify(settings.phaseHarnessProfiles);
+    env.SPECFORGE_HARNESS_PROFILE_AUTHORITY = settings.harnessProfileAuthority;
+    env.SPECFORGE_HARNESS_PROFILE_LOCK_MODE = settings.harnessProfileLockMode;
+    env.SPECFORGE_HARNESS_LOCKED_PHASE_IDS_JSON = JSON.stringify(settings.lockedHarnessPhaseIds);
+    env.SPECFORGE_ALLOW_PER_US_HARNESS_PROFILE_OVERRIDES =
+        settings.allowPerUserStoryHarnessProfileOverrides ? "true" : "false";
     env.SPECFORGE_REVIEW_LEARNING_ENABLED = settings.reviewLearningEnabled === false ? "false" : "true";
     env.SPECFORGE_REVIEW_LEARNING_SKILL_PATH =
         settings.reviewLearningSkillPath ?? ".codex/skills/sdd-phase-agents/SKILL.md";
@@ -438,6 +452,36 @@ function normalizePhaseAgentAssignments(value) {
         prPreparationAgent: normalizeUnknownOptional(candidate.prPreparationAgent)
     };
 }
+function normalizePhaseHarnessProfiles(value) {
+    if (!value || typeof value !== "object") {
+        return emptyPhaseHarnessProfiles();
+    }
+    const candidate = value;
+    return {
+        defaultProfile: normalizeHarnessProfileOptional(candidate.defaultProfile),
+        captureProfile: normalizeHarnessProfileOptional(candidate.captureProfile),
+        refinementProfile: normalizeHarnessProfileOptional(candidate.refinementProfile),
+        specProfile: normalizeHarnessProfileOptional(candidate.specProfile),
+        technicalDesignProfile: normalizeHarnessProfileOptional(candidate.technicalDesignProfile),
+        implementationProfile: normalizeHarnessProfileOptional(candidate.implementationProfile),
+        reviewProfile: normalizeHarnessProfileOptional(candidate.reviewProfile),
+        releaseApprovalProfile: normalizeHarnessProfileOptional(candidate.releaseApprovalProfile),
+        prPreparationProfile: normalizeHarnessProfileOptional(candidate.prPreparationProfile)
+    };
+}
+function emptyPhaseHarnessProfiles() {
+    return {
+        defaultProfile: null,
+        captureProfile: null,
+        refinementProfile: null,
+        specProfile: null,
+        technicalDesignProfile: null,
+        implementationProfile: null,
+        reviewProfile: null,
+        releaseApprovalProfile: null,
+        prPreparationProfile: null
+    };
+}
 function emptyPhaseAgentAssignments() {
     return {
         defaultAgent: null,
@@ -481,6 +525,39 @@ function resolveAssignedAgentProfile(agentProfiles, agentName) {
 }
 function normalizeUnknownOptional(value) {
     return typeof value === "string" ? normalizeOptional(value) : null;
+}
+function normalizeHarnessProfileKey(value) {
+    const normalized = value?.trim().toLowerCase();
+    return normalized === "strict" || normalized === "regulated" ? normalized : "balanced";
+}
+function normalizeHarnessProfileOptional(value) {
+    const normalized = normalizeUnknownOptional(value)?.toLowerCase();
+    return normalized === "strict" || normalized === "balanced" || normalized === "regulated"
+        ? normalized
+        : null;
+}
+function normalizeHarnessProfileAuthority(value) {
+    return value?.trim().toLowerCase() === "central" ? "central" : "workspace";
+}
+function normalizeHarnessProfileLockMode(value) {
+    const normalized = value?.trim().toLowerCase();
+    return normalized === "phase" || normalized === "all" ? normalized : "none";
+}
+function normalizeLockedHarnessPhaseIds(value) {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+    const normalized = value
+        .map((entry) => normalizeUnknownOptional(entry)?.toLowerCase())
+        .filter((phaseId) => phaseId === "capture"
+        || phaseId === "refinement"
+        || phaseId === "spec"
+        || phaseId === "technical-design"
+        || phaseId === "implementation"
+        || phaseId === "review"
+        || phaseId === "release-approval"
+        || phaseId === "pr-preparation");
+    return Array.from(new Set(normalized));
 }
 function normalizeTolerance(value) {
     const normalized = value?.trim().toLowerCase();
