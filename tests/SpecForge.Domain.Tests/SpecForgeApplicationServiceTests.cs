@@ -1027,6 +1027,37 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesReceiptLinkedReleaseApprovalEvidencePack()
+    {
+        var runner = new WorkflowRunner(new InspectionAwarePassingReviewPhaseExecutionProvider());
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var releaseApprovalPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "release-approval");
+
+        Assert.NotNull(releaseApprovalPhase.LatestExecutionInspection);
+        Assert.NotNull(releaseApprovalPhase.LatestExecutionInspection!.ReleaseApprovalEvidencePack);
+        Assert.Equal("pass", releaseApprovalPhase.LatestExecutionInspection.ReleaseApprovalEvidencePack!.ReviewVerdict);
+        Assert.NotNull(releaseApprovalPhase.LatestExecutionInspection.ReleaseApprovalEvidencePack.ChangedFiles);
+        Assert.NotEmpty(releaseApprovalPhase.LatestExecutionInspection.ReleaseApprovalEvidencePack.ValidationResults);
+        Assert.Contains(
+            releaseApprovalPhase.LatestExecutionInspection.ReleaseApprovalEvidencePack.SupportingArtifacts,
+            item => item.Kind == "implementation-evidence-markdown");
+        Assert.Contains(
+            releaseApprovalPhase.LatestExecutionInspection.ReleaseApprovalEvidencePack.SupportingArtifacts,
+            item => item.Kind == "branch-context");
+    }
+
+    [Fact]
     public async Task GetUserStoryWorkflowAsync_ExposesExecutionEnvelopePerPhase()
     {
         var runner = new WorkflowRunner(new InspectionAwarePhaseExecutionProvider());

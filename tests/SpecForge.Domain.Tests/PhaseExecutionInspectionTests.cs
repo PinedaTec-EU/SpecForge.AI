@@ -257,6 +257,33 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
                         "/repo/.specs/us/US-0001/phases/03-implementation.evidence.json",
                         "Machine-readable implementation evidence consumed by review.")
                 ]),
+            ReleaseApprovalEvidencePack: new ReleaseApprovalEvidencePack(
+                "2026-05-19T10:00:02.0000000+00:00",
+                "/repo/.specs/us/US-0001/phases/05-release-approval.md",
+                "fail",
+                "Review failed because at least one validation strategy item was not validated successfully.",
+                [
+                    new ReleaseApprovalChangedFile(
+                        "src/App/Service.cs",
+                        "content_changed",
+                        "M ",
+                        " M")
+                ],
+                [
+                    new ReleaseApprovalValidationResult(
+                        "fail",
+                        "Review must compare implementation back to the approved spec before final release approval.",
+                        "The review artifact did not validate this Technical Design validation strategy item.")
+                ],
+                [
+                    "Deterministic release approval does not inspect live repository diffs beyond the recorded workflow artifacts."
+                ],
+                [
+                    new ReleaseApprovalArtifactLink(
+                        "branch-context",
+                        "/repo/.specs/us/US-0001/branch.yaml",
+                        "Branch metadata injected into release approval.")
+                ]),
             TechnicalDesignContextPack: new TechnicalDesignContextPack(
                 [new RefinementSkillSelectionItem("../ai-skills-shared/.shared-skills/skills/dotnet/SKILL.md", "Selected for .NET repository scope.")],
                 new RefinementGraphScopeRequest(
@@ -331,6 +358,8 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("\"activeEvidencePolicy\":\"release\"", json);
         Assert.Contains("\"implementationStructuredEvidence\":{", json);
         Assert.Contains("\"reviewStructuredGateResult\":{", json);
+        Assert.Contains("\"releaseApprovalEvidencePack\":{", json);
+        Assert.Contains("\"reviewVerdict\":\"fail\"", json);
         Assert.Contains("\"verdict\":\"fail\"", json);
         Assert.Contains("\"correctionTargets\":[", json);
         Assert.Contains("\"linkedEvidence\":[", json);

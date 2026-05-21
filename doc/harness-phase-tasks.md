@@ -244,7 +244,7 @@ Current stance:
   Expose the effective prompt and context for `release-approval`.
   Output: latest-execution inspector including `branch.yaml`, `timeline.md`, and prior review evidence inputs.
 
-- [ ] `H-RA-02` Status: `todo`
+- [x] `H-RA-02` Status: `done`
   Create the first structured release evidence pack.
   Output: bundled review verdict, changed files, validation results, release risk summary, and supporting artifact links.
 

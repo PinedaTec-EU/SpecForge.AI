@@ -1707,6 +1707,7 @@ public sealed class WorkflowRunner
         var executionMetadata = WithRuntimeVersion(result.Execution);
         ImplementationStructuredEvidence? implementationStructuredEvidenceSnapshot = null;
         ReviewStructuredGateResult? reviewStructuredGateResult = null;
+        ReleaseApprovalEvidencePack? releaseApprovalEvidencePack = null;
         SpecForgeDiagnostics.Log(
             $"[runner.materialize] usId={workflowRun.UsId} phase={WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)} providerReturned executionKind={result.ExecutionKind} durationMs={stopwatch.ElapsedMilliseconds}");
 
@@ -1765,6 +1766,7 @@ public sealed class WorkflowRunner
             else
             {
                 await File.WriteAllTextAsync(artifactPath, StampRuntimeVersion(result.Content, executionMetadata?.RuntimeVersion), cancellationToken);
+                releaseApprovalEvidencePack = ReleaseApprovalEvidencePackBuilder.Build(paths, artifactPath);
             }
         }
         else
@@ -1864,6 +1866,7 @@ public sealed class WorkflowRunner
             reviewPolicySnapshot,
             implementationStructuredEvidenceSnapshot,
             reviewStructuredGateResult,
+            releaseApprovalEvidencePack,
             technicalDesignContextPack,
             result.EffectivePrompt,
             result.EffectivePrompt is null ? null : effectiveContext);

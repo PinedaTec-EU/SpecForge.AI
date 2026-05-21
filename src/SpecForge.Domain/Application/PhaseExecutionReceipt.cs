@@ -25,6 +25,7 @@ public sealed record PhaseExecutionReceipt(
     ReviewPhasePolicySnapshot? ReviewPolicySnapshot = null,
     ImplementationStructuredEvidence? ImplementationStructuredEvidence = null,
     ReviewStructuredGateResult? ReviewStructuredGateResult = null,
+    ReleaseApprovalEvidencePack? ReleaseApprovalEvidencePack = null,
     TechnicalDesignContextPack? TechnicalDesignContextPack = null,
     PhaseExecutionEffectivePrompt? EffectivePrompt = null,
     PhaseExecutionEffectiveContext? EffectiveContext = null);

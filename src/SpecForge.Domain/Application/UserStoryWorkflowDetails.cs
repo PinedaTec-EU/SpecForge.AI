@@ -72,6 +72,7 @@ public sealed record PhaseExecutionInspectionDetails(
     ReviewPhasePolicySnapshot? ReviewPolicySnapshot,
     ImplementationStructuredEvidence? ImplementationStructuredEvidence,
     ReviewStructuredGateResult? ReviewStructuredGateResult,
+    ReleaseApprovalEvidencePack? ReleaseApprovalEvidencePack,
     TechnicalDesignContextPack? TechnicalDesignContextPack,
     PhaseExecutionEffectivePrompt? EffectivePrompt,
     PhaseExecutionEffectiveContext? EffectiveContext);

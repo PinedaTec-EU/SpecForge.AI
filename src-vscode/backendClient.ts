@@ -280,6 +280,7 @@ export interface PhaseExecutionInspectionDetails {
   readonly reviewPolicySnapshot?: ReviewPhasePolicySnapshot | null;
   readonly implementationStructuredEvidence?: ImplementationStructuredEvidence | null;
   readonly reviewStructuredGateResult?: ReviewStructuredGateResult | null;
+  readonly releaseApprovalEvidencePack?: ReleaseApprovalEvidencePack | null;
   readonly technicalDesignContextPack?: TechnicalDesignContextPack | null;
   readonly effectivePrompt?: PhaseExecutionEffectivePrompt | null;
   readonly effectiveContext?: PhaseExecutionEffectiveContext | null;
@@ -417,6 +418,36 @@ export interface ReviewPhasePolicySnapshot {
   readonly forceApprovalRequiresReason: boolean;
   readonly evidenceRules: readonly ReviewEvidencePolicyRule[];
   readonly overrideConditions: readonly ReviewPhaseOverrideCondition[];
+}
+
+export interface ReleaseApprovalEvidencePack {
+  readonly generatedAtUtc: string;
+  readonly releaseApprovalArtifactPath: string;
+  readonly reviewVerdict?: string | null;
+  readonly reviewPrimaryReason?: string | null;
+  readonly changedFiles: readonly ReleaseApprovalChangedFile[];
+  readonly validationResults: readonly ReleaseApprovalValidationResult[];
+  readonly releaseRiskSummary: readonly string[];
+  readonly supportingArtifacts: readonly ReleaseApprovalArtifactLink[];
+}
+
+export interface ReleaseApprovalChangedFile {
+  readonly path: string;
+  readonly changeKind: string;
+  readonly currentStatusCode: string;
+  readonly baselineStatusCode?: string | null;
+}
+
+export interface ReleaseApprovalValidationResult {
+  readonly status: string;
+  readonly item: string;
+  readonly evidence: string;
+}
+
+export interface ReleaseApprovalArtifactLink {
+  readonly kind: string;
+  readonly path: string;
+  readonly summary?: string | null;
 }
 
 export interface TechnicalDesignContextPack {
