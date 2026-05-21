@@ -221,7 +221,7 @@ Current stance:
 
 ### Review
 
-- [ ] `H-REV-01` Status: `todo`
+- [x] `H-REV-01` Status: `done`
   Expose the effective prompt and context for `review`.
   Output: latest-execution inspector including implementation evidence inputs.
 

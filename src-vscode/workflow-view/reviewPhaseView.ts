@@ -6,18 +6,59 @@ type ReviewPhaseViewArgs = {
   readonly workflow: UserStoryWorkflowDetails;
   readonly selectedPhase: WorkflowPhaseDetails;
   readonly state: WorkflowViewState;
+  readonly escapeHtml: (value: string) => string;
+  readonly escapeHtmlAttribute: (value: string) => string;
 };
 
 export function buildReviewPhaseSections(args: ReviewPhaseViewArgs): PhaseSectionFragments {
+  const effectivePrompt = args.selectedPhase.latestExecutionInspection?.effectivePrompt ?? null;
+  const effectiveContext = args.selectedPhase.latestExecutionInspection?.effectiveContext ?? null;
+  const evidenceRecord = args.selectedPhase.latestExecutionInspection?.evidenceRecord ?? null;
+  const receiptPath = args.selectedPhase.latestExecutionInspection?.receiptPath?.trim() || null;
   const implementationAttempts = countImplementationAttempts(args.workflow);
   const currentPhaseIsReview = args.selectedPhase.isCurrent && args.selectedPhase.phaseId === "review";
   const includeReviewArtifact = args.state.reviewRegressionIncludeArtifact !== false;
+  const reviewInspectionSection = args.selectedPhase.phaseId === "review"
+    ? `
+      <section class="detail-card">
+        <h3>Inspect Last Review Execution</h3>
+        <p class="panel-copy">
+          Review the latest persisted effective prompt and injected runtime context for review before changing evidence policy, retrying review, or regressing back to implementation.
+        </p>
+        ${effectivePrompt || effectiveContext
+          ? `
+            <div class="detail-grid">
+              <div><strong>Effective Prompt</strong><div><code>${effectivePrompt ? "available" : "unavailable"}</code></div></div>
+              <div><strong>Warnings</strong><div><code>${effectivePrompt?.warnings?.length ?? 0}</code></div></div>
+              <div><strong>Previous Artifacts</strong><div><code>${effectiveContext?.previousArtifacts.length ?? 0}</code></div></div>
+              <div><strong>Context Files</strong><div><code>${effectiveContext?.contextFiles.length ?? 0}</code></div></div>
+              <div><strong>Current Artifact</strong><div><code>${effectiveContext?.currentArtifact ? "available" : "unavailable"}</code></div></div>
+              <div><strong>Evidence Links</strong><div><code>${evidenceRecord?.evidenceLinks.length ?? 0}</code></div></div>
+            </div>
+            <div class="detail-actions">
+              ${effectivePrompt
+                ? `<button class="workflow-action-button workflow-action-button--document" type="button" data-open-effective-prompt-modal>View Last Review Prompt</button>`
+                : ""}
+              ${effectiveContext
+                ? `<button class="workflow-action-button workflow-action-button--document" type="button" data-open-effective-context-modal>View Last Review Context</button>`
+                : ""}
+              ${receiptPath
+                ? `<button class="workflow-action-button workflow-action-button--document" data-command="openArtifact" data-path="${args.escapeHtmlAttribute(receiptPath)}">Open Receipt</button>`
+                : ""}
+            </div>
+          `
+          : `<p class="muted">No persisted review execution inspection is available yet for this user story.</p>`}
+      </section>
+    `
+    : "";
+
   if (!currentPhaseIsReview) {
-    return { beforeArtifact: [], afterArtifact: [] };
+    return { beforeArtifact: reviewInspectionSection ? [reviewInspectionSection] : [], afterArtifact: [] };
   }
 
   return {
     beforeArtifact: [
+      ...(reviewInspectionSection ? [reviewInspectionSection] : []),
       `
       <section class="detail-card detail-card--review-regression">
         <div class="review-regression">

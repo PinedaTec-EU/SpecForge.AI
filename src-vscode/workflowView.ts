@@ -809,7 +809,9 @@ function buildPhaseSpecificSections(
       return buildReviewPhaseSections({
         workflow,
         selectedPhase,
-        state
+        state,
+        escapeHtml,
+        escapeHtmlAttribute
       });
     case "release-approval":
       return buildReleaseApprovalPhaseSections();
