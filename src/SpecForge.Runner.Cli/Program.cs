@@ -1090,6 +1090,8 @@ static SpecForgeApplicationService CreateApplicationService(IReadOnlyList<string
     var runner = new WorkflowRunner(
         CreatePhaseExecutionProvider(workspaceRoot),
         refinementTolerance: portalSettings?.RefinementTolerance ?? "balanced",
+        maxRefinementCycles: portalSettings?.MaxRefinementCycles ?? 3,
+        maxImplementationReviewCycles: portalSettings?.MaxImplementationReviewCycles ?? 5,
         decompositionOptions: new UserStoryDecompositionOptions(
             Enabled: portalSettings?.DecompositionEnabled ?? true,
             Threshold: portalSettings?.DecompositionThreshold ?? 0.60,

@@ -115,14 +115,24 @@ public sealed class OpenAiCompatibleWorkflowIntegrationTests : IDisposable
                         BaseUrl: $"{modelStub.BaseUrl}/v1",
                         ApiKey: string.Empty,
                         Model: "stub-model",
-                        RepositoryAccess: "read-write")
+                        RepositoryAccess: "read-write"),
+                    new OpenAiCompatibleModelProfile(
+                        Name: "critic",
+                        Provider: "openai-compatible",
+                        BaseUrl: $"{modelStub.BaseUrl}/v1",
+                        ApiKey: string.Empty,
+                        Model: "stub-model",
+                        RepositoryAccess: "read")
                 ],
                 AgentProfiles:
                 [
-                    new OpenAiCompatibleAgentProfile("default", "workflow-agent", "default", "Run workflow phases.", "read-write")
+                    new OpenAiCompatibleAgentProfile("default", "workflow-agent", "default", "Run workflow phases.", "read-write"),
+                    new OpenAiCompatibleAgentProfile("critic", "critic", "critic", "Critique refinement and review.", "read")
                 ],
                 PhaseAgentAssignments: new OpenAiCompatiblePhaseAgentAssignments(
-                    DefaultAgent: "default")));
+                    DefaultAgent: "default",
+                    RefinementAgent: "critic",
+                    ReviewAgent: "critic")));
         var workflowRunner = new WorkflowRunner(provider);
         var applicationService = new SpecForgeApplicationService(
             new UserStoryFileStore(),
@@ -326,7 +336,9 @@ public sealed class OpenAiCompatibleWorkflowIntegrationTests : IDisposable
                     new OpenAiCompatibleAgentProfile("resolver", "resolver", "resolver", "Answer refinement questions.", "read")
                 ],
                 PhaseAgentAssignments: new OpenAiCompatiblePhaseAgentAssignments(
-                    DefaultAgent: "default")));
+                    DefaultAgent: "default",
+                    RefinementAgent: "resolver",
+                    ReviewAgent: "resolver")));
         var applicationService = new SpecForgeApplicationService(
             new UserStoryFileStore(),
             new WorkflowRunner(provider),
@@ -612,7 +624,9 @@ public sealed class OpenAiCompatibleWorkflowIntegrationTests : IDisposable
                     new OpenAiCompatibleAgentProfile("resolver", "resolver", "resolver", "Answer refinement questions.", "read")
                 ],
                 PhaseAgentAssignments: new OpenAiCompatiblePhaseAgentAssignments(
-                    DefaultAgent: "default")));
+                    DefaultAgent: "default",
+                    RefinementAgent: "resolver",
+                    ReviewAgent: "resolver")));
         var applicationService = new SpecForgeApplicationService(
             new UserStoryFileStore(),
             new WorkflowRunner(provider),
@@ -671,9 +685,13 @@ public sealed class OpenAiCompatibleWorkflowIntegrationTests : IDisposable
 
         Assert.Equal(8, modelStub.Requests.Count);
         Assert.All(modelStub.Requests, request => Assert.False(OpenAiCompatibleRequestJson.HasResponseFormat(request.Body)));
-        Assert.Equal("stub-resolver", OpenAiCompatibleRequestJson.ReadModel(modelStub.Requests[1].Body));
+        foreach (var resolverIndex in new[] { 0, 1, 2, 6 })
+        {
+            Assert.Equal("stub-resolver", OpenAiCompatibleRequestJson.ReadModel(modelStub.Requests[resolverIndex].Body));
+        }
+
         Assert.All(
-            modelStub.Requests.Where((_, index) => index != 1),
+            modelStub.Requests.Where((_, index) => index is not 0 and not 1 and not 2 and not 6),
             request => Assert.Equal("stub-default", OpenAiCompatibleRequestJson.ReadModel(request.Body)));
     }
 

@@ -22,7 +22,7 @@
       "role": "reviewer",
       "modelProfile": "",
       "instructions": "Review implementation changes for correctness, regressions, missing tests, and release risk.",
-      "repositoryAccess": "read-write",
+      "repositoryAccess": "read",
       "reasoningEffort": null
     },
     {
@@ -54,6 +54,7 @@
   "autoRefinementAnswersProfile": null,
   "autoPlayEnabled": true,
   "autoReviewEnabled": true,
+  "maxRefinementCycles": 3,
   "maxImplementationReviewCycles": 5,
   "destructiveRewindEnabled": false,
   "pauseOnFailedReview": true,

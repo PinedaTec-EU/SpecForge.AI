@@ -393,7 +393,8 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
                 ],
                 PhaseAgentAssignments: new OpenAiCompatiblePhaseAgentAssignments(
                     DefaultAgent: "default",
-                    RefinementAgent: "default")));
+                    RefinementAgent: "resolver",
+                    ReviewAgent: "resolver")));
         var context = new PhaseExecutionContext(
             WorkspaceRoot: workspaceRoot,
             UsId: "US-0001",
@@ -457,7 +458,8 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
                 ],
                 PhaseAgentAssignments: new OpenAiCompatiblePhaseAgentAssignments(
                     DefaultAgent: "default",
-                    RefinementAgent: "default")));
+                    RefinementAgent: "resolver",
+                    ReviewAgent: "resolver")));
 
         var capability = provider.DescribeRefinementAutoAnswerCapability();
 
@@ -826,6 +828,13 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
                         Model: "llama-light",
                         RepositoryAccess: "read"),
                     new OpenAiCompatibleModelProfile(
+                        Name: "critic",
+                        Provider: "openai-compatible",
+                        BaseUrl: "http://localhost:11434/v1",
+                        ApiKey: string.Empty,
+                        Model: "llama-light",
+                        RepositoryAccess: "read"),
+                    new OpenAiCompatibleModelProfile(
                         Name: "top",
                         Provider: "openai-compatible",
                         BaseUrl: "http://localhost:22434/v1",
@@ -836,10 +845,12 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
                 AgentProfiles:
                 [
                     new OpenAiCompatibleAgentProfile("light", "planner", "light", "Plan and review.", "read"),
+                    new OpenAiCompatibleAgentProfile("critic", "critic", "critic", "Challenge refinement.", "read"),
                     new OpenAiCompatibleAgentProfile("top", "implementer", "top", "Implement.", "read-write")
                 ],
                 PhaseAgentAssignments: new OpenAiCompatiblePhaseAgentAssignments(
                     DefaultAgent: "light",
+                    RefinementAgent: "critic",
                     TechnicalDesignAgent: "top",
                     ImplementationAgent: "top",
                     ReviewAgent: "light")));
@@ -885,6 +896,12 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
                         ApiKey: string.Empty,
                         Model: "llama-light"),
                     new OpenAiCompatibleModelProfile(
+                        Name: "critic",
+                        Provider: "openai-compatible",
+                        BaseUrl: "http://localhost:11434/v1",
+                        ApiKey: string.Empty,
+                        Model: "llama-light"),
+                    new OpenAiCompatibleModelProfile(
                         Name: "top",
                         Provider: "openai-compatible",
                         BaseUrl: "http://localhost:22434/v1",
@@ -893,11 +910,13 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
                 ],
                 AgentProfiles:
                 [
-                    new OpenAiCompatibleAgentProfile("light", "reviewer", "light", "Review.", "read-write"),
+                    new OpenAiCompatibleAgentProfile("light", "reviewer", "light", "Review.", "read"),
+                    new OpenAiCompatibleAgentProfile("critic", "critic", "critic", "Challenge refinement.", "read"),
                     new OpenAiCompatibleAgentProfile("top", "implementer", "top", "Implement.", "read-write")
                 ],
                 PhaseAgentAssignments: new OpenAiCompatiblePhaseAgentAssignments(
                     DefaultAgent: "light",
+                    RefinementAgent: "critic",
                     ImplementationAgent: "top",
                     ReviewAgent: "light")));
         var reviewContext = implementationContext with
@@ -999,9 +1018,9 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
 
         var readiness = provider.GetPhaseExecutionReadiness(PhaseId.Review);
 
-        Assert.False(readiness.CanExecute);
-        Assert.Equal(PhaseExecutionBlockingReasons.ReviewRequiresRepositoryWriteAccess, readiness.BlockingReason);
-        Assert.Equal("read-write", readiness.RequiredPermissions!.RepositoryAccess);
+        Assert.True(readiness.CanExecute);
+        Assert.Null(readiness.BlockingReason);
+        Assert.Equal("read", readiness.RequiredPermissions!.RepositoryAccess);
         Assert.Equal("read", readiness.AssignedModelSecurity!.RepositoryAccess);
     }
 
@@ -1061,22 +1080,11 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
         var handler = new CapturingFakeHttpMessageHandler(BuildMinimalSpecMarkdown());
         var provider = new OpenAiCompatiblePhaseExecutionProvider(
             new HttpClient(handler),
-            new OpenAiCompatibleProviderOptions(
-                ModelProfiles:
-                [
-                    new OpenAiCompatibleModelProfile(
-                        Name: "light",
-                        Provider: string.Empty,
-                        BaseUrl: "http://localhost:11434/v1",
-                        ApiKey: string.Empty,
-                        Model: "llama-light")
-                ],
-                AgentProfiles:
-                [
-                    new OpenAiCompatibleAgentProfile("light", "planner", "light", "Plan.", "read-write")
-                ],
-                PhaseAgentAssignments: new OpenAiCompatiblePhaseAgentAssignments(
-                    DefaultAgent: "light")));
+            CreateOptions(
+                model: "llama-light",
+                profileName: "light",
+                providerKind: string.Empty,
+                repositoryAccess: "read-write"));
         var context = new PhaseExecutionContext(
             WorkspaceRoot: workspaceRoot,
             UsId: "US-0001",
@@ -1100,23 +1108,13 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
         var handler = new CapturingFakeHttpMessageHandler(BuildMinimalSpecMarkdown());
         var provider = new OpenAiCompatiblePhaseExecutionProvider(
             new HttpClient(handler),
-            new OpenAiCompatibleProviderOptions(
-                ModelProfiles:
-                [
-                    new OpenAiCompatibleModelProfile(
-                        Name: "bridge",
-                        Provider: providerKind,
-                        BaseUrl: "https://api.example.test/v1",
-                        ApiKey: "secret",
-                        Model: "model-1",
-                        RepositoryAccess: "read-write")
-                ],
-                AgentProfiles:
-                [
-                    new OpenAiCompatibleAgentProfile("bridge", "planner", "bridge", "Plan.", "read-write")
-                ],
-                PhaseAgentAssignments: new OpenAiCompatiblePhaseAgentAssignments(
-                    DefaultAgent: "bridge")),
+            CreateOptions(
+                model: "model-1",
+                profileName: "bridge",
+                providerKind: providerKind,
+                baseUrl: "https://api.example.test/v1",
+                apiKey: "secret",
+                repositoryAccess: "read-write"),
             new RepositoryPromptCatalog(),
             [new FakeNativeCliRunner(providerKind, isAvailable: false)]);
         var context = new PhaseExecutionContext(
@@ -1332,7 +1330,7 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
 
         Assert.Equal("codex", result.ExecutionKind);
         Assert.NotNull(fakeRunner.LastInvocation);
-        Assert.Equal("workspace-write", fakeRunner.LastInvocation!.SandboxMode);
+        Assert.Equal("read-only", fakeRunner.LastInvocation!.SandboxMode);
         Assert.Contains("SpecForge Native Codex Execution", fakeRunner.LastInvocation.Prompt);
         Assert.Contains("Run the most relevant validation commands needed to verify the Technical Design validation strategy", fakeRunner.LastInvocation.Prompt);
         Assert.Contains("## Required Review Validation Checklist", fakeRunner.LastInvocation.Prompt);
@@ -1458,6 +1456,13 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
                         Model: "gpt-5.4",
                         RepositoryAccess: "read"),
                     new OpenAiCompatibleModelProfile(
+                        Name: "critic",
+                        Provider: "openai-compatible",
+                        BaseUrl: "https://api.example.test/v1",
+                        ApiKey: "secret",
+                        Model: "gpt-5.4-mini",
+                        RepositoryAccess: "read"),
+                    new OpenAiCompatibleModelProfile(
                         Name: "implementer",
                         Provider: "codex",
                         BaseUrl: string.Empty,
@@ -1468,10 +1473,11 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
                 AgentProfiles:
                 [
                     new OpenAiCompatibleAgentProfile("planner", "planner", "planner", "Plan.", "read"),
+                    new OpenAiCompatibleAgentProfile("critic", "critic", "critic", "Critique refinement.", "read"),
                     new OpenAiCompatibleAgentProfile("implementer", "implementer", "implementer", "Implement.", "read-write")
                 ],
                 PhaseAgentAssignments: new OpenAiCompatiblePhaseAgentAssignments(
-                    RefinementAgent: "planner",
+                    RefinementAgent: "critic",
                     SpecAgent: "planner",
                     TechnicalDesignAgent: "planner",
                     ImplementationAgent: "implementer",
@@ -1711,6 +1717,8 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
         string reviewLearningSkillPath = ".codex/skills/sdd-phase-agents/SKILL.md",
         OpenAiCompatiblePhaseSubagentOptions? phaseSubagents = null)
     {
+        var refinementProfileName = $"{profileName}-refinement";
+        var reviewProfileName = $"{profileName}-review";
         return new OpenAiCompatibleProviderOptions(
             RefinementTolerance: refinementTolerance,
             ReviewTolerance: reviewTolerance,
@@ -1728,19 +1736,54 @@ public sealed class OpenAiCompatiblePhaseExecutionProviderTests : IDisposable
                     ApiKey: apiKey,
                     Model: model,
                     ReasoningEffort: reasoningEffort,
-                    RepositoryAccess: repositoryAccess)
+                    RepositoryAccess: repositoryAccess),
+                new OpenAiCompatibleModelProfile(
+                    Name: refinementProfileName,
+                    Provider: providerKind,
+                    BaseUrl: baseUrl,
+                    ApiKey: apiKey,
+                    Model: model,
+                    ReasoningEffort: reasoningEffort,
+                    RepositoryAccess: "read"),
+                new OpenAiCompatibleModelProfile(
+                    Name: reviewProfileName,
+                    Provider: providerKind,
+                    BaseUrl: baseUrl,
+                    ApiKey: apiKey,
+                    Model: model,
+                    ReasoningEffort: reasoningEffort,
+                    RepositoryAccess: "read")
             ],
             AgentProfiles:
             [
                 new OpenAiCompatibleAgentProfile(
-                    Name: profileName,
-                    Role: "test-agent",
+                    Name: "refinement-critic",
+                    Role: "refinement-critic",
+                    ModelProfile: refinementProfileName,
+                    Instructions: "Challenge refinement readiness.",
+                    RepositoryAccess: "read"),
+                new OpenAiCompatibleAgentProfile(
+                    Name: "phase-actor",
+                    Role: "phase-actor",
                     ModelProfile: profileName,
                     Instructions: "Run the requested phase.",
-                    RepositoryAccess: repositoryAccess)
+                    RepositoryAccess: repositoryAccess),
+                new OpenAiCompatibleAgentProfile(
+                    Name: "review-critic",
+                    Role: "review-critic",
+                    ModelProfile: reviewProfileName,
+                    Instructions: "Review the implementation critically.",
+                    RepositoryAccess: "read")
             ],
             PhaseAgentAssignments: new OpenAiCompatiblePhaseAgentAssignments(
-                DefaultAgent: profileName),
+                DefaultAgent: "phase-actor",
+                RefinementAgent: "refinement-critic",
+                SpecAgent: "phase-actor",
+                TechnicalDesignAgent: "phase-actor",
+                ImplementationAgent: "phase-actor",
+                ReviewAgent: "review-critic",
+                ReleaseApprovalAgent: "phase-actor",
+                PrPreparationAgent: "phase-actor"),
             PhaseSubagents: phaseSubagents);
     }
 

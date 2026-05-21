@@ -19,6 +19,8 @@ var completedUsLockOnCompleted = string.Equals(
     Environment.GetEnvironmentVariable("SPECFORGE_COMPLETED_US_LOCK_ON_COMPLETED")?.Trim(),
     "true",
     StringComparison.OrdinalIgnoreCase);
+var maxRefinementCycles = ReadIntEnvironment("SPECFORGE_MAX_REFINEMENT_CYCLES", 3);
+var maxImplementationReviewCycles = ReadIntEnvironment("SPECFORGE_MAX_IMPLEMENTATION_REVIEW_CYCLES", 5);
 var decompositionOptions = new UserStoryDecompositionOptions(
     Enabled: !string.Equals(Environment.GetEnvironmentVariable("SPECFORGE_DECOMPOSITION_ENABLED")?.Trim(), "false", StringComparison.OrdinalIgnoreCase),
     Threshold: ReadDoubleEnvironment("SPECFORGE_DECOMPOSITION_THRESHOLD", 0.60),
@@ -27,7 +29,15 @@ var decompositionOptions = new UserStoryDecompositionOptions(
 var harnessProfileSettings = HarnessProfileRuntimeSettings.FromEnvironment();
 
 var phaseExecutionProvider = PhaseExecutionProviderFactory.Create();
-var workflowRunner = new WorkflowRunner(phaseExecutionProvider, serverVersion, refinementTolerance, completedUsLockOnCompleted, reviewEvidencePolicy, decompositionOptions);
+var workflowRunner = new WorkflowRunner(
+    phaseExecutionProvider,
+    serverVersion,
+    refinementTolerance,
+    completedUsLockOnCompleted,
+    reviewEvidencePolicy,
+    decompositionOptions,
+    maxRefinementCycles,
+    maxImplementationReviewCycles);
 var applicationService = new SpecForgeApplicationService(
     new UserStoryFileStore(),
     workflowRunner,

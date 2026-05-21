@@ -34,6 +34,8 @@ public sealed class WorkflowRunner
     private readonly string? runtimeVersion;
     private readonly bool completedUsLockOnCompleted;
     private readonly UserStoryDecompositionOptions decompositionOptions;
+    private readonly int maxRefinementCycles;
+    private readonly int maxImplementationReviewCycles;
 
     public WorkflowRunner()
         : this(new UserStoryFileStore(), new DeterministicPhaseExecutionProvider(), new RepositoryCategoryCatalog(), new GitWorkBranchManager(), new GitHubPullRequestPublisher(), null, null)
@@ -48,8 +50,10 @@ public sealed class WorkflowRunner
     public WorkflowRunner(
         IPhaseExecutionProvider phaseExecutionProvider,
         string refinementTolerance,
+        int maxRefinementCycles,
+        int maxImplementationReviewCycles,
         UserStoryDecompositionOptions decompositionOptions)
-        : this(new UserStoryFileStore(), phaseExecutionProvider, new RepositoryCategoryCatalog(), new GitWorkBranchManager(), new GitHubPullRequestPublisher(), null, null, refinementTolerance, decompositionOptions: decompositionOptions)
+        : this(new UserStoryFileStore(), phaseExecutionProvider, new RepositoryCategoryCatalog(), new GitWorkBranchManager(), new GitHubPullRequestPublisher(), null, null, refinementTolerance, decompositionOptions: decompositionOptions, maxRefinementCycles: maxRefinementCycles, maxImplementationReviewCycles: maxImplementationReviewCycles)
     {
     }
 
@@ -64,8 +68,10 @@ public sealed class WorkflowRunner
         string refinementTolerance,
         bool completedUsLockOnCompleted,
         string reviewEvidencePolicy = "balanced",
-        UserStoryDecompositionOptions? decompositionOptions = null)
-        : this(new UserStoryFileStore(), phaseExecutionProvider, new RepositoryCategoryCatalog(), new GitWorkBranchManager(), new GitHubPullRequestPublisher(), null, runtimeVersion, refinementTolerance, completedUsLockOnCompleted, reviewEvidencePolicy, decompositionOptions)
+        UserStoryDecompositionOptions? decompositionOptions = null,
+        int maxRefinementCycles = 3,
+        int maxImplementationReviewCycles = 5)
+        : this(new UserStoryFileStore(), phaseExecutionProvider, new RepositoryCategoryCatalog(), new GitWorkBranchManager(), new GitHubPullRequestPublisher(), null, runtimeVersion, refinementTolerance, completedUsLockOnCompleted, reviewEvidencePolicy, decompositionOptions, maxRefinementCycles, maxImplementationReviewCycles)
     {
     }
 
@@ -80,7 +86,9 @@ public sealed class WorkflowRunner
         string refinementTolerance = "balanced",
         bool completedUsLockOnCompleted = true,
         string reviewEvidencePolicy = "balanced",
-        UserStoryDecompositionOptions? decompositionOptions = null)
+        UserStoryDecompositionOptions? decompositionOptions = null,
+        int maxRefinementCycles = 3,
+        int maxImplementationReviewCycles = 5)
     {
         this.fileStore = fileStore ?? throw new ArgumentNullException(nameof(fileStore));
         this.phaseExecutionProvider = phaseExecutionProvider ?? throw new ArgumentNullException(nameof(phaseExecutionProvider));
@@ -95,6 +103,8 @@ public sealed class WorkflowRunner
         this.reviewEvidencePolicy = ReviewEvidencePolicy.Normalize(reviewEvidencePolicy);
         this.completedUsLockOnCompleted = completedUsLockOnCompleted;
         this.decompositionOptions = (decompositionOptions ?? UserStoryDecompositionOptions.Default).Normalize();
+        this.maxRefinementCycles = Math.Max(1, maxRefinementCycles);
+        this.maxImplementationReviewCycles = Math.Max(1, maxImplementationReviewCycles);
     }
 
     public PhaseExecutionReadiness GetPhaseExecutionReadiness(PhaseId phaseId) =>
@@ -913,6 +923,22 @@ public sealed class WorkflowRunner
         if (workflowRun.CurrentPhase == PhaseId.Review &&
             await ShouldReplayCurrentReviewAsync(paths, cancellationToken))
         {
+            var replayPending = IsReviewReplayPending(paths);
+            if (!replayPending &&
+                await PauseReviewReplayIfCycleLimitReachedAsync(paths, workflowRun, cancellationToken))
+            {
+                await fileStore.SaveAsync(workflowRun, paths.RootDirectory, cancellationToken);
+                diagnostics.MarkCompleted(
+                    $"phase={WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)} status={WorkflowPresentation.ToStatusSlug(workflowRun.Status)} loopLimit=review");
+                return new ContinuePhaseResult(
+                    workflowRun.UsId,
+                    workflowRun.CurrentPhase,
+                    workflowRun.Status,
+                    GeneratedArtifactPath: null,
+                    Usage: null,
+                    Execution: null);
+            }
+
             var reviewReadiness = phaseExecutionProvider.GetPhaseExecutionReadiness(PhaseId.Review);
             if (!reviewReadiness.CanExecute)
             {
@@ -920,7 +946,6 @@ public sealed class WorkflowRunner
                     $"Phase '{WorkflowPresentation.ToPhaseSlug(PhaseId.Review)}' cannot run because '{reviewReadiness.BlockingReason ?? "phase_execution_not_ready"}'.");
             }
 
-            var replayPending = IsReviewReplayPending(paths);
             SpecForgeDiagnostics.Log(
                 replayPending
                     ? $"[runner.continue_phase] usId={usId} replaying current review phase after rewind."
@@ -1456,6 +1481,15 @@ public sealed class WorkflowRunner
 
         if (!refinement.IsReady)
         {
+            if (await PauseRefinementAutomationIfCycleLimitReachedAsync(paths, workflowRun, cancellationToken))
+            {
+                return new CaptureTransitionResult(
+                    refinementGeneration.ArtifactPath,
+                    refinementGeneration.Usage,
+                    refinementGeneration.DurationMs,
+                    refinementGeneration.Execution);
+            }
+
             var autoAnswerAttempt = await TryAutoAnswerRefinementAsync(
                 workspaceRoot,
                 paths,
@@ -3503,6 +3537,85 @@ public sealed class WorkflowRunner
         return string.IsNullOrWhiteSpace(reviewArtifactPath)
             ? []
             : [reviewArtifactPath];
+    }
+
+    private async Task<bool> PauseRefinementAutomationIfCycleLimitReachedAsync(
+        UserStoryFilePaths paths,
+        WorkflowRun workflowRun,
+        CancellationToken cancellationToken)
+    {
+        if (CountArtifactProducingEventsSinceLastReset(paths, PhaseId.Refinement, []) < maxRefinementCycles)
+        {
+            return false;
+        }
+
+        workflowRun.RestoreState(PhaseId.Refinement, UserStoryStatus.WaitingUser);
+        await AppendTimelineEventAsync(
+            paths.TimelineFilePath,
+            "refinement_cycle_limit_reached",
+            "system",
+            PhaseId.Refinement,
+            $"Automatic refinement stopped after {maxRefinementCycles} refinement iteration(s). User intervention is required before continuing.",
+            cancellationToken);
+        return true;
+    }
+
+    private async Task<bool> PauseReviewReplayIfCycleLimitReachedAsync(
+        UserStoryFilePaths paths,
+        WorkflowRun workflowRun,
+        CancellationToken cancellationToken)
+    {
+        if (CountArtifactProducingEventsSinceLastReset(paths, PhaseId.Review, [PhaseId.Implementation]) < maxImplementationReviewCycles)
+        {
+            return false;
+        }
+
+        workflowRun.RestoreState(PhaseId.Review, UserStoryStatus.WaitingUser);
+        await AppendTimelineEventAsync(
+            paths.TimelineFilePath,
+            "review_cycle_limit_reached",
+            "system",
+            PhaseId.Review,
+            $"Automatic review replay stopped after {maxImplementationReviewCycles} review iteration(s) for the current implementation attempt. User intervention is required before continuing the implementation/review loop.",
+            cancellationToken);
+        return true;
+    }
+
+    private static int CountArtifactProducingEventsSinceLastReset(
+        UserStoryFilePaths paths,
+        PhaseId phaseId,
+        IReadOnlyCollection<PhaseId> resetPhases)
+    {
+        if (!File.Exists(paths.TimelineFilePath))
+        {
+            return 0;
+        }
+
+        var phaseSlug = WorkflowPresentation.ToPhaseSlug(phaseId);
+        var resetPhaseSlugs = resetPhases
+            .Select(WorkflowPresentation.ToPhaseSlug)
+            .ToHashSet(StringComparer.Ordinal);
+        var timelineEvents = TimelineMarkdownParser.ParseEvents(File.ReadAllText(paths.TimelineFilePath))
+            .ToArray();
+        var count = 0;
+
+        for (var index = timelineEvents.Length - 1; index >= 0; index--)
+        {
+            var timelineEvent = timelineEvents[index];
+            if (resetPhaseSlugs.Contains(timelineEvent.Phase ?? string.Empty) &&
+                timelineEvent.Code is "phase_completed" or "artifact_operated")
+            {
+                break;
+            }
+
+            if (string.Equals(timelineEvent.Phase, phaseSlug, StringComparison.Ordinal) &&
+                timelineEvent.Artifacts.Any(static artifact => artifact.EndsWith(".md", StringComparison.OrdinalIgnoreCase)))
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     private static async Task EnsureCurrentPhaseIsApprovableAsync(

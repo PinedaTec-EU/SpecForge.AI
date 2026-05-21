@@ -16,6 +16,7 @@ internal sealed record SpecForgePortalSettings(
     string? AutoRefinementAnswersProfile,
     bool AutoPlayEnabled,
     bool AutoReviewEnabled,
+    int MaxRefinementCycles,
     int MaxImplementationReviewCycles,
     bool DestructiveRewindEnabled,
     bool PauseOnFailedReview,
@@ -54,7 +55,7 @@ internal sealed record SpecForgePortalSettings(
             Role: "reviewer",
             ModelProfile: string.Empty,
             Instructions: "Review implementation changes for correctness, regressions, missing tests, and release risk.",
-            RepositoryAccess: "read-write"),
+            RepositoryAccess: "read"),
         new(
             Name: "release-preparer",
             Role: "release-preparer",
@@ -184,6 +185,16 @@ internal static class SpecForgePortalSettingsStore
             settings = settings with { AutoReviewEnabled = true };
         }
 
+        if (!document.RootElement.TryGetProperty("maxRefinementCycles", out _) || settings.MaxRefinementCycles <= 0)
+        {
+            settings = settings with { MaxRefinementCycles = 3 };
+        }
+
+        if (!document.RootElement.TryGetProperty("maxImplementationReviewCycles", out _) || settings.MaxImplementationReviewCycles <= 0)
+        {
+            settings = settings with { MaxImplementationReviewCycles = 5 };
+        }
+
         if (!document.RootElement.TryGetProperty("decompositionEnabled", out _))
         {
             settings = settings with { DecompositionEnabled = true };
@@ -267,6 +278,7 @@ internal static class SpecForgePortalSettingsStore
             AutoRefinementAnswersProfile: null,
             AutoPlayEnabled: true,
             AutoReviewEnabled: true,
+            MaxRefinementCycles: 3,
             MaxImplementationReviewCycles: 5,
             DestructiveRewindEnabled: false,
             PauseOnFailedReview: true,

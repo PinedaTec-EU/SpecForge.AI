@@ -538,7 +538,7 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
                 context.WorkspaceRoot,
                 nativePrompt,
                 modelSelection,
-                context.PhaseId == PhaseId.Review ? "workspace-write" : "read-only",
+                ResolveNativeSandboxMode(context.PhaseId),
                 cancellationToken);
             return new PhaseSubagentResult(subagent.Name, subagent.Role, nativeResult.Content.Trim(), nativeResult.Usage);
         }
@@ -566,6 +566,9 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
             _ => false
         };
     }
+
+    private static string ResolveNativeSandboxMode(PhaseId phaseId) =>
+        phaseId == PhaseId.Implementation ? "workspace-write" : "read-only";
 
     private static IReadOnlyList<PhaseSubagentDefinition> ResolvePhaseSubagents(PhaseId phaseId) =>
         phaseId switch
@@ -1586,9 +1589,7 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
             prompt,
             modelSelection.ProviderKind,
             options.PhaseSkillUsageReportingEnabled);
-        var sandboxMode = context.PhaseId is PhaseId.Implementation or PhaseId.Review
-            ? "workspace-write"
-            : "read-only";
+        var sandboxMode = ResolveNativeSandboxMode(context.PhaseId);
         var baselineWorkspaceChanges = context.PhaseId == PhaseId.Implementation
             ? await TryCaptureGitStatusSnapshotAsync(context.WorkspaceRoot, cancellationToken)
             : null;
@@ -2275,6 +2276,7 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
     {
         var modelNames = modelProfiles.Select(static profile => profile.Name).ToHashSet(StringComparer.Ordinal);
         var agentNames = new HashSet<string>(StringComparer.Ordinal);
+        var agentsByName = new Dictionary<string, OpenAiCompatibleAgentProfile>(StringComparer.Ordinal);
 
         foreach (var agent in agentProfiles)
         {
@@ -2287,6 +2289,8 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
             {
                 throw new ArgumentException($"Duplicate agent profile '{agent.Name}'.", nameof(agentProfiles));
             }
+
+            agentsByName[agent.Name] = agent;
 
             if (string.IsNullOrWhiteSpace(agent.ModelProfile))
             {
@@ -2342,6 +2346,79 @@ public sealed class OpenAiCompatiblePhaseExecutionProvider : IPhaseExecutionProv
                 throw new ArgumentException($"Assigned agent profile '{agentName}' was not configured.", nameof(assignments));
             }
         }
+
+        var refinementAgent = ResolveAssignedAgentProfile(PhaseId.Refinement, agentProfiles, agentsByName, assignments);
+        var specAgent = ResolveAssignedAgentProfile(PhaseId.Spec, agentProfiles, agentsByName, assignments);
+        var implementationAgent = ResolveAssignedAgentProfile(PhaseId.Implementation, agentProfiles, agentsByName, assignments);
+        var reviewAgent = ResolveAssignedAgentProfile(PhaseId.Review, agentProfiles, agentsByName, assignments);
+
+        EnsureReadOnlyCritic(refinementAgent, "refinement", nameof(agentProfiles));
+        EnsureReadOnlyCritic(reviewAgent, "review", nameof(agentProfiles));
+
+        if (string.Equals(refinementAgent.ModelProfile, specAgent.ModelProfile, StringComparison.Ordinal))
+        {
+            throw new ArgumentException(
+                $"Refinement agent '{refinementAgent.Name}' must use a different model profile than spec agent '{specAgent.Name}'.",
+                nameof(assignments));
+        }
+
+        if (string.Equals(reviewAgent.ModelProfile, implementationAgent.ModelProfile, StringComparison.Ordinal))
+        {
+            throw new ArgumentException(
+                $"Review agent '{reviewAgent.Name}' must use a different model profile than implementation agent '{implementationAgent.Name}'.",
+                nameof(assignments));
+        }
+    }
+
+    private static void EnsureReadOnlyCritic(
+        OpenAiCompatibleAgentProfile agent,
+        string phaseName,
+        string argumentName)
+    {
+        if (!string.Equals(NormalizeRepositoryAccess(agent.RepositoryAccess), RepositoryAccessRead, StringComparison.Ordinal))
+        {
+            throw new ArgumentException(
+                $"{phaseName} agent '{agent.Name}' must use repository access '{RepositoryAccessRead}'.",
+                argumentName);
+        }
+    }
+
+    private static OpenAiCompatibleAgentProfile ResolveAssignedAgentProfile(
+        PhaseId phaseId,
+        IReadOnlyList<OpenAiCompatibleAgentProfile> agentProfiles,
+        IReadOnlyDictionary<string, OpenAiCompatibleAgentProfile> agentsByName,
+        OpenAiCompatiblePhaseAgentAssignments? assignments)
+    {
+        var agentName = phaseId switch
+        {
+            PhaseId.Refinement => assignments?.RefinementAgent,
+            PhaseId.Spec => assignments?.SpecAgent,
+            PhaseId.TechnicalDesign => assignments?.TechnicalDesignAgent,
+            PhaseId.Implementation => assignments?.ImplementationAgent,
+            PhaseId.Review => assignments?.ReviewAgent,
+            PhaseId.ReleaseApproval => assignments?.ReleaseApprovalAgent,
+            PhaseId.PrPreparation => assignments?.PrPreparationAgent,
+            _ => assignments?.DefaultAgent
+        };
+
+        if (string.IsNullOrWhiteSpace(agentName))
+        {
+            agentName = assignments?.DefaultAgent;
+        }
+
+        if (string.IsNullOrWhiteSpace(agentName) && agentProfiles.Count == 1)
+        {
+            agentName = agentProfiles[0].Name;
+        }
+
+        if (string.IsNullOrWhiteSpace(agentName) || !agentsByName.TryGetValue(agentName, out var agent))
+        {
+            throw new ArgumentException(
+                $"Assigned agent profile for phase '{phaseId}' was not configured.",
+                nameof(assignments));
+        }
+
+        return agent;
     }
 
     private static void ValidateAutoRefinementAnswers(

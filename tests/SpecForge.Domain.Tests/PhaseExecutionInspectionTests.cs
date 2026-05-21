@@ -206,10 +206,10 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
             ReviewPolicySnapshot: new ReviewPhasePolicySnapshot(
                 "review",
                 "shared-phase-policy/v1",
-                "Phase `review` requires `read-write` repository access and applies `release` review evidence policy.",
+                "Phase `review` requires `read` repository access and applies `release` review evidence policy.",
                 ExecutionAllowed: true,
                 ExecutionBlockingReason: null,
-                new PhaseExecutionRequirements(true, "read-write", true),
+                new PhaseExecutionRequirements(true, "read", false),
                 [new PhaseExecutionEvidenceRequirement("validation_strategy_evidence", "Review must classify validation strategy items according to the active review evidence policy.", "enforced", "release")],
                 [new PhaseExecutionEligibilityRule("review_evidence_policy_selected", "Review execution must declare the active evidence policy so operators can interpret blocking evidence gaps.", "enforced", null, true, "Active review evidence policy: `release`.")],
                 "release",

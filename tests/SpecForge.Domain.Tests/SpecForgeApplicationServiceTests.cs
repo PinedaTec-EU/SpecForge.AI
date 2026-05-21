@@ -916,7 +916,7 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
         Assert.Contains(capturePhase.ExecutionPolicy.EligibilityRules, rule => rule.Id == "entry_phase_no_model_required");
 
         Assert.NotNull(reviewPhase.ExecutionPolicy);
-        Assert.Equal("read-write", reviewPhase.ExecutionPolicy!.Permissions.RepositoryAccess);
+        Assert.Equal("read", reviewPhase.ExecutionPolicy!.Permissions.RepositoryAccess);
         Assert.Contains(reviewPhase.ExecutionPolicy.EvidenceRequirements, item => item.Id == "validation_strategy_evidence" && item.PolicyInput == "release");
         Assert.Contains(reviewPhase.ExecutionPolicy.EligibilityRules, rule => rule.Id == "review_evidence_policy_selected");
     }
