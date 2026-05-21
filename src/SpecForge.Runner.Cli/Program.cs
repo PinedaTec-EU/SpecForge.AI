@@ -251,7 +251,16 @@ static async Task HandleServeWorkflowAsync(IReadOnlyList<string> args)
 
     var workspaceRoot = Path.GetFullPath(args[1]);
     var runner = new WorkflowRunner(CreatePhaseExecutionProvider(workspaceRoot));
-    var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+    var portalSettings = SpecForgePortalSettingsStore.LoadOrDefault(workspaceRoot);
+    var harnessProfileSettings = new HarnessProfileRuntimeSettings(
+        DefaultProfile: portalSettings.DefaultHarnessProfile,
+        PhaseProfiles: portalSettings.PhaseHarnessProfiles ?? HarnessProfileRuntimeSettings.Default.PhaseProfiles,
+        Governance: new HarnessProfileGovernance(
+            portalSettings.HarnessProfileAuthority,
+            portalSettings.HarnessProfileLockMode,
+            portalSettings.AllowPerUserStoryHarnessProfileOverrides,
+            portalSettings.LockedHarnessPhaseIds));
+    var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner, harnessProfileSettings: harnessProfileSettings);
     var usId = args.Count >= 3 && !LooksLikeHttpPrefix(args[2])
         ? args[2]
         : await ResolveDefaultWorkflowPortalUserStoryIdAsync(applicationService, workspaceRoot);
@@ -851,6 +860,16 @@ static SpecForgeApplicationService CreateApplicationService(IReadOnlyList<string
     var portalSettings = string.IsNullOrWhiteSpace(workspaceRoot)
         ? null
         : SpecForgePortalSettingsStore.LoadOrDefault(workspaceRoot);
+    var harnessProfileSettings = portalSettings is null
+        ? HarnessProfileRuntimeSettings.Default
+        : new HarnessProfileRuntimeSettings(
+            DefaultProfile: portalSettings.DefaultHarnessProfile,
+            PhaseProfiles: portalSettings.PhaseHarnessProfiles ?? HarnessProfileRuntimeSettings.Default.PhaseProfiles,
+            Governance: new HarnessProfileGovernance(
+                portalSettings.HarnessProfileAuthority,
+                portalSettings.HarnessProfileLockMode,
+                portalSettings.AllowPerUserStoryHarnessProfileOverrides,
+                portalSettings.LockedHarnessPhaseIds));
     var runner = new WorkflowRunner(
         CreatePhaseExecutionProvider(workspaceRoot),
         refinementTolerance: portalSettings?.RefinementTolerance ?? "balanced",
@@ -860,7 +879,7 @@ static SpecForgeApplicationService CreateApplicationService(IReadOnlyList<string
             Tolerance: portalSettings?.DecompositionTolerance ?? 0.10,
             MaxChildren: portalSettings?.DecompositionMaxChildren ?? 5));
 
-    return new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+    return new SpecForgeApplicationService(new UserStoryFileStore(), runner, harnessProfileSettings: harnessProfileSettings);
 }
 
 static IPhaseExecutionProvider CreatePhaseExecutionProvider(string? workspaceRoot)

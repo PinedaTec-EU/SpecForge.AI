@@ -17,6 +17,7 @@ public sealed class SpecForgeApplicationService
     private readonly UserStoryDependencyService userStoryDependencyService;
     private readonly string? runtimeVersion;
     private readonly bool completedUsLockOnCompleted;
+    private readonly HarnessProfileRuntimeSettings harnessProfileSettings;
 
     public SpecForgeApplicationService()
         : this(new UserStoryFileStore(), new WorkflowRunner(), new RepositoryPromptInitializer(), new RepositoryCategoryCatalog(), new UserStoryRuntimeStatusStore(), null)
@@ -30,7 +31,8 @@ public sealed class SpecForgeApplicationService
         RepositoryCategoryCatalog? repositoryCategoryCatalog = null,
         UserStoryRuntimeStatusStore? runtimeStatusStore = null,
         string? runtimeVersion = null,
-        bool completedUsLockOnCompleted = true)
+        bool completedUsLockOnCompleted = true,
+        HarnessProfileRuntimeSettings? harnessProfileSettings = null)
     {
         this.fileStore = fileStore ?? throw new ArgumentNullException(nameof(fileStore));
         this.workflowRunner = workflowRunner ?? throw new ArgumentNullException(nameof(workflowRunner));
@@ -42,6 +44,7 @@ public sealed class SpecForgeApplicationService
         userStoryDependencyService = new UserStoryDependencyService(this.fileStore);
         this.runtimeVersion = string.IsNullOrWhiteSpace(runtimeVersion) ? null : runtimeVersion.Trim();
         this.completedUsLockOnCompleted = completedUsLockOnCompleted;
+        this.harnessProfileSettings = harnessProfileSettings ?? HarnessProfileRuntimeSettings.FromEnvironment();
     }
 
     public Task<InitializeRepoPromptsResult> InitializeRepoPromptsAsync(
@@ -242,6 +245,7 @@ public sealed class SpecForgeApplicationService
             timelineEvents,
             phaseIterations,
             cancellationToken);
+        var harnessProfileGovernance = harnessProfileSettings.Governance;
         var latestRefinementAutoAnswerInspection = await TryReadLatestAutoRefinementAnswerInspectionAsync(
             timelineEvents,
             cancellationToken);
@@ -275,6 +279,7 @@ public sealed class SpecForgeApplicationService
                     workflowRun.Branch.PullRequest.Url,
                     workflowRun.Branch.PullRequest.RemoteBranch,
                     workflowRun.Branch.PullRequest.PublishedAtUtc?.ToString("O")),
+            harnessProfileGovernance,
             await BuildPhaseDetailsAsync(workspaceRoot, workflowRun, paths, timelineEvents, metrics.ByPhase, cancellationToken),
             new CurrentPhaseControls(
                 currentPhase.CanAdvance,
@@ -850,6 +855,7 @@ public sealed class SpecForgeApplicationService
         IReadOnlyDictionary<string, PhaseRuntimeMetrics> phaseMetrics,
         CancellationToken cancellationToken)
     {
+        var resolvedHarnessProfiles = HarnessProfileCatalog.ResolveByPhase(harnessProfileSettings);
         var phases = new[]
         {
             Workflow.PhaseId.Capture,
@@ -965,6 +971,7 @@ public sealed class SpecForgeApplicationService
                 executionReadiness,
                 executionPolicy,
                 executionEnvelope,
+                resolvedHarnessProfiles.TryGetValue(phaseSlug, out var harnessProfile) ? harnessProfile : null,
                 specApprovalPolicy,
                 reviewPolicy,
                 releaseApprovalPolicy,
@@ -995,6 +1002,7 @@ public sealed class SpecForgeApplicationService
                 ExecutionReadiness: null,
                 ExecutionPolicy: null,
                 ExecutionEnvelope: null,
+                HarnessProfile: null,
                 SpecApprovalPolicy: null,
                 ReviewPolicy: null,
                 ReleaseApprovalPolicy: null,

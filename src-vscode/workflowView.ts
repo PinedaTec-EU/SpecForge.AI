@@ -845,6 +845,47 @@ function buildPhaseSpecificSections(
   }
 }
 
+function renderHarnessProfileSection(
+  harnessProfile: WorkflowPhaseDetails["harnessProfile"] | null,
+  governance: UserStoryWorkflowDetails["harnessProfileGovernance"] | null
+): string {
+  if (!harnessProfile) {
+    return "";
+  }
+
+  const lockedPhaseCount = governance?.lockedPhaseIds?.length ?? 0;
+  return `
+    <section class="detail-card">
+      <div class="detail-card__header">
+        <div>
+          <p class="detail-card__eyebrow">Harness Profile</p>
+          <h3>${escapeHtml(harnessProfile.title)}</h3>
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div><strong>Selected</strong><div><code>${escapeHtml(harnessProfile.selectedProfile)}</code></div></div>
+        <div><strong>Resolved</strong><div><code>${escapeHtml(harnessProfile.resolvedProfile)}</code></div></div>
+        <div><strong>Source</strong><div><code>${escapeHtml(harnessProfile.resolutionSource)}</code></div></div>
+        <div><strong>Authority</strong><div><code>${escapeHtml(harnessProfile.authority)}</code></div></div>
+        <div><strong>Locked</strong><div><code>${harnessProfile.isLocked ? "true" : "false"}</code></div></div>
+        <div><strong>Override Allowed</strong><div><code>${harnessProfile.overrideAllowedNow ? "true" : "false"}</code></div></div>
+      </div>
+      <p class="panel-copy">${escapeHtml(harnessProfile.summary)}</p>
+      <div class="metadata-strip">
+        <span>Governance lock mode: <code>${escapeHtml(governance?.lockMode ?? harnessProfile.lockMode)}</code></span>
+        <span>Locked phases: <code>${escapeHtml(String(lockedPhaseCount))}</code></span>
+        ${harnessProfile.inheritsFrom ? `<span>Inherits from: <code>${escapeHtml(harnessProfile.inheritsFrom)}</code></span>` : ""}
+      </div>
+      ${harnessProfile.lockReason
+        ? `<p class="panel-copy">Lock reason: <code>${escapeHtml(harnessProfile.lockReason)}</code></p>`
+        : ""}
+      <div class="tag-cloud">
+        ${harnessProfile.traits.map((trait) => `<span class="tag-chip">${escapeHtml(trait)}</span>`).join("")}
+      </div>
+    </section>
+  `;
+}
+
 const genericExecutionMessages = [
   "Untangling edge cases before they untangle the plan.",
   "Cross-checking prior artifacts for contradictions.",
@@ -2351,9 +2392,12 @@ export function buildWorkflowHtml(
   const completedPhaseTopSections = selectedPhase.phaseId === "completed"
     ? phaseSpecificSections.beforeArtifact.join("")
     : "";
+  const harnessProfileSection = selectedPhase.phaseId === "completed"
+    ? ""
+    : renderHarnessProfileSection(selectedPhase.harnessProfile ?? null, workflow.harnessProfileGovernance ?? null);
   const regularBeforeArtifactSections = selectedPhase.phaseId === "completed"
     ? ""
-    : phaseSpecificSections.beforeArtifact.join("");
+    : [harnessProfileSection, ...phaseSpecificSections.beforeArtifact].filter(Boolean).join("");
   const continueActionLabel = "Continue";
   const rerunReviewActionLabel = "Rerun Review";
   const approveActionLabel = selectedPhaseIsCurrent ? "Approve" : "Approve Current Phase";

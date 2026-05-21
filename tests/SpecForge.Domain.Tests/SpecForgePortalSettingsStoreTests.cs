@@ -28,6 +28,11 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
         Assert.True(settings.PauseOnFailedReview);
         Assert.True(settings.UseSemanticGraphWhenAvailable);
         Assert.False(settings.AllowGraphBuildRefreshForTouchedUserStoryScope);
+        Assert.Equal("balanced", settings.DefaultHarnessProfile);
+        Assert.Equal("workspace", settings.HarnessProfileAuthority);
+        Assert.Equal("none", settings.HarnessProfileLockMode);
+        Assert.Empty(settings.LockedHarnessPhaseIds);
+        Assert.True(settings.AllowPerUserStoryHarnessProfileOverrides);
         Assert.True(settings.ReviewLearningEnabled);
         Assert.False(settings.CompletedUsLockOnCompleted);
     }
@@ -63,6 +68,11 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
         Assert.True(settings.PauseOnFailedReview);
         Assert.True(settings.UseSemanticGraphWhenAvailable);
         Assert.False(settings.AllowGraphBuildRefreshForTouchedUserStoryScope);
+        Assert.Equal("balanced", settings.DefaultHarnessProfile);
+        Assert.Equal("workspace", settings.HarnessProfileAuthority);
+        Assert.Equal("none", settings.HarnessProfileLockMode);
+        Assert.Empty(settings.LockedHarnessPhaseIds);
+        Assert.True(settings.AllowPerUserStoryHarnessProfileOverrides);
         Assert.True(settings.ReviewLearningEnabled);
     }
 
@@ -173,7 +183,12 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
             MvpRigor = "high",
             AutoPlayEnabled = false,
             UseSemanticGraphWhenAvailable = false,
-            AllowGraphBuildRefreshForTouchedUserStoryScope = true
+            AllowGraphBuildRefreshForTouchedUserStoryScope = true,
+            DefaultHarnessProfile = "regulated",
+            HarnessProfileAuthority = "central",
+            HarnessProfileLockMode = "phase",
+            LockedHarnessPhaseIds = ["review", "release-approval"],
+            AllowPerUserStoryHarnessProfileOverrides = false
         };
 
         SpecForgePortalSettingsStore.Save(workspaceRoot, settings);
@@ -184,6 +199,11 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
         Assert.False(loaded.AutoPlayEnabled);
         Assert.False(loaded.UseSemanticGraphWhenAvailable);
         Assert.True(loaded.AllowGraphBuildRefreshForTouchedUserStoryScope);
+        Assert.Equal("regulated", loaded.DefaultHarnessProfile);
+        Assert.Equal("central", loaded.HarnessProfileAuthority);
+        Assert.Equal("phase", loaded.HarnessProfileLockMode);
+        Assert.Equal(["review", "release-approval"], loaded.LockedHarnessPhaseIds);
+        Assert.False(loaded.AllowPerUserStoryHarnessProfileOverrides);
         Assert.Equal("local", Assert.Single(loaded.ModelProfiles).Name);
     }
 

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using SpecForge.Domain.Application;
 using SpecForge.OpenAICompatible;
 
 internal sealed record SpecForgePortalSettings(
@@ -20,6 +21,12 @@ internal sealed record SpecForgePortalSettings(
     bool PauseOnFailedReview,
     bool UseSemanticGraphWhenAvailable,
     bool AllowGraphBuildRefreshForTouchedUserStoryScope,
+    string DefaultHarnessProfile,
+    HarnessPhaseProfileAssignments? PhaseHarnessProfiles,
+    string HarnessProfileAuthority,
+    string HarnessProfileLockMode,
+    IReadOnlyCollection<string> LockedHarnessPhaseIds,
+    bool AllowPerUserStoryHarnessProfileOverrides,
     bool ReviewLearningEnabled,
     string ReviewLearningSkillPath,
     bool CompletedUsLockOnCompleted,
@@ -142,6 +149,31 @@ internal static class SpecForgePortalSettingsStore
             settings = settings with { ReviewSubagentsEnabled = true };
         }
 
+        if (!document.RootElement.TryGetProperty("defaultHarnessProfile", out _))
+        {
+            settings = settings with { DefaultHarnessProfile = HarnessProfileCatalog.BalancedProfileKey };
+        }
+
+        if (!document.RootElement.TryGetProperty("harnessProfileAuthority", out _))
+        {
+            settings = settings with { HarnessProfileAuthority = "workspace" };
+        }
+
+        if (!document.RootElement.TryGetProperty("harnessProfileLockMode", out _))
+        {
+            settings = settings with { HarnessProfileLockMode = "none" };
+        }
+
+        if (!document.RootElement.TryGetProperty("lockedHarnessPhaseIds", out _))
+        {
+            settings = settings with { LockedHarnessPhaseIds = [] };
+        }
+
+        if (!document.RootElement.TryGetProperty("allowPerUserStoryHarnessProfileOverrides", out _))
+        {
+            settings = settings with { AllowPerUserStoryHarnessProfileOverrides = true };
+        }
+
         if (!document.RootElement.TryGetProperty("autoPlayEnabled", out _))
         {
             settings = settings with { AutoPlayEnabled = true };
@@ -185,6 +217,31 @@ internal static class SpecForgePortalSettingsStore
             }
         }
 
+        settings = settings with
+        {
+            DefaultHarnessProfile = HarnessProfileCatalog.NormalizeProfileKey(settings.DefaultHarnessProfile),
+            PhaseHarnessProfiles = (settings.PhaseHarnessProfiles ?? HarnessProfileRuntimeSettings.Default.PhaseProfiles) with
+            {
+                DefaultProfile = HarnessProfileCatalog.NormalizeOptionalProfileKey(settings.PhaseHarnessProfiles?.DefaultProfile),
+                CaptureProfile = HarnessProfileCatalog.NormalizeOptionalProfileKey(settings.PhaseHarnessProfiles?.CaptureProfile),
+                RefinementProfile = HarnessProfileCatalog.NormalizeOptionalProfileKey(settings.PhaseHarnessProfiles?.RefinementProfile),
+                SpecProfile = HarnessProfileCatalog.NormalizeOptionalProfileKey(settings.PhaseHarnessProfiles?.SpecProfile),
+                TechnicalDesignProfile = HarnessProfileCatalog.NormalizeOptionalProfileKey(settings.PhaseHarnessProfiles?.TechnicalDesignProfile),
+                ImplementationProfile = HarnessProfileCatalog.NormalizeOptionalProfileKey(settings.PhaseHarnessProfiles?.ImplementationProfile),
+                ReviewProfile = HarnessProfileCatalog.NormalizeOptionalProfileKey(settings.PhaseHarnessProfiles?.ReviewProfile),
+                ReleaseApprovalProfile = HarnessProfileCatalog.NormalizeOptionalProfileKey(settings.PhaseHarnessProfiles?.ReleaseApprovalProfile),
+                PrPreparationProfile = HarnessProfileCatalog.NormalizeOptionalProfileKey(settings.PhaseHarnessProfiles?.PrPreparationProfile)
+            },
+            HarnessProfileAuthority = HarnessProfileCatalog.NormalizeAuthority(settings.HarnessProfileAuthority),
+            HarnessProfileLockMode = HarnessProfileCatalog.NormalizeLockMode(settings.HarnessProfileLockMode),
+            LockedHarnessPhaseIds = settings.LockedHarnessPhaseIds
+                .Select(HarnessProfileCatalog.NormalizePhaseSlug)
+                .Where(static phaseId => phaseId is not null)
+                .Cast<string>()
+                .Distinct(StringComparer.Ordinal)
+                .ToArray()
+        };
+
         return settings;
     }
 
@@ -215,6 +272,12 @@ internal static class SpecForgePortalSettingsStore
             PauseOnFailedReview: true,
             UseSemanticGraphWhenAvailable: true,
             AllowGraphBuildRefreshForTouchedUserStoryScope: false,
+            DefaultHarnessProfile: HarnessProfileCatalog.BalancedProfileKey,
+            PhaseHarnessProfiles: HarnessProfileRuntimeSettings.Default.PhaseProfiles,
+            HarnessProfileAuthority: "workspace",
+            HarnessProfileLockMode: "none",
+            LockedHarnessPhaseIds: [],
+            AllowPerUserStoryHarnessProfileOverrides: true,
             ReviewLearningEnabled: true,
             ReviewLearningSkillPath: ".codex/skills/sdd-phase-agents/SKILL.md",
             CompletedUsLockOnCompleted: false,

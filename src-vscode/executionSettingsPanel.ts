@@ -8,6 +8,7 @@ import {
   shouldBootstrapRecommendedAgentProfiles,
   shouldBootstrapRecommendedPhaseAgentAssignments,
   type SpecForgeAgentProfile,
+  type SpecForgePhaseHarnessProfiles,
   type SpecForgeModelProfile,
   type SpecForgePhaseAgentAssignments
 } from "./extensionSettings";
@@ -20,6 +21,12 @@ type ExecutionSettingsMessage =
       readonly modelProfiles?: readonly Partial<SpecForgeModelProfile>[];
       readonly agentProfiles?: readonly Partial<SpecForgeAgentProfile>[];
       readonly phaseAgentAssignments?: Partial<SpecForgePhaseAgentAssignments>;
+      readonly defaultHarnessProfile?: string;
+      readonly phaseHarnessProfiles?: Partial<SpecForgePhaseHarnessProfiles>;
+      readonly harnessProfileAuthority?: "workspace" | "central";
+      readonly harnessProfileLockMode?: "none" | "phase" | "all";
+      readonly lockedHarnessPhaseIds?: readonly string[];
+      readonly allowPerUserStoryHarnessProfileOverrides?: boolean;
       readonly refinementTolerance?: string;
       readonly mvpRigor?: "low" | "medium" | "high";
       readonly reviewTolerance?: string;
@@ -102,6 +109,12 @@ class ExecutionSettingsPanelController {
               message.modelProfiles ?? [],
               message.agentProfiles ?? [],
               message.phaseAgentAssignments ?? {},
+              message.defaultHarnessProfile ?? "balanced",
+              message.phaseHarnessProfiles ?? {},
+              message.harnessProfileAuthority ?? "workspace",
+              message.harnessProfileLockMode ?? "none",
+              message.lockedHarnessPhaseIds ?? [],
+              message.allowPerUserStoryHarnessProfileOverrides ?? true,
               message.refinementTolerance ?? "balanced",
               message.mvpRigor ?? "medium",
               message.reviewTolerance ?? "balanced",
@@ -150,6 +163,12 @@ class ExecutionSettingsPanelController {
       modelProfiles: settings.modelProfiles,
       agentProfiles: settings.agentProfiles ?? [],
       phaseAgentAssignments: settings.phaseAgentAssignments,
+      defaultHarnessProfile: settings.defaultHarnessProfile,
+      phaseHarnessProfiles: settings.phaseHarnessProfiles,
+      harnessProfileAuthority: settings.harnessProfileAuthority,
+      harnessProfileLockMode: settings.harnessProfileLockMode,
+      lockedHarnessPhaseIds: settings.lockedHarnessPhaseIds,
+      allowPerUserStoryHarnessProfileOverrides: settings.allowPerUserStoryHarnessProfileOverrides,
       refinementTolerance: settings.refinementTolerance,
       mvpRigor: settings.mvpRigor ?? "medium",
       reviewTolerance: settings.reviewTolerance,
@@ -204,6 +223,12 @@ type ExecutionSettingsViewModel = {
   readonly modelProfiles: readonly SpecForgeModelProfile[];
   readonly agentProfiles: readonly SpecForgeAgentProfile[];
   readonly phaseAgentAssignments: SpecForgePhaseAgentAssignments;
+  readonly defaultHarnessProfile: string;
+  readonly phaseHarnessProfiles: SpecForgePhaseHarnessProfiles;
+  readonly harnessProfileAuthority: "workspace" | "central";
+  readonly harnessProfileLockMode: "none" | "phase" | "all";
+  readonly lockedHarnessPhaseIds: readonly string[];
+  readonly allowPerUserStoryHarnessProfileOverrides: boolean;
   readonly refinementTolerance: string;
   readonly mvpRigor: "low" | "medium" | "high";
   readonly reviewTolerance: string;
@@ -249,6 +274,12 @@ const executionPhases: ReadonlyArray<{
   { key: "releaseApprovalAgent", label: "Release Approval", phaseId: "release-approval", kind: "phase" },
   { key: "prPreparationAgent", label: "PR Preparation", phaseId: "pr-preparation", kind: "phase" }
 ];
+
+const harnessProfileOptions = [
+  { value: "balanced", label: "Balanced" },
+  { value: "strict", label: "Strict" },
+  { value: "regulated", label: "Regulated" }
+] as const;
 
 function renderExecutionSettingsPhaseIcon(phase: typeof executionPhases[number]): string {
   const icon = phase.phaseId ? workflowPhaseIcon(phase.phaseId) : automationPhaseIcon();
@@ -680,6 +711,76 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
       </div>
       <div class="section-header">
         <div>
+          <p class="eyebrow">Harness Profiles</p>
+          <h2>Governance posture by phase</h2>
+          <p class="copy">Assign reusable harness postures per phase, decide who owns those assignments, and declare whether profiles may be overridden later by a user story or are governance-locked.</p>
+        </div>
+      </div>
+      <div class="feature-grid">
+        <label class="phase-field">
+          <span>Default harness profile</span>
+          <select data-default-harness-profile>
+            ${harnessProfileOptions.map((option) => `<option value="${option.value}"${model.defaultHarnessProfile === option.value ? " selected" : ""}>${option.label}</option>`).join("")}
+          </select>
+          <span class="phase-field__hint">Fallback posture when a phase does not declare a specific harness profile.</span>
+        </label>
+        <label class="phase-field">
+          <span>Assignment authority</span>
+          <select data-harness-profile-authority>
+            <option value="workspace"${model.harnessProfileAuthority === "workspace" ? " selected" : ""}>Workspace</option>
+            <option value="central"${model.harnessProfileAuthority === "central" ? " selected" : ""}>SpecForge Central</option>
+          </select>
+          <span class="phase-field__hint">Declares whether this repository currently treats harness profile assignments as local or centrally-governed.</span>
+        </label>
+        <label class="phase-field">
+          <span>Lock mode</span>
+          <select data-harness-profile-lock-mode>
+            <option value="none"${model.harnessProfileLockMode === "none" ? " selected" : ""}>None</option>
+            <option value="phase"${model.harnessProfileLockMode === "phase" ? " selected" : ""}>Selected phases</option>
+            <option value="all"${model.harnessProfileLockMode === "all" ? " selected" : ""}>All phases</option>
+          </select>
+          <span class="phase-field__hint">Controls whether assignments are advisory, phase-locked, or globally locked against later override.</span>
+        </label>
+        <label class="phase-field">
+          <span>Allow per-user-story overrides</span>
+          <select data-allow-per-us-harness-profile-overrides>
+            <option value="true"${model.allowPerUserStoryHarnessProfileOverrides ? " selected" : ""}>Enabled</option>
+            <option value="false"${model.allowPerUserStoryHarnessProfileOverrides ? "" : " selected"}>Disabled</option>
+          </select>
+          <span class="phase-field__hint">Allows a workflow or Central to request a per-user-story profile change when the resolved phase is not locked.</span>
+        </label>
+      </div>
+      <div class="phase-grid" data-harness-phase-grid>
+        ${executionPhases
+          .filter((phase) => phase.key !== "defaultAgent")
+          .map((phase) => `
+            <label class="phase-field" data-harness-phase-wrapper="${escapeHtmlAttr(phase.phaseId ?? "")}">
+              <span class="phase-field__heading">
+                ${renderExecutionSettingsPhaseIcon(phase)}
+                <span class="phase-field__title-stack">
+                  <span class="phase-field__title">${escapeHtml(phase.label)}</span>
+                </span>
+              </span>
+              <select data-harness-phase-field="${escapeHtmlAttr(phase.phaseId ?? "")}"></select>
+              <span class="phase-field__hint"></span>
+            </label>
+          `).join("")}
+      </div>
+      <div class="feature-grid">
+        ${executionPhases
+          .filter((phase) => phase.key !== "defaultAgent")
+          .map((phase) => `
+            <label class="phase-field">
+              <span>Lock ${escapeHtml(phase.label)}</span>
+              <select data-harness-lock-phase="${escapeHtmlAttr(phase.phaseId ?? "")}">
+                <option value="false"${model.lockedHarnessPhaseIds.includes(phase.phaseId ?? "") ? "" : " selected"}>No</option>
+                <option value="true"${model.lockedHarnessPhaseIds.includes(phase.phaseId ?? "") ? " selected" : ""}>Yes</option>
+              </select>
+            </label>
+          `).join("")}
+      </div>
+      <div class="section-header">
+        <div>
           <p class="eyebrow">Refinement Automation</p>
           <h2>Model-assisted answers</h2>
           <p class="copy">When refinement blocks spec, let a selected model try to answer the pending questions once before handing the phase back to the user.</p>
@@ -935,6 +1036,12 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
       modelProfiles: ${JSON.stringify(model.modelProfiles)},
       agentProfiles: ${JSON.stringify(model.agentProfiles)},
       phaseAgentAssignments: ${JSON.stringify(model.phaseAgentAssignments)},
+      defaultHarnessProfile: ${JSON.stringify(model.defaultHarnessProfile)},
+      phaseHarnessProfiles: ${JSON.stringify(model.phaseHarnessProfiles)},
+      harnessProfileAuthority: ${JSON.stringify(model.harnessProfileAuthority)},
+      harnessProfileLockMode: ${JSON.stringify(model.harnessProfileLockMode)},
+      lockedHarnessPhaseIds: ${JSON.stringify(model.lockedHarnessPhaseIds)},
+      allowPerUserStoryHarnessProfileOverrides: ${JSON.stringify(model.allowPerUserStoryHarnessProfileOverrides)},
       refinementTolerance: ${JSON.stringify(model.refinementTolerance)},
       mvpRigor: ${JSON.stringify(model.mvpRigor)},
       reviewTolerance: ${JSON.stringify(model.reviewTolerance)},
@@ -1015,12 +1122,45 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
       return options.join("");
     }
 
+    function harnessProfileSelectOptions(selectedValue) {
+      return ['<option value="">Use default</option>']
+        .concat([
+          ['balanced', 'Balanced'],
+          ['strict', 'Strict'],
+          ['regulated', 'Regulated']
+        ].map(([value, label]) => '<option value="' + value + '"' + (value === selectedValue ? " selected" : "") + '>' + escapeHtml(label) + '</option>'))
+        .join("");
+    }
+
     function autoRefinementProfileOptions(selectedValue) {
       const options = ['<option value="">Select an agent</option>'];
       for (const agent of state.agentProfiles) {
         options.push('<option value="' + escapeHtml(agent.name || "") + '"' + ((agent.name || "") === selectedValue ? " selected" : "") + '>' + escapeHtml(agent.name || "") + '</option>');
       }
       return options.join("");
+    }
+
+    function phaseIdToHarnessAssignmentKey(phaseId) {
+      switch (phaseId) {
+        case "capture":
+          return "captureProfile";
+        case "refinement":
+          return "refinementProfile";
+        case "spec":
+          return "specProfile";
+        case "technical-design":
+          return "technicalDesignProfile";
+        case "implementation":
+          return "implementationProfile";
+        case "review":
+          return "reviewProfile";
+        case "release-approval":
+          return "releaseApprovalProfile";
+        case "pr-preparation":
+          return "prPreparationProfile";
+        default:
+          return "defaultProfile";
+      }
     }
 
     function modelProfileOptions(selectedValue) {
@@ -1089,7 +1229,12 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
       const profilesHost = document.querySelector("[data-profiles]");
       const agentsHost = document.querySelector("[data-agents]");
       const phaseGrid = document.querySelector("[data-phase-grid]");
+      const harnessPhaseGrid = document.querySelector("[data-harness-phase-grid]");
       const warning = document.querySelector("[data-default-warning]");
+      const defaultHarnessProfile = document.querySelector("[data-default-harness-profile]");
+      const harnessProfileAuthority = document.querySelector("[data-harness-profile-authority]");
+      const harnessProfileLockMode = document.querySelector("[data-harness-profile-lock-mode]");
+      const allowPerUserStoryHarnessProfileOverrides = document.querySelector("[data-allow-per-us-harness-profile-overrides]");
       const autoRefinementProfile = document.querySelector("[data-auto-refinement-profile]");
       const autoRefinementWrapper = document.querySelector("[data-auto-refinement-profile-wrapper]");
       const refinementTolerance = document.querySelector("[data-refinement-tolerance]");
@@ -1119,7 +1264,7 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
       const completedUsLockOnCompleted = document.querySelector("[data-completed-us-lock-on-completed]");
       const saveButton = document.querySelector('button[type="submit"]');
       const saveError = document.querySelector("[data-save-error]");
-      if (!(profilesHost instanceof HTMLElement) || !(agentsHost instanceof HTMLElement) || !(phaseGrid instanceof HTMLElement)) {
+      if (!(profilesHost instanceof HTMLElement) || !(agentsHost instanceof HTMLElement) || !(phaseGrid instanceof HTMLElement) || !(harnessPhaseGrid instanceof HTMLElement)) {
         return;
       }
 
@@ -1201,6 +1346,69 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
         select.value = value;
         select.addEventListener("change", () => {
           state.phaseAgentAssignments[select.dataset.phaseField] = select.value;
+        });
+      }
+
+      for (const select of harnessPhaseGrid.querySelectorAll("[data-harness-phase-field]")) {
+        if (!(select instanceof HTMLSelectElement) || !select.dataset.harnessPhaseField) {
+          continue;
+        }
+        const phaseId = select.dataset.harnessPhaseField;
+        const stateKey = phaseIdToHarnessAssignmentKey(phaseId);
+        const value = state.phaseHarnessProfiles[stateKey] || "";
+        select.innerHTML = harnessProfileSelectOptions(value);
+        select.value = value;
+        select.addEventListener("change", () => {
+          state.phaseHarnessProfiles[stateKey] = select.value || null;
+        });
+      }
+
+      if (defaultHarnessProfile instanceof HTMLSelectElement) {
+        defaultHarnessProfile.value = state.defaultHarnessProfile || "balanced";
+        defaultHarnessProfile.addEventListener("change", () => {
+          state.defaultHarnessProfile = defaultHarnessProfile.value || "balanced";
+        });
+      }
+
+      if (harnessProfileAuthority instanceof HTMLSelectElement) {
+        harnessProfileAuthority.value = state.harnessProfileAuthority || "workspace";
+        harnessProfileAuthority.addEventListener("change", () => {
+          state.harnessProfileAuthority = harnessProfileAuthority.value === "central" ? "central" : "workspace";
+        });
+      }
+
+      if (harnessProfileLockMode instanceof HTMLSelectElement) {
+        harnessProfileLockMode.value = state.harnessProfileLockMode || "none";
+        harnessProfileLockMode.addEventListener("change", () => {
+          state.harnessProfileLockMode = harnessProfileLockMode.value === "all"
+            ? "all"
+            : harnessProfileLockMode.value === "phase"
+              ? "phase"
+              : "none";
+        });
+      }
+
+      if (allowPerUserStoryHarnessProfileOverrides instanceof HTMLSelectElement) {
+        allowPerUserStoryHarnessProfileOverrides.value = state.allowPerUserStoryHarnessProfileOverrides ? "true" : "false";
+        allowPerUserStoryHarnessProfileOverrides.addEventListener("change", () => {
+          state.allowPerUserStoryHarnessProfileOverrides = allowPerUserStoryHarnessProfileOverrides.value === "true";
+        });
+      }
+
+      for (const select of document.querySelectorAll("[data-harness-lock-phase]")) {
+        if (!(select instanceof HTMLSelectElement) || !select.dataset.harnessLockPhase) {
+          continue;
+        }
+        const phaseId = select.dataset.harnessLockPhase;
+        select.value = state.lockedHarnessPhaseIds.includes(phaseId) ? "true" : "false";
+        select.addEventListener("change", () => {
+          const locked = new Set(state.lockedHarnessPhaseIds || []);
+          if (select.value === "true") {
+            locked.add(phaseId);
+          } else {
+            locked.delete(phaseId);
+          }
+          state.lockedHarnessPhaseIds = Array.from(locked);
         });
       }
 
@@ -1770,6 +1978,12 @@ export function buildExecutionSettingsHtml(model: ExecutionSettingsViewModel): s
         modelProfiles: state.modelProfiles,
         agentProfiles: state.agentProfiles,
         phaseAgentAssignments: state.phaseAgentAssignments,
+        defaultHarnessProfile: state.defaultHarnessProfile,
+        phaseHarnessProfiles: state.phaseHarnessProfiles,
+        harnessProfileAuthority: state.harnessProfileAuthority,
+        harnessProfileLockMode: state.harnessProfileLockMode,
+        lockedHarnessPhaseIds: state.lockedHarnessPhaseIds,
+        allowPerUserStoryHarnessProfileOverrides: state.allowPerUserStoryHarnessProfileOverrides,
         refinementTolerance: state.refinementTolerance,
         mvpRigor: state.mvpRigor,
         reviewTolerance: state.reviewTolerance,
@@ -1809,6 +2023,12 @@ async function saveExecutionSettingsAsync(
   modelProfiles: readonly Partial<SpecForgeModelProfile>[],
   agentProfiles: readonly Partial<SpecForgeAgentProfile>[],
   phaseAgentAssignments: Partial<SpecForgePhaseAgentAssignments>,
+  defaultHarnessProfile = "balanced",
+  phaseHarnessProfiles: Partial<SpecForgePhaseHarnessProfiles> = {},
+  harnessProfileAuthority: "workspace" | "central" = "workspace",
+  harnessProfileLockMode: "none" | "phase" | "all" = "none",
+  lockedHarnessPhaseIds: readonly string[] = [],
+  allowPerUserStoryHarnessProfileOverrides = true,
   refinementTolerance = "balanced",
   mvpRigor: "low" | "medium" | "high" = "medium",
   reviewTolerance = "balanced",
@@ -1884,6 +2104,29 @@ async function saveExecutionSettingsAsync(
     releaseApprovalAgent: normalizeOptionalAssignment(phaseAgentAssignments.releaseApprovalAgent),
     prPreparationAgent: normalizeOptionalAssignment(phaseAgentAssignments.prPreparationAgent)
   };
+  const normalizedHarnessPhaseProfiles: SpecForgePhaseHarnessProfiles = {
+    defaultProfile: normalizeHarnessProfileAssignment(phaseHarnessProfiles.defaultProfile),
+    captureProfile: normalizeHarnessProfileAssignment(phaseHarnessProfiles.captureProfile),
+    refinementProfile: normalizeHarnessProfileAssignment(phaseHarnessProfiles.refinementProfile),
+    specProfile: normalizeHarnessProfileAssignment(phaseHarnessProfiles.specProfile),
+    technicalDesignProfile: normalizeHarnessProfileAssignment(phaseHarnessProfiles.technicalDesignProfile),
+    implementationProfile: normalizeHarnessProfileAssignment(phaseHarnessProfiles.implementationProfile),
+    reviewProfile: normalizeHarnessProfileAssignment(phaseHarnessProfiles.reviewProfile),
+    releaseApprovalProfile: normalizeHarnessProfileAssignment(phaseHarnessProfiles.releaseApprovalProfile),
+    prPreparationProfile: normalizeHarnessProfileAssignment(phaseHarnessProfiles.prPreparationProfile)
+  };
+  const normalizedDefaultHarnessProfile = normalizeHarnessProfileSelection(defaultHarnessProfile);
+  const normalizedHarnessAuthority = harnessProfileAuthority === "central" ? "central" : "workspace";
+  const normalizedHarnessLockMode = harnessProfileLockMode === "all"
+    ? "all"
+    : harnessProfileLockMode === "phase"
+      ? "phase"
+      : "none";
+  const normalizedLockedHarnessPhaseIds = Array.from(new Set(
+    lockedHarnessPhaseIds
+      .map((phaseId) => normalizeHarnessLockedPhaseId(phaseId))
+      .filter((phaseId): phaseId is string => phaseId !== null)
+  ));
   const modelNames = new Set(normalizedProfiles.map((profile) => profile.name));
   const agentWithoutModel = normalizedProfiles.length > 0
     ? normalizedAgents.find((agent) => !agent.modelProfile)
@@ -1917,6 +2160,12 @@ async function saveExecutionSettingsAsync(
   await configuration.update("execution.modelProfiles", normalizedProfiles, vscode.ConfigurationTarget.Workspace);
   await configuration.update("execution.agentProfiles", normalizedAgents, vscode.ConfigurationTarget.Workspace);
   await configuration.update("execution.phaseAgents", normalizedAssignments, vscode.ConfigurationTarget.Workspace);
+  await configuration.update("execution.defaultHarnessProfile", normalizedDefaultHarnessProfile, vscode.ConfigurationTarget.Workspace);
+  await configuration.update("execution.phaseHarnessProfiles", normalizedHarnessPhaseProfiles, vscode.ConfigurationTarget.Workspace);
+  await configuration.update("execution.harnessProfileAuthority", normalizedHarnessAuthority, vscode.ConfigurationTarget.Workspace);
+  await configuration.update("execution.harnessProfileLockMode", normalizedHarnessLockMode, vscode.ConfigurationTarget.Workspace);
+  await configuration.update("execution.lockedHarnessPhaseIds", normalizedLockedHarnessPhaseIds, vscode.ConfigurationTarget.Workspace);
+  await configuration.update("execution.allowPerUserStoryHarnessProfileOverrides", allowPerUserStoryHarnessProfileOverrides, vscode.ConfigurationTarget.Workspace);
   await configuration.update("execution.phaseModels", undefined, vscode.ConfigurationTarget.Workspace);
   await configuration.update("execution.refinementTolerance", refinementTolerance, vscode.ConfigurationTarget.Workspace);
   await configuration.update("execution.mvpRigor", mvpRigor, vscode.ConfigurationTarget.Workspace);
@@ -1968,6 +2217,32 @@ async function saveExecutionSettingsAsync(
 function normalizeOptionalAssignment(value: string | null | undefined): string | null {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
+}
+
+function normalizeHarnessProfileSelection(value: string | null | undefined): string {
+  const normalized = value?.trim().toLowerCase();
+  return normalized === "strict" || normalized === "regulated" ? normalized : "balanced";
+}
+
+function normalizeHarnessProfileAssignment(value: string | null | undefined): string | null {
+  const normalized = value?.trim().toLowerCase();
+  return normalized === "strict" || normalized === "balanced" || normalized === "regulated"
+    ? normalized
+    : null;
+}
+
+function normalizeHarnessLockedPhaseId(value: string | null | undefined): string | null {
+  const normalized = value?.trim().toLowerCase();
+  return normalized === "capture"
+    || normalized === "refinement"
+    || normalized === "spec"
+    || normalized === "technical-design"
+    || normalized === "implementation"
+    || normalized === "review"
+    || normalized === "release-approval"
+    || normalized === "pr-preparation"
+    ? normalized
+    : null;
 }
 
 function normalizePositiveInteger(value: number | null | undefined): number | null {

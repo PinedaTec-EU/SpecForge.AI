@@ -24,10 +24,16 @@ var decompositionOptions = new UserStoryDecompositionOptions(
     Threshold: ReadDoubleEnvironment("SPECFORGE_DECOMPOSITION_THRESHOLD", 0.60),
     Tolerance: ReadDoubleEnvironment("SPECFORGE_DECOMPOSITION_TOLERANCE", 0.10),
     MaxChildren: ReadIntEnvironment("SPECFORGE_DECOMPOSITION_MAX_CHILDREN", 5));
+var harnessProfileSettings = HarnessProfileRuntimeSettings.FromEnvironment();
 
 var phaseExecutionProvider = PhaseExecutionProviderFactory.Create();
 var workflowRunner = new WorkflowRunner(phaseExecutionProvider, serverVersion, refinementTolerance, completedUsLockOnCompleted, reviewEvidencePolicy, decompositionOptions);
-var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), workflowRunner, runtimeVersion: serverVersion, completedUsLockOnCompleted: completedUsLockOnCompleted);
+var applicationService = new SpecForgeApplicationService(
+    new UserStoryFileStore(),
+    workflowRunner,
+    runtimeVersion: serverVersion,
+    completedUsLockOnCompleted: completedUsLockOnCompleted,
+    harnessProfileSettings: harnessProfileSettings);
 var serializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 var stdin = Console.OpenStandardInput();
 var stdout = Console.OpenStandardOutput();

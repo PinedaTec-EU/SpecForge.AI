@@ -294,11 +294,11 @@ Current stance:
 
 ### Profiles
 
-- [ ] `P-PROF-01` Status: `todo`
+- [x] `P-PROF-01` Status: `done`
   Define reusable harness profiles.
   Output: first built-in profiles such as `strict`, `balanced`, and `regulated`.
 
-- [ ] `P-PROF-02` Status: `todo`
+- [x] `P-PROF-02` Status: `done`
   Define override and lock behavior for profiles.
   Output: explicit inheritance and governance rules.
 

@@ -302,6 +302,82 @@
             }
           }
         },
+        "specForge.execution.defaultHarnessProfile": {
+          "type": "string",
+          "default": "balanced",
+          "enum": [
+            "strict",
+            "balanced",
+            "regulated"
+          ],
+          "description": "Default harness posture applied when a phase does not declare its own profile."
+        },
+        "specForge.execution.phaseHarnessProfiles": {
+          "type": "object",
+          "default": {},
+          "description": "Assign built-in harness profiles to workflow phases. Any omitted phase inherits the default harness profile.",
+          "properties": {
+            "defaultProfile": {
+              "type": "string",
+              "enum": [
+                "strict",
+                "balanced",
+                "regulated"
+              ],
+              "description": "Optional default profile override used before the workflow-wide default."
+            },
+            "captureProfile": { "type": "string", "enum": ["strict", "balanced", "regulated"] },
+            "refinementProfile": { "type": "string", "enum": ["strict", "balanced", "regulated"] },
+            "specProfile": { "type": "string", "enum": ["strict", "balanced", "regulated"] },
+            "technicalDesignProfile": { "type": "string", "enum": ["strict", "balanced", "regulated"] },
+            "implementationProfile": { "type": "string", "enum": ["strict", "balanced", "regulated"] },
+            "reviewProfile": { "type": "string", "enum": ["strict", "balanced", "regulated"] },
+            "releaseApprovalProfile": { "type": "string", "enum": ["strict", "balanced", "regulated"] },
+            "prPreparationProfile": { "type": "string", "enum": ["strict", "balanced", "regulated"] }
+          }
+        },
+        "specForge.execution.harnessProfileAuthority": {
+          "type": "string",
+          "default": "workspace",
+          "enum": [
+            "workspace",
+            "central"
+          ],
+          "description": "Declares whether harness profile assignments are currently governed locally or by SpecForge Central."
+        },
+        "specForge.execution.harnessProfileLockMode": {
+          "type": "string",
+          "default": "none",
+          "enum": [
+            "none",
+            "phase",
+            "all"
+          ],
+          "description": "Controls whether harness profile assignments are advisory, locked for selected phases, or locked globally."
+        },
+        "specForge.execution.lockedHarnessPhaseIds": {
+          "type": "array",
+          "default": [],
+          "description": "Phase ids whose harness profile assignments are locked when lock mode is set to 'phase'.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "capture",
+              "refinement",
+              "spec",
+              "technical-design",
+              "implementation",
+              "review",
+              "release-approval",
+              "pr-preparation"
+            ]
+          }
+        },
+        "specForge.execution.allowPerUserStoryHarnessProfileOverrides": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow workflow- or Central-requested harness profile overrides on user stories when the resolved phase profile is not locked."
+        },
         "specForge.execution.refinementTolerance": {
           "type": "string",
           "default": "balanced",

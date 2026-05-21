@@ -218,12 +218,44 @@ export interface WorkflowPhaseDetails {
   readonly executionReadiness?: PhaseExecutionReadiness | null;
   readonly executionPolicy?: PhaseExecutionPolicy | null;
   readonly executionEnvelope?: PhaseExecutionEnvelope | null;
+  readonly harnessProfile?: ResolvedHarnessPhaseProfile | null;
   readonly specApprovalPolicy?: SpecPhaseApprovalPolicyDetails | null;
   readonly reviewPolicy?: ReviewPhasePolicyDetails | null;
   readonly releaseApprovalPolicy?: ReleaseApprovalPolicyDetails | null;
   readonly prPreparationPolicy?: PrPreparationPolicyDetails | null;
   readonly latestExecutionInspection?: PhaseExecutionInspectionDetails | null;
   readonly runtimeMetrics?: PhaseRuntimeMetrics | null;
+}
+
+export interface HarnessProfileDefinition {
+  readonly key: string;
+  readonly title: string;
+  readonly summary: string;
+  readonly inheritsFrom?: string | null;
+  readonly traits: readonly string[];
+}
+
+export interface HarnessProfileGovernance {
+  readonly authority: string;
+  readonly lockMode: string;
+  readonly allowPerUserStoryOverrides: boolean;
+  readonly lockedPhaseIds: readonly string[];
+}
+
+export interface ResolvedHarnessPhaseProfile {
+  readonly phaseId: string;
+  readonly selectedProfile: string;
+  readonly resolvedProfile: string;
+  readonly resolutionSource: string;
+  readonly isLocked: boolean;
+  readonly overrideAllowedNow: boolean;
+  readonly authority: string;
+  readonly lockMode: string;
+  readonly lockReason?: string | null;
+  readonly title: string;
+  readonly summary: string;
+  readonly traits: readonly string[];
+  readonly inheritsFrom?: string | null;
 }
 
 export interface WorkflowRuntimeMetrics {
@@ -1011,6 +1043,7 @@ export interface UserStoryWorkflowDetails {
   readonly childUserStories?: readonly UserStorySummary[];
   readonly decomposition?: DecompositionDetails | null;
   readonly pullRequest?: PullRequestDetails | null;
+  readonly harnessProfileGovernance?: HarnessProfileGovernance | null;
   readonly phases: readonly WorkflowPhaseDetails[];
   readonly controls: CurrentPhaseControls;
   readonly metrics?: WorkflowRuntimeMetrics | null;

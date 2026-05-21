@@ -550,6 +550,50 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesResolvedHarnessProfilesAndGovernance()
+    {
+        var runner = new WorkflowRunner(new InspectionAwarePhaseExecutionProvider());
+        var harnessProfileSettings = new HarnessProfileRuntimeSettings(
+            DefaultProfile: "balanced",
+            PhaseProfiles: new HarnessPhaseProfileAssignments(
+                DefaultProfile: "strict",
+                CaptureProfile: null,
+                RefinementProfile: null,
+                SpecProfile: null,
+                TechnicalDesignProfile: null,
+                ImplementationProfile: null,
+                ReviewProfile: "regulated",
+                ReleaseApprovalProfile: null,
+                PrPreparationProfile: null),
+            Governance: new HarnessProfileGovernance(
+                Authority: "central",
+                LockMode: "phase",
+                AllowPerUserStoryOverrides: true,
+                LockedPhaseIds: ["review"]));
+        var applicationService = new SpecForgeApplicationService(
+            new UserStoryFileStore(),
+            runner,
+            harnessProfileSettings: harnessProfileSettings);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var reviewPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "review");
+        var specPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "spec");
+
+        Assert.NotNull(workflow.HarnessProfileGovernance);
+        Assert.Equal("central", workflow.HarnessProfileGovernance!.Authority);
+        Assert.Equal("phase", workflow.HarnessProfileGovernance.LockMode);
+        Assert.Equal(["review"], workflow.HarnessProfileGovernance.LockedPhaseIds);
+        Assert.NotNull(reviewPhase.HarnessProfile);
+        Assert.Equal("regulated", reviewPhase.HarnessProfile!.ResolvedProfile);
+        Assert.True(reviewPhase.HarnessProfile.IsLocked);
+        Assert.False(reviewPhase.HarnessProfile.OverrideAllowedNow);
+        Assert.NotNull(specPhase.HarnessProfile);
+        Assert.Equal("strict", specPhase.HarnessProfile!.ResolvedProfile);
+        Assert.Equal("phase-default-assignment", specPhase.HarnessProfile.ResolutionSource);
+    }
+
+    [Fact]
     public async Task GetUserStoryWorkflowAsync_ExposesReceiptLinkedRefinementPolicySnapshot()
     {
         var runner = new WorkflowRunner();
