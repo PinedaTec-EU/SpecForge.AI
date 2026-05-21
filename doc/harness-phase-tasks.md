@@ -180,7 +180,7 @@ Current stance:
   Define design policy visibility.
   Output: inspectable rules for repository access, subagent usage, and design-quality gating when required.
 
-- [ ] `P-TD-02` Status: `todo`
+- [x] `P-TD-02` Status: `done`
   Prepare an explicit design gate contract.
   Output: reusable criteria for repositories that require design approval before implementation.
 

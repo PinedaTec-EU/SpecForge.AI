@@ -254,6 +254,32 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
                 [
                     new ReleaseApprovalPolicyCondition("release_approval_evidence_pack_present", "The latest release-approval receipt must persist a structured release evidence pack.", "satisfied", true, null, "The structured release evidence pack is available for operator inspection.")
                 ]),
+            TechnicalDesignGateSnapshot: new TechnicalDesignGateSnapshot(
+                "technical-design",
+                "shared-phase-policy/v1",
+                "Phase `technical-design` requires `read` repository access and does not allow repository writes by the assigned phase agent.",
+                ExecutionAllowed: true,
+                ExecutionBlockingReason: null,
+                new PhaseExecutionRequirements(true, "read", false),
+                [
+                    new PhaseExecutionEvidenceRequirement("technical_design_design_record", "Technical design should persist receipt-linked evidence and validation strategy context before repositories enforce an explicit pre-implementation approval gate.", "declared")
+                ],
+                [
+                    new PhaseExecutionEligibilityRule("technical_design_quality_gate_visible", "Technical design must expose whether an explicit design gate is required or reusable.", "declared", null, true, "A reusable design gate contract is visible.")
+                ],
+                GateMode: "reusable-pre-implementation-approval",
+                ApprovalRequiredNow: false,
+                ApprovalReadyNow: true,
+                ApprovalBlockingReason: null,
+                HasTechnicalDesignArtifact: true,
+                HasStructuredTechnicalDesignArtifact: true,
+                HasValidationStrategy: true,
+                HasEvidenceRecord: true,
+                HasContextPack: true,
+                GraphIntentDeclared: true,
+                [
+                    new TechnicalDesignGateRule("technical_design_validation_strategy_declared", "A reusable design gate requires validation strategy.", "satisfied", "enforced", true, null, "Validation strategy items are declared.")
+                ]),
             ImplementationStructuredEvidence: new ImplementationStructuredEvidence(
                 "2026-05-19T10:00:01.0000000+00:00",
                 "/repo/.specs/us/US-0001/phases/03-implementation.evidence.json",
@@ -427,6 +453,7 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("\"refinementSkillPreselection\":{", json);
         Assert.Contains("\"refinementGraphScopeRequest\":{", json);
         Assert.Contains("\"specApprovalPolicySnapshot\":{", json);
+        Assert.Contains("\"technicalDesignGateSnapshot\":{", json);
         Assert.Contains("\"implementationPolicySnapshot\":{", json);
         Assert.Contains("\"reviewPolicySnapshot\":{", json);
         Assert.Contains("\"releaseApprovalPolicySnapshot\":{", json);

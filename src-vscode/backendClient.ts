@@ -220,6 +220,7 @@ export interface WorkflowPhaseDetails {
   readonly executionEnvelope?: PhaseExecutionEnvelope | null;
   readonly harnessProfile?: ResolvedHarnessPhaseProfile | null;
   readonly specApprovalPolicy?: SpecPhaseApprovalPolicyDetails | null;
+  readonly technicalDesignGateContract?: TechnicalDesignGateContractDetails | null;
   readonly reviewPolicy?: ReviewPhasePolicyDetails | null;
   readonly releaseApprovalPolicy?: ReleaseApprovalPolicyDetails | null;
   readonly prPreparationPolicy?: PrPreparationPolicyDetails | null;
@@ -334,6 +335,7 @@ export interface PhaseExecutionInspectionDetails {
   readonly refinementSkillPreselection?: RefinementSkillPreselection | null;
   readonly refinementGraphScopeRequest?: RefinementGraphScopeRequest | null;
   readonly specApprovalPolicySnapshot?: SpecPhaseApprovalPolicyDetails | null;
+  readonly technicalDesignGateSnapshot?: TechnicalDesignGateSnapshot | null;
   readonly implementationPolicySnapshot?: ImplementationPhasePolicySnapshot | null;
   readonly reviewPolicySnapshot?: ReviewPhasePolicySnapshot | null;
   readonly releaseApprovalPolicySnapshot?: ReleaseApprovalPhasePolicySnapshot | null;
@@ -687,6 +689,53 @@ export interface TechnicalDesignGraphQueryEvidence {
   readonly includedNodes: readonly string[];
   readonly inclusionReasons: readonly string[];
   readonly warnings: readonly string[];
+}
+
+export interface TechnicalDesignGateContractDetails {
+  readonly status: string;
+  readonly gateMode: string;
+  readonly approvalRequiredNow: boolean;
+  readonly approvalReadyNow: boolean;
+  readonly approvalBlockingReason?: string | null;
+  readonly hasTechnicalDesignArtifact: boolean;
+  readonly hasStructuredTechnicalDesignArtifact: boolean;
+  readonly hasValidationStrategy: boolean;
+  readonly hasEvidenceRecord: boolean;
+  readonly hasContextPack: boolean;
+  readonly graphIntentDeclared: boolean;
+  readonly gateRules: readonly TechnicalDesignGateRule[];
+}
+
+export interface TechnicalDesignGateRule {
+  readonly id: string;
+  readonly description: string;
+  readonly status: string;
+  readonly enforcement: string;
+  readonly isCurrentlySatisfied: boolean;
+  readonly blockingReason?: string | null;
+  readonly currentStatusMessage?: string | null;
+}
+
+export interface TechnicalDesignGateSnapshot {
+  readonly phaseId: string;
+  readonly policyKey: string;
+  readonly summary: string;
+  readonly executionAllowed: boolean;
+  readonly executionBlockingReason?: string | null;
+  readonly permissions: PhaseExecutionRequirements;
+  readonly evidenceRequirements: readonly PhaseExecutionEvidenceRequirement[];
+  readonly eligibilityRules: readonly PhaseExecutionEligibilityRule[];
+  readonly gateMode: string;
+  readonly approvalRequiredNow: boolean;
+  readonly approvalReadyNow: boolean;
+  readonly approvalBlockingReason?: string | null;
+  readonly hasTechnicalDesignArtifact: boolean;
+  readonly hasStructuredTechnicalDesignArtifact: boolean;
+  readonly hasValidationStrategy: boolean;
+  readonly hasEvidenceRecord: boolean;
+  readonly hasContextPack: boolean;
+  readonly graphIntentDeclared: boolean;
+  readonly gateRules: readonly TechnicalDesignGateRule[];
 }
 
 export interface PhaseExecutionEvidenceRecord {

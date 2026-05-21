@@ -1808,6 +1808,35 @@ public sealed class WorkflowRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task ContinuePhaseAsync_PersistsTechnicalDesignGateSnapshotInReceipt()
+    {
+        var runner = new WorkflowRunner(
+            new UserStoryFileStore(),
+            new PassingReviewPhaseExecutionProvider(),
+            new RepositoryCategoryCatalog(),
+            new NoOpWorkBranchManager());
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Technical design gate snapshot", "feature", "workflow", "Initial source text");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0001");
+        var receiptPath = Directory
+            .GetFiles(paths.ExecutionReceiptsDirectoryPath, "*-technical-design.json")
+            .OrderBy(static path => path, StringComparer.Ordinal)
+            .Last();
+        var receipt = await PhaseExecutionReceiptStore.TryLoadAsync(receiptPath);
+
+        Assert.NotNull(receipt);
+        Assert.NotNull(receipt!.TechnicalDesignGateSnapshot);
+        Assert.Equal("technical-design", receipt.TechnicalDesignGateSnapshot!.PhaseId);
+        Assert.Equal("reusable-pre-implementation-approval", receipt.TechnicalDesignGateSnapshot.GateMode);
+        Assert.True(receipt.TechnicalDesignGateSnapshot.ApprovalReadyNow);
+        Assert.Contains(receipt.TechnicalDesignGateSnapshot.GateRules, item => item.Id == "technical_design_validation_strategy_declared");
+    }
+
+    [Fact]
     public async Task ContinuePhaseAsync_PersistsReleaseApprovalEvidencePackInReceipt()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);

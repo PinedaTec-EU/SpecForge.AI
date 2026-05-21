@@ -1881,6 +1881,22 @@ public sealed class WorkflowRunner
                     PhaseExecutionReceiptStore.NormalizePath(path),
                     PhaseExecutionReceiptStore.TryComputeFileSha256(path)))
                 .ToArray());
+        var evidenceRecord = PhaseExecutionEvidenceBuilder.Build(
+            workflowRun.CurrentPhase,
+            inputManifest,
+            outputManifest,
+            executionMetadata,
+            executionPolicy,
+            receiptPath);
+        var technicalDesignGateSnapshot = workflowRun.CurrentPhase == PhaseId.TechnicalDesign
+            ? TechnicalDesignGateSnapshotBuilder.Build(
+                GetPhaseExecutionReadiness(PhaseId.TechnicalDesign),
+                executionPolicy,
+                TechnicalDesignGateContractBuilder.Build(
+                    paths,
+                    evidenceRecord,
+                    technicalDesignContextPack))
+            : null;
         var receipt = new PhaseExecutionReceipt(
             executionId,
             workflowRun.UsId,
@@ -1891,19 +1907,14 @@ public sealed class WorkflowRunner
             outputManifest,
             result.Usage,
             executionMetadata,
-            PhaseExecutionEvidenceBuilder.Build(
-                workflowRun.CurrentPhase,
-                inputManifest,
-                outputManifest,
-                executionMetadata,
-            executionPolicy,
-            receiptPath),
+            evidenceRecord,
             executionEnvelope,
             null,
             refinementPolicySnapshot,
             refinementSkillPreselection,
             refinementGraphScopeRequest,
             specApprovalPolicySnapshot,
+            technicalDesignGateSnapshot,
             implementationPolicySnapshot,
             reviewPolicySnapshot,
             releaseApprovalPolicySnapshot,

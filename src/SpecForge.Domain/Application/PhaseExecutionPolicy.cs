@@ -394,7 +394,7 @@ public static class PhaseExecutionPolicyCatalog
                 "Technical design must expose whether an explicit design gate is required or whether downstream review remains the active quality gate.",
                 EnforcementDeclared,
                 IsCurrentlySatisfied: true,
-                CurrentStatusMessage: "No explicit technical-design approval gate is enforced yet; downstream review remains the active quality gate unless repository-specific gating is introduced."));
+                CurrentStatusMessage: "A reusable technical-design gate contract is visible; downstream review remains the active quality gate unless repository-specific gating later requires pre-implementation design approval."));
         }
 
         if (phaseId == PhaseId.Implementation)

@@ -908,6 +908,7 @@ public sealed class SpecForgeApplicationService
                     RefinementSkillPreselection: null,
                     RefinementGraphScopeRequest: null,
                     SpecApprovalPolicySnapshot: null,
+                    TechnicalDesignGateSnapshot: null,
                     ImplementationPolicySnapshot: null,
                     ReviewPolicySnapshot: null,
                     ReleaseApprovalPolicySnapshot: null,
@@ -919,6 +920,12 @@ public sealed class SpecForgeApplicationService
                     EffectivePrompt: null,
                     EffectiveContext: null);
             }
+            var technicalDesignGateContract = phaseId == PhaseId.TechnicalDesign
+                ? TechnicalDesignGateContractBuilder.Build(
+                    paths,
+                    latestExecutionInspection?.EvidenceRecord,
+                    latestExecutionInspection?.TechnicalDesignContextPack)
+                : null;
             var reviewPolicy = phaseId == PhaseId.Review
                 ? ReviewPhasePolicyDetailsBuilder.Build(
                     workflowRunner.GetReviewEvidencePolicy(),
@@ -973,6 +980,7 @@ public sealed class SpecForgeApplicationService
                 executionEnvelope,
                 resolvedHarnessProfiles.TryGetValue(phaseSlug, out var harnessProfile) ? harnessProfile : null,
                 specApprovalPolicy,
+                technicalDesignGateContract,
                 reviewPolicy,
                 releaseApprovalPolicy,
                 prPreparationPolicy,
@@ -1004,6 +1012,7 @@ public sealed class SpecForgeApplicationService
                 ExecutionEnvelope: null,
                 HarnessProfile: null,
                 SpecApprovalPolicy: null,
+                TechnicalDesignGateContract: null,
                 ReviewPolicy: null,
                 ReleaseApprovalPolicy: null,
                 PrPreparationPolicy: null,
@@ -1055,6 +1064,7 @@ public sealed class SpecForgeApplicationService
                 receipt?.RefinementSkillPreselection is null &&
                 receipt?.RefinementGraphScopeRequest is null &&
                 receipt?.SpecApprovalPolicySnapshot is null &&
+                receipt?.TechnicalDesignGateSnapshot is null &&
                 receipt?.ImplementationPolicySnapshot is null &&
                 receipt?.ReviewPolicySnapshot is null &&
                 receipt?.ReleaseApprovalPolicySnapshot is null &&
@@ -1075,6 +1085,7 @@ public sealed class SpecForgeApplicationService
                 receipt?.RefinementSkillPreselection,
                 receipt?.RefinementGraphScopeRequest,
                 receipt?.SpecApprovalPolicySnapshot,
+                receipt?.TechnicalDesignGateSnapshot,
                 receipt?.ImplementationPolicySnapshot,
                 receipt?.ReviewPolicySnapshot,
                 receipt?.ReleaseApprovalPolicySnapshot,
