@@ -561,7 +561,11 @@ function buildPhaseSpecificSections(workflow, selectedPhase, state, artifactPrev
                 escapeHtmlAttribute: htmlEscape_1.escapeHtmlAttr
             });
         case "release-approval":
-            return (0, releaseApprovalPhaseView_1.buildReleaseApprovalPhaseSections)();
+            return (0, releaseApprovalPhaseView_1.buildReleaseApprovalPhaseSections)({
+                selectedPhase,
+                escapeHtml: htmlEscape_1.escapeHtml,
+                escapeHtmlAttribute: htmlEscape_1.escapeHtmlAttr
+            });
         case "pr-preparation":
             return (0, prPreparationPhaseView_1.buildPrPreparationPhaseSections)();
         case "completed":

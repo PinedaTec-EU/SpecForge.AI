@@ -1,6 +1,6 @@
 {
   "name": "specforge-ai",
-  "version": "0.1.5.584",
+  "version": "0.1.5.585",
   "description": "Operate SpecForge.AI SDD user stories through a compact MCP facade and task-focused Codex skills.",
   "author": {
     "name": "PinedaTec"
