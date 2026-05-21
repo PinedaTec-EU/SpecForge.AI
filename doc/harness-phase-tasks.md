@@ -322,7 +322,8 @@ Record debt here as soon as it is discovered during implementation.
   Impact: aligning phases manually is unnecessarily difficult and visually inconsistent.
   Notes: fixed with runtime snap-to-grid during layout dragging for both phase nodes and legend placement.
 
-- [ ] `BUG-GRAPH-002` Status: `todo`
+- [x] `BUG-GRAPH-002` Status: `done`
   Edited workflow graph layout resets to the default layout and loses user changes.
   Impact: layout editing is not trustworthy because persisted changes are not preserved.
+  Notes: fixed by invalidating the browser-served workflow portal cache/signature when `workflow-graph-layout.yaml` changes.
   Notes: verify save path, restore path, and any re-render/cache invalidation behavior in both VS Code and CLI-served portal flows.

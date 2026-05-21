@@ -451,6 +451,19 @@ static async Task HandleWorkflowPortalRequestAsync(
                     await AddContextFilesAsync(workspaceRoot, requestUsId, request));
                 return;
             }
+            case ("POST", "/api/workflow-graph-layout"):
+            {
+                using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var payload = await reader.ReadToEndAsync();
+                var request = JsonSerializer.Deserialize<SaveWorkflowGraphLayoutRequest>(
+                    payload,
+                    SpecForgePortalSettingsStore.JsonOptions)
+                    ?? throw new InvalidOperationException("Workflow graph layout payload could not be parsed.");
+                await WriteJsonResponseAsync(
+                    context.Response,
+                    await SaveWorkflowGraphLayoutAsync(workspaceRoot, request));
+                return;
+            }
             case ("POST", "/api/approve"):
             {
                 using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
@@ -533,10 +546,12 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
     var resolvedSelectedPhaseId = ResolveSelectedWorkflowPhaseId(workflow, selectedPhaseId);
     var selectedPhase = ResolveSelectedWorkflowPhase(workflow, resolvedSelectedPhaseId);
     var droppedUserStoryCount = droppedSidebarUserStories.Count;
+    var workflowGraphLayoutSignature = await ReadWorkflowGraphLayoutSignatureAsync(workspaceRoot);
     var signature = BuildWorkflowSignature(
         workflow,
         activeSidebarUserStories,
-        droppedSidebarUserStories);
+        droppedSidebarUserStories,
+        workflowGraphLayoutSignature);
     if (renderCache.TryGet(signature, resolvedSelectedPhaseId, selectedPhase, out var cachedHtml))
     {
         return cachedHtml;
@@ -561,6 +576,7 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
             configurationPortalUrl = BuildConfigurationPortalUrl(workflowPortalOrigin),
             configurationProvidersUrl = BuildConfigurationPortalUrl(workflowPortalOrigin, "providers"),
             configurationAdvancedUrl = BuildConfigurationPortalUrl(workflowPortalOrigin, "advanced"),
+            workspaceRoot,
             signature
         },
         SpecForgePortalSettingsStore.JsonOptions);
@@ -691,6 +707,61 @@ static async Task<object> AddContextFilesAsync(
     };
 }
 
+static async Task<object> SaveWorkflowGraphLayoutAsync(
+    string workspaceRoot,
+    SaveWorkflowGraphLayoutRequest request)
+{
+    var scriptPath = Path.Combine(Directory.GetCurrentDirectory(), "tools", "update-cli-workflow-graph-layout.js");
+    if (!File.Exists(scriptPath))
+    {
+        scriptPath = Path.Combine(AppContext.BaseDirectory, "tools", "update-cli-workflow-graph-layout.js");
+    }
+
+    if (!File.Exists(scriptPath))
+    {
+        throw new InvalidOperationException("Workflow graph layout helper script was not found. Expected tools/update-cli-workflow-graph-layout.js.");
+    }
+
+    var payload = JsonSerializer.Serialize(
+        new
+        {
+            workspaceRoot,
+            request.LayoutKind,
+            request.UserStoryId,
+            request.LayoutMode,
+            request.Positions,
+            request.LegendPosition,
+            request.Aggregate
+        },
+        SpecForgePortalSettingsStore.JsonOptions);
+
+    using var process = new Process();
+    process.StartInfo = new ProcessStartInfo
+    {
+        FileName = "node",
+        RedirectStandardInput = true,
+        RedirectStandardOutput = true,
+        RedirectStandardError = true,
+        UseShellExecute = false
+    };
+    process.StartInfo.ArgumentList.Add(scriptPath);
+    process.Start();
+
+    await process.StandardInput.WriteAsync(payload);
+    process.StandardInput.Close();
+    var output = await process.StandardOutput.ReadToEndAsync();
+    var error = await process.StandardError.ReadToEndAsync();
+    await process.WaitForExitAsync();
+
+    if (process.ExitCode != 0)
+    {
+        throw new InvalidOperationException($"Workflow graph layout update failed: {error}");
+    }
+
+    return JsonSerializer.Deserialize<object>(output, SpecForgePortalSettingsStore.JsonOptions)
+        ?? new { saved = true };
+}
+
 static UserStoryFilePaths ResolveUserStoryDirectoryForPortal(string workspaceRoot, string usId)
 {
     var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, usId);
@@ -793,19 +864,21 @@ static async Task<string> BuildWorkflowPortalSignatureAsync(
     var activeSidebarUserStories = await applicationService.ListUserStoriesAsync(workspaceRoot);
     var droppedSidebarUserStories = await applicationService.ListUserStoriesAsync(workspaceRoot, "dropped");
     var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, usId);
+    var workflowGraphLayoutSignature = await ReadWorkflowGraphLayoutSignatureAsync(workspaceRoot);
 
     return BuildWorkflowSignature(
         workflow,
         activeSidebarUserStories,
-        droppedSidebarUserStories);
+        droppedSidebarUserStories,
+        workflowGraphLayoutSignature);
 }
 
 static async Task<string> RenderWorkflowHtmlWithNodeAsync(string payload)
 {
-    var scriptPath = Path.Combine(AppContext.BaseDirectory, "tools", "render-cli-workflow-html.js");
+    var scriptPath = Path.Combine(Directory.GetCurrentDirectory(), "tools", "render-cli-workflow-html.js");
     if (!File.Exists(scriptPath))
     {
-        scriptPath = Path.Combine(Directory.GetCurrentDirectory(), "tools", "render-cli-workflow-html.js");
+        scriptPath = Path.Combine(AppContext.BaseDirectory, "tools", "render-cli-workflow-html.js");
     }
 
     if (!File.Exists(scriptPath))
@@ -867,10 +940,22 @@ static async Task<string?> ReadFileContentOrNullAsync(string? path)
     return await File.ReadAllTextAsync(path);
 }
 
+static async Task<string> ReadWorkflowGraphLayoutSignatureAsync(string workspaceRoot)
+{
+    var layoutPath = Path.Combine(workspaceRoot, ".specs", "workflow-graph-layout.yaml");
+    if (!File.Exists(layoutPath))
+    {
+        return string.Empty;
+    }
+
+    return await File.ReadAllTextAsync(layoutPath);
+}
+
 static string BuildWorkflowSignature(
     UserStoryWorkflowDetails workflow,
     IReadOnlyCollection<UserStorySummary> userStories,
-    IReadOnlyCollection<UserStorySummary> droppedUserStories)
+    IReadOnlyCollection<UserStorySummary> droppedUserStories,
+    string workflowGraphLayoutSignature)
 {
     var payload = JsonSerializer.Serialize(
         new
@@ -908,7 +993,8 @@ static string BuildWorkflowSignature(
                     story.Status,
                     story.WorkBranch
                 })
-                .ToArray()
+                .ToArray(),
+            workflowGraphLayoutSignature
         },
         SpecForgePortalSettingsStore.JsonOptions);
     var hash = SHA256.HashData(Encoding.UTF8.GetBytes(payload));
@@ -1641,6 +1727,20 @@ internal sealed record WorkflowFileUploadItem(string Name, string Base64Content)
 internal sealed record AttachWorkflowFilesRequest(string Kind, IReadOnlyList<WorkflowFileUploadItem> Files, string? Actor);
 
 internal sealed record AddContextFilesRequest(IReadOnlyList<string> Paths, string? Actor);
+
+internal sealed record SaveWorkflowGraphLayoutRequest(
+    string? LayoutKind,
+    string? UserStoryId,
+    string? LayoutMode,
+    Dictionary<string, WorkflowGraphLayoutPoint>? Positions,
+    WorkflowGraphLayoutPoint? LegendPosition,
+    WorkflowAggregateGraphLayoutRequest? Aggregate);
+
+internal sealed record WorkflowGraphLayoutPoint(int X, int Y);
+
+internal sealed record WorkflowAggregateGraphLayoutRequest(
+    Dictionary<string, WorkflowGraphLayoutPoint> Positions,
+    Dictionary<string, int> Spacing);
 
 internal sealed record ApprovalSubmitRequest(string? BaseBranch, string? WorkBranch, string? Actor);
 
