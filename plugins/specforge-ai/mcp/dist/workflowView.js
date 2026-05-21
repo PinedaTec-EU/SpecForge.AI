@@ -549,7 +549,8 @@ function buildPhaseSpecificSections(workflow, selectedPhase, state, artifactPrev
         case "implementation":
             return (0, implementationPhaseView_1.buildImplementationPhaseSections)({
                 selectedPhase,
-                escapeHtml: htmlEscape_1.escapeHtml
+                escapeHtml: htmlEscape_1.escapeHtml,
+                escapeHtmlAttribute: htmlEscape_1.escapeHtmlAttr
             });
         case "review":
             return (0, reviewPhaseView_1.buildReviewPhaseSections)({

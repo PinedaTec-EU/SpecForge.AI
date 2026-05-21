@@ -2,13 +2,49 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildImplementationPhaseSections = buildImplementationPhaseSections;
 function buildImplementationPhaseSections(args) {
-    const { selectedPhase, escapeHtml } = args;
+    const { selectedPhase, escapeHtml, escapeHtmlAttribute } = args;
     const executionReadiness = selectedPhase.executionReadiness ?? null;
     const implementationPolicySnapshot = selectedPhase.latestExecutionInspection?.implementationPolicySnapshot ?? null;
     const executionPolicy = implementationPolicySnapshot ?? selectedPhase.executionPolicy ?? null;
     const executionEnvelope = selectedPhase.executionEnvelope ?? null;
     const implementationStructuredEvidence = selectedPhase.latestExecutionInspection?.implementationStructuredEvidence ?? null;
+    const effectivePrompt = selectedPhase.latestExecutionInspection?.effectivePrompt ?? null;
+    const effectiveContext = selectedPhase.latestExecutionInspection?.effectiveContext ?? null;
     const evidenceRecord = selectedPhase.latestExecutionInspection?.evidenceRecord ?? null;
+    const receiptPath = selectedPhase.latestExecutionInspection?.receiptPath?.trim() || null;
+    const implementationInspectionSection = selectedPhase.phaseId === "implementation"
+        ? `
+      <section class="detail-card">
+        <h3>Inspect Last Implementation Execution</h3>
+        <p class="panel-copy">
+          Review the latest persisted effective prompt and injected runtime context for implementation before changing prompt templates, retrying after review, or adjusting attached context files.
+        </p>
+        ${effectivePrompt || effectiveContext
+            ? `
+            <div class="detail-grid">
+              <div><strong>Effective Prompt</strong><div><code>${effectivePrompt ? "available" : "unavailable"}</code></div></div>
+              <div><strong>Warnings</strong><div><code>${effectivePrompt?.warnings?.length ?? 0}</code></div></div>
+              <div><strong>Previous Artifacts</strong><div><code>${effectiveContext?.previousArtifacts.length ?? 0}</code></div></div>
+              <div><strong>Context Files</strong><div><code>${effectiveContext?.contextFiles.length ?? 0}</code></div></div>
+              <div><strong>Current Artifact</strong><div><code>${effectiveContext?.currentArtifact ? "available" : "unavailable"}</code></div></div>
+              <div><strong>Evidence Links</strong><div><code>${evidenceRecord?.evidenceLinks.length ?? 0}</code></div></div>
+            </div>
+            <div class="detail-actions">
+              ${effectivePrompt
+                ? `<button class="workflow-action-button workflow-action-button--document" type="button" data-open-effective-prompt-modal>View Last Implementation Prompt</button>`
+                : ""}
+              ${effectiveContext
+                ? `<button class="workflow-action-button workflow-action-button--document" type="button" data-open-effective-context-modal>View Last Implementation Context</button>`
+                : ""}
+              ${receiptPath
+                ? `<button class="workflow-action-button workflow-action-button--document" data-command="openArtifact" data-path="${escapeHtmlAttribute(receiptPath)}">Open Receipt</button>`
+                : ""}
+            </div>
+          `
+            : `<p class="muted">No persisted implementation execution inspection is available yet for this user story.</p>`}
+      </section>
+    `
+        : "";
     const implementationPolicySection = selectedPhase.phaseId === "implementation" && (executionReadiness || executionPolicy)
         ? `
       <section class="detail-card">
@@ -157,6 +193,7 @@ function buildImplementationPhaseSections(args) {
         : "";
     return {
         beforeArtifact: [
+            ...(implementationInspectionSection ? [implementationInspectionSection] : []),
             ...(implementationPolicySection ? [implementationPolicySection] : []),
             ...(implementationEnvelopeSection ? [implementationEnvelopeSection] : []),
             ...(implementationEvidenceSummarySection ? [implementationEvidenceSummarySection] : [])
