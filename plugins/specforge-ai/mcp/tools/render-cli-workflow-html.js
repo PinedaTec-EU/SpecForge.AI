@@ -174,6 +174,76 @@ const browserShim = `
         return;
       }
 
+      if (message?.command === "attachFiles") {
+        const kind = message.kind === "context" ? "context" : "attachment";
+        const input = document.createElement("input");
+        input.type = "file";
+        input.multiple = true;
+        input.onchange = () => {
+          const files = Array.from(input.files || []);
+          if (files.length === 0) {
+            return;
+          }
+
+          Promise.all(files.map(async file => {
+            const buffer = await file.arrayBuffer();
+            const bytes = new Uint8Array(buffer);
+            let binary = "";
+            const chunkSize = 0x8000;
+            for (let index = 0; index < bytes.length; index += chunkSize) {
+              const chunk = bytes.subarray(index, index + chunkSize);
+              binary += String.fromCharCode(...chunk);
+            }
+            return {
+              name: file.name,
+              base64Content: btoa(binary)
+            };
+          }))
+            .then(payloadFiles => fetch("/api/attach-files", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ kind, files: payloadFiles, actor: "cli-user" })
+            }))
+            .then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))))
+            .then(() => {
+              window.location.reload();
+            })
+            .catch(error => {
+              window.postMessage({
+                command: "workflowActionFailed",
+                action: message.command,
+                detail: error instanceof Error ? error.message : String(error)
+              }, "*");
+            });
+        };
+        input.click();
+        return;
+      }
+
+      if ((message?.command === "addSuggestedContextFile" && message.path)
+        || (message?.command === "addSuggestedContextFiles" && Array.isArray(message.paths) && message.paths.length > 0)) {
+        const paths = message.command === "addSuggestedContextFile"
+          ? [message.path]
+          : message.paths;
+        fetch("/api/add-context-files", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ paths, actor: "cli-user" })
+        })
+          .then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))))
+          .then(() => {
+            window.location.reload();
+          })
+          .catch(error => {
+            window.postMessage({
+              command: "workflowActionFailed",
+              action: message.command,
+              detail: error instanceof Error ? error.message : String(error)
+            }, "*");
+          });
+        return;
+      }
+
       if (message?.command === "approve") {
         fetch("/api/approve", {
           method: "POST",
