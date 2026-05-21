@@ -326,13 +326,3 @@ Record debt here as soon as it is discovered during implementation.
   Edited workflow graph layout resets to the default layout and loses user changes.
   Impact: layout editing is not trustworthy because persisted changes are not preserved.
   Notes: verify save path, restore path, and any re-render/cache invalidation behavior in both VS Code and CLI-served portal flows.
-
-## Immediate Next Slice
-
-If work starts now, take these tasks first:
-
-1. `H-SHARED-01`
-2. `H-SHARED-02`
-3. `H-SHARED-03`
-4. `H-REF-01`
-5. `P-IMP-01`
