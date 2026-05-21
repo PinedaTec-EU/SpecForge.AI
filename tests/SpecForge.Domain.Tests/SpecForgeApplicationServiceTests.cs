@@ -803,6 +803,30 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetUserStoryWorkflowAsync_ExposesReceiptLinkedImplementationStructuredEvidence()
+    {
+        var runner = new WorkflowRunner(new InspectionAwarePhaseExecutionProvider());
+        var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner);
+
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, "US-0001");
+        var implementationPhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "implementation");
+
+        Assert.NotNull(implementationPhase.LatestExecutionInspection);
+        Assert.NotNull(implementationPhase.LatestExecutionInspection!.ImplementationStructuredEvidence);
+        Assert.NotEmpty(implementationPhase.LatestExecutionInspection.ImplementationStructuredEvidence!.Summary);
+        Assert.NotNull(implementationPhase.LatestExecutionInspection.ImplementationStructuredEvidence.EvidenceJsonPath);
+        Assert.NotNull(implementationPhase.LatestExecutionInspection.ImplementationStructuredEvidence.EvidenceMarkdownPath);
+        Assert.NotNull(implementationPhase.LatestExecutionInspection.ImplementationStructuredEvidence.TouchedFiles);
+    }
+
+    [Fact]
     public async Task GetUserStoryWorkflowAsync_ExposesExecutionEnvelopePerPhase()
     {
         var runner = new WorkflowRunner(new InspectionAwarePhaseExecutionProvider());

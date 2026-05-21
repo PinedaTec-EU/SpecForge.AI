@@ -68,6 +68,7 @@ public sealed record PhaseExecutionInspectionDetails(
     RefinementGraphScopeRequest? RefinementGraphScopeRequest,
     SpecPhaseApprovalPolicyDetails? SpecApprovalPolicySnapshot,
     ImplementationPhasePolicySnapshot? ImplementationPolicySnapshot,
+    ImplementationStructuredEvidence? ImplementationStructuredEvidence,
     TechnicalDesignContextPack? TechnicalDesignContextPack,
     PhaseExecutionEffectivePrompt? EffectivePrompt,
     PhaseExecutionEffectiveContext? EffectiveContext);

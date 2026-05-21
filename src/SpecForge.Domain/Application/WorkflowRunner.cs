@@ -1703,6 +1703,7 @@ public sealed class WorkflowRunner
 
         stopwatch.Stop();
         var executionMetadata = WithRuntimeVersion(result.Execution);
+        ImplementationStructuredEvidence? implementationStructuredEvidenceSnapshot = null;
         SpecForgeDiagnostics.Log(
             $"[runner.materialize] usId={workflowRun.UsId} phase={WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)} providerReturned executionKind={result.ExecutionKind} durationMs={stopwatch.ElapsedMilliseconds}");
 
@@ -1719,6 +1720,12 @@ public sealed class WorkflowRunner
                 implementationEvidenceBaseline,
                 cancellationToken);
             await ImplementationPhaseEvidence.PersistAsync(paths, implementationEvidence, cancellationToken);
+            var implementationStructuredEvidence = ImplementationStructuredEvidenceBuilder.Build(
+                workspaceRoot,
+                workflowRun.UsId,
+                paths,
+                implementationEvidence);
+            implementationStructuredEvidenceSnapshot = implementationStructuredEvidence;
             await File.WriteAllTextAsync(
                 artifactPath,
                 StampRuntimeVersion(ImplementationPhaseEvidence.AppendSection(
@@ -1840,6 +1847,7 @@ public sealed class WorkflowRunner
             refinementGraphScopeRequest,
             specApprovalPolicySnapshot,
             implementationPolicySnapshot,
+            implementationStructuredEvidenceSnapshot,
             technicalDesignContextPack,
             result.EffectivePrompt,
             result.EffectivePrompt is null ? null : effectiveContext);

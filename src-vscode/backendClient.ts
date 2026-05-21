@@ -276,6 +276,7 @@ export interface PhaseExecutionInspectionDetails {
   readonly refinementGraphScopeRequest?: RefinementGraphScopeRequest | null;
   readonly specApprovalPolicySnapshot?: SpecPhaseApprovalPolicyDetails | null;
   readonly implementationPolicySnapshot?: ImplementationPhasePolicySnapshot | null;
+  readonly implementationStructuredEvidence?: ImplementationStructuredEvidence | null;
   readonly technicalDesignContextPack?: TechnicalDesignContextPack | null;
   readonly effectivePrompt?: PhaseExecutionEffectivePrompt | null;
   readonly effectiveContext?: PhaseExecutionEffectiveContext | null;
@@ -293,6 +294,49 @@ export interface ImplementationPhasePolicySnapshot {
   readonly forbiddenPaths: readonly PhaseExecutionPathPolicy[];
   readonly evidenceRequirements: readonly PhaseExecutionEvidenceRequirement[];
   readonly eligibilityRules: readonly PhaseExecutionEligibilityRule[];
+}
+
+export interface ImplementationStructuredEvidence {
+  readonly generatedAtUtc: string;
+  readonly evidenceJsonPath: string;
+  readonly evidenceMarkdownPath: string;
+  readonly summary: readonly string[];
+  readonly touchedFiles: readonly ImplementationTouchedFileEvidence[];
+  readonly graphEvidence?: ImplementationGraphEvidence | null;
+}
+
+export interface ImplementationTouchedFileEvidence {
+  readonly path: string;
+  readonly changeKind: string;
+  readonly baselineStatusCode?: string | null;
+  readonly currentStatusCode: string;
+  readonly baselineFingerprint?: string | null;
+  readonly currentFingerprint: string;
+}
+
+export interface ImplementationGraphEvidence {
+  readonly graphScopeRequestAvailable: boolean;
+  readonly graphScopeRequestPath?: string | null;
+  readonly impactGraphPath?: string | null;
+  readonly impactGraphMetadataPath?: string | null;
+  readonly impactSummaryPath?: string | null;
+  readonly impactGraphState?: string | null;
+  readonly operationReferences: readonly ImplementationGraphOperationReference[];
+  readonly warnings: readonly string[];
+}
+
+export interface ImplementationGraphOperationReference {
+  readonly eventId: string;
+  readonly timestamp: string;
+  readonly eventFamily: string;
+  readonly requestedMode: string;
+  readonly actualMode: string;
+  readonly triggerSurface: string;
+  readonly fallbackUsed: boolean;
+  readonly latencyMs: number;
+  readonly artifactsRead: readonly string[];
+  readonly artifactsWritten: readonly string[];
+  readonly warnings: readonly string[];
 }
 
 export interface TechnicalDesignContextPack {

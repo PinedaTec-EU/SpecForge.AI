@@ -196,7 +196,7 @@ Current stance:
 
 ### Implementation
 
-- [ ] `H-IMP-01` Status: `todo`
+- [x] `H-IMP-01` Status: `done`
   Unify implementation evidence into a structured execution evidence record.
   Output: implementation evidence should be queryable beyond appended markdown sections.
   Notes: preserve current evidence markdown/json outputs while introducing the structured substrate.

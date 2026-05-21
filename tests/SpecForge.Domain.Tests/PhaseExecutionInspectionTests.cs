@@ -180,6 +180,46 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
                 [new PhaseExecutionPathPolicy("<workspace-root>/.git/**", "write", "phase-agent", "enforced", "Git metadata must never be mutated by phase execution.")],
                 [new PhaseExecutionEvidenceRequirement("implementation_evidence_record", "Implementation must persist evidence markdown/json describing touched files and validation performed.", "enforced")],
                 [new PhaseExecutionEligibilityRule("implementation_write_scope_declared", "Implementation must expose writable scope and forbidden mutation zones so repository edits stay auditable.", "declared", null, true, "Writable scope and forbidden mutation zones are declared through the shared implementation policy contract.")]),
+            ImplementationStructuredEvidence: new ImplementationStructuredEvidence(
+                "2026-05-19T10:00:01.0000000+00:00",
+                "/repo/.specs/us/US-0001/phases/03-implementation.evidence.json",
+                "/repo/.specs/us/US-0001/phases/03-implementation.evidence.md",
+                [
+                    "Phase-scoped repository evidence was computed from git workspace snapshots captured immediately before and after implementation execution.",
+                    "Meaningful touched repository files detected: `1`."
+                ],
+                [
+                    new ImplementationTouchedFileEvidence(
+                        "src/App/Service.cs",
+                        "content_changed",
+                        " M",
+                        "M ",
+                        "baseline-hash",
+                        "current-hash")
+                ],
+                new ImplementationGraphEvidence(
+                    GraphScopeRequestAvailable: true,
+                    GraphScopeRequestPath: "/repo/.specs/us/US-0001/context/graph-scope-request.json",
+                    ImpactGraphPath: "/repo/.specs/us/US-0001/context/impact-graph.json",
+                    ImpactGraphMetadataPath: "/repo/.specs/us/US-0001/context/impact-graph.meta.json",
+                    ImpactSummaryPath: "/repo/.specs/us/US-0001/context/impact-summary.md",
+                    ImpactGraphState: "fresh",
+                    OperationReferences:
+                    [
+                        new ImplementationGraphOperationReference(
+                            "event-1",
+                            "2026-05-19T09:59:00.0000000+00:00",
+                            "graph.impact.executed",
+                            "derive-impact-graph",
+                            "materialize-impact-graph",
+                            "workflow-runtime",
+                            false,
+                            42,
+                            ["/repo/.specs/cache/graphs/global-graph.meta.json"],
+                            ["/repo/.specs/us/US-0001/context/impact-graph.meta.json"],
+                            [])
+                    ],
+                    Warnings: [])),
             TechnicalDesignContextPack: new TechnicalDesignContextPack(
                 [new RefinementSkillSelectionItem("../ai-skills-shared/.shared-skills/skills/dotnet/SKILL.md", "Selected for .NET repository scope.")],
                 new RefinementGraphScopeRequest(
@@ -250,6 +290,7 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("\"refinementGraphScopeRequest\":{", json);
         Assert.Contains("\"specApprovalPolicySnapshot\":{", json);
         Assert.Contains("\"implementationPolicySnapshot\":{", json);
+        Assert.Contains("\"implementationStructuredEvidence\":{", json);
         Assert.Contains("\"technicalDesignContextPack\":{", json);
         Assert.Contains("\"evidenceRecord\":{", json);
         Assert.Contains("\"executionEnvelope\":{", json);
@@ -260,6 +301,8 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
         Assert.Contains("\"seedNodes\":[", json);
         Assert.Contains("\"approvalBlockingReason\":\"spec_approval_questions_unresolved\"", json);
         Assert.Contains("\"executionAllowed\":true", json);
+        Assert.Contains("\"evidenceJsonPath\":\"/repo/.specs/us/US-0001/phases/03-implementation.evidence.json\"", json);
+        Assert.Contains("\"graphScopeRequestAvailable\":true", json);
         Assert.Contains("\"workspaceRoot\":\"/repo\"", json);
         Assert.Contains("\"impactGraphState\":\"fresh\"", json);
         Assert.Contains("\"graphQueryEvidence\":[", json);
