@@ -104,6 +104,8 @@ Today the key checkpoints are:
 
 For the canonical workflow semantics, see [workflow-canonico-fase-1.md](workflow-canonico-fase-1.md).
 
+For a phase-by-phase runtime view with execution graphs, see [phase-runtime-graphs.md](phase-runtime-graphs.md).
+
 ## Related Docs
 
 - getting started: [getting-started.md](getting-started.md)
