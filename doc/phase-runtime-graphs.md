@@ -11,6 +11,7 @@ It is intentionally operational, not aspirational:
 ## Canonical Phase Chain
 
 ```mermaid
+%%{init: {'themeVariables': {'fontSize': '12px'}}}%%
 flowchart LR
     capture["capture"] --> refinement["refinement"]
     refinement --> spec["spec"]
@@ -26,6 +27,7 @@ flowchart LR
 ## 1. Capture
 
 ```mermaid
+%%{init: {'themeVariables': {'fontSize': '12px'}}}%%
 flowchart TD
     start["Input received"] --> classify["Classify source kind"]
     classify --> materialize["Materialize us.md and workflow root"]
@@ -44,6 +46,7 @@ Relevant steps:
 ## 2. Refinement
 
 ```mermaid
+%%{init: {'themeVariables': {'fontSize': '12px'}}}%%
 flowchart TD
     start["Enter refinement"] --> assemble["Assemble refinement context"]
     assemble --> execute["Run refinement phase model"]
@@ -66,6 +69,7 @@ Relevant steps:
 ## 3. Spec
 
 ```mermaid
+%%{init: {'themeVariables': {'fontSize': '12px'}}}%%
 flowchart TD
     start["Enter spec"] --> assemble["Assemble approved refinement and source context"]
     assemble --> execute["Run spec model"]
@@ -87,6 +91,7 @@ Relevant steps:
 ## 4. Technical Design
 
 ```mermaid
+%%{init: {'themeVariables': {'fontSize': '12px'}}}%%
 flowchart TD
     start["Enter technical-design"] --> contextPack["Build technical-design context pack"]
     contextPack --> graph["Expand graph-backed scope and query evidence"]
@@ -106,6 +111,7 @@ Relevant steps:
 ## 5. Implementation
 
 ```mermaid
+%%{init: {'themeVariables': {'fontSize': '12px'}}}%%
 flowchart TD
     start["Enter implementation"] --> baseline["Capture workspace baseline snapshot"]
     baseline --> execute["Run implementation model or operation"]
@@ -126,6 +132,7 @@ Relevant steps:
 ## 6. Review
 
 ```mermaid
+%%{init: {'themeVariables': {'fontSize': '12px'}}}%%
 flowchart TD
     start["Enter review"] --> assemble["Assemble implementation artifact, evidence, and upstream chain"]
     assemble --> execute["Run review model"]
@@ -149,6 +156,7 @@ Relevant steps:
 ## 7. Release Approval
 
 ```mermaid
+%%{init: {'themeVariables': {'fontSize': '12px'}}}%%
 flowchart TD
     start["Enter release-approval"] --> assemble["Assemble review artifact, branch metadata, and timeline context"]
     assemble --> execute["Run release-approval model"]
@@ -167,6 +175,7 @@ Relevant steps:
 ## 8. PR Preparation
 
 ```mermaid
+%%{init: {'themeVariables': {'fontSize': '12px'}}}%%
 flowchart TD
     start["Enter pr-preparation"] --> assemble["Assemble branch, review, release, and timeline context"]
     assemble --> execute["Run PR preparation model"]
