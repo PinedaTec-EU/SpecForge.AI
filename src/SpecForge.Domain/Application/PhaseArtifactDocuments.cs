@@ -25,8 +25,11 @@ public static class PhaseMarkdownArtifactContracts
 
 public sealed record RefinementArtifactDocument(
     string State,
+    int QualityScore,
+    int ConfidenceScore,
     string Decision,
     string Reason,
+    IReadOnlyList<PhaseArtifactIssue> Issues,
     IReadOnlyList<string> Questions);
 
 public sealed record TechnicalDesignArtifactDocument(
@@ -54,10 +57,16 @@ public sealed record ImplementationArtifactDocument(
 
 public sealed record ReviewArtifactDocument(
     string Result,
+    int QualityScore,
+    int ConfidenceScore,
     IReadOnlyList<ReviewValidationChecklistItem> ValidationChecklist,
-    IReadOnlyList<string> Findings,
+    IReadOnlyList<PhaseArtifactIssue> Findings,
     string PrimaryReason,
     IReadOnlyList<string> Recommendation);
+
+public sealed record PhaseArtifactIssue(
+    string Severity,
+    string Summary);
 
 public sealed record ReleaseApprovalArtifactDocument(
     string State,
@@ -111,14 +120,24 @@ public static class RefinementArtifactJson
             "## State",
             $"- State: `{normalized.State}`",
             string.Empty,
+            "## Assessment",
+            $"- Quality score: {normalized.QualityScore}%",
+            $"- Confidence score: {normalized.ConfidenceScore}%",
+            string.Empty,
             "## Decision",
             normalized.Decision,
             string.Empty,
             "## Reason",
             normalized.Reason,
             string.Empty,
-            "## Questions"
+            "## Issues"
         };
+        lines.AddRange(StructuredPhaseArtifactMarkdown.RenderSeverityTaggedBulletSection(normalized.Issues));
+        lines.AddRange(
+            [
+            string.Empty,
+            "## Questions"
+            ]);
         lines.AddRange(normalized.Questions.Count == 0
             ? ["1. No refinement questions remain."]
             : normalized.Questions.Select((question, index) => $"{index + 1}. {question}"));
@@ -128,8 +147,11 @@ public static class RefinementArtifactJson
     private static RefinementArtifactDocument Normalize(RefinementArtifactDocument document) =>
         new(
             State: StructuredPhaseArtifactJson.NormalizeScalar(document.State),
+            QualityScore: StructuredPhaseArtifactJson.NormalizePercentage(document.QualityScore),
+            ConfidenceScore: StructuredPhaseArtifactJson.NormalizePercentage(document.ConfidenceScore),
             Decision: StructuredPhaseArtifactJson.NormalizeScalar(document.Decision),
             Reason: StructuredPhaseArtifactJson.NormalizeScalar(document.Reason),
+            Issues: StructuredPhaseArtifactJson.NormalizeIssues(document.Issues),
             Questions: StructuredPhaseArtifactJson.NormalizeLines(document.Questions));
 }
 
@@ -274,12 +296,16 @@ public static class ReviewArtifactJson
             "## State",
             $"- Result: `{normalized.Result}`",
             string.Empty,
+            "## Assessment",
+            $"- Quality score: {normalized.QualityScore}%",
+            $"- Confidence score: {normalized.ConfidenceScore}%",
+            string.Empty,
             "## Validation Checklist"
         };
         lines.AddRange(StructuredPhaseArtifactMarkdown.RenderValidationChecklistSection(normalized.ValidationChecklist));
         lines.Add(string.Empty);
         lines.Add("## Findings");
-        lines.AddRange(StructuredPhaseArtifactMarkdown.RenderBulletSection(normalized.Findings));
+        lines.AddRange(StructuredPhaseArtifactMarkdown.RenderSeverityTaggedBulletSection(normalized.Findings));
         lines.Add(string.Empty);
         lines.Add("## Verdict");
         lines.Add($"- Final result: `{normalized.Result}`");
@@ -293,8 +319,10 @@ public static class ReviewArtifactJson
     private static ReviewArtifactDocument Normalize(ReviewArtifactDocument document) =>
         new(
             Result: StructuredPhaseArtifactJson.NormalizeScalar(document.Result),
+            QualityScore: StructuredPhaseArtifactJson.NormalizePercentage(document.QualityScore),
+            ConfidenceScore: StructuredPhaseArtifactJson.NormalizePercentage(document.ConfidenceScore),
             ValidationChecklist: NormalizeChecklist(document.ValidationChecklist),
-            Findings: StructuredPhaseArtifactJson.NormalizeLines(document.Findings),
+            Findings: StructuredPhaseArtifactJson.NormalizeIssues(document.Findings),
             PrimaryReason: StructuredPhaseArtifactJson.NormalizeScalar(document.PrimaryReason),
             Recommendation: StructuredPhaseArtifactJson.NormalizeLines(document.Recommendation));
 
@@ -559,8 +587,25 @@ internal static class StructuredPhaseArtifactJson
             .Where(static item => !string.IsNullOrWhiteSpace(item))
             .ToArray();
 
+    public static int NormalizePercentage(int value) => Math.Clamp(value, 0, 100);
+
+    public static IReadOnlyList<PhaseArtifactIssue> NormalizeIssues(IReadOnlyList<PhaseArtifactIssue>? items) =>
+        (items ?? Array.Empty<PhaseArtifactIssue>())
+            .Select(static item => new PhaseArtifactIssue(
+                NormalizeIssueSeverity(item.Severity),
+                NormalizeScalar(item.Summary)))
+            .Where(static item => !string.IsNullOrWhiteSpace(item.Summary))
+            .ToArray();
+
     public static string NormalizeScalar(string? value) =>
         string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+
+    private static string NormalizeIssueSeverity(string? value) =>
+        NormalizeScalar(value).ToLowerInvariant() switch
+        {
+            "critical" => "critical",
+            _ => "issue"
+        };
 }
 
 internal static class StructuredPhaseArtifactMarkdown
@@ -620,6 +665,20 @@ internal static class StructuredPhaseArtifactMarkdown
                 var evidence = string.IsNullOrWhiteSpace(item.Evidence) ? "no evidence provided" : item.Evidence;
                 return $"- {marker} {item.Item} \u2014 Evidence: {evidence}";
             })
+            .ToArray();
+    }
+
+    public static IReadOnlyList<string> RenderSeverityTaggedBulletSection(
+        IReadOnlyList<PhaseArtifactIssue> items,
+        string placeholder = "...")
+    {
+        if (items.Count == 0)
+        {
+            return [$"- [issue] {placeholder}"];
+        }
+
+        return items
+            .Select(static item => $"- [{item.Severity}] {item.Summary}")
             .ToArray();
     }
 }

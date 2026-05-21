@@ -323,15 +323,20 @@ public sealed class PhaseExecutionInspectionTests : IDisposable
             ReviewStructuredGateResult: new ReviewStructuredGateResult(
                 "fail",
                 "Review failed because at least one validation strategy item was not validated successfully.",
+                QualityScore: 50,
+                ConfidenceScore: 100,
                 HasBlockingFindings: true,
+                CriticalFindingCount: 2,
+                IssueCount: 0,
                 PassedValidationItemCount: 1,
                 FailedValidationItemCount: 1,
                 DeferredValidationItemCount: 0,
-                ["Review failed 1 validation strategy item(s)."],
+                [new PhaseArtifactIssue("critical", "Review failed 1 validation strategy item(s).")],
                 [
                     new ReviewCorrectionTarget(
                         "Review must compare implementation back to the approved spec before final release approval.",
                         "fail",
+                        "critical",
                         true,
                         "The review artifact did not validate this Technical Design validation strategy item.",
                         "Fix the failed validation item and rerun the review phase.")

@@ -66,7 +66,7 @@ test("CLI workflow portal refresh signature includes workflow runtime versions",
   assert.match(source, /workflow\.LastRuntimeVersion/);
   assert.match(source, /runtimeVersion = GetRuntimeVersion\(\) \?\? workflow\.LastRuntimeVersion \?\? workflow\.CreatedWithRuntimeVersion/);
   assert.match(source, /typeof\(SpecForgeApplicationService\)\.Assembly\.GetName\(\)\.Version\?\.ToString\(\)/);
-  assert.match(source, /BuildWorkflowSignature\(\s*UserStoryWorkflowDetails workflow,\s*IReadOnlyCollection<UserStorySummary> userStories,\s*IReadOnlyCollection<UserStorySummary> droppedUserStories\s*\)/);
+  assert.match(source, /BuildWorkflowSignature\(\s*UserStoryWorkflowDetails workflow,\s*IReadOnlyCollection<UserStorySummary> userStories,\s*IReadOnlyCollection<UserStorySummary> droppedUserStories,\s*string workflowGraphLayoutSignature\s*\)/);
   assert.match(source, /userStories = userStories[\s\S]*?story\.CurrentPhase[\s\S]*?story\.Status/);
   assert.match(source, /droppedUserStories = droppedUserStories[\s\S]*?story\.CurrentPhase[\s\S]*?story\.Status/);
 });
@@ -115,7 +115,7 @@ test("CLI workflow portal signature ignores local sidebar visibility", async () 
   assert.match(source, /BuildWorkflowPortalSignatureAsync\(\s*SpecForgeApplicationService applicationService,\s*string workspaceRoot,\s*string usId,\s*string\? sidebarVisibility,\s*bool showCompletedUserStories,\s*bool showBlockedUserStories\s*\)/);
   assert.match(source, /GetUserStoryWorkflowAsync\(workspaceRoot, usId\)/);
   assert.doesNotMatch(source, /resolvedUsId = ResolveSidebarVisibleUserStoryId\(usId, sidebarUserStories\)/);
-  assert.match(source, /BuildWorkflowSignature\([\s\S]*?activeSidebarUserStories,[\s\S]*?droppedSidebarUserStories\)/);
+  assert.match(source, /BuildWorkflowSignature\([\s\S]*?activeSidebarUserStories,[\s\S]*?droppedSidebarUserStories,[\s\S]*?workflowGraphLayoutSignature\)/);
 });
 
 test("CLI writes JSON with web serializer options for record responses", async () => {

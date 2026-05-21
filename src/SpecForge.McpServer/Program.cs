@@ -19,7 +19,7 @@ var completedUsLockOnCompleted = string.Equals(
     Environment.GetEnvironmentVariable("SPECFORGE_COMPLETED_US_LOCK_ON_COMPLETED")?.Trim(),
     "true",
     StringComparison.OrdinalIgnoreCase);
-var maxRefinementCycles = ReadIntEnvironment("SPECFORGE_MAX_REFINEMENT_CYCLES", 3);
+var maxRefinementCycles = ReadIntEnvironment("SPECFORGE_MAX_REFINEMENT_CYCLES", 5);
 var maxImplementationReviewCycles = ReadIntEnvironment("SPECFORGE_MAX_IMPLEMENTATION_REVIEW_CYCLES", 5);
 var decompositionOptions = new UserStoryDecompositionOptions(
     Enabled: !string.Equals(Environment.GetEnvironmentVariable("SPECFORGE_DECOMPOSITION_ENABLED")?.Trim(), "false", StringComparison.OrdinalIgnoreCase),

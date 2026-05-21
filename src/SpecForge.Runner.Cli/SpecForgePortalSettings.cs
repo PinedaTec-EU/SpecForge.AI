@@ -187,7 +187,7 @@ internal static class SpecForgePortalSettingsStore
 
         if (!document.RootElement.TryGetProperty("maxRefinementCycles", out _) || settings.MaxRefinementCycles <= 0)
         {
-            settings = settings with { MaxRefinementCycles = 3 };
+            settings = settings with { MaxRefinementCycles = 5 };
         }
 
         if (!document.RootElement.TryGetProperty("maxImplementationReviewCycles", out _) || settings.MaxImplementationReviewCycles <= 0)
@@ -278,7 +278,7 @@ internal static class SpecForgePortalSettingsStore
             AutoRefinementAnswersProfile: null,
             AutoPlayEnabled: true,
             AutoReviewEnabled: true,
-            MaxRefinementCycles: 3,
+            MaxRefinementCycles: 5,
             MaxImplementationReviewCycles: 5,
             DestructiveRewindEnabled: false,
             PauseOnFailedReview: true,

@@ -30,6 +30,7 @@ export interface SpecForgeSettings {
   readonly phaseSkillUsageReportingEnabled: boolean;
   readonly autoPlayEnabled: boolean;
   readonly autoReviewEnabled: boolean;
+  readonly maxRefinementCycles: number | null;
   readonly maxImplementationReviewCycles: number | null;
   readonly destructiveRewindEnabled: boolean;
   readonly pauseOnFailedReview: boolean;
@@ -109,7 +110,7 @@ export const recommendedBootstrapAgentProfiles: readonly SpecForgeAgentProfile[]
     role: "reviewer",
     modelProfile: "",
     instructions: "Review implementation changes for correctness, regressions, missing tests, and release risk.",
-    repositoryAccess: "read-write"
+    repositoryAccess: "read"
   },
   {
     name: "release-preparer",
@@ -198,6 +199,7 @@ export function readSpecForgeSettings(configuration: ConfigurationReader): SpecF
     phaseSkillUsageReportingEnabled: configuration.get<boolean>("features.phaseSkillUsageReportingEnabled", true),
     autoPlayEnabled: configuration.get<boolean>("features.autoPlayEnabled", false),
     autoReviewEnabled: configuration.get<boolean>("features.autoReviewEnabled", false),
+    maxRefinementCycles: normalizeOptionalPositiveInteger(configuration.get<unknown>("features.maxRefinementCycles", 5)),
     maxImplementationReviewCycles: normalizeOptionalPositiveInteger(configuration.get<unknown>("features.maxImplementationReviewCycles", 5)),
     destructiveRewindEnabled: configuration.get<boolean>("features.destructiveRewindEnabled", false),
     pauseOnFailedReview: configuration.get<boolean>("features.pauseOnFailedReview", false),
@@ -248,6 +250,8 @@ export function buildBackendEnvironment(settings: SpecForgeSettings): NodeJS.Pro
   env.SPECFORGE_REVIEW_LEARNING_SKILL_PATH =
     settings.reviewLearningSkillPath ?? ".codex/skills/sdd-phase-agents/SKILL.md";
   env.SPECFORGE_COMPLETED_US_LOCK_ON_COMPLETED = settings.completedUsLockOnCompleted ? "true" : "false";
+  env.SPECFORGE_MAX_REFINEMENT_CYCLES = String(settings.maxRefinementCycles ?? 5);
+  env.SPECFORGE_MAX_IMPLEMENTATION_REVIEW_CYCLES = String(settings.maxImplementationReviewCycles ?? 5);
 
   if (settings.autoRefinementAnswersProfile) {
     env.SPECFORGE_AUTO_REFINEMENT_ANSWERS_PROFILE = settings.autoRefinementAnswersProfile;
@@ -501,6 +505,7 @@ function buildSettingsDiagnostics(settings: SpecForgeSettings): string {
     `semanticGraph.useWhenAvailable=${settings.useSemanticGraphWhenAvailable}`,
     `semanticGraph.allowBuildRefreshForTouchedUs=${settings.allowGraphBuildRefreshForTouchedUserStoryScope}`,
     `autoReviewEnabled=${settings.autoReviewEnabled}`,
+    `maxRefinementCycles=${settings.maxRefinementCycles ?? "<unset>"}`,
     `maxImplementationReviewCycles=${settings.maxImplementationReviewCycles ?? "<unset>"}`,
     `pauseOnFailedReview=${settings.pauseOnFailedReview}`,
     `reviewLearningEnabled=${settings.reviewLearningEnabled === false ? false : true}`,

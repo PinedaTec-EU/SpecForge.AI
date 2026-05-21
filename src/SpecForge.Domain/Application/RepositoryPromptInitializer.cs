@@ -424,8 +424,10 @@ public sealed class RepositoryPromptInitializer
 
         Required sections:
         - State
+        - Assessment
         - Decision
         - Reason
+        - Issues
         - Questions
 
         Decision rules:
@@ -437,6 +439,9 @@ public sealed class RepositoryPromptInitializer
         - keep questions concrete and answerable by the user inside the extension
         - group questions by theme when there are many gaps, but do not suppress blocking questions just to keep the list short
         - prefer another refinement iteration over a speculative spec whenever requirements are incomplete
+        - `## Assessment` must contain exactly one `- Quality score:` line and one `- Confidence score:` line with integer percentages from 0 to 100
+        - `## Issues` must classify each bullet as `[critical]` or `[issue]`; use `[critical]` for blockers that prevent spec, and `[issue]` for lower-severity concerns
+        - if the decision is `ready_for_spec`, `## Issues` must not contain `[critical]` items
         """;
 
     private static string BuildSpecExecutePrompt() =>
@@ -562,6 +567,8 @@ public sealed class RepositoryPromptInitializer
         - derive workflow or bootstrap commands from repository evidence such as tasks, tool manifests, README files, or workflow configs; do not infer CLI names from folder names
         - never return `pass` if the Validation Checklist is missing, empty, incomplete, or contains any failed blocking item
         - the `## State` section must contain exactly one `- Result:` line with value `pass` or `fail`
+        - the `## Assessment` section must contain exactly one `- Quality score:` line and one `- Confidence score:` line with integer percentages from 0 to 100
+        - every `## Findings` bullet must start with `[critical]` or `[issue]`
         - every finding must include the concrete evidence path, command, artifact, or missing-evidence condition that supports it
         - if implementation changed repository behavior, contracts, prompts, workflows, configuration, generated artifacts, or product positioning, fail the review when the corresponding documentation was not updated and no justified no-doc-change rationale exists
         Behave as reviewer, not as author.

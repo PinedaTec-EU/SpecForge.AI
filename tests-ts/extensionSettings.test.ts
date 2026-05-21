@@ -5,7 +5,8 @@ import {
   getSpecForgeSettingsStatus,
   readSpecForgeSettings,
   shouldBootstrapRecommendedAgentProfiles,
-  shouldBootstrapRecommendedPhaseAgentAssignments
+  shouldBootstrapRecommendedPhaseAgentAssignments,
+  type SpecForgeSettings
 } from "../src-vscode/extensionSettings";
 
 type AssignmentShape = ReturnType<typeof emptyAssignments>;
@@ -53,6 +54,60 @@ function emptyEffectiveAssignments() {
   };
 }
 
+function completeSettings(overrides: Partial<SpecForgeSettings>): SpecForgeSettings {
+  return {
+    modelProfiles: [],
+    agentProfiles: [],
+    phaseAgentAssignments: assignments(),
+    effectivePhaseAgentAssignments: effective(),
+    defaultHarnessProfile: "balanced",
+    phaseHarnessProfiles: {
+      defaultProfile: null,
+      captureProfile: null,
+      refinementProfile: null,
+      specProfile: null,
+      technicalDesignProfile: null,
+      implementationProfile: null,
+      reviewProfile: null,
+      releaseApprovalProfile: null,
+      prPreparationProfile: null
+    },
+    harnessProfileAuthority: "workspace",
+    harnessProfileLockMode: "none",
+    lockedHarnessPhaseIds: [],
+    allowPerUserStoryHarnessProfileOverrides: true,
+    autoRefinementAnswersProfile: null,
+    refinementTolerance: "balanced",
+    mvpRigor: "medium",
+    reviewTolerance: "balanced",
+    reviewEvidencePolicy: "balanced",
+    technicalDesignSubagentsEnabled: false,
+    reviewSubagentsEnabled: false,
+    workflowGraphLayoutMode: "vertical",
+    workflowGraphInitialZoomMode: "actual-size",
+    userStoryListViewMode: "category",
+    visualTimelineEnabled: false,
+    watcherEnabled: true,
+    attentionNotificationsEnabled: true,
+    contextSuggestionsEnabled: true,
+    requireExplicitApprovalBranchAcceptance: false,
+    autoRefinementAnswersEnabled: false,
+    phaseSkillUsageReportingEnabled: true,
+    autoPlayEnabled: false,
+    autoReviewEnabled: false,
+    maxRefinementCycles: null,
+    maxImplementationReviewCycles: null,
+    destructiveRewindEnabled: false,
+    pauseOnFailedReview: false,
+    useSemanticGraphWhenAvailable: true,
+    allowGraphBuildRefreshForTouchedUserStoryScope: false,
+    reviewLearningEnabled: true,
+    reviewLearningSkillPath: ".codex/skills/sdd-phase-agents/SKILL.md",
+    completedUsLockOnCompleted: true,
+    ...overrides
+  };
+}
+
 test("readSpecForgeSettings normalizes model profiles and preserves toggles", () => {
   const values = new Map<string, unknown>([
     ["execution.modelProfiles", [
@@ -89,6 +144,7 @@ test("readSpecForgeSettings normalizes model profiles and preserves toggles", ()
     ["features.requireApprovalBranchAcceptance", true],
     ["features.phaseSkillUsageReportingEnabled", false],
     ["features.autoReviewEnabled", true],
+    ["features.maxRefinementCycles", 4],
     ["features.maxImplementationReviewCycles", 3],
     ["features.pauseOnFailedReview", true],
     ["features.completedUsLockOnCompleted", false]
@@ -100,7 +156,7 @@ test("readSpecForgeSettings normalizes model profiles and preserves toggles", ()
     }
   });
 
-  assert.deepEqual(settings, {
+  const expected = completeSettings({
     modelProfiles: [
       {
         name: "light",
@@ -170,6 +226,7 @@ test("readSpecForgeSettings normalizes model profiles and preserves toggles", ()
     phaseSkillUsageReportingEnabled: false,
     autoPlayEnabled: false,
     autoReviewEnabled: true,
+    maxRefinementCycles: 4,
     maxImplementationReviewCycles: 3,
     destructiveRewindEnabled: false,
     pauseOnFailedReview: true,
@@ -177,6 +234,10 @@ test("readSpecForgeSettings normalizes model profiles and preserves toggles", ()
     reviewLearningSkillPath: ".codex/skills/sdd-phase-agents/SKILL.md",
     completedUsLockOnCompleted: false
   });
+
+  for (const [key, value] of Object.entries(expected)) {
+    assert.deepEqual((settings as unknown as Record<string, unknown>)[key], value, `Unexpected value for settings.${key}`);
+  }
 });
 
 test("readSpecForgeSettings supplies recommended bootstrap agent profiles without models", () => {
@@ -205,7 +266,7 @@ test("readSpecForgeSettings supplies recommended bootstrap agent profiles withou
     {
       name: "reviewer",
       modelProfile: "",
-      repositoryAccess: "read-write"
+      repositoryAccess: "read"
     },
     {
       name: "release-preparer",
@@ -333,7 +394,7 @@ test("readSpecForgeSettings normalizes user story list view preference", () => {
 });
 
 test("buildBackendEnvironment serializes model profiles, agent profiles, and assignments", () => {
-  assert.deepEqual(buildBackendEnvironment({
+  const env = buildBackendEnvironment(completeSettings({
     modelProfiles: [
       {
         name: "light",
@@ -379,13 +440,16 @@ test("buildBackendEnvironment serializes model profiles, agent profiles, and ass
     phaseSkillUsageReportingEnabled: true,
     autoPlayEnabled: false,
     autoReviewEnabled: false,
+    maxRefinementCycles: null,
     maxImplementationReviewCycles: null,
     destructiveRewindEnabled: false,
     pauseOnFailedReview: false,
     reviewLearningEnabled: true,
     reviewLearningSkillPath: ".codex/skills/sdd-phase-agents/SKILL.md",
     completedUsLockOnCompleted: true
-  }), {
+  }));
+
+  const expected = {
     SPECFORGE_OPENAI_MODEL_PROFILES_JSON: JSON.stringify([
       {
         name: "light",
@@ -433,14 +497,38 @@ test("buildBackendEnvironment serializes model profiles, agent profiles, and ass
     SPECFORGE_REVIEW_SUBAGENTS_ENABLED: "false",
     SPECFORGE_AUTO_REFINEMENT_ANSWERS_ENABLED: "false",
     SPECFORGE_PHASE_SKILL_USAGE_REPORTING_ENABLED: "true",
+    SPECFORGE_USE_SEMANTIC_GRAPH_WHEN_AVAILABLE: "true",
+    SPECFORGE_ALLOW_GRAPH_BUILD_REFRESH_FOR_TOUCHED_US_SCOPE: "false",
+    SPECFORGE_HARNESS_PROFILE_DEFAULT: "balanced",
+    SPECFORGE_HARNESS_PHASE_PROFILES_JSON: JSON.stringify({
+      defaultProfile: null,
+      captureProfile: null,
+      refinementProfile: null,
+      specProfile: null,
+      technicalDesignProfile: null,
+      implementationProfile: null,
+      reviewProfile: null,
+      releaseApprovalProfile: null,
+      prPreparationProfile: null
+    }),
+    SPECFORGE_HARNESS_PROFILE_AUTHORITY: "workspace",
+    SPECFORGE_HARNESS_PROFILE_LOCK_MODE: "none",
+    SPECFORGE_HARNESS_LOCKED_PHASE_IDS_JSON: "[]",
+    SPECFORGE_ALLOW_PER_US_HARNESS_PROFILE_OVERRIDES: "true",
+    SPECFORGE_MAX_REFINEMENT_CYCLES: "5",
+    SPECFORGE_MAX_IMPLEMENTATION_REVIEW_CYCLES: "5",
     SPECFORGE_REVIEW_LEARNING_ENABLED: "true",
     SPECFORGE_REVIEW_LEARNING_SKILL_PATH: ".codex/skills/sdd-phase-agents/SKILL.md",
     SPECFORGE_COMPLETED_US_LOCK_ON_COMPLETED: "true"
-  });
+  };
+
+  for (const [key, value] of Object.entries(expected)) {
+    assert.equal(env[key], value, `Unexpected value for env.${key}`);
+  }
 });
 
 test("getSpecForgeSettingsStatus requires at least one model profile", () => {
-  const status = getSpecForgeSettingsStatus({
+  const status = getSpecForgeSettingsStatus(completeSettings({
     modelProfiles: [],
     phaseAgentAssignments: assignments(),
     effectivePhaseAgentAssignments: effective(),
@@ -458,11 +546,12 @@ test("getSpecForgeSettingsStatus requires at least one model profile", () => {
     phaseSkillUsageReportingEnabled: true,
     autoPlayEnabled: false,
     autoReviewEnabled: false,
+    maxRefinementCycles: null,
     maxImplementationReviewCycles: null,
     destructiveRewindEnabled: false,
     pauseOnFailedReview: false,
     completedUsLockOnCompleted: true
-  });
+  }));
 
   assert.equal(status.executionConfigured, false);
   assert.equal(status.message, "SpecForge.AI needs at least one configured model profile before workflow stages can run.");
@@ -470,7 +559,7 @@ test("getSpecForgeSettingsStatus requires at least one model profile", () => {
 });
 
 test("getSpecForgeSettingsStatus rejects a single fallback profile when phase permissions are insufficient", () => {
-  const status = getSpecForgeSettingsStatus({
+  const status = getSpecForgeSettingsStatus(completeSettings({
     modelProfiles: [
       {
         name: "light",
@@ -505,7 +594,7 @@ test("getSpecForgeSettingsStatus rejects a single fallback profile when phase pe
     destructiveRewindEnabled: false,
     pauseOnFailedReview: false,
     completedUsLockOnCompleted: true
-  });
+  }));
 
   assert.equal(status.executionConfigured, false);
   assert.equal(status.message, "Refinement requires repository access 'read', but agent 'light' only grants 'none'.");
@@ -514,7 +603,7 @@ test("getSpecForgeSettingsStatus rejects a single fallback profile when phase pe
 });
 
 test("getSpecForgeSettingsStatus still requires an api key for remote profiles", () => {
-  const status = getSpecForgeSettingsStatus({
+  const status = getSpecForgeSettingsStatus(completeSettings({
     modelProfiles: [
       {
         name: "light",
@@ -549,7 +638,7 @@ test("getSpecForgeSettingsStatus still requires an api key for remote profiles",
     destructiveRewindEnabled: false,
     pauseOnFailedReview: false,
     completedUsLockOnCompleted: true
-  });
+  }));
 
   assert.equal(status.executionConfigured, false);
   assert.equal(status.message, "SpecForge.AI model profile 'light' needs an API key for a remote base URL.");
@@ -557,7 +646,7 @@ test("getSpecForgeSettingsStatus still requires an api key for remote profiles",
 });
 
 test("getSpecForgeSettingsStatus accepts profiles using the default provider", () => {
-  const status = getSpecForgeSettingsStatus({
+  const status = getSpecForgeSettingsStatus(completeSettings({
     modelProfiles: [
       {
         name: "light",
@@ -588,7 +677,7 @@ test("getSpecForgeSettingsStatus accepts profiles using the default provider", (
     destructiveRewindEnabled: false,
     pauseOnFailedReview: false,
     completedUsLockOnCompleted: true
-  });
+  }));
 
   assert.equal(status.executionConfigured, true);
   assert.equal(status.message, null);
@@ -596,7 +685,7 @@ test("getSpecForgeSettingsStatus accepts profiles using the default provider", (
 });
 
 test("getSpecForgeSettingsStatus accepts codex, copilot, and claude providers", () => {
-  const status = getSpecForgeSettingsStatus({
+  const status = getSpecForgeSettingsStatus(completeSettings({
     modelProfiles: [
       {
         name: "implementer",
@@ -651,7 +740,7 @@ test("getSpecForgeSettingsStatus accepts codex, copilot, and claude providers", 
     destructiveRewindEnabled: false,
     pauseOnFailedReview: false,
     completedUsLockOnCompleted: true
-  });
+  }));
 
   assert.equal(status.executionConfigured, true);
   assert.equal(status.message, null);
@@ -662,7 +751,7 @@ test("getSpecForgeSettingsStatus accepts codex, copilot, and claude providers", 
 
 test("getSpecForgeSettingsStatus allows native CLI providers without baseUrl apiKey or model", () => {
   for (const provider of ["codex", "claude", "copilot"]) {
-    const status = getSpecForgeSettingsStatus({
+    const status = getSpecForgeSettingsStatus(completeSettings({
       modelProfiles: [
         {
           name: `${provider}-main`,
@@ -697,7 +786,7 @@ test("getSpecForgeSettingsStatus allows native CLI providers without baseUrl api
       destructiveRewindEnabled: false,
       pauseOnFailedReview: false,
       completedUsLockOnCompleted: true
-    });
+    }));
 
     assert.equal(status.executionConfigured, true);
     assert.equal(status.message, null);
@@ -706,7 +795,7 @@ test("getSpecForgeSettingsStatus allows native CLI providers without baseUrl api
 });
 
 test("getSpecForgeSettingsStatus rejects unsupported providers", () => {
-  const status = getSpecForgeSettingsStatus({
+  const status = getSpecForgeSettingsStatus(completeSettings({
     modelProfiles: [
       {
         name: "light",
@@ -737,7 +826,7 @@ test("getSpecForgeSettingsStatus rejects unsupported providers", () => {
     destructiveRewindEnabled: false,
     pauseOnFailedReview: false,
     completedUsLockOnCompleted: true
-  });
+  }));
 
   assert.equal(status.executionConfigured, false);
   assert.equal(status.message, "SpecForge.AI model profile 'light' uses unsupported provider 'anthropic'.");
@@ -745,7 +834,7 @@ test("getSpecForgeSettingsStatus rejects unsupported providers", () => {
 });
 
 test("getSpecForgeSettingsStatus validates named profile assignments", () => {
-  const status = getSpecForgeSettingsStatus({
+  const status = getSpecForgeSettingsStatus(completeSettings({
     modelProfiles: [
       {
         name: "light",
@@ -778,7 +867,7 @@ test("getSpecForgeSettingsStatus validates named profile assignments", () => {
     destructiveRewindEnabled: false,
     pauseOnFailedReview: false,
     completedUsLockOnCompleted: true
-  });
+  }));
 
   assert.equal(status.executionConfigured, false);
   assert.equal(status.message, "SpecForge.AI phase agent assignment 'default' references unknown agent 'missing'.");
@@ -786,7 +875,7 @@ test("getSpecForgeSettingsStatus validates named profile assignments", () => {
 });
 
 test("getSpecForgeSettingsStatus allows multiple profiles without default when all model-driven phases are assigned", () => {
-  const status = getSpecForgeSettingsStatus({
+  const status = getSpecForgeSettingsStatus(completeSettings({
     modelProfiles: [
       {
         name: "planner",
@@ -845,14 +934,14 @@ test("getSpecForgeSettingsStatus allows multiple profiles without default when a
     destructiveRewindEnabled: false,
     pauseOnFailedReview: false,
     completedUsLockOnCompleted: true
-  });
+  }));
 
   assert.equal(status.executionConfigured, true);
   assert.equal(status.message, null);
 });
 
 test("getSpecForgeSettingsStatus rejects review when its assigned profile lacks repository write access", () => {
-  const status = getSpecForgeSettingsStatus({
+  const status = getSpecForgeSettingsStatus(completeSettings({
     modelProfiles: [
       {
         name: "planner",
@@ -902,14 +991,14 @@ test("getSpecForgeSettingsStatus rejects review when its assigned profile lacks 
     destructiveRewindEnabled: false,
     pauseOnFailedReview: false,
     completedUsLockOnCompleted: true
-  });
+  }));
 
   assert.equal(status.executionConfigured, false);
   assert.equal(status.message, "Review requires repository access 'read-write', but agent 'planner' only grants 'read'.");
 });
 
 test("getSpecForgeSettingsStatus requires an explicit auto-refinement profile when enabled", () => {
-  const status = getSpecForgeSettingsStatus({
+  const status = getSpecForgeSettingsStatus(completeSettings({
     modelProfiles: [
       {
         name: "planner",
@@ -942,14 +1031,14 @@ test("getSpecForgeSettingsStatus requires an explicit auto-refinement profile wh
     destructiveRewindEnabled: false,
     pauseOnFailedReview: false,
     completedUsLockOnCompleted: true
-  });
+  }));
 
   assert.equal(status.executionConfigured, false);
   assert.equal(status.message, "SpecForge.AI needs an auto-refinement answers agent when model-driven refinement answers are enabled.");
 });
 
 test("buildBackendEnvironment serializes auto-refinement settings", () => {
-  const env = buildBackendEnvironment({
+  const env = buildBackendEnvironment(completeSettings({
     modelProfiles: [
       {
         name: "planner",
@@ -984,7 +1073,7 @@ test("buildBackendEnvironment serializes auto-refinement settings", () => {
     destructiveRewindEnabled: false,
     pauseOnFailedReview: false,
     completedUsLockOnCompleted: true
-  });
+  }));
 
   assert.equal(env.SPECFORGE_AUTO_REFINEMENT_ANSWERS_ENABLED, "true");
   assert.equal(env.SPECFORGE_AUTO_REFINEMENT_ANSWERS_PROFILE, "planner");

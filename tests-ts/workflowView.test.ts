@@ -5280,7 +5280,7 @@ test("buildWorkflowHtml renders completed phase reopen controls and lock state",
   assert.match(html, /<div class="phase-slug">Workflow finished<\/div>/);
   assert.match(html, /data-command="openExternalUrl" data-url="https:\/\/github.com\/acme\/specforge\/pull\/42"/);
   assert.match(html, /View PR #42/);
-  assert.match(html, /<h3>Workflow Dashboard<\/h3>/);
+  assert.match(html, /<h3>Workflow Metrics<\/h3>/);
   assert.match(html, /<h3>Usage by Model<\/h3>/);
   assert.match(html, /<h3>Usage by Phase<\/h3>/);
   assert.match(html, /Completed and locked/);
@@ -5293,7 +5293,7 @@ test("buildWorkflowHtml renders completed phase reopen controls and lock state",
   assert.match(html, /id="completed-reopen-description"/);
   assert.match(html, /data-submit-completed-reopen disabled>Open</);
   assert.doesNotMatch(html, /data-phase-rewind-button/);
-  assert.match(html, /detail-card-shell[^]*detail-card--phase-overview[^]*detail-card--completed-reopen[^]*<h3>Workflow Dashboard<\/h3>/);
+  assert.match(html, /detail-card-shell[^]*detail-card--phase-overview[^]*detail-card--completed-reopen[^]*<h3>Workflow Metrics<\/h3>/);
 });
 
 test("buildWorkflowHtml hides secondary review regression edge until it has execution history and review is not selected", () => {

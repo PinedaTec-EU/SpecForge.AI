@@ -4,6 +4,32 @@ namespace SpecForge.Domain.Application;
 
 internal static class WorkflowArtifactMarkdownReader
 {
+    internal static int ParseAssessmentPercentage(string markdown, string label)
+    {
+        var section = MarkdownHelper.TryReadSection(markdown, "## Assessment");
+        if (string.IsNullOrWhiteSpace(section))
+        {
+            return -1;
+        }
+
+        var prefix = $"- {label}:";
+        foreach (var line in section.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n'))
+        {
+            var trimmed = line.Trim();
+            if (!trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var rawValue = trimmed[prefix.Length..].Trim().TrimEnd('%');
+            return int.TryParse(rawValue, out var percentage)
+                ? Math.Clamp(percentage, 0, 100)
+                : -1;
+        }
+
+        return -1;
+    }
+
     internal static string ParseReviewResult(string reviewMarkdown)
     {
         foreach (var line in reviewMarkdown.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n'))
@@ -76,6 +102,18 @@ internal static class WorkflowArtifactMarkdownReader
             .ToArray();
     }
 
+    internal static IReadOnlyList<PhaseArtifactIssue> ReadSeverityTaggedBulletSection(
+        string markdown,
+        string heading,
+        string defaultSeverity)
+    {
+        return ReadMarkdownSectionBulletLines(markdown, heading)
+            .Select(line => ParsePhaseArtifactIssue(line, defaultSeverity))
+            .Where(static item => item is not null)
+            .Cast<PhaseArtifactIssue>()
+            .ToArray();
+    }
+
     internal static string NormalizeReviewChecklistKey(string value) =>
         Regex.Replace(value.Trim().ToLowerInvariant(), "\\s+", " ");
 
@@ -133,5 +171,25 @@ internal static class WorkflowArtifactMarkdownReader
             .Select(static line => line.Trim())
             .Where(static line => line.StartsWith("-", StringComparison.Ordinal))
             .ToArray();
+    }
+
+    private static PhaseArtifactIssue? ParsePhaseArtifactIssue(string line, string defaultSeverity)
+    {
+        var trimmed = line.Trim();
+        var content = Regex.Replace(trimmed, "^-\\s*", string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(content) || content == "...")
+        {
+            return null;
+        }
+
+        var match = Regex.Match(content, "^\\[(critical|issue)\\]\\s*(.+)$", RegexOptions.IgnoreCase);
+        if (match.Success)
+        {
+            return new PhaseArtifactIssue(
+                match.Groups[1].Value.Trim().ToLowerInvariant(),
+                match.Groups[2].Value.Trim());
+        }
+
+        return new PhaseArtifactIssue(defaultSeverity, content);
     }
 }

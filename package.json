@@ -510,6 +510,12 @@
           "default": false,
           "description": "Automatically continue from implementation into review after implementation artifacts are generated or updated."
         },
+        "specForge.features.maxRefinementCycles": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 5,
+          "description": "Maximum refinement iterations allowed before automatic continuation stops and the workflow waits for the user."
+        },
         "specForge.features.maxImplementationReviewCycles": {
           "type": "integer",
           "minimum": 1,

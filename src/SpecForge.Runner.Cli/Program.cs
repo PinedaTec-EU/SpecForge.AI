@@ -1090,7 +1090,7 @@ static SpecForgeApplicationService CreateApplicationService(IReadOnlyList<string
     var runner = new WorkflowRunner(
         CreatePhaseExecutionProvider(workspaceRoot),
         refinementTolerance: portalSettings?.RefinementTolerance ?? "balanced",
-        maxRefinementCycles: portalSettings?.MaxRefinementCycles ?? 3,
+        maxRefinementCycles: portalSettings?.MaxRefinementCycles ?? 5,
         maxImplementationReviewCycles: portalSettings?.MaxImplementationReviewCycles ?? 5,
         decompositionOptions: new UserStoryDecompositionOptions(
             Enabled: portalSettings?.DecompositionEnabled ?? true,
@@ -1240,6 +1240,7 @@ static string BuildConfigurationPortalHtml() =>
                 <label><span class="field-label">Review evidence policy</span><span class="field-control"><select id="reviewEvidencePolicy"><option>strict</option><option>balanced</option><option>release</option><option>advisory</option></select><button class="help-button" type="button" aria-label="Review evidence policy details" aria-expanded="false" data-help="Controls how missing automated, static, operational, or deferred validation evidence affects review readiness.">?</button></span></label>
                 <label><span class="field-label">Auto-refinement agent</span><span class="field-control"><select id="autoRefinementAnswersProfile"></select><button class="help-button" type="button" aria-label="Auto-refinement agent details" aria-expanded="false" data-help="Agent used to answer refinement questions automatically before the workflow hands the phase back to the user.">?</button></span></label>
                 <label><span class="field-label">Review learning skill path</span><span class="field-control"><input id="reviewLearningSkillPath"><button class="help-button" type="button" aria-label="Review learning skill path details" aria-expanded="false" data-help="Workspace-relative skill file where generalized lessons from failed reviews can be persisted.">?</button></span></label>
+                <label><span class="field-label">Max refinement cycles</span><span class="field-control"><input id="maxRefinementCycles" type="number" min="1"><button class="help-button" type="button" aria-label="Max refinement cycles details" aria-expanded="false" data-help="Maximum refinement iterations allowed before automatic continuation stops and the workflow waits for the user.">?</button></span></label>
                 <label><span class="field-label">Max implementation/review cycles</span><span class="field-control"><input id="maxImplementationReviewCycles" type="number" min="1"><button class="help-button" type="button" aria-label="Max implementation/review cycles details" aria-expanded="false" data-help="Maximum implementation attempts allowed in the implementation/review loop before automatic continuation stops.">?</button></span></label>
                 <label><span class="field-label">Decomposition threshold</span><span class="field-control"><input id="decompositionThreshold" type="number" min="0" max="1" step="0.01"><button class="help-button" type="button" aria-label="Decomposition threshold details" aria-expanded="false" data-help="Complexity score at or above this value requires splitting the spec into child user stories. Default is 0.60.">?</button></span></label>
                 <label><span class="field-label">Decomposition tolerance</span><span class="field-control"><input id="decompositionTolerance" type="number" min="0" max="1" step="0.01"><button class="help-button" type="button" aria-label="Decomposition tolerance details" aria-expanded="false" data-help="Tolerance below the threshold where SpecForge suggests, but does not require, splitting. With 0.60 and 0.10, suggested starts at 0.50.">?</button></span></label>
@@ -1299,7 +1300,7 @@ static string BuildConfigurationPortalHtml() =>
           "agent.name": "Stable agent name used by phase routing and auto-refinement settings.",
           "agent.role": "Operational role injected into prompts, such as planner, implementer, reviewer, or release-preparer.",
           "agent.modelProfile": "Model profile this agent runs on.",
-          "agent.repositoryAccess": "Repository permissions granted to this agent. Implementation and review require read-write.",
+          "agent.repositoryAccess": "Repository permissions granted to this agent. Implementation requires read-write; refinement, review, and release-facing agents should stay read-only.",
           "agent.reasoningEffort": "Optional reasoning effort override for this agent.",
           "agent.instructions": "Additional behavior instructions injected into this agent's effective phase prompt.",
           "assignment.defaultAgent": "Fallback agent used when a phase does not declare its own specific agent.",
@@ -1308,7 +1309,7 @@ static string BuildConfigurationPortalHtml() =>
           "assignment.specAgent": "Agent used to produce and revise the functional spec.",
           "assignment.technicalDesignAgent": "Agent used to produce the technical design.",
           "assignment.implementationAgent": "Agent used to make repository changes. Requires read-write access.",
-          "assignment.reviewAgent": "Agent used to inspect implementation and decide review readiness. Requires read-write access.",
+          "assignment.reviewAgent": "Agent used to inspect implementation and decide review readiness. This should remain read-only.",
           "assignment.releaseApprovalAgent": "Agent used to prepare the release-readiness approval artifact.",
           "assignment.prPreparationAgent": "Agent used to prepare PR handoff content.",
           "technicalDesignSubagentsEnabled": "Runs specialist design subagents before synthesizing the final technical design artifact.",
@@ -1404,7 +1405,7 @@ static string BuildConfigurationPortalHtml() =>
         }
 
         function renderBehavior() {
-          for (const id of ["refinementTolerance", "mvpRigor", "reviewTolerance", "reviewEvidencePolicy", "autoRefinementAnswersProfile", "reviewLearningSkillPath", "maxImplementationReviewCycles", "decompositionThreshold", "decompositionTolerance", "decompositionMaxChildren"]) {
+          for (const id of ["refinementTolerance", "mvpRigor", "reviewTolerance", "reviewEvidencePolicy", "autoRefinementAnswersProfile", "reviewLearningSkillPath", "maxRefinementCycles", "maxImplementationReviewCycles", "decompositionThreshold", "decompositionTolerance", "decompositionMaxChildren"]) {
             const element = document.getElementById(id);
             if (!element) continue;
             if (id === "autoRefinementAnswersProfile") {
@@ -1451,6 +1452,7 @@ static string BuildConfigurationPortalHtml() =>
             const element = document.getElementById(id);
             if (element) state[id] = element.value || null;
           }
+          state.maxRefinementCycles = Number(document.getElementById("maxRefinementCycles")?.value) || 5;
           state.maxImplementationReviewCycles = Number(document.getElementById("maxImplementationReviewCycles")?.value) || 5;
           state.decompositionThreshold = Number(document.getElementById("decompositionThreshold")?.value) || 0.60;
           state.decompositionTolerance = Number(document.getElementById("decompositionTolerance")?.value) || 0.10;

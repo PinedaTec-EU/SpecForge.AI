@@ -24,6 +24,7 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
         Assert.False(settings.AutoRefinementAnswersEnabled);
         Assert.True(settings.AutoPlayEnabled);
         Assert.True(settings.AutoReviewEnabled);
+        Assert.Equal(5, settings.MaxRefinementCycles);
         Assert.Equal(5, settings.MaxImplementationReviewCycles);
         Assert.True(settings.PauseOnFailedReview);
         Assert.True(settings.UseSemanticGraphWhenAvailable);
@@ -53,6 +54,7 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
               "autoRefinementAnswersEnabled": false,
               "autoRefinementAnswersProfile": null,
               "destructiveRewindEnabled": false,
+              "maxRefinementCycles": 5,
               "maxImplementationReviewCycles": 3,
               "reviewLearningSkillPath": ".codex/skills/sdd-phase-agents/SKILL.md",
               "completedUsLockOnCompleted": false
@@ -95,6 +97,7 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
               "autoRefinementAnswersProfile": null,
               "autoPlayEnabled": true,
               "autoReviewEnabled": true,
+              "maxRefinementCycles": 5,
               "maxImplementationReviewCycles": 5,
               "destructiveRewindEnabled": false,
               "pauseOnFailedReview": true,
@@ -145,6 +148,7 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
               "autoRefinementAnswersProfile": null,
               "autoPlayEnabled": true,
               "autoReviewEnabled": true,
+              "maxRefinementCycles": 5,
               "maxImplementationReviewCycles": 5,
               "destructiveRewindEnabled": false,
               "pauseOnFailedReview": true,

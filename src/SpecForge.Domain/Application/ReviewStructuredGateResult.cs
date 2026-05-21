@@ -6,17 +6,22 @@ namespace SpecForge.Domain.Application;
 public sealed record ReviewStructuredGateResult(
     string Verdict,
     string PrimaryReason,
+    int QualityScore,
+    int ConfidenceScore,
     bool HasBlockingFindings,
+    int CriticalFindingCount,
+    int IssueCount,
     int PassedValidationItemCount,
     int FailedValidationItemCount,
     int DeferredValidationItemCount,
-    IReadOnlyCollection<string> FindingsSummary,
+    IReadOnlyCollection<PhaseArtifactIssue> FindingsSummary,
     IReadOnlyCollection<ReviewCorrectionTarget> CorrectionTargets,
     IReadOnlyCollection<ReviewEvidenceLink> LinkedEvidence);
 
 public sealed record ReviewCorrectionTarget(
     string Item,
     string Status,
+    string Severity,
     bool IsBlocking,
     string Evidence,
     string SuggestedAction);
@@ -39,9 +44,14 @@ internal static class ReviewStructuredGateResultBuilder
         var verdict = WorkflowRunner.TryReadReviewResult(reviewMarkdown) ?? "unknown";
         var primaryReason = WorkflowArtifactMarkdownReader.ParseReviewPrimaryReason(reviewMarkdown);
         var checklist = WorkflowArtifactMarkdownReader.ParseReviewValidationChecklist(reviewMarkdown);
-        var findings = WorkflowArtifactMarkdownReader.ReadMarkdownBulletSection(reviewMarkdown, "## Findings");
+        var findings = WorkflowArtifactMarkdownReader.ReadSeverityTaggedBulletSection(
+            reviewMarkdown,
+            "## Findings",
+            verdict == "pass" ? "issue" : "critical");
         var recommendations = WorkflowArtifactMarkdownReader.ReadMarkdownBulletSection(reviewMarkdown, "## Recommendation");
         var policy = ReviewEvidencePolicy.Parse(reviewEvidencePolicy);
+        var qualityScore = WorkflowArtifactMarkdownReader.ParseAssessmentPercentage(reviewMarkdown, "Quality score");
+        var confidenceScore = WorkflowArtifactMarkdownReader.ParseAssessmentPercentage(reviewMarkdown, "Confidence score");
 
         var passedCount = checklist.Count(item => item.Status == "pass");
         var failedCount = checklist.Count(item => item.Status == "fail");
@@ -63,6 +73,7 @@ internal static class ReviewStructuredGateResultBuilder
                 return new ReviewCorrectionTarget(
                     item.Item,
                     item.Status,
+                    isBlocking ? "critical" : "issue",
                     isBlocking,
                     string.IsNullOrWhiteSpace(item.Evidence)
                         ? "No concrete review evidence was recorded for this item."
@@ -71,6 +82,27 @@ internal static class ReviewStructuredGateResultBuilder
             })
             .ToArray();
 
+        if (findings.Count == 0)
+        {
+            findings =
+            [
+                new PhaseArtifactIssue(
+                    correctionTargets.Any(static item => item.IsBlocking) ? "critical" : "issue",
+                    "No blocking review findings beyond the validation checklist.")
+            ];
+        }
+
+        var effectiveQualityScore = qualityScore >= 0
+            ? qualityScore
+            : DeriveQualityScore(passedCount, failedCount, deferredCount);
+        var effectiveConfidenceScore = confidenceScore >= 0
+            ? confidenceScore
+            : DeriveConfidenceScore(checklist);
+        var criticalFindingCount = findings.Count(item => item.Severity == "critical") +
+            correctionTargets.Count(item => item.IsBlocking);
+        var issueCount = findings.Count(item => item.Severity == "issue") +
+            correctionTargets.Count(item => !item.IsBlocking);
+
         return new ReviewStructuredGateResult(
             verdict,
             string.IsNullOrWhiteSpace(primaryReason)
@@ -78,15 +110,43 @@ internal static class ReviewStructuredGateResultBuilder
                     ? "Review passed because the validation checklist remained fully green."
                     : "Review failed because one or more validation checklist items did not pass."
                 : primaryReason,
+            effectiveQualityScore,
+            effectiveConfidenceScore,
             correctionTargets.Any(static item => item.IsBlocking),
+            criticalFindingCount,
+            issueCount,
             passedCount,
             failedCount,
             deferredCount,
-            findings.Count == 0
-                ? ["No blocking review findings beyond the validation checklist."]
-                : findings,
+            findings,
             correctionTargets,
             BuildEvidenceLinks(paths));
+    }
+
+    private static int DeriveQualityScore(int passedCount, int failedCount, int deferredCount)
+    {
+        var total = passedCount + failedCount + deferredCount;
+        if (total == 0)
+        {
+            return 0;
+        }
+
+        var weightedPasses = passedCount + (deferredCount * 0.5);
+        return Math.Clamp((int)Math.Round((weightedPasses / total) * 100, MidpointRounding.AwayFromZero), 0, 100);
+    }
+
+    private static int DeriveConfidenceScore(IReadOnlyCollection<ReviewValidationChecklistItem> checklist)
+    {
+        if (checklist.Count == 0)
+        {
+            return 20;
+        }
+
+        var itemsWithEvidence = checklist.Count(item => !string.IsNullOrWhiteSpace(item.Evidence));
+        return Math.Clamp(
+            (int)Math.Round((itemsWithEvidence / (double)checklist.Count) * 100, MidpointRounding.AwayFromZero),
+            0,
+            100);
     }
 
     private static IReadOnlyCollection<ReviewEvidenceLink> BuildEvidenceLinks(UserStoryFilePaths paths)

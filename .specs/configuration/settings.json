@@ -54,7 +54,7 @@
   "autoRefinementAnswersProfile": null,
   "autoPlayEnabled": true,
   "autoReviewEnabled": true,
-  "maxRefinementCycles": 3,
+  "maxRefinementCycles": 5,
   "maxImplementationReviewCycles": 5,
   "destructiveRewindEnabled": false,
   "pauseOnFailedReview": true,

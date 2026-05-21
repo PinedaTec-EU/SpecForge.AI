@@ -69,7 +69,7 @@ public sealed class WorkflowRunner
         bool completedUsLockOnCompleted,
         string reviewEvidencePolicy = "balanced",
         UserStoryDecompositionOptions? decompositionOptions = null,
-        int maxRefinementCycles = 3,
+        int maxRefinementCycles = 5,
         int maxImplementationReviewCycles = 5)
         : this(new UserStoryFileStore(), phaseExecutionProvider, new RepositoryCategoryCatalog(), new GitWorkBranchManager(), new GitHubPullRequestPublisher(), null, runtimeVersion, refinementTolerance, completedUsLockOnCompleted, reviewEvidencePolicy, decompositionOptions, maxRefinementCycles, maxImplementationReviewCycles)
     {
@@ -87,7 +87,7 @@ public sealed class WorkflowRunner
         bool completedUsLockOnCompleted = true,
         string reviewEvidencePolicy = "balanced",
         UserStoryDecompositionOptions? decompositionOptions = null,
-        int maxRefinementCycles = 3,
+        int maxRefinementCycles = 5,
         int maxImplementationReviewCycles = 5)
     {
         this.fileStore = fileStore ?? throw new ArgumentNullException(nameof(fileStore));
@@ -2496,11 +2496,13 @@ public sealed class WorkflowRunner
                 $"[runner.review_guard] usId={usId} forced review result to fail because technical design validation strategy is missing.");
             var missingStrategyDocument = new ReviewArtifactDocument(
                 "fail",
+                0,
+                20,
                 [new ReviewValidationChecklistItem(
                     "fail",
                     "Technical Design must define a non-empty Validation Strategy.",
                     "The current technical design artifact has no reviewable validation strategy items.")],
-                ["Review cannot pass because there is no validation strategy to validate."],
+                [new PhaseArtifactIssue("critical", "Review cannot pass because there is no validation strategy to validate.")],
                 "Review requires a non-empty Technical Design validation strategy before it can pass.",
                 ["Regenerate or operate the technical design phase with a concrete Validation Strategy."]);
             return ReviewArtifactJson.RenderMarkdown(missingStrategyDocument, usId, version);
@@ -2551,15 +2553,26 @@ public sealed class WorkflowRunner
         var enforcedResult = reviewResult == "pass" && !hasBlockingValidationFailure
             ? "pass"
             : "fail";
-        var findings = WorkflowArtifactMarkdownReader.ReadMarkdownBulletSection(reviewMarkdown, "## Findings");
+        var findings = WorkflowArtifactMarkdownReader.ReadSeverityTaggedBulletSection(
+            reviewMarkdown,
+            "## Findings",
+            enforcedResult == "pass" ? "issue" : "critical");
         var recommendations = WorkflowArtifactMarkdownReader.ReadMarkdownBulletSection(reviewMarkdown, "## Recommendation");
         var primaryReason = WorkflowArtifactMarkdownReader.ParseReviewPrimaryReason(reviewMarkdown);
+        var qualityScore = WorkflowArtifactMarkdownReader.ParseAssessmentPercentage(reviewMarkdown, "Quality score");
+        var confidenceScore = WorkflowArtifactMarkdownReader.ParseAssessmentPercentage(reviewMarkdown, "Confidence score");
 
         if (enforcedResult == "fail")
         {
             if (!hasChecklist)
             {
-                findings = [..findings, "Review output contract failed: the reviewer did not include the required checklist derived from Technical Design validation strategy."];
+                findings =
+                [
+                    ..findings,
+                    new PhaseArtifactIssue(
+                        "critical",
+                        "Review output contract failed: the reviewer did not include the required checklist derived from Technical Design validation strategy.")
+                ];
                 recommendations = [..recommendations, "Rerun review or fix the reviewer prompt/output contract before sending control back to implementation."];
             }
 
@@ -2569,7 +2582,11 @@ public sealed class WorkflowRunner
                 .ToArray();
             if (missingItems.Length > 0)
             {
-                findings = [..findings, $"Review failed {missingItems.Length} validation strategy item(s)."];
+                findings =
+                [
+                    ..findings,
+                    new PhaseArtifactIssue("critical", $"Review failed {missingItems.Length} validation strategy item(s).")
+                ];
             }
 
             if (!hasChecklist)
@@ -2595,12 +2612,18 @@ public sealed class WorkflowRunner
             .ToArray();
         if (deferredItems.Length > 0)
         {
-            findings = [..findings, $"Review deferred {deferredItems.Length} non-blocking validation strategy item(s) under `{reviewEvidencePolicy}` evidence policy."];
+            findings =
+            [
+                ..findings,
+                new PhaseArtifactIssue(
+                    "issue",
+                    $"Review deferred {deferredItems.Length} non-blocking validation strategy item(s) under `{reviewEvidencePolicy}` evidence policy.")
+            ];
         }
 
         if (findings.Count == 0)
         {
-            findings = ["No blocking review findings beyond the validation checklist."];
+            findings = [new PhaseArtifactIssue("issue", "No blocking review findings beyond the validation checklist.")];
         }
 
         if (recommendations.Count == 0)
@@ -2610,6 +2633,12 @@ public sealed class WorkflowRunner
 
         var document = new ReviewArtifactDocument(
                 enforcedResult,
+                qualityScore >= 0
+                    ? qualityScore
+                    : DeriveReviewQualityScore(enforcedChecklist),
+                confidenceScore >= 0
+                    ? confidenceScore
+                    : DeriveReviewConfidenceScore(enforcedChecklist, hasChecklist),
                 enforcedChecklist,
                 findings,
                 string.IsNullOrWhiteSpace(primaryReason)
@@ -3661,7 +3690,14 @@ public sealed class WorkflowRunner
         string? ReceiptPath = null,
         IReadOnlyCollection<string>? GeneratedFiles = null,
         IReadOnlyCollection<string>? RepositoryEvidencePaths = null);
-    private sealed record RefinementAssessment(bool IsReady, string Reason, IReadOnlyCollection<string> Questions, string Summary);
+    private sealed record RefinementAssessment(
+        bool IsReady,
+        int QualityScore,
+        int ConfidenceScore,
+        IReadOnlyCollection<PhaseArtifactIssue> Issues,
+        string Reason,
+        IReadOnlyCollection<string> Questions,
+        string Summary);
     private sealed record CaptureTransitionResult(string ArtifactPath, TokenUsage? Usage, long DurationMs, PhaseExecutionMetadata? Execution);
 
     private static string BuildInitialTimeline(string usId, string title, string actor, string? runtimeVersion)
@@ -3863,6 +3899,12 @@ public sealed class WorkflowRunner
         var state = MarkdownHelper.ReadSection(markdown, "## State").Trim();
         var decision = MarkdownHelper.ReadSection(markdown, "## Decision").Trim();
         var reason = MarkdownHelper.ReadSection(markdown, "## Reason").Trim();
+        var qualityScore = WorkflowArtifactMarkdownReader.ParseAssessmentPercentage(markdown, "Quality score");
+        var confidenceScore = WorkflowArtifactMarkdownReader.ParseAssessmentPercentage(markdown, "Confidence score");
+        var issues = WorkflowArtifactMarkdownReader.ReadSeverityTaggedBulletSection(
+            markdown,
+            "## Issues",
+            ContainsReadyForSpecToken(decision) || ContainsReadyForSpecToken(state) ? "issue" : "critical");
         var questionsSection = MarkdownHelper.ReadSection(markdown, "## Questions").Trim();
         var questions = DeduplicateRefinementQuestions(
             questionsSection
@@ -3877,9 +3919,19 @@ public sealed class WorkflowRunner
                 .Where(static line => !string.Equals(line, NoRefinementQuestionsRemain, StringComparison.OrdinalIgnoreCase))
                 .ToArray());
         var isReady = HasReadyForSpecSignal(state, decision, questionsSection, questions);
+        var effectiveIssues = issues.Count > 0
+            ? issues
+            : BuildDerivedRefinementIssues(isReady, questions);
 
         return new RefinementAssessment(
             isReady,
+            qualityScore >= 0
+                ? qualityScore
+                : DeriveRefinementQualityScore(isReady, effectiveIssues, questions),
+            confidenceScore >= 0
+                ? confidenceScore
+                : DeriveRefinementConfidenceScore(isReady, reason, questions),
+            effectiveIssues,
             reason,
             questions,
             isReady
@@ -3909,6 +3961,99 @@ public sealed class WorkflowRunner
 
     private static bool ContainsReadyForSpecToken(string value) =>
         value.Contains(ReadyForSpecDecision, StringComparison.OrdinalIgnoreCase);
+
+    private static IReadOnlyCollection<PhaseArtifactIssue> BuildDerivedRefinementIssues(
+        bool isReady,
+        IReadOnlyCollection<string> questions)
+    {
+        if (isReady)
+        {
+            return [];
+        }
+
+        if (questions.Count == 0)
+        {
+            return [new PhaseArtifactIssue("critical", "Refinement blocked progression without recording explicit follow-up questions.")];
+        }
+
+        return
+        [
+            new PhaseArtifactIssue(
+                "critical",
+                $"Refinement still has {questions.Count} blocking clarification question(s) before spec can continue.")
+        ];
+    }
+
+    private static int DeriveRefinementQualityScore(
+        bool isReady,
+        IReadOnlyCollection<PhaseArtifactIssue> issues,
+        IReadOnlyCollection<string> questions)
+    {
+        if (isReady)
+        {
+            return 85;
+        }
+
+        var penalty = (issues.Count(item => item.Severity == "critical") * 15)
+            + (issues.Count(item => item.Severity == "issue") * 5)
+            + (questions.Count * 5);
+        return Math.Clamp(70 - penalty, 0, 100);
+    }
+
+    private static int DeriveRefinementConfidenceScore(
+        bool isReady,
+        string reason,
+        IReadOnlyCollection<string> questions)
+    {
+        var baseline = isReady ? 80 : 65;
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            baseline -= 15;
+        }
+
+        if (questions.Count == 0 && !isReady)
+        {
+            baseline -= 20;
+        }
+
+        return Math.Clamp(baseline, 0, 100);
+    }
+
+    private static int DeriveReviewQualityScore(IReadOnlyCollection<ReviewValidationChecklistItem> checklist)
+    {
+        if (checklist.Count == 0)
+        {
+            return 0;
+        }
+
+        var weightedPasses = checklist.Sum(item => item.Status switch
+        {
+            "pass" => 1.0,
+            "deferred" => 0.5,
+            _ => 0.0
+        });
+
+        return Math.Clamp(
+            (int)Math.Round((weightedPasses / checklist.Count) * 100, MidpointRounding.AwayFromZero),
+            0,
+            100);
+    }
+
+    private static int DeriveReviewConfidenceScore(
+        IReadOnlyCollection<ReviewValidationChecklistItem> checklist,
+        bool hasChecklist)
+    {
+        if (!hasChecklist || checklist.Count == 0)
+        {
+            return 20;
+        }
+
+        var itemsWithEvidence = checklist.Count(item => !string.IsNullOrWhiteSpace(item.Evidence));
+        return Math.Clamp(
+            (int)Math.Round((itemsWithEvidence / (double)checklist.Count) * 100, MidpointRounding.AwayFromZero),
+            0,
+            100);
+    }
 
     private static IReadOnlyCollection<string> DeduplicateRefinementQuestions(IReadOnlyCollection<string> questions)
     {
