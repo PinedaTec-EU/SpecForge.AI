@@ -7,6 +7,7 @@ function buildImplementationPhaseSections(args) {
     const implementationPolicySnapshot = selectedPhase.latestExecutionInspection?.implementationPolicySnapshot ?? null;
     const executionPolicy = implementationPolicySnapshot ?? selectedPhase.executionPolicy ?? null;
     const executionEnvelope = selectedPhase.executionEnvelope ?? null;
+    const implementationStructuredEvidence = selectedPhase.latestExecutionInspection?.implementationStructuredEvidence ?? null;
     const evidenceRecord = selectedPhase.latestExecutionInspection?.evidenceRecord ?? null;
     const implementationPolicySection = selectedPhase.phaseId === "implementation" && (executionReadiness || executionPolicy)
         ? `
@@ -108,7 +109,7 @@ function buildImplementationPhaseSections(args) {
       </section>
     `
         : "";
-    const implementationEvidenceSummarySection = selectedPhase.phaseId === "implementation" && evidenceRecord
+    const implementationEvidenceSummarySection = selectedPhase.phaseId === "implementation" && (implementationStructuredEvidence || evidenceRecord)
         ? `
       <section class="detail-card">
         <h3>Implementation Evidence Summary</h3>
@@ -116,13 +117,41 @@ function buildImplementationPhaseSections(args) {
           The latest execution receipt persists implementation evidence separately; this summary shows whether the run produced the expected evidence substrate for downstream review.
         </p>
         <div class="detail-grid">
-          <div><strong>Actor</strong><div><code>${escapeHtml(evidenceRecord.actor.agentName ?? evidenceRecord.actor.kind)}</code></div></div>
-          <div><strong>Inputs</strong><div><code>${evidenceRecord.inputs.length}</code></div></div>
-          <div><strong>Outputs</strong><div><code>${evidenceRecord.outputs.length}</code></div></div>
-          <div><strong>Tools Used</strong><div><code>${evidenceRecord.toolsUsed.length}</code></div></div>
-          <div><strong>Validation</strong><div><code>${escapeHtml(evidenceRecord.validationSummary.status)}</code></div></div>
-          <div><strong>Evidence Links</strong><div><code>${evidenceRecord.evidenceLinks.length}</code></div></div>
+          <div><strong>Actor</strong><div><code>${escapeHtml(evidenceRecord?.actor.agentName ?? evidenceRecord?.actor.kind ?? "specforge-runtime")}</code></div></div>
+          <div><strong>Touched Files</strong><div><code>${implementationStructuredEvidence?.touchedFiles.length ?? 0}</code></div></div>
+          <div><strong>Evidence Links</strong><div><code>${evidenceRecord?.evidenceLinks.length ?? 0}</code></div></div>
+          <div><strong>Graph References</strong><div><code>${implementationStructuredEvidence?.graphEvidence?.operationReferences.length ?? 0}</code></div></div>
+          <div><strong>Validation</strong><div><code>${escapeHtml(evidenceRecord?.validationSummary.status ?? "captured")}</code></div></div>
+          <div><strong>Generated At</strong><div><code>${escapeHtml(implementationStructuredEvidence?.generatedAtUtc ?? "unavailable")}</code></div></div>
         </div>
+        ${implementationStructuredEvidence
+            ? `
+            <div class="refinement-suggestions">
+              <div class="refinement-suggestion refinement-suggestion--static">
+                <div class="refinement-suggestion__body">
+                  <strong>Structured Summary</strong>
+                  ${implementationStructuredEvidence.summary.length === 0
+                ? "<span>No structured implementation evidence summary was recorded.</span>"
+                : implementationStructuredEvidence.summary.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
+                  <span>Evidence json: <code>${escapeHtml(implementationStructuredEvidence.evidenceJsonPath)}</code></span>
+                  <span>Evidence markdown: <code>${escapeHtml(implementationStructuredEvidence.evidenceMarkdownPath)}</code></span>
+                </div>
+              </div>
+              <div class="refinement-suggestion refinement-suggestion--static">
+                <div class="refinement-suggestion__body">
+                  <strong>Touched Files</strong>
+                  ${renderImplementationTouchedFiles(implementationStructuredEvidence.touchedFiles, escapeHtml)}
+                </div>
+              </div>
+              <div class="refinement-suggestion refinement-suggestion--static">
+                <div class="refinement-suggestion__body">
+                  <strong>Graph Scope References</strong>
+                  ${renderImplementationGraphEvidence(implementationStructuredEvidence.graphEvidence, escapeHtml)}
+                </div>
+              </div>
+            </div>
+          `
+            : ""}
       </section>
     `
         : "";
@@ -134,6 +163,37 @@ function buildImplementationPhaseSections(args) {
         ],
         afterArtifact: []
     };
+}
+function renderImplementationTouchedFiles(items, escapeHtml) {
+    if (items.length === 0) {
+        return "<span>No repository touched files were captured for this implementation delta.</span>";
+    }
+    return items
+        .map((item) => `<span><code>${escapeHtml(item.path)}</code> · kind <code>${escapeHtml(item.changeKind)}</code> · baseline <code>${escapeHtml(item.baselineStatusCode ?? "none")}</code> · current <code>${escapeHtml(item.currentStatusCode)}</code></span>`)
+        .join("");
+}
+function renderImplementationGraphEvidence(graphEvidence, escapeHtml) {
+    if (!graphEvidence) {
+        return "<span>No graph-backed scope references were recorded for this implementation evidence snapshot.</span>";
+    }
+    const lines = new Array();
+    lines.push(`<span>Graph scope request: <code>${graphEvidence.graphScopeRequestAvailable ? "available" : "missing"}</code>${graphEvidence.graphScopeRequestPath ? ` · <code>${escapeHtml(graphEvidence.graphScopeRequestPath)}</code>` : ""}</span>`);
+    if (graphEvidence.impactGraphPath) {
+        lines.push(`<span>Impact graph: <code>${escapeHtml(graphEvidence.impactGraphPath)}</code></span>`);
+    }
+    if (graphEvidence.impactGraphMetadataPath) {
+        lines.push(`<span>Impact graph metadata: <code>${escapeHtml(graphEvidence.impactGraphMetadataPath)}</code>${graphEvidence.impactGraphState ? ` · state <code>${escapeHtml(graphEvidence.impactGraphState)}</code>` : ""}</span>`);
+    }
+    if (graphEvidence.impactSummaryPath) {
+        lines.push(`<span>Impact summary: <code>${escapeHtml(graphEvidence.impactSummaryPath)}</code></span>`);
+    }
+    if (graphEvidence.operationReferences.length > 0) {
+        lines.push(...graphEvidence.operationReferences.map((item) => `<span><code>${escapeHtml(item.eventFamily)}</code> · requested <code>${escapeHtml(item.requestedMode)}</code> · actual <code>${escapeHtml(item.actualMode)}</code> · surface <code>${escapeHtml(item.triggerSurface)}</code> · fallback <code>${item.fallbackUsed ? "true" : "false"}</code> · latency <code>${item.latencyMs} ms</code></span>`));
+    }
+    if (graphEvidence.warnings.length > 0) {
+        lines.push(...graphEvidence.warnings.map((item) => `<span>${escapeHtml(item)}</span>`));
+    }
+    return lines.join("");
 }
 function renderPathPolicyList(items, escapeHtml, emptyMessage) {
     if (items.length === 0) {
