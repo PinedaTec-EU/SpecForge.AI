@@ -144,6 +144,7 @@ public sealed class SpecForgeApplicationService
         string? owner = null,
         string? category = null,
         IReadOnlyCollection<string>? tags = null,
+        string? actor = null,
         CancellationToken cancellationToken = default)
     {
         var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, usId);
@@ -163,9 +164,66 @@ public sealed class SpecForgeApplicationService
         var content = await File.ReadAllTextAsync(paths.MainArtifactPath, cancellationToken);
         var updated = UserStoryMarkdown.RewriteUserStoryInfo(content, workflowRun.UsId, nextTitle, nextKind, metadata.CreatedBy, nextOwner, nextCategory, nextTags);
         await File.WriteAllTextAsync(paths.MainArtifactPath, updated, cancellationToken);
+        await AppendOwnerChangedTimelineEventAsync(
+            paths.TimelineFilePath,
+            workflowRun.CurrentPhase,
+            NormalizeTimelineActor(actor),
+            metadata.Owner,
+            nextOwner,
+            paths.MainArtifactPath,
+            cancellationToken);
 
         var summary = await GetUserStorySummaryAsync(workspaceRoot, workflowRun.UsId, cancellationToken);
         return new UpdateUserStoryInfoResult(workflowRun.UsId, paths.MainArtifactPath, summary);
+    }
+
+    private static async Task AppendOwnerChangedTimelineEventAsync(
+        string timelinePath,
+        PhaseId currentPhase,
+        string actor,
+        string? previousOwner,
+        string? nextOwner,
+        string mainArtifactPath,
+        CancellationToken cancellationToken)
+    {
+        if (string.Equals(
+            NormalizeTimelineIdentity(previousOwner),
+            NormalizeTimelineIdentity(nextOwner),
+            StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var builder = new System.Text.StringBuilder()
+            .AppendLine()
+            .AppendLine($"### {DateTimeOffset.UtcNow:O} · `owner_changed`")
+            .AppendLine()
+            .AppendLine($"- Actor: `{actor}`")
+            .AppendLine($"- Phase: `{WorkflowPresentation.ToPhaseSlug(currentPhase)}`")
+            .AppendLine($"- Summary: Ownership changed from `{FormatOwnerLabel(previousOwner)}` to `{FormatOwnerLabel(nextOwner)}`.")
+            .AppendLine($"- Previous owner: `{FormatOwnerLabel(previousOwner)}`")
+            .AppendLine($"- New owner: `{FormatOwnerLabel(nextOwner)}`")
+            .AppendLine("- Artifacts:")
+            .AppendLine($"  - `{mainArtifactPath.Replace('\\', '/')}`");
+        await File.AppendAllTextAsync(timelinePath, builder.ToString(), cancellationToken);
+    }
+
+    private static string NormalizeTimelineActor(string? actor)
+    {
+        var normalized = UserStoryMarkdown.NormalizeOptionalScalar(actor);
+        return string.IsNullOrWhiteSpace(normalized) ? "user" : normalized;
+    }
+
+    private static string NormalizeTimelineIdentity(string? value)
+    {
+        var normalized = UserStoryMarkdown.NormalizeOptionalScalar(value);
+        return string.IsNullOrWhiteSpace(normalized) ? "unassigned" : normalized.ToLowerInvariant();
+    }
+
+    private static string FormatOwnerLabel(string? value)
+    {
+        var normalized = UserStoryMarkdown.NormalizeOptionalScalar(value);
+        return string.IsNullOrWhiteSpace(normalized) ? "unassigned" : normalized;
     }
 
     public async Task<IReadOnlyCollection<UserStorySummary>> ListUserStoriesAsync(

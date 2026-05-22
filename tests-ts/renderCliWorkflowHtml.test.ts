@@ -11,7 +11,7 @@ test("CLI workflow shim posts refinement answers to the workflow portal API", as
 
   assert.match(script, /message\?\.command === "submitRefinementAnswers"/);
   assert.match(script, /fetch\("\/api\/refinement-answers"/);
-  assert.match(script, /JSON\.stringify\(\{ answers: message\.answers, actor: "cli-user" \}\)/);
+  assert.match(script, /JSON\.stringify\(\{ answers: message\.answers, actor: specForgeCliCurrentActor \}\)/);
   assert.match(script, /window\.location\.reload\(\)/);
 });
 
@@ -85,10 +85,14 @@ test("CLI workflow renderer routes sidebar edit action through metadata update p
     assert.match(content, /data-cli-edit-overlay/);
     assert.match(content, /const openEditUserStoryForm = \(message\) =>/);
     assert.match(content, /editForm\?\.addEventListener\("submit", event =>/);
-    assert.match(content, /requestJson\("\/api\/update-user-story-info", \{/);
+    assert.match(content, /requestJson\("\/api\/update-user-story-info", \{ usId, title, owner, category, tags, actor: currentActor \}\)/);
     assert.match(content, /setEditError\("Title, owner, and category are required\."\)/);
     assert.doesNotMatch(content, /window\.prompt\(/);
     assert.match(content, /window\.location\.reload\(\)/);
+    assert.match(content, /data-cli-edit-assign-to-me/);
+    assert.match(content, /editAssignToMe\?\.addEventListener\("click"/);
+    assert.match(content, /editAssignToMe\.hidden = normalizedOwner === normalizedCurrentActor/);
+    assert.match(content, /const specForgeCliCurrentActor = /);
   }
 
   assert.match(packagedSidebar, /data-command="showEditUserStoryForm"[\s\S]*data-us-id="\$\{[\s\S]*summary\.usId[\s\S]*\}"[\s\S]*data-title="\$\{[\s\S]*editableUserStoryTitle\(summary\.usId, summary\.title\)[\s\S]*\}"[\s\S]*data-owner="\$\{[\s\S]*summary\.owner[\s\S]*\}"[\s\S]*data-category="\$\{[\s\S]*summary\.category[\s\S]*\}"[\s\S]*data-tags="\$\{[\s\S]*\(summary\.tags \?\? \[\]\)\.join\(", "\)[\s\S]*\}"/);
@@ -201,10 +205,10 @@ test("CLI workflow renderer wires lineage repair and reset actions through porta
 
   for (const content of [script, packagedScript]) {
     assert.match(content, /message\.command === "resetUserStoryToCapture" && message\.usId/);
-    assert.match(content, /requestJson\("\/api\/reset-user-story-to-capture", \{ usId: message\.usId, actor: "cli-user" \}\)/);
+    assert.match(content, /requestJson\("\/api\/reset-user-story-to-capture", \{ usId: message\.usId, actor: currentActor \}\)/);
     assert.match(content, /message\.command === "analyzeRepairUserStory" && message\.usId/);
-    assert.match(content, /requestJson\("\/api\/analyze-user-story-lineage", \{ usId: message\.usId, actor: "cli-user" \}\)/);
-    assert.match(content, /requestJson\("\/api\/repair-user-story-lineage", \{ usId: message\.usId, actor: "cli-user" \}\)/);
+    assert.match(content, /requestJson\("\/api\/analyze-user-story-lineage", \{ usId: message\.usId, actor: currentActor \}\)/);
+    assert.match(content, /requestJson\("\/api\/repair-user-story-lineage", \{ usId: message\.usId, actor: currentActor \}\)/);
   }
 });
 

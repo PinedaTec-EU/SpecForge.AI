@@ -552,6 +552,7 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
     var normalizedSidebarVisibility = string.Equals(sidebarVisibility, "dropped", StringComparison.OrdinalIgnoreCase)
         ? "dropped"
         : "active";
+    var currentActor = ResolveCurrentGitOwner(workspaceRoot);
     var activeSidebarUserStories = await applicationService.ListUserStoriesAsync(workspaceRoot);
     var droppedSidebarUserStories = await applicationService.ListUserStoriesAsync(workspaceRoot, "dropped");
     var sidebarUserStories = normalizedSidebarVisibility == "dropped"
@@ -574,7 +575,8 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
         showBlockedUserStories,
         showHiddenUserStories,
         watchingUserStoryIds,
-        hiddenUserStoryIds);
+        hiddenUserStoryIds,
+        currentActor);
     if (renderCache.TryGet(renderCacheSignature, resolvedSelectedPhaseId, selectedPhase, out var cachedHtml))
     {
         return cachedHtml;
@@ -602,6 +604,7 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
             configurationPortalUrl = BuildConfigurationPortalUrl(workflowPortalOrigin),
             configurationProvidersUrl = BuildConfigurationPortalUrl(workflowPortalOrigin, "providers"),
             configurationAdvancedUrl = BuildConfigurationPortalUrl(workflowPortalOrigin, "advanced"),
+            currentActor,
             workspaceRoot,
             signature
         },
@@ -733,7 +736,8 @@ static async Task HandleUpdateUserStoryInfoAsync(
             request.Kind,
             request.Owner,
             request.Category,
-            request.Tags));
+            request.Tags,
+            request.Actor ?? ResolveCurrentGitOwner(workspaceRoot)));
 }
 
 static async Task HandleAnalyzeUserStoryLineageAsync(
@@ -1013,7 +1017,8 @@ static string BuildWorkflowPortalRenderCacheSignature(
     bool showBlockedUserStories,
     bool showHiddenUserStories,
     IReadOnlyList<string> watchingUserStoryIds,
-    IReadOnlyList<string> hiddenUserStoryIds)
+    IReadOnlyList<string> hiddenUserStoryIds,
+    string currentActor)
 {
     var viewState = JsonSerializer.Serialize(
         new
@@ -1023,10 +1028,77 @@ static string BuildWorkflowPortalRenderCacheSignature(
             showBlockedUserStories,
             showHiddenUserStories,
             watchingUserStoryIds,
-            hiddenUserStoryIds
+            hiddenUserStoryIds,
+            currentActor
         },
         SpecForgePortalSettingsStore.JsonOptions);
     return $"{workflowSignature}:{viewState}";
+}
+
+static string ResolveCurrentGitOwner(string workspaceRoot)
+{
+    var email = TryRunGitConfig(workspaceRoot, "user.email");
+    if (!string.IsNullOrWhiteSpace(email))
+    {
+        var candidate = NormalizeGitOwnerIdentity(email.Split('@', 2)[0]);
+        if (!string.IsNullOrWhiteSpace(candidate))
+        {
+            return candidate;
+        }
+    }
+
+    var userName = TryRunGitConfig(workspaceRoot, "user.name");
+    if (!string.IsNullOrWhiteSpace(userName))
+    {
+        var candidate = NormalizeGitOwnerIdentity(userName);
+        if (!string.IsNullOrWhiteSpace(candidate))
+        {
+            return candidate;
+        }
+    }
+
+    return "cli-user";
+}
+
+static string? TryRunGitConfig(string workspaceRoot, string key)
+{
+    try
+    {
+        using var process = new Process();
+        process.StartInfo = new ProcessStartInfo
+        {
+            FileName = "git",
+            WorkingDirectory = workspaceRoot,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false
+        };
+        process.StartInfo.ArgumentList.Add("config");
+        process.StartInfo.ArgumentList.Add("--get");
+        process.StartInfo.ArgumentList.Add(key);
+        process.Start();
+        var stdout = process.StandardOutput.ReadToEnd();
+        process.WaitForExit();
+        return process.ExitCode == 0 ? stdout.Trim() : null;
+    }
+    catch
+    {
+        return null;
+    }
+}
+
+static string NormalizeGitOwnerIdentity(string? value)
+{
+    var normalized = value?.Trim() ?? string.Empty;
+    if (string.IsNullOrWhiteSpace(normalized))
+    {
+        return string.Empty;
+    }
+
+    return normalized
+        .ToLowerInvariant()
+        .Replace(" ", "-", StringComparison.Ordinal)
+        .Replace("_", "-", StringComparison.Ordinal);
 }
 
 static async Task<string> RenderWorkflowHtmlWithNodeAsync(string payload)
@@ -1916,4 +1988,5 @@ internal sealed record UpdateUserStoryInfoRequest(
     string? Kind,
     string? Owner,
     string? Category,
-    IReadOnlyList<string>? Tags);
+    IReadOnlyList<string>? Tags,
+    string? Actor);

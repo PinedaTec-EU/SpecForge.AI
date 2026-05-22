@@ -13,6 +13,7 @@ function formatRuntimeVersion(runtimeVersion) {
 
 async function main() {
   const payload = JSON.parse(fs.readFileSync(0, "utf8"));
+  const currentActor = String(payload.currentActor || "cli-user").trim() || "cli-user";
   const workflow = payload.workflow;
   const userStories = Array.isArray(payload.userStories) ? payload.userStories : [];
   const sidebarUserStories = Array.isArray(payload.sidebarUserStories) ? payload.sidebarUserStories : userStories;
@@ -54,6 +55,7 @@ async function main() {
 
 const browserShim = `
 <script>
+  const specForgeCliCurrentActor = ${JSON.stringify(currentActor)};
   window.__specForgeVsCodeApi = window.__specForgeVsCodeApi || {
     getState() {
       try {
@@ -96,7 +98,7 @@ const browserShim = `
         fetch("/api/suggest-approval-answer", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ question: message.question, actor: "cli-user" })
+          body: JSON.stringify({ question: message.question, actor: specForgeCliCurrentActor })
         })
           .then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))))
           .then(result => {
@@ -146,7 +148,7 @@ const browserShim = `
         fetch("/api/approval-answer", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ question: message.question, answer: message.answer, actor: "cli-user" })
+          body: JSON.stringify({ question: message.question, answer: message.answer, actor: specForgeCliCurrentActor })
         })
           .then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))))
           .then(() => {
@@ -166,7 +168,7 @@ const browserShim = `
         fetch("/api/refinement-answers", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ answers: message.answers, actor: "cli-user" })
+          body: JSON.stringify({ answers: message.answers, actor: specForgeCliCurrentActor })
         })
           .then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))))
           .then(() => {
@@ -227,7 +229,7 @@ const browserShim = `
             .then(payloadFiles => fetch("/api/attach-files", {
               method: "POST",
               headers: { "content-type": "application/json" },
-              body: JSON.stringify({ kind, files: payloadFiles, actor: "cli-user" })
+              body: JSON.stringify({ kind, files: payloadFiles, actor: specForgeCliCurrentActor })
             }))
             .then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))))
             .then(() => {
@@ -253,7 +255,7 @@ const browserShim = `
         fetch("/api/add-context-files", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ paths, actor: "cli-user" })
+          body: JSON.stringify({ paths, actor: specForgeCliCurrentActor })
         })
           .then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))))
           .then(() => {
@@ -276,7 +278,7 @@ const browserShim = `
           body: JSON.stringify({
             baseBranch: message.baseBranch || null,
             workBranch: message.workBranch || null,
-            actor: "cli-user"
+            actor: specForgeCliCurrentActor
           })
         })
           .then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))))
@@ -299,7 +301,7 @@ const browserShim = `
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             decision: message.command === "approveDecomposition" ? "approve" : "reject",
-            actor: "cli-user"
+            actor: specForgeCliCurrentActor
           })
         })
           .then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))))
@@ -398,7 +400,7 @@ const sidebarApiShim = `
 </script>`;
 
 function buildCliSidebarHtml(items, options) {
-  const currentActor = "cli-user";
+  const currentActor = String(options.currentActor || "cli-user").trim() || "cli-user";
   const normalizedCurrentActor = currentActor.toLowerCase();
   const watchingIds = new Set(options.watchingUserStoryIds.map(normalizeUserStoryId));
   const hiddenIds = new Set(options.hiddenUserStoryIds.map(normalizeUserStoryId));
@@ -459,7 +461,8 @@ function buildSidebarHtmlModes(includeOtherOwners, showHiddenUserStories, watchi
       showHiddenUserStories,
       includeOtherOwners,
       watchingUserStoryIds,
-      hiddenUserStoryIds
+      hiddenUserStoryIds,
+      currentActor
     }),
     activeCompleted: buildCliSidebarHtml(activeSidebarUserStories, {
       showDroppedUserStories: false,
@@ -468,7 +471,8 @@ function buildSidebarHtmlModes(includeOtherOwners, showHiddenUserStories, watchi
       showHiddenUserStories,
       includeOtherOwners,
       watchingUserStoryIds,
-      hiddenUserStoryIds
+      hiddenUserStoryIds,
+      currentActor
     }),
     activeBlocked: buildCliSidebarHtml(activeSidebarUserStories, {
       showDroppedUserStories: false,
@@ -477,7 +481,8 @@ function buildSidebarHtmlModes(includeOtherOwners, showHiddenUserStories, watchi
       showHiddenUserStories,
       includeOtherOwners,
       watchingUserStoryIds,
-      hiddenUserStoryIds
+      hiddenUserStoryIds,
+      currentActor
     }),
     activeCompletedBlocked: buildCliSidebarHtml(activeSidebarUserStories, {
       showDroppedUserStories: false,
@@ -486,7 +491,8 @@ function buildSidebarHtmlModes(includeOtherOwners, showHiddenUserStories, watchi
       showHiddenUserStories,
       includeOtherOwners,
       watchingUserStoryIds,
-      hiddenUserStoryIds
+      hiddenUserStoryIds,
+      currentActor
     }),
     dropped: buildCliSidebarHtml(droppedSidebarUserStories, {
       showDroppedUserStories: true,
@@ -495,7 +501,8 @@ function buildSidebarHtmlModes(includeOtherOwners, showHiddenUserStories, watchi
       showHiddenUserStories,
       includeOtherOwners,
       watchingUserStoryIds,
-      hiddenUserStoryIds
+      hiddenUserStoryIds,
+      currentActor
     })
   };
 }
@@ -558,6 +565,9 @@ const sidebarShell = `
   .specforge-cli-edit-field { display: grid; gap: 6px; }
   .specforge-cli-edit-field span { color: rgba(255, 255, 255, 0.78); font: 700 0.78rem/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-transform: uppercase; letter-spacing: 0.08em; }
   .specforge-cli-edit-field input { width: 100%; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.04); color: rgba(255, 255, 255, 0.94); padding: 12px 14px; font: 500 0.94rem/1.4 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .specforge-cli-edit-owner-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+  .specforge-cli-edit-owner-assign { border-radius: 12px; border: 1px solid rgba(114, 241, 184, 0.22); background: rgba(20, 53, 40, 0.9); color: #dfffee; padding: 12px 14px; font: 700 0.84rem/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; cursor: pointer; white-space: nowrap; }
+  .specforge-cli-edit-owner-assign[hidden] { display: none; }
   .specforge-cli-edit-error { margin: 0; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255, 139, 139, 0.2); background: rgba(120, 29, 29, 0.18); color: #ffb8b8; font: 600 0.85rem/1.4 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
   .specforge-cli-edit-actions { display: flex; justify-content: flex-end; gap: 10px; }
   .specforge-cli-edit-secondary { background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.86); padding: 11px 14px; }
@@ -607,7 +617,10 @@ const sidebarShell = `
       </label>
       <label class="specforge-cli-edit-field">
         <span>Owner</span>
-        <input name="owner" type="text" required />
+        <div class="specforge-cli-edit-owner-row">
+          <input name="owner" type="text" required />
+          <button class="specforge-cli-edit-owner-assign" type="button" data-cli-edit-assign-to-me hidden>Assign to me</button>
+        </div>
       </label>
       <label class="specforge-cli-edit-field">
         <span>Category</span>
@@ -638,6 +651,7 @@ const sidebarShell = `
     const editOverlay = document.querySelector("[data-cli-edit-overlay]");
     const editForm = document.querySelector("[data-cli-edit-form]");
     const editError = document.querySelector("[data-cli-edit-error]");
+    const editAssignToMe = document.querySelector("[data-cli-edit-assign-to-me]");
     const sidebarFrame = document.querySelector('iframe[title="User stories"]');
     const sidebarPin = document.querySelector("[data-cli-sidebar-pin]");
     const sidebarHtmlByScope = {
@@ -651,6 +665,7 @@ const sidebarShell = `
     let sidebarShowsOtherOwners = false;
     let sidebarWatchingUserStoryIds = ${safeScriptJson(watchingUserStoryIds)};
     let sidebarHiddenUserStoryIds = ${safeScriptJson(hiddenUserStoryIds)};
+    const normalizedCurrentActor = currentActor.toLowerCase();
     const openConfiguration = (url) => {
       if (configFrame) {
         configFrame.setAttribute("src", url);
@@ -676,6 +691,14 @@ const sidebarShell = `
         editForm.dataset.busy = "false";
       }
     };
+    const updateAssignToMeVisibility = () => {
+      if (!(editForm instanceof HTMLFormElement) || !(editAssignToMe instanceof HTMLElement)) {
+        return;
+      }
+      const ownerInput = editForm.elements.namedItem("owner");
+      const normalizedOwner = String(ownerInput?.value || "").trim().toLowerCase();
+      editAssignToMe.hidden = normalizedOwner === normalizedCurrentActor;
+    };
     const openEditUserStoryForm = (message) => {
       if (!(editForm instanceof HTMLFormElement)) {
         return;
@@ -683,10 +706,11 @@ const sidebarShell = `
       editForm.dataset.busy = "false";
       editForm.elements.namedItem("usId").value = String(message.usId || "");
       editForm.elements.namedItem("title").value = String(message.title || "");
-      editForm.elements.namedItem("owner").value = String(message.owner || "cli-user");
+      editForm.elements.namedItem("owner").value = String(message.owner || currentActor);
       editForm.elements.namedItem("category").value = String(message.category || "");
       editForm.elements.namedItem("tags").value = String(message.tags || "");
       setEditError("");
+      updateAssignToMeVisibility();
       editOverlay?.removeAttribute("hidden");
       editForm.elements.namedItem("title")?.focus();
     };
@@ -894,7 +918,7 @@ const sidebarShell = `
       }
       editForm.dataset.busy = "true";
       setEditError("");
-      requestJson("/api/update-user-story-info", { usId, title, owner, category, tags })
+      requestJson("/api/update-user-story-info", { usId, title, owner, category, tags, actor: currentActor })
         .then(() => {
           closeEditUserStoryForm();
           window.location.reload();
@@ -903,6 +927,20 @@ const sidebarShell = `
           editForm.dataset.busy = "false";
           setEditError(error instanceof Error ? error.message : String(error));
         });
+    });
+    editForm?.elements?.namedItem("owner")?.addEventListener?.("input", updateAssignToMeVisibility);
+    editAssignToMe?.addEventListener("click", () => {
+      if (!(editForm instanceof HTMLFormElement)) {
+        return;
+      }
+      const ownerInput = editForm.elements.namedItem("owner");
+      if (!(ownerInput instanceof HTMLInputElement)) {
+        return;
+      }
+      ownerInput.value = currentActor;
+      updateAssignToMeVisibility();
+      ownerInput.focus();
+      ownerInput.select();
     });
     window.addEventListener("keydown", event => {
       if (event.key === "Escape" && !configOverlay?.hasAttribute("hidden")) closeConfiguration();
@@ -1010,7 +1048,7 @@ const sidebarShell = `
       if (message.command === "toggleSidebarVisibilityUserStory" && message.usId) {
         const normalizedUsId = normalizeUserStoryId(message.usId);
         const normalizedOwner = String(message.owner || "").trim().toLowerCase();
-        const isOwnedByCurrentActor = normalizedOwner === "cli-user";
+        const isOwnedByCurrentActor = normalizedOwner === normalizedCurrentActor;
         const isHidden = sidebarHiddenUserStoryIds.includes(normalizedUsId);
         const isWatched = sidebarWatchingUserStoryIds.includes(normalizedUsId);
         const isVisibleInSidebar = !isHidden && (sidebarShowsOtherOwners || isWatched || isOwnedByCurrentActor);
@@ -1032,7 +1070,7 @@ const sidebarShell = `
         if (!window.confirm("Reset " + message.usId + " to capture and delete all derived artifacts after the source?")) {
           return;
         }
-        requestJson("/api/reset-user-story-to-capture", { usId: message.usId, actor: "cli-user" })
+        requestJson("/api/reset-user-story-to-capture", { usId: message.usId, actor: currentActor })
           .then(() => {
             window.location.reload();
           })
@@ -1042,7 +1080,7 @@ const sidebarShell = `
         return;
       }
       if (message.command === "analyzeRepairUserStory" && message.usId) {
-        requestJson("/api/analyze-user-story-lineage", { usId: message.usId, actor: "cli-user" })
+        requestJson("/api/analyze-user-story-lineage", { usId: message.usId, actor: currentActor })
           .then((analysis) => {
             if (analysis.status === "clean") {
               window.alert(message.usId + " lineage is clean.");
@@ -1062,7 +1100,7 @@ const sidebarShell = `
             if (!confirmation) {
               return null;
             }
-            return requestJson("/api/repair-user-story-lineage", { usId: message.usId, actor: "cli-user" });
+            return requestJson("/api/repair-user-story-lineage", { usId: message.usId, actor: currentActor });
           })
           .then((result) => {
             if (!result) {

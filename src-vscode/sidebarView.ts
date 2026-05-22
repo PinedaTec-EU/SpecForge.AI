@@ -456,7 +456,8 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
         kind: kind.label,
         owner: owner.trim(),
         category: category.label,
-        tags: parseCustomTags(tags)
+        tags: parseCustomTags(tags),
+        actor: getCurrentActor()
       });
       await this.onDidCreateUserStory();
       void vscode.window.showInformationMessage(`${usId} info updated.`);

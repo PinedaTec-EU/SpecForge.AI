@@ -1131,6 +1131,7 @@ export interface SpecForgeBackendClient {
       readonly owner?: string;
       readonly category?: string;
       readonly tags?: readonly string[];
+      readonly actor?: string;
     }
   ): Promise<UpdateUserStoryInfoResult>;
   initializeRepoPrompts(overwrite?: boolean): Promise<InitializeRepoPromptsResult>;

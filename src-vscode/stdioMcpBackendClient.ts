@@ -166,6 +166,7 @@ export class StdioMcpBackendClient implements SpecForgeBackendClient {
       readonly owner?: string;
       readonly category?: string;
       readonly tags?: readonly string[];
+      readonly actor?: string;
     }
   ): Promise<UpdateUserStoryInfoResult> {
     return this.callTool<UpdateUserStoryInfoResult>("update_user_story_info", {
@@ -175,7 +176,8 @@ export class StdioMcpBackendClient implements SpecForgeBackendClient {
       ...(values.kind !== undefined ? { kind: values.kind } : {}),
       ...(values.owner !== undefined ? { owner: values.owner } : {}),
       ...(values.category !== undefined ? { category: values.category } : {}),
-      ...(values.tags !== undefined ? { tags: values.tags } : {})
+      ...(values.tags !== undefined ? { tags: values.tags } : {}),
+      ...(values.actor !== undefined ? { actor: values.actor } : {})
     });
   }
 

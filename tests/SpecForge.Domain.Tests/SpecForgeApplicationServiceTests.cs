@@ -110,9 +110,11 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
             kind: "bug",
             owner: "alice",
             category: "configuration",
-            tags: ["#sf-central", "configuration"]);
+            tags: ["#sf-central", "configuration"],
+            actor: "bob");
 
         var usMarkdown = await File.ReadAllTextAsync(result.MainArtifactPath);
+        var timeline = await File.ReadAllTextAsync(UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0001").TimelineFilePath);
 
         Assert.Equal("US-0001", result.UsId);
         Assert.Equal("Updated story", result.Summary.Title.Replace("US-0001 · ", string.Empty, StringComparison.Ordinal));
@@ -127,6 +129,11 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
         Assert.Contains("- Category: `configuration`", usMarkdown);
         Assert.Contains("- Tags: `configuration`, `sf-central`", usMarkdown);
         Assert.Contains("Initial source", usMarkdown);
+        Assert.Contains("`owner_changed`", timeline);
+        Assert.Contains("- Actor: `bob`", timeline);
+        Assert.Contains("Ownership changed from `user` to `alice`.", timeline);
+        Assert.Contains("- Previous owner: `user`", timeline);
+        Assert.Contains("- New owner: `alice`", timeline);
     }
 
     [Theory]
