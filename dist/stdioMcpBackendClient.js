@@ -152,7 +152,8 @@ class StdioMcpBackendClient {
             ...(values.kind !== undefined ? { kind: values.kind } : {}),
             ...(values.owner !== undefined ? { owner: values.owner } : {}),
             ...(values.category !== undefined ? { category: values.category } : {}),
-            ...(values.tags !== undefined ? { tags: values.tags } : {})
+            ...(values.tags !== undefined ? { tags: values.tags } : {}),
+            ...(values.actor !== undefined ? { actor: values.actor } : {})
         });
     }
     async initializeRepoPrompts(overwrite = false) {
