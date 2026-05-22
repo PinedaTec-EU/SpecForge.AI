@@ -36,6 +36,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.readUserWorkspacePreferences = readUserWorkspacePreferences;
 exports.writeUserWorkspacePreferences = writeUserWorkspacePreferences;
 exports.setStarredUserStory = setStarredUserStory;
+exports.setWatchingUserStoryIds = setWatchingUserStoryIds;
+exports.setHiddenUserStoryIds = setHiddenUserStoryIds;
+exports.setSearchIncludesOtherOwners = setSearchIncludesOtherOwners;
+exports.setMaxVisibleUserStories = setMaxVisibleUserStories;
 exports.setPausedWorkflowPhaseIds = setPausedWorkflowPhaseIds;
 exports.getUserWorkspacePreferencesPath = getUserWorkspacePreferencesPath;
 const fs = __importStar(require("node:fs"));
@@ -46,6 +50,7 @@ const defaultPreferences = {
     hiddenUserStoryIds: [],
     watchingUserStoryIds: [],
     maxVisibleUserStories: null,
+    searchIncludesOtherOwners: false,
     pausedWorkflowPhaseIdsByUsId: {}
 };
 async function readUserWorkspacePreferences(workspaceRoot) {
@@ -60,6 +65,7 @@ async function readUserWorkspacePreferences(workspaceRoot) {
             hiddenUserStoryIds: normalizeUserStoryIdList(parsed?.hiddenUserStoryIds),
             watchingUserStoryIds: normalizeUserStoryIdList(parsed?.watchingUserStoryIds),
             maxVisibleUserStories: normalizeMaxVisibleUserStories(parsed?.maxVisibleUserStories),
+            searchIncludesOtherOwners: parsed?.searchIncludesOtherOwners === true,
             pausedWorkflowPhaseIdsByUsId: normalizePausedWorkflowPhaseIdsByUsId(parsed?.pausedWorkflowPhaseIdsByUsId)
         };
     }
@@ -77,6 +83,34 @@ async function setStarredUserStory(workspaceRoot, usId) {
     await writeUserWorkspacePreferences(workspaceRoot, {
         ...preferences,
         starredUserStoryId: usId?.trim() || null
+    });
+}
+async function setWatchingUserStoryIds(workspaceRoot, usIds) {
+    const preferences = await readUserWorkspacePreferences(workspaceRoot);
+    await writeUserWorkspacePreferences(workspaceRoot, {
+        ...preferences,
+        watchingUserStoryIds: normalizeUserStoryIdList(usIds)
+    });
+}
+async function setHiddenUserStoryIds(workspaceRoot, usIds) {
+    const preferences = await readUserWorkspacePreferences(workspaceRoot);
+    await writeUserWorkspacePreferences(workspaceRoot, {
+        ...preferences,
+        hiddenUserStoryIds: normalizeUserStoryIdList(usIds)
+    });
+}
+async function setSearchIncludesOtherOwners(workspaceRoot, enabled) {
+    const preferences = await readUserWorkspacePreferences(workspaceRoot);
+    await writeUserWorkspacePreferences(workspaceRoot, {
+        ...preferences,
+        searchIncludesOtherOwners: enabled
+    });
+}
+async function setMaxVisibleUserStories(workspaceRoot, maxVisible) {
+    const preferences = await readUserWorkspacePreferences(workspaceRoot);
+    await writeUserWorkspacePreferences(workspaceRoot, {
+        ...preferences,
+        maxVisibleUserStories: normalizeMaxVisibleUserStories(maxVisible)
     });
 }
 async function setPausedWorkflowPhaseIds(workspaceRoot, usId, phaseIds) {

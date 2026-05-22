@@ -61,6 +61,7 @@ class SidebarViewProvider {
     showDroppedUserStories = false;
     showCompletedUserStories = false;
     showBlockedUserStories = false;
+    showHiddenUserStories = false;
     createFileMode = "context";
     createFiles = [];
     createReferenceScanVersion = 0;
@@ -186,6 +187,25 @@ class SidebarViewProvider {
                 return;
             case "toggleDroppedUserStories":
                 this.showDroppedUserStories = !this.showDroppedUserStories;
+                await this.safeRenderAsync();
+                return;
+            case "toggleWatchingUserStory":
+                if (!message.usId) {
+                    return;
+                }
+                await this.toggleWatchingUserStoryAsync(message.usId);
+                return;
+            case "toggleHiddenUserStory":
+                if (!message.usId) {
+                    return;
+                }
+                await this.toggleHiddenUserStoryAsync(message.usId);
+                return;
+            case "toggleSearchIncludesOtherOwners":
+                await this.toggleSearchIncludesOtherOwnersAsync();
+                return;
+            case "toggleShowHiddenUserStories":
+                this.showHiddenUserStories = !this.showHiddenUserStories;
                 await this.safeRenderAsync();
                 return;
             case "toggleCompletedUserStories":
@@ -402,6 +422,47 @@ class SidebarViewProvider {
         await (0, userWorkspacePreferences_1.setStarredUserStory)(workspaceRoot, nextStarredUserStoryId);
         await this.safeRenderAsync();
     }
+    async toggleWatchingUserStoryAsync(usId) {
+        const workspaceRoot = getWorkspaceRoot();
+        if (!workspaceRoot) {
+            return;
+        }
+        const preferences = await (0, userWorkspacePreferences_1.readUserWorkspacePreferences)(workspaceRoot);
+        const watching = new Set(preferences.watchingUserStoryIds);
+        if (watching.has(usId)) {
+            watching.delete(usId);
+        }
+        else {
+            watching.add(usId);
+        }
+        await (0, userWorkspacePreferences_1.setWatchingUserStoryIds)(workspaceRoot, [...watching]);
+        await this.safeRenderAsync();
+    }
+    async toggleHiddenUserStoryAsync(usId) {
+        const workspaceRoot = getWorkspaceRoot();
+        if (!workspaceRoot) {
+            return;
+        }
+        const preferences = await (0, userWorkspacePreferences_1.readUserWorkspacePreferences)(workspaceRoot);
+        const hidden = new Set(preferences.hiddenUserStoryIds);
+        if (hidden.has(usId)) {
+            hidden.delete(usId);
+        }
+        else {
+            hidden.add(usId);
+        }
+        await (0, userWorkspacePreferences_1.setHiddenUserStoryIds)(workspaceRoot, [...hidden]);
+        await this.safeRenderAsync();
+    }
+    async toggleSearchIncludesOtherOwnersAsync() {
+        const workspaceRoot = getWorkspaceRoot();
+        if (!workspaceRoot) {
+            return;
+        }
+        const preferences = await (0, userWorkspacePreferences_1.readUserWorkspacePreferences)(workspaceRoot);
+        await (0, userWorkspacePreferences_1.setSearchIncludesOtherOwners)(workspaceRoot, !preferences.searchIncludesOtherOwners);
+        await this.safeRenderAsync();
+    }
     async addCreateFilesAsync(kind) {
         const selection = await vscode.window.showOpenDialog({
             canSelectFiles: true,
@@ -533,6 +594,13 @@ class SidebarViewProvider {
                 showDroppedUserStories: this.showDroppedUserStories,
                 showCompletedUserStories: this.showCompletedUserStories,
                 showBlockedUserStories: this.showBlockedUserStories,
+                showHiddenUserStories: this.showHiddenUserStories,
+                searchIncludesOtherOwners: false,
+                currentActor: (0, userActor_1.getCurrentActor)(),
+                watchingUserStoryIds: [],
+                hiddenUserStoryIds: [],
+                maxVisibleUserStories: null,
+                totalUserStoryCount: 0,
                 droppedUserStoryCount: 0,
                 createFileMode: this.createFileMode,
                 createFiles: this.createFiles,
@@ -546,11 +614,11 @@ class SidebarViewProvider {
         const hasPersistedStories = await hasPersistedUserStoriesAsync(workspaceRoot);
         (0, outputChannel_1.appendSpecForgeLog)(`Sidebar persisted user story probe for '${workspaceRoot}': ${hasPersistedStories}.`);
         const backendClient = (0, specsExplorer_1.getOrCreateBackendClient)(workspaceRoot);
-        const userStories = hasPersistedStories
+        const allVisibleUserStories = hasPersistedStories
             ? await backendClient.listUserStories(this.showDroppedUserStories ? "dropped" : "active")
             : [];
         const droppedUserStoryCount = hasPersistedStories
-            ? (this.showDroppedUserStories ? userStories.length : (await backendClient.listUserStories("dropped")).length)
+            ? (this.showDroppedUserStories ? allVisibleUserStories.length : (await backendClient.listUserStories("dropped")).length)
             : 0;
         const categories = await getUserStoryCategoriesAsync(workspaceRoot);
         const promptsStatus = await (0, repoPromptsStatus_1.getRepoPromptsStatusAsync)(workspaceRoot);
@@ -563,6 +631,13 @@ class SidebarViewProvider {
             (0, outputChannel_1.appendSpecForgeLog)(`Sidebar prompt override warning for '${workspaceRoot}': ${promptsStatus.message ?? "prompt overrides not materialized"}. Checked: ${promptsStatus.checkedPaths.join(", ")}`);
         }
         const preferences = await (0, userWorkspacePreferences_1.readUserWorkspacePreferences)(workspaceRoot);
+        const currentActor = (0, userActor_1.getCurrentActor)();
+        const filteredUserStories = filterSidebarUserStories(allVisibleUserStories, preferences, currentActor, {
+            showDroppedUserStories: this.showDroppedUserStories,
+            showCompletedUserStories: this.showCompletedUserStories,
+            showBlockedUserStories: this.showBlockedUserStories,
+            showHiddenUserStories: this.showHiddenUserStories
+        });
         const runtimeVersion = await (0, runtimeVersion_1.readRuntimeVersionAsync)();
         this.webviewView.webview.html = (0, sidebarViewContent_1.buildSidebarHtml)({
             hasWorkspace: true,
@@ -579,13 +654,20 @@ class SidebarViewProvider {
             showDroppedUserStories: this.showDroppedUserStories,
             showCompletedUserStories: this.showCompletedUserStories,
             showBlockedUserStories: this.showBlockedUserStories,
+            showHiddenUserStories: this.showHiddenUserStories,
+            searchIncludesOtherOwners: preferences.searchIncludesOtherOwners,
+            currentActor,
+            watchingUserStoryIds: preferences.watchingUserStoryIds,
+            hiddenUserStoryIds: preferences.hiddenUserStoryIds,
+            maxVisibleUserStories: preferences.maxVisibleUserStories,
             droppedUserStoryCount,
             createFileMode: this.createFileMode,
             createFiles: this.createFiles,
             createFormResetToken: this.createFormResetToken,
             typographyCssVars: (0, webviewTypography_1.getEditorTypographyCssVars)(),
             categories,
-            userStories
+            userStories: filteredUserStories.visibleStories,
+            totalUserStoryCount: filteredUserStories.totalInScope
         });
     }
     async safeRenderAsync() {
@@ -611,6 +693,13 @@ class SidebarViewProvider {
                 showDroppedUserStories: this.showDroppedUserStories,
                 showCompletedUserStories: this.showCompletedUserStories,
                 showBlockedUserStories: this.showBlockedUserStories,
+                showHiddenUserStories: this.showHiddenUserStories,
+                searchIncludesOtherOwners: false,
+                currentActor: (0, userActor_1.getCurrentActor)(),
+                watchingUserStoryIds: [],
+                hiddenUserStoryIds: [],
+                maxVisibleUserStories: null,
+                totalUserStoryCount: 0,
                 droppedUserStoryCount: 0,
                 createFileMode: this.createFileMode,
                 createFiles: this.createFiles,
@@ -624,6 +713,66 @@ class SidebarViewProvider {
     }
 }
 exports.SidebarViewProvider = SidebarViewProvider;
+function filterSidebarUserStories(userStories, preferences, currentActor, options) {
+    const normalizedActor = currentActor.trim().toLowerCase();
+    const hiddenIds = new Set(preferences.hiddenUserStoryIds);
+    const watchingIds = new Set(preferences.watchingUserStoryIds);
+    const maxVisible = preferences.maxVisibleUserStories ?? 100;
+    const filtered = userStories.filter((summary) => {
+        if (!options.showCompletedUserStories && summary.currentPhase === "completed") {
+            return false;
+        }
+        if (!options.showBlockedUserStories && summary.status === "blocked") {
+            return false;
+        }
+        if (!options.showHiddenUserStories && hiddenIds.has(summary.usId)) {
+            return false;
+        }
+        if (options.showDroppedUserStories) {
+            return preferences.searchIncludesOtherOwners
+                || watchingIds.has(summary.usId)
+                || summary.owner.trim().toLowerCase() === normalizedActor;
+        }
+        return preferences.searchIncludesOtherOwners
+            || watchingIds.has(summary.usId)
+            || summary.owner.trim().toLowerCase() === normalizedActor;
+    });
+    const prioritized = [...filtered].sort((left, right) => compareSidebarStories(left, right, preferences, normalizedActor));
+    return {
+        visibleStories: preferences.searchIncludesOtherOwners
+            ? prioritized
+            : prioritized.slice(0, maxVisible),
+        totalInScope: prioritized.length
+    };
+}
+function compareSidebarStories(left, right, preferences, currentActor) {
+    const watching = new Set(preferences.watchingUserStoryIds);
+    const leftScore = sidebarPriority(left, preferences.starredUserStoryId, watching, currentActor);
+    const rightScore = sidebarPriority(right, preferences.starredUserStoryId, watching, currentActor);
+    if (leftScore !== rightScore) {
+        return rightScore - leftScore;
+    }
+    return left.usId.localeCompare(right.usId);
+}
+function sidebarPriority(summary, starredUserStoryId, watchingUserStoryIds, currentActor) {
+    let score = 0;
+    if (summary.usId === starredUserStoryId) {
+        score += 100;
+    }
+    if (watchingUserStoryIds.has(summary.usId)) {
+        score += 50;
+    }
+    if (summary.owner.trim().toLowerCase() === currentActor) {
+        score += 25;
+    }
+    if (summary.status === "waiting-user") {
+        score += 10;
+    }
+    if (summary.status === "blocked") {
+        score += 5;
+    }
+    return score;
+}
 function parseCustomTags(value) {
     return [...new Set((value ?? "")
             .split(",")
