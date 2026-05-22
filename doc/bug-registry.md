@@ -110,3 +110,15 @@
   2. Open `Sidebar view options`.
   3. Click `Include other owners`.
   4. Observe that the sidebar remains in the same scope and the portal URL does not reflect `sidebarOtherOwners=true`.
+
+### SFB-010
+
+- Bug code: `SFB-010`
+- Discovery date: `2026-05-22`
+- Status: `Fixed`
+- Short description: The CLI workflow portal renderer could fail to boot with `500 Broken pipe` because the parent-side bridge for sidebar scope toggles introduced an invalid nested template literal, making `render-cli-workflow-html.js` unparsable by Node.
+- Reproduction steps:
+  1. Start the CLI workflow portal after the sidebar toggle bridge change.
+  2. Request `http://localhost:5128/?usId=US-0001`.
+  3. Observe that the portal returns `500`.
+  4. Inspect the renderer script with `node -c tools/render-cli-workflow-html.js` and observe the syntax error near `querySelectorAll`.
