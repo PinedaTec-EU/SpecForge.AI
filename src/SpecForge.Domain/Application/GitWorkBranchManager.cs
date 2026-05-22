@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using SpecForge.Domain.Persistence;
 using SpecForge.Domain.Workflow;
 
 namespace SpecForge.Domain.Application;
@@ -7,6 +8,7 @@ internal interface IWorkBranchManager
 {
     Task<WorkBranchCreationResult> CreateBranchAsync(
         string workspaceRoot,
+        string usId,
         string baseBranch,
         string workBranch,
         CancellationToken cancellationToken = default);
@@ -23,54 +25,61 @@ internal sealed record WorkBranchCreationResult(
     bool IsGitWorkspace,
     bool BranchCreated,
     string? CurrentBranch,
-    string? UpstreamBranch);
+    string? UpstreamBranch,
+    string? WorktreePath);
 
 internal sealed record WorkBranchActivationResult(
     bool IsGitWorkspace,
-    bool BranchSwitched,
-    bool StashCreated,
-    string? PreviousBranch,
+    bool ExecutionWorkspaceChanged,
+    bool WorktreeCreated,
+    string? PreviousWorkspaceRoot,
+    string? ExecutionWorkspaceRoot,
     string? CurrentBranch,
-    string? StashRef,
-    string? StashMessage);
+    string? WorktreePath);
 
 internal sealed class GitWorkBranchManager : IWorkBranchManager
 {
     public async Task<WorkBranchCreationResult> CreateBranchAsync(
         string workspaceRoot,
+        string usId,
         string baseBranch,
         string workBranch,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workspaceRoot);
+        ArgumentException.ThrowIfNullOrWhiteSpace(usId);
         ArgumentException.ThrowIfNullOrWhiteSpace(baseBranch);
         ArgumentException.ThrowIfNullOrWhiteSpace(workBranch);
 
-        if (!await IsGitWorkspaceAsync(workspaceRoot, cancellationToken))
+        var controlWorkspaceRoot = SpecForgeWorkspaceLayout.ResolveControlWorkspaceRoot(workspaceRoot);
+        if (!await IsGitWorkspaceAsync(controlWorkspaceRoot, cancellationToken))
         {
             return new WorkBranchCreationResult(
                 IsGitWorkspace: false,
                 BranchCreated: false,
                 CurrentBranch: null,
-                UpstreamBranch: null);
+                UpstreamBranch: null,
+                WorktreePath: null);
         }
 
+        SpecForgeWorkspaceLayout.EnsureControlWorkspaceRegistered(controlWorkspaceRoot);
         var normalizedBaseBranch = baseBranch.Trim();
         var normalizedWorkBranch = workBranch.Trim();
-        var currentBranch = await GetCurrentBranchAsync(workspaceRoot, cancellationToken);
+        var currentBranch = await GetCurrentBranchAsync(controlWorkspaceRoot, cancellationToken);
         if (string.Equals(currentBranch, normalizedWorkBranch, StringComparison.Ordinal))
         {
             return new WorkBranchCreationResult(
                 IsGitWorkspace: true,
                 BranchCreated: false,
                 CurrentBranch: currentBranch,
-                UpstreamBranch: null);
+                UpstreamBranch: null,
+                WorktreePath: controlWorkspaceRoot);
         }
 
-        await EnsureLocalBranchExistsAsync(workspaceRoot, normalizedBaseBranch, cancellationToken);
-        var upstreamBranch = await GetUpstreamBranchAsync(workspaceRoot, normalizedBaseBranch, cancellationToken);
-        var localSha = await RevParseAsync(workspaceRoot, $"refs/heads/{normalizedBaseBranch}", cancellationToken);
-        var upstreamSha = await RevParseAsync(workspaceRoot, $"refs/remotes/{upstreamBranch}", cancellationToken);
+        await EnsureLocalBranchExistsAsync(controlWorkspaceRoot, normalizedBaseBranch, cancellationToken);
+        var upstreamBranch = await GetUpstreamBranchAsync(controlWorkspaceRoot, normalizedBaseBranch, cancellationToken);
+        var localSha = await RevParseAsync(controlWorkspaceRoot, $"refs/heads/{normalizedBaseBranch}", cancellationToken);
+        var upstreamSha = await RevParseAsync(controlWorkspaceRoot, $"refs/remotes/{upstreamBranch}", cancellationToken);
 
         if (!string.Equals(localSha, upstreamSha, StringComparison.Ordinal))
         {
@@ -78,22 +87,27 @@ internal sealed class GitWorkBranchManager : IWorkBranchManager
                 $"Base branch '{normalizedBaseBranch}' is not up to date with upstream '{upstreamBranch}'. Update the local branch before creating '{normalizedWorkBranch}'.");
         }
 
-        if (await LocalBranchExistsAsync(workspaceRoot, normalizedWorkBranch, cancellationToken))
+        if (await LocalBranchExistsAsync(controlWorkspaceRoot, normalizedWorkBranch, cancellationToken))
         {
             throw new WorkflowDomainException(
-                $"Work branch '{normalizedWorkBranch}' already exists locally. Switch to it or choose a different branch name.");
+                $"Work branch '{normalizedWorkBranch}' already exists locally. Reuse its worktree or choose a different branch name.");
         }
 
+        var worktreePath = SpecForgeWorkspaceLayout.GetUserStoryWorktreeRoot(controlWorkspaceRoot, usId);
+        EnsureWorktreePathIsAvailable(worktreePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(worktreePath)!);
         await RunGitAsync(
-            workspaceRoot,
-            ["switch", "--create", normalizedWorkBranch, normalizedBaseBranch],
+            controlWorkspaceRoot,
+            ["worktree", "add", "-b", normalizedWorkBranch, worktreePath, normalizedBaseBranch],
             cancellationToken);
-        var createdBranch = await GetCurrentBranchAsync(workspaceRoot, cancellationToken);
+        SpecForgeWorkspaceLayout.MirrorUserStoryDirectory(controlWorkspaceRoot, worktreePath, usId);
+        var createdBranch = await GetCurrentBranchAsync(controlWorkspaceRoot, cancellationToken);
         return new WorkBranchCreationResult(
             IsGitWorkspace: true,
             BranchCreated: true,
             CurrentBranch: createdBranch,
-            UpstreamBranch: upstreamBranch);
+            UpstreamBranch: upstreamBranch,
+            WorktreePath: worktreePath);
     }
 
     public async Task<WorkBranchActivationResult> EnsureActiveWorkBranchAsync(
@@ -108,61 +122,57 @@ internal sealed class GitWorkBranchManager : IWorkBranchManager
         ArgumentException.ThrowIfNullOrWhiteSpace(workBranch);
         ArgumentException.ThrowIfNullOrWhiteSpace(protectedUserStoryDirectory);
 
-        if (!await IsGitWorkspaceAsync(workspaceRoot, cancellationToken))
+        var controlWorkspaceRoot = SpecForgeWorkspaceLayout.ResolveControlWorkspaceRoot(workspaceRoot);
+        if (!await IsGitWorkspaceAsync(controlWorkspaceRoot, cancellationToken))
         {
             return new WorkBranchActivationResult(
                 IsGitWorkspace: false,
-                BranchSwitched: false,
-                StashCreated: false,
-                PreviousBranch: null,
+                ExecutionWorkspaceChanged: false,
+                WorktreeCreated: false,
+                PreviousWorkspaceRoot: null,
+                ExecutionWorkspaceRoot: null,
                 CurrentBranch: null,
-                StashRef: null,
-                StashMessage: null);
+                WorktreePath: null);
         }
 
+        SpecForgeWorkspaceLayout.EnsureControlWorkspaceRegistered(controlWorkspaceRoot);
         var normalizedWorkBranch = workBranch.Trim();
-        var currentBranch = await GetCurrentBranchAsync(workspaceRoot, cancellationToken);
-        if (string.Equals(currentBranch, normalizedWorkBranch, StringComparison.Ordinal))
+        var normalizedWorkspaceRoot = Path.GetFullPath(workspaceRoot);
+        var targetWorktreePath = SpecForgeWorkspaceLayout.GetUserStoryWorktreeRoot(controlWorkspaceRoot, usId);
+        var worktreeCreated = false;
+        if (!Directory.Exists(targetWorktreePath))
         {
-            return new WorkBranchActivationResult(
-                IsGitWorkspace: true,
-                BranchSwitched: false,
-                StashCreated: false,
-                PreviousBranch: currentBranch,
-                CurrentBranch: currentBranch,
-                StashRef: null,
-                StashMessage: null);
+            if (!await LocalBranchExistsAsync(controlWorkspaceRoot, normalizedWorkBranch, cancellationToken))
+            {
+                throw new WorkflowDomainException(
+                    $"Work branch '{normalizedWorkBranch}' recorded for user story '{usId}' does not exist locally. Restore or fetch the branch before running the next workflow phase.");
+            }
+
+            EnsureWorktreePathIsAvailable(targetWorktreePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(targetWorktreePath)!);
+            await RunGitAsync(
+                controlWorkspaceRoot,
+                ["worktree", "add", targetWorktreePath, normalizedWorkBranch],
+                cancellationToken);
+            SpecForgeWorkspaceLayout.MirrorUserStoryDirectory(controlWorkspaceRoot, targetWorktreePath, usId);
+            worktreeCreated = true;
         }
 
-        if (!await LocalBranchExistsAsync(workspaceRoot, normalizedWorkBranch, cancellationToken))
+        var currentBranch = await GetCurrentBranchAsync(targetWorktreePath, cancellationToken);
+        if (!string.Equals(currentBranch, normalizedWorkBranch, StringComparison.Ordinal))
         {
             throw new WorkflowDomainException(
-                $"Work branch '{normalizedWorkBranch}' recorded for user story '{usId}' does not exist locally. Restore or fetch the branch before running the next workflow phase.");
+                $"Worktree '{targetWorktreePath}' is not on the recorded branch '{normalizedWorkBranch}' for user story '{usId}'.");
         }
 
-        string? stashMessage = null;
-        string? stashRef = null;
-        var protectedPathspec = BuildProtectedUserStoryPathspec(workspaceRoot, protectedUserStoryDirectory);
-        if (await HasWorkspaceChangesOutsideUserStoryAsync(workspaceRoot, protectedPathspec, cancellationToken))
-        {
-            stashMessage = $"SpecForge branch guard for {usId}: user must review and accept this stash before recovery. Stashed changes before switching from '{DescribeBranch(currentBranch)}' to '{normalizedWorkBranch}'.";
-            await RunGitAsync(
-                workspaceRoot,
-                ["stash", "push", "--include-untracked", "-m", stashMessage, "--", ".", protectedPathspec],
-                cancellationToken);
-            stashRef = await GetLatestStashRefAsync(workspaceRoot, cancellationToken);
-        }
-
-        await RunGitAsync(workspaceRoot, ["switch", normalizedWorkBranch], cancellationToken);
-        var activatedBranch = await GetCurrentBranchAsync(workspaceRoot, cancellationToken);
         return new WorkBranchActivationResult(
             IsGitWorkspace: true,
-            BranchSwitched: true,
-            StashCreated: stashRef is not null,
-            PreviousBranch: currentBranch,
-            CurrentBranch: activatedBranch,
-            StashRef: stashRef,
-            StashMessage: stashMessage);
+            ExecutionWorkspaceChanged: !string.Equals(normalizedWorkspaceRoot, targetWorktreePath, StringComparison.Ordinal),
+            WorktreeCreated: worktreeCreated,
+            PreviousWorkspaceRoot: normalizedWorkspaceRoot,
+            ExecutionWorkspaceRoot: targetWorktreePath,
+            CurrentBranch: currentBranch,
+            WorktreePath: targetWorktreePath);
     }
 
     private static async Task<bool> IsGitWorkspaceAsync(string workspaceRoot, CancellationToken cancellationToken)
@@ -231,40 +241,21 @@ internal sealed class GitWorkBranchManager : IWorkBranchManager
         return result.StdOut.Trim();
     }
 
-    private static async Task<bool> HasWorkspaceChangesOutsideUserStoryAsync(
-        string workspaceRoot,
-        string protectedPathspec,
-        CancellationToken cancellationToken)
+    private static void EnsureWorktreePathIsAvailable(string worktreePath)
     {
-        var result = await RunGitAsync(
-            workspaceRoot,
-            ["status", "--porcelain", "--untracked-files=all", "--", ".", protectedPathspec],
-            cancellationToken);
-        return !string.IsNullOrWhiteSpace(result.StdOut);
-    }
-
-    private static async Task<string?> GetLatestStashRefAsync(string workspaceRoot, CancellationToken cancellationToken)
-    {
-        var result = await RunGitAsync(workspaceRoot, ["stash", "list", "--format=%gd", "-n", "1"], cancellationToken);
-        var stashRef = result.StdOut.Trim();
-        return string.IsNullOrWhiteSpace(stashRef) ? null : stashRef;
-    }
-
-    private static string BuildProtectedUserStoryPathspec(string workspaceRoot, string protectedUserStoryDirectory)
-    {
-        var relativePath = Path.GetRelativePath(workspaceRoot, protectedUserStoryDirectory)
-            .Replace('\\', '/')
-            .TrimEnd('/');
-        if (string.IsNullOrWhiteSpace(relativePath) || relativePath.StartsWith("..", StringComparison.Ordinal))
+        if (!Directory.Exists(worktreePath))
         {
-            throw new WorkflowDomainException("User story directory must be inside the workspace before activating the recorded work branch.");
+            return;
         }
 
-        return $":(exclude){relativePath}/**";
-    }
+        if (!Directory.EnumerateFileSystemEntries(worktreePath).Any())
+        {
+            return;
+        }
 
-    private static string DescribeBranch(string? branchName) =>
-        string.IsNullOrWhiteSpace(branchName) ? "detached HEAD" : branchName;
+        throw new WorkflowDomainException(
+            $"Target worktree path '{worktreePath}' already exists and is not empty.");
+    }
 
     private static async Task<string> RevParseAsync(
         string workspaceRoot,

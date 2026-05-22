@@ -26,6 +26,46 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ListUserStoriesAsync_FromUserStoryWorktree_StillReadsControlWorkspaceCatalog()
+    {
+        await InitializeGitWorkspaceAsync(workspaceRoot);
+        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
+        await RunGitAsync(workspaceRoot, "add", "README.md");
+        await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
+
+        var remoteDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(remoteDirectory);
+        try
+        {
+            await RunGitAsync(remoteDirectory, "init", "--bare");
+            await RunGitAsync(workspaceRoot, "remote", "add", "origin", remoteDirectory);
+            await RunGitAsync(workspaceRoot, "push", "-u", "origin", "main");
+
+            var runner = new WorkflowRunner();
+            var applicationService = new SpecForgeApplicationService();
+            await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Story one", "feature", "workflow", "Initial source");
+            await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+            await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+            await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+
+            await runner.CreateUserStoryAsync(workspaceRoot, "US-0002", "Story two", "feature", "workflow", "Initial source");
+
+            var worktreeRoot = SpecForgeWorkspaceLayout.GetUserStoryWorktreeRoot(workspaceRoot, "US-0001");
+            var items = await applicationService.ListUserStoriesAsync(worktreeRoot);
+
+            Assert.Equal(["US-0001", "US-0002"], items.Select(item => item.UsId).OrderBy(static item => item, StringComparer.Ordinal).ToArray());
+        }
+        finally
+        {
+            if (Directory.Exists(remoteDirectory))
+            {
+                Directory.Delete(remoteDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task CreateUserStoryAsync_PersistsCustomTagsInSummaryAndWorkflow()
     {
         var applicationService = new SpecForgeApplicationService();
@@ -2465,6 +2505,7 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     {
         public Task<WorkBranchCreationResult> CreateBranchAsync(
             string workspaceRoot,
+            string usId,
             string baseBranch,
             string workBranch,
             CancellationToken cancellationToken = default) =>
@@ -2472,7 +2513,8 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
                 IsGitWorkspace: true,
                 BranchCreated: false,
                 CurrentBranch: baseBranch,
-                UpstreamBranch: $"origin/{baseBranch}"));
+                UpstreamBranch: $"origin/{baseBranch}",
+                WorktreePath: workspaceRoot));
 
         public Task<WorkBranchActivationResult> EnsureActiveWorkBranchAsync(
             string workspaceRoot,
@@ -2482,12 +2524,12 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
             CancellationToken cancellationToken = default) =>
             Task.FromResult(new WorkBranchActivationResult(
                 IsGitWorkspace: true,
-                BranchSwitched: false,
-                StashCreated: false,
-                PreviousBranch: workBranch,
+                ExecutionWorkspaceChanged: false,
+                WorktreeCreated: false,
+                PreviousWorkspaceRoot: workspaceRoot,
+                ExecutionWorkspaceRoot: workspaceRoot,
                 CurrentBranch: workBranch,
-                StashRef: null,
-                StashMessage: null));
+                WorktreePath: workspaceRoot));
     }
 
     private sealed class RecordingPullRequestPublisher : IPullRequestPublisher

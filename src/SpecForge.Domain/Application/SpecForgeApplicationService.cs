@@ -177,11 +177,12 @@ public sealed class SpecForgeApplicationService
             throw new ArgumentException("User story visibility must be active or dropped.", nameof(visibility));
         }
 
+        var controlWorkspaceRoot = SpecForgeWorkspaceLayout.ResolveControlWorkspaceRoot(workspaceRoot);
         var specsRoot = Path.Combine(
-            workspaceRoot,
+            controlWorkspaceRoot,
             UserStoryFilePaths.SpecsDirectoryName,
             UserStoryFilePaths.UserStoriesDirectoryName);
-        UserStoryFilePaths.EnsureFlatUserStoryLayout(workspaceRoot);
+        UserStoryFilePaths.EnsureFlatUserStoryLayout(controlWorkspaceRoot);
 
         if (!Directory.Exists(specsRoot))
         {

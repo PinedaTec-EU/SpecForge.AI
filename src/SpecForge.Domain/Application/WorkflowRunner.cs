@@ -158,6 +158,7 @@ public sealed class WorkflowRunner
         ValidateRequired(category, nameof(category));
         ValidateRequired(sourceText, nameof(sourceText));
         ValidateUserStoryKind(kind);
+        SpecForgeWorkspaceLayout.EnsureControlWorkspaceRegistered(workspaceRoot);
         repositoryCategoryCatalog.EnsureCategoryIsAllowed(workspaceRoot, category);
 
         var paths = UserStoryFilePaths.FromWorkspaceRoot(workspaceRoot, category, usId);
@@ -229,11 +230,12 @@ public sealed class WorkflowRunner
                 $"[runner.approve_phase] usId={usId} validating base='{workflowRun.Branch.BaseBranch}' before creating work branch '{workflowRun.Branch.WorkBranchName}'.");
             branchCreation = await workBranchManager.CreateBranchAsync(
                 workspaceRoot,
+                workflowRun.UsId,
                 workflowRun.Branch.BaseBranch,
                 workflowRun.Branch.WorkBranchName,
                 cancellationToken);
             SpecForgeDiagnostics.Log(
-                $"[runner.approve_phase] usId={usId} branch result gitWorkspace={branchCreation.IsGitWorkspace} created={branchCreation.BranchCreated} currentBranch='{branchCreation.CurrentBranch ?? "(none)"}' upstream='{branchCreation.UpstreamBranch ?? "(none)"}'.");
+                $"[runner.approve_phase] usId={usId} branch result gitWorkspace={branchCreation.IsGitWorkspace} created={branchCreation.BranchCreated} currentBranch='{branchCreation.CurrentBranch ?? "(none)"}' upstream='{branchCreation.UpstreamBranch ?? "(none)"}' worktree='{branchCreation.WorktreePath ?? "(none)"}'.");
         }
 
         await fileStore.SaveAsync(workflowRun, paths.RootDirectory, cancellationToken);
@@ -254,8 +256,13 @@ public sealed class WorkflowRunner
                     "branch_created",
                     "system",
                     workflowRun.CurrentPhase,
-                    $"Created branch `{workflowRun.Branch.WorkBranchName}` from `{workflowRun.Branch.BaseBranch}`.",
+                    $"Created branch `{workflowRun.Branch.WorkBranchName}` from `{workflowRun.Branch.BaseBranch}` and materialized worktree `{branchCreation?.WorktreePath ?? "(unknown)"}`.",
                     cancellationToken);
+
+                if (!string.IsNullOrWhiteSpace(branchCreation.WorktreePath))
+                {
+                    SpecForgeWorkspaceLayout.MirrorUserStoryDirectory(workspaceRoot, branchCreation.WorktreePath, workflowRun.UsId);
+                }
             }
             else if (branchCreation?.IsGitWorkspace == false)
             {
@@ -900,14 +907,20 @@ public sealed class WorkflowRunner
         var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, usId);
         var workflowRun = await fileStore.LoadAsync(paths.RootDirectory, cancellationToken);
         var normalizedActor = NormalizeActor(actor);
-        await EnsureRecordedWorkBranchIsActiveAsync(workspaceRoot, paths, workflowRun, normalizedActor, cancellationToken);
+        var effectiveWorkspaceRoot = await EnsureRecordedWorkBranchIsActiveAsync(workspaceRoot, paths, workflowRun, normalizedActor, cancellationToken);
+        if (!string.Equals(Path.GetFullPath(effectiveWorkspaceRoot), Path.GetFullPath(workspaceRoot), StringComparison.Ordinal))
+        {
+            paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(effectiveWorkspaceRoot, usId);
+            workflowRun = await fileStore.LoadAsync(paths.RootDirectory, cancellationToken);
+        }
+
         await TrackRuntimeVersionChangeAsync(paths, workflowRun, normalizedActor, workflowRun.CurrentPhase, cancellationToken);
         SpecForgeDiagnostics.Log(
             $"[runner.continue_phase] usId={usId} loaded phase={WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)} status={WorkflowPresentation.ToStatusSlug(workflowRun.Status)}");
 
         if (workflowRun.CurrentPhase is PhaseId.Capture or PhaseId.Refinement)
         {
-            var refinementResult = await ContinueFromCaptureOrRefinementAsync(workspaceRoot, paths, workflowRun, normalizedActor, cancellationToken);
+            var refinementResult = await ContinueFromCaptureOrRefinementAsync(effectiveWorkspaceRoot, paths, workflowRun, normalizedActor, cancellationToken);
             await fileStore.SaveAsync(workflowRun, paths.RootDirectory, cancellationToken);
             diagnostics.MarkCompleted(
                 $"phase={WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)} status={WorkflowPresentation.ToStatusSlug(workflowRun.Status)}");
@@ -951,7 +964,7 @@ public sealed class WorkflowRunner
                     ? $"[runner.continue_phase] usId={usId} replaying current review phase after rewind."
                     : $"[runner.continue_phase] usId={usId} replaying current review phase after failed or incomplete review.");
             var reviewGeneration = await MaterializePhaseArtifactAsync(
-                workspaceRoot,
+                effectiveWorkspaceRoot,
                 paths,
                 workflowRun,
                 currentArtifactPath: null,
@@ -972,7 +985,7 @@ public sealed class WorkflowRunner
                 reviewGeneration.DurationMs,
                 reviewGeneration.Execution);
             var reviewCommit = await CommitPhaseArtifactsAsync(
-                workspaceRoot,
+                effectiveWorkspaceRoot,
                 paths,
                 workflowRun.UsId,
                 workflowRun.CurrentPhase,
@@ -1004,7 +1017,7 @@ public sealed class WorkflowRunner
             SpecForgeDiagnostics.Log(
                 $"[runner.continue_phase] usId={usId} materializing reopened phase {WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)} from workflow_reopened event at {pendingReopen.TimestampUtc}.");
             var reopenGeneration = await MaterializePhaseArtifactAsync(
-                workspaceRoot,
+                effectiveWorkspaceRoot,
                 paths,
                 workflowRun,
                 sourceArtifactPath,
@@ -1049,7 +1062,7 @@ public sealed class WorkflowRunner
 
         if (workflowRun.CurrentPhase == PhaseId.PrPreparation)
         {
-            var publicationArtifactPath = await PublishPullRequestAsync(workspaceRoot, paths, workflowRun, normalizedActor, cancellationToken);
+            var publicationArtifactPath = await PublishPullRequestAsync(effectiveWorkspaceRoot, paths, workflowRun, normalizedActor, cancellationToken);
             await fileStore.SaveAsync(workflowRun, paths.RootDirectory, cancellationToken);
             diagnostics.MarkCompleted(
                 $"phase={WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)} status={WorkflowPresentation.ToStatusSlug(workflowRun.Status)} artifact={publicationArtifactPath}");
@@ -1065,7 +1078,7 @@ public sealed class WorkflowRunner
         EnsureNextPhaseExecutionIsReady(workflowRun);
         var sourcePhase = workflowRun.CurrentPhase;
         EnsureImplementationReworkCompletedBeforeReview(paths, sourcePhase);
-        EnsureApprovedReviewCommitIsCurrentBeforeReleaseApproval(workspaceRoot, paths, sourcePhase);
+        EnsureApprovedReviewCommitIsCurrentBeforeReleaseApproval(effectiveWorkspaceRoot, paths, sourcePhase);
         workflowRun.GenerateNextPhase();
         SpecForgeDiagnostics.Log(
             $"[runner.continue_phase] usId={usId} advanced phase {WorkflowPresentation.ToPhaseSlug(sourcePhase)} -> {WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)}");
@@ -1080,7 +1093,7 @@ public sealed class WorkflowRunner
         PhaseCommitResult? commit = null;
         if (HasArtifact(workflowRun.CurrentPhase))
         {
-            var generation = await MaterializePhaseArtifactAsync(workspaceRoot, paths, workflowRun, currentArtifactPath: null, operationPrompt: null, includeReviewArtifactInContext: true, cancellationToken);
+            var generation = await MaterializePhaseArtifactAsync(effectiveWorkspaceRoot, paths, workflowRun, currentArtifactPath: null, operationPrompt: null, includeReviewArtifactInContext: true, cancellationToken);
             artifactPath = generation.ArtifactPath;
             usage = generation.Usage;
             durationMs = generation.DurationMs;
@@ -1097,7 +1110,7 @@ public sealed class WorkflowRunner
                 durationMs,
                 generation.Execution);
             commit = await CommitPhaseArtifactsAsync(
-                workspaceRoot,
+                effectiveWorkspaceRoot,
                 paths,
                 workflowRun.UsId,
                 workflowRun.CurrentPhase,
@@ -1185,7 +1198,7 @@ public sealed class WorkflowRunner
         return artifactPath;
     }
 
-    private async Task EnsureRecordedWorkBranchIsActiveAsync(
+    private async Task<string> EnsureRecordedWorkBranchIsActiveAsync(
         string workspaceRoot,
         UserStoryFilePaths paths,
         WorkflowRun workflowRun,
@@ -1194,7 +1207,7 @@ public sealed class WorkflowRunner
     {
         if (workflowRun.Branch is null)
         {
-            return;
+            return workspaceRoot;
         }
 
         SpecForgeDiagnostics.Log(
@@ -1206,23 +1219,28 @@ public sealed class WorkflowRunner
             paths.RootDirectory,
             cancellationToken);
         SpecForgeDiagnostics.Log(
-            $"[runner.branch_guard] usId={workflowRun.UsId} gitWorkspace={activation.IsGitWorkspace} switched={activation.BranchSwitched} previous='{activation.PreviousBranch ?? "(none)"}' current='{activation.CurrentBranch ?? "(none)"}' stash='{activation.StashRef ?? "(none)"}'.");
+            $"[runner.branch_guard] usId={workflowRun.UsId} gitWorkspace={activation.IsGitWorkspace} workspaceChanged={activation.ExecutionWorkspaceChanged} worktreeCreated={activation.WorktreeCreated} previousWorkspace='{activation.PreviousWorkspaceRoot ?? "(none)"}' executionWorkspace='{activation.ExecutionWorkspaceRoot ?? "(none)"}' currentBranch='{activation.CurrentBranch ?? "(none)"}'.");
 
-        if (!activation.IsGitWorkspace || !activation.BranchSwitched)
+        if (!activation.IsGitWorkspace)
         {
-            return;
+            return workspaceRoot;
         }
 
-        var summary = activation.StashCreated
-            ? $"Activated recorded work branch `{workflowRun.Branch.WorkBranchName}` before phase execution. Created stash `{activation.StashRef}` with message: {activation.StashMessage}"
-            : $"Activated recorded work branch `{workflowRun.Branch.WorkBranchName}` before phase execution.";
-        await AppendTimelineEventAsync(
-            paths.TimelineFilePath,
-            "work_branch_activated",
-            actor,
-            workflowRun.CurrentPhase,
-            summary,
-            cancellationToken);
+        if (activation.ExecutionWorkspaceChanged || activation.WorktreeCreated)
+        {
+            var summary = activation.WorktreeCreated
+                ? $"Activated recorded worktree `{activation.WorktreePath}` for branch `{workflowRun.Branch.WorkBranchName}` before phase execution."
+                : $"Reused recorded worktree `{activation.WorktreePath}` for branch `{workflowRun.Branch.WorkBranchName}` before phase execution.";
+            await AppendTimelineEventAsync(
+                paths.TimelineFilePath,
+                "work_branch_activated",
+                actor,
+                workflowRun.CurrentPhase,
+                summary,
+                cancellationToken);
+        }
+
+        return activation.ExecutionWorkspaceRoot ?? workspaceRoot;
     }
 
     private static void EnsurePullRequestPublicationSucceeded(PullRequestPublicationResult publication)
@@ -1379,7 +1397,13 @@ public sealed class WorkflowRunner
         var workflowRun = await fileStore.LoadAsync(paths.RootDirectory, cancellationToken);
         EnsureCompletedWorkflowIsUnlockedForDirectMutation(workflowRun, "Artifact operation");
         var normalizedActor = NormalizeActor(actor);
-        await EnsureRecordedWorkBranchIsActiveAsync(workspaceRoot, paths, workflowRun, normalizedActor, cancellationToken);
+        var effectiveWorkspaceRoot = await EnsureRecordedWorkBranchIsActiveAsync(workspaceRoot, paths, workflowRun, normalizedActor, cancellationToken);
+        if (!string.Equals(Path.GetFullPath(effectiveWorkspaceRoot), Path.GetFullPath(workspaceRoot), StringComparison.Ordinal))
+        {
+            paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(effectiveWorkspaceRoot, usId);
+            workflowRun = await fileStore.LoadAsync(paths.RootDirectory, cancellationToken);
+        }
+
         await TrackRuntimeVersionChangeAsync(paths, workflowRun, normalizedActor, workflowRun.CurrentPhase, cancellationToken);
         if (!HasArtifact(workflowRun.CurrentPhase))
         {
@@ -1390,7 +1414,7 @@ public sealed class WorkflowRunner
             ?? throw new WorkflowDomainException($"Phase '{WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)}' does not yet have a current artifact to operate on.");
         var operatedPhase = workflowRun.CurrentPhase;
         var generation = await MaterializePhaseArtifactAsync(
-            workspaceRoot,
+            effectiveWorkspaceRoot,
             paths,
             workflowRun,
             sourceArtifactPath,
@@ -1422,7 +1446,7 @@ public sealed class WorkflowRunner
             generation.DurationMs,
             generation.Execution);
         var commit = await CommitPhaseArtifactsAsync(
-            workspaceRoot,
+            effectiveWorkspaceRoot,
             paths,
             workflowRun.UsId,
             operatedPhase,

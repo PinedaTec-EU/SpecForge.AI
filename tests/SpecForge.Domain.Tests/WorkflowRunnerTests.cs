@@ -2229,7 +2229,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     }
 
     [Fact]
-    public async Task ApproveCurrentPhaseAsync_CreatesAndChecksOutWorkBranch_WhenBaseBranchMatchesUpstream()
+    public async Task ApproveCurrentPhaseAsync_CreatesUserStoryWorktreeWithoutLeavingControlWorkspace_WhenBaseBranchMatchesUpstream()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
         await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
@@ -2252,12 +2252,17 @@ public sealed class WorkflowRunnerTests : IDisposable
 
             await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
 
+            var worktreeRoot = SpecForgeWorkspaceLayout.GetUserStoryWorktreeRoot(workspaceRoot, "US-0001");
             var currentBranch = (await RunGitAsync(workspaceRoot, "branch", "--show-current")).Trim();
-            Assert.Equal("feature/us-0001-branch-creation", currentBranch);
+            var worktreeBranch = (await RunGitAsync(worktreeRoot, "branch", "--show-current")).Trim();
+            Assert.Equal("main", currentBranch);
+            Assert.Equal("feature/us-0001-branch-creation", worktreeBranch);
+            Assert.True(Directory.Exists(worktreeRoot));
 
             var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0001");
             var timeline = await File.ReadAllTextAsync(paths.TimelineFilePath);
             Assert.Contains("`branch_created`", timeline);
+            Assert.Contains("materialized worktree", timeline);
         }
         finally
         {
@@ -2349,7 +2354,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     }
 
     [Fact]
-    public async Task ContinuePhaseAsync_WhenRecordedWorkBranchIsNotActive_StashesChangesAndSwitchesBeforeExecution()
+    public async Task ContinuePhaseAsync_WhenCalledFromControlWorkspace_ReusesUserStoryWorktreeBeforeExecution()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
         await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
@@ -2371,23 +2376,23 @@ public sealed class WorkflowRunnerTests : IDisposable
             await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
             await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
 
-            await RunGitAsync(workspaceRoot, "switch", "main");
             await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "dirty change on the wrong branch");
 
             var result = await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
 
+            var worktreeRoot = SpecForgeWorkspaceLayout.GetUserStoryWorktreeRoot(workspaceRoot, "US-0001");
             var currentBranch = (await RunGitAsync(workspaceRoot, "branch", "--show-current")).Trim();
+            var worktreeBranch = (await RunGitAsync(worktreeRoot, "branch", "--show-current")).Trim();
             var latestStash = await RunGitAsync(workspaceRoot, "stash", "list", "--format=%gd %s", "-n", "1");
             var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0001");
             var timeline = await File.ReadAllTextAsync(paths.TimelineFilePath);
 
             Assert.Equal(PhaseId.TechnicalDesign, result.CurrentPhase);
-            Assert.Equal("feature/us-0001-branch-activation", currentBranch);
-            Assert.Contains("stash@{0}", latestStash);
-            Assert.Contains("SpecForge branch guard for US-0001", latestStash);
-            Assert.Contains("user must review and accept this stash", latestStash);
+            Assert.Equal("main", currentBranch);
+            Assert.Equal("feature/us-0001-branch-activation", worktreeBranch);
+            Assert.True(string.IsNullOrWhiteSpace(latestStash));
             Assert.Contains("`work_branch_activated`", timeline);
-            Assert.Contains("`stash@{0}`", timeline);
+            Assert.Contains("worktree", timeline);
         }
         finally
         {
@@ -3011,6 +3016,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     {
         public Task<WorkBranchCreationResult> CreateBranchAsync(
             string workspaceRoot,
+            string usId,
             string baseBranch,
             string workBranch,
             CancellationToken cancellationToken = default) =>
@@ -3018,7 +3024,8 @@ public sealed class WorkflowRunnerTests : IDisposable
                 IsGitWorkspace: true,
                 BranchCreated: false,
                 CurrentBranch: baseBranch,
-                UpstreamBranch: $"origin/{baseBranch}"));
+                UpstreamBranch: $"origin/{baseBranch}",
+                WorktreePath: workspaceRoot));
 
         public Task<WorkBranchActivationResult> EnsureActiveWorkBranchAsync(
             string workspaceRoot,
@@ -3028,12 +3035,12 @@ public sealed class WorkflowRunnerTests : IDisposable
             CancellationToken cancellationToken = default) =>
             Task.FromResult(new WorkBranchActivationResult(
                 IsGitWorkspace: true,
-                BranchSwitched: false,
-                StashCreated: false,
-                PreviousBranch: workBranch,
+                ExecutionWorkspaceChanged: false,
+                WorktreeCreated: false,
+                PreviousWorkspaceRoot: workspaceRoot,
+                ExecutionWorkspaceRoot: workspaceRoot,
                 CurrentBranch: workBranch,
-                StashRef: null,
-                StashMessage: null));
+                WorktreePath: workspaceRoot));
     }
 
     private sealed class RecordingPullRequestPublisher : IPullRequestPublisher
