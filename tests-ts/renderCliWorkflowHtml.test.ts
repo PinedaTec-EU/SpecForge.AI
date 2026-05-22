@@ -82,7 +82,10 @@ test("CLI workflow renderer routes sidebar edit action to the user story source 
 
   for (const content of [script, packagedScript]) {
     assert.match(content, /message\.command === "openMainArtifact" && message\.usId/);
+    assert.match(content, /if \(url\.searchParams\.get\("usId"\) === message\.usId && url\.searchParams\.get\("selectedPhaseId"\) === "capture"\)/);
     assert.match(content, /url\.searchParams\.set\("selectedPhaseId", "capture"\)/);
+    assert.match(content, /url\.searchParams\.set\("artifactFocus", "source"\)/);
+    assert.match(content, /focusUserStorySourceSection\(\)/);
   }
 
   assert.match(packagedSidebar, /data-command="openMainArtifact" data-us-id="\$\{[\s\S]*?summary\.usId[\s\S]*?\}" role="menuitem"/);

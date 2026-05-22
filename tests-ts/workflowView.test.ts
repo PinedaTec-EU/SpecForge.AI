@@ -216,6 +216,64 @@ test("buildWorkflowHtml renders phase detail for the selected phase", () => {
   assert.doesNotMatch(html, /Audit Stream/);
 });
 
+test("buildWorkflowHtml exposes a focusable user story source section when capture is selected", () => {
+  const html = buildWorkflowHtml({
+    usId: "US-0001",
+    title: "Workflow capture view",
+    category: "workflow",
+    status: "active",
+    currentPhase: "capture",
+    directoryPath: "/tmp/us.US-0001",
+    workBranch: null,
+    mainArtifactPath: "/tmp/us.md",
+    timelinePath: "/tmp/timeline.md",
+    rawTimeline: "raw timeline",
+    phases: [
+      {
+        phaseId: "capture",
+        title: "Capture",
+        order: 0,
+        requiresApproval: false,
+        expectsHumanIntervention: false,
+        isApproved: false,
+        isCurrent: true,
+        state: "current",
+        artifactPath: "/tmp/us.md",
+        operationLogPath: null,
+        executePromptPath: null,
+        approvePromptPath: null,
+        executeSystemPromptPath: null,
+        approveSystemPromptPath: null
+      }
+    ],
+    controls: {
+      canContinue: true,
+      canApprove: false,
+      requiresApproval: false,
+      blockingReason: null,
+      canRestartFromSource: false,
+      regressionTargets: [],
+      rewindTargets: []
+    },
+    refinement: null,
+    events: [],
+    contextFilesDirectoryPath: "/tmp/context",
+    contextFiles: [],
+    attachmentsDirectoryPath: "/tmp/attachments",
+    attachments: []
+  }, {
+    selectedPhaseId: "capture",
+    selectedArtifactContent: "# Source\nBody",
+    selectedOperationContent: null,
+    contextSuggestions: [],
+    settingsConfigured: true,
+    settingsMessage: null
+  }, "idle");
+
+  assert.match(html, /id="user-story-source-section" data-user-story-source-section/);
+  assert.match(html, /<h3>User Story Source<\/h3>/);
+});
+
 test("buildWorkflowHtml shows model usage speed in the detail panel dashboards", () => {
   const html = buildWorkflowHtml({
     usId: "US-0211",

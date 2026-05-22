@@ -54,7 +54,7 @@ export function buildCapturePhaseSections(args: CapturePhaseViewArgs): PhaseSect
     : "";
   const captureSourceSection = captureSourcePath
     ? `
-      <section class="detail-card">
+      <section class="detail-card" id="user-story-source-section" data-user-story-source-section>
         <h3>User Story Source</h3>
         ${buildArtifactPreviewSection(
           captureSourcePath,
