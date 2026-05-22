@@ -67,7 +67,7 @@ const REGRESSION_TARGETS = {
     review: ["implementation", "technical-design", "spec"],
     "release-approval": ["implementation", "technical-design", "spec"]
 };
-const USER_STORY_KINDS = ["feature", "bug", "hotfix"];
+const USER_STORY_KINDS = ["feature", "bug", "hotfix", "chore", "refactor", "spike"];
 let backendHostRoot;
 function configureBackendHostRoot(hostRoot) {
     backendHostRoot = hostRoot;

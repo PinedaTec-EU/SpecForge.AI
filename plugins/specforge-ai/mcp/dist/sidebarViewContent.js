@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildSidebarHtml = buildSidebarHtml;
 const htmlEscape_1 = require("./htmlEscape");
 const webviewTypography_1 = require("./webviewTypography");
+const USER_STORY_KINDS = ["feature", "bug", "hotfix", "chore", "refactor", "spike"];
 function buildSidebarHtml(model) {
     const busyIndicatorMarkup = buildBusyIndicatorMarkup(model);
     const isBusy = model.busyMessage !== null;
@@ -129,9 +130,7 @@ function buildSidebarHtml(model) {
           <label>
             <span>Kind</span>
             <select name="kind" data-create-field="kind">
-              <option value="feature">feature</option>
-              <option value="bug">bug</option>
-              <option value="hotfix">hotfix</option>
+              ${USER_STORY_KINDS.map((kind) => `<option value="${kind}">${kind}</option>`).join("")}
             </select>
           </label>
           <label>
