@@ -98,3 +98,15 @@
   2. Open a user-story context menu and click `Edit US info`.
   3. Observe the browser error `prompt() is not supported.`
   4. Observe that no metadata form appears and no edits can be saved.
+
+### SFB-009
+
+- Bug code: `SFB-009`
+- Discovery date: `2026-05-22`
+- Status: `Fixed`
+- Short description: The CLI workflow portal stopped honoring `Include other owners` from the sidebar `view options` menu because the iframe menu click did not reliably reach the parent portal state handler, leaving the scope unchanged.
+- Reproduction steps:
+  1. Open the workflow portal on a story whose owner is outside the current user scope or where the default scope hides the available stories.
+  2. Open `Sidebar view options`.
+  3. Click `Include other owners`.
+  4. Observe that the sidebar remains in the same scope and the portal URL does not reflect `sidebarOtherOwners=true`.

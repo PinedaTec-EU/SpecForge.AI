@@ -183,6 +183,20 @@ test("CLI workflow renderer keeps other owners hidden by default and toggles the
   }
 });
 
+test("CLI workflow renderer bridges iframe view-option toggles in the parent portal", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+  const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
+
+  for (const content of [script, packagedScript]) {
+    assert.match(content, /const bridgeSidebarScopeControls = \(\) =>/);
+    assert.match(content, /const commandButtons = \[/);
+    assert.match(content, /button\.dataset\.portalBound === "true"/);
+    assert.match(content, /case "toggleSearchIncludesOtherOwners":/);
+    assert.match(content, /replaceSidebarUrlState\(\);[\s\S]*replaceSidebarFrame\(\);/);
+    assert.match(content, /sidebarFrame\?\.addEventListener\("load", \(\) => \{/);
+  }
+});
+
 test("CLI workflow renderer persists local sidebar visibility state for watched and hidden stories", async () => {
   const script = await fs.promises.readFile(scriptPath, "utf8");
   const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
