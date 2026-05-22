@@ -1,0 +1,601 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SpecsExplorerProvider = exports.UserStoryTreeItem = void 0;
+exports.configureBackendHostRoot = configureBackendHostRoot;
+exports.createUserStoryFromInput = createUserStoryFromInput;
+exports.importUserStoryFromMarkdown = importUserStoryFromMarkdown;
+exports.initializeRepoPrompts = initializeRepoPrompts;
+exports.openPromptTemplates = openPromptTemplates;
+exports.openMainArtifact = openMainArtifact;
+exports.continuePhase = continuePhase;
+exports.approveCurrentPhase = approveCurrentPhase;
+exports.requestRegression = requestRegression;
+exports.restartUserStoryFromSource = restartUserStoryFromSource;
+exports.getOrCreateBackendClient = getOrCreateBackendClient;
+exports.requestBackendClientReset = requestBackendClientReset;
+exports.applyPendingBackendClientReset = applyPendingBackendClientReset;
+exports.hasPendingBackendClientReset = hasPendingBackendClientReset;
+exports.resetBackendClient = resetBackendClient;
+exports.disposeBackendClients = disposeBackendClients;
+const fs = __importStar(require("node:fs"));
+const path = __importStar(require("node:path"));
+const vscode = __importStar(require("vscode"));
+const backendClient_1 = require("./backendClient");
+const extensionSettings_1 = require("./extensionSettings");
+const outputChannel_1 = require("./outputChannel");
+const phaseCommitNotification_1 = require("./phaseCommitNotification");
+const utils_1 = require("./utils");
+const userActor_1 = require("./userActor");
+const explorerModel_1 = require("./explorerModel");
+const repoPromptsStatus_1 = require("./repoPromptsStatus");
+const backendClients = new Map();
+const pendingBackendClientResets = new Set();
+const REGRESSION_TARGETS = {
+    review: ["implementation", "technical-design", "spec"],
+    "release-approval": ["implementation", "technical-design", "spec"]
+};
+const USER_STORY_KINDS = ["feature", "bug", "hotfix", "chore", "refactor", "spike"];
+let backendHostRoot;
+function configureBackendHostRoot(hostRoot) {
+    backendHostRoot = hostRoot;
+}
+class UserStoryTreeItem extends vscode.TreeItem {
+    summary;
+    contextValue = "userStory";
+    constructor(summary) {
+        super(summary.usId, vscode.TreeItemCollapsibleState.None);
+        this.summary = summary;
+        this.description = `${summary.currentPhase} · ${summary.status}`;
+        this.tooltip = summary.title;
+        this.command = {
+            command: "specForge.openWorkflowView",
+            title: "Open Workflow View",
+            arguments: [summary]
+        };
+    }
+}
+exports.UserStoryTreeItem = UserStoryTreeItem;
+class UserStoryCategoryTreeItem extends vscode.TreeItem {
+    category;
+    contextValue = "userStoryCategory";
+    constructor(category, count) {
+        super(category, vscode.TreeItemCollapsibleState.Expanded);
+        this.category = category;
+        this.description = `${count} US`;
+        this.tooltip = `User stories in category ${category}`;
+        this.iconPath = new vscode.ThemeIcon("folder-library");
+    }
+}
+class RepoPromptSetupTreeItem extends vscode.TreeItem {
+    contextValue = "repoPromptSetup";
+    constructor(message) {
+        super("Prompt Overrides", vscode.TreeItemCollapsibleState.None);
+        this.description = "optional customization";
+        this.tooltip = message
+            ? `SpecForge.AI runs with embedded prompts and only writes disk overrides when you customize them.\n${message}`
+            : "SpecForge.AI runs with embedded prompts and only writes disk overrides when you customize them.";
+        this.iconPath = new vscode.ThemeIcon("book");
+        this.command = {
+            command: "specForge.openPromptTemplates",
+            title: "Customize Prompt Templates"
+        };
+    }
+}
+class RepoPromptTemplatesTreeItem extends vscode.TreeItem {
+    contextValue = "repoPromptTemplates";
+    constructor() {
+        super("Customize Prompt Templates", vscode.TreeItemCollapsibleState.None);
+        this.description = ".specs/prompts/";
+        this.tooltip = "Choose one embedded prompt template to materialize as a disk override and open it.";
+        this.iconPath = new vscode.ThemeIcon("book");
+        this.command = {
+            command: "specForge.openPromptTemplates",
+            title: "Customize Prompt Templates"
+        };
+    }
+}
+class SpecsExplorerProvider {
+    onDidChangeTreeDataEmitter = new vscode.EventEmitter();
+    onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event;
+    refresh() {
+        this.onDidChangeTreeDataEmitter.fire(undefined);
+    }
+    getTreeItem(element) {
+        return element;
+    }
+    async getChildren(element) {
+        const workspaceRoot = getWorkspaceRoot();
+        if (!workspaceRoot) {
+            return [];
+        }
+        let summaries;
+        try {
+            summaries = await getBackendClient(workspaceRoot).listUserStories();
+            await logUserStoryDiscoveryAsync(workspaceRoot, summaries, "explorer.getChildren");
+        }
+        catch (error) {
+            await logUserStoryDiscoveryFailureAsync(workspaceRoot, error, "explorer.getChildren");
+            throw error;
+        }
+        if (element instanceof UserStoryCategoryTreeItem) {
+            return summaries
+                .filter((summary) => (0, explorerModel_1.normalizeCategory)(summary.category) === element.category)
+                .sort(explorerModel_1.compareUserStories)
+                .map((summary) => new UserStoryTreeItem(summary));
+        }
+        if (element instanceof UserStoryTreeItem) {
+            return [];
+        }
+        const items = [];
+        const promptsStatus = await (0, repoPromptsStatus_1.getRepoPromptsStatusAsync)(workspaceRoot);
+        if (promptsStatus.initialized) {
+            items.push(new RepoPromptTemplatesTreeItem());
+        }
+        else {
+            (0, outputChannel_1.appendSpecForgeLog)(`[explorer.getChildren] prompt override warning for '${workspaceRoot}': ${promptsStatus.message ?? "prompt overrides not materialized"}. Checked: ${promptsStatus.checkedPaths.join(", ")}`);
+            items.push(new RepoPromptSetupTreeItem(promptsStatus.message));
+        }
+        for (const group of (0, explorerModel_1.groupUserStoriesByCategory)(summaries)) {
+            items.push(new UserStoryCategoryTreeItem(group.category, group.summaries.length));
+        }
+        return items;
+    }
+}
+exports.SpecsExplorerProvider = SpecsExplorerProvider;
+async function createUserStoryFromInput() {
+    const workspaceRoot = getWorkspaceRoot();
+    if (!workspaceRoot) {
+        void vscode.window.showWarningMessage("Open a workspace folder before creating a user story.");
+        return;
+    }
+    const title = await vscode.window.showInputBox({
+        prompt: "User story title",
+        ignoreFocusOut: true,
+        validateInput: (value) => value.trim().length > 0 ? undefined : "Title is required."
+    });
+    if (!title) {
+        return;
+    }
+    const kind = await pickUserStoryKind();
+    if (!kind) {
+        return;
+    }
+    const category = await pickUserStoryCategory(workspaceRoot);
+    if (!category) {
+        return;
+    }
+    const tags = await promptUserStoryTags();
+    const sourceText = await vscode.window.showInputBox({
+        prompt: "User story objective or initial source text",
+        ignoreFocusOut: true,
+        validateInput: (value) => value.trim().length > 0 ? undefined : "Source text is required."
+    });
+    if (!sourceText) {
+        return;
+    }
+    const usId = await nextUserStoryId(workspaceRoot);
+    const result = await getBackendClient(workspaceRoot).createUserStory(usId, title, kind, category, sourceText, (0, userActor_1.getCurrentActor)(), tags);
+    await openTextDocument(result.mainArtifactPath);
+}
+async function importUserStoryFromMarkdown() {
+    const workspaceRoot = getWorkspaceRoot();
+    if (!workspaceRoot) {
+        void vscode.window.showWarningMessage("Open a workspace folder before importing a user story.");
+        return;
+    }
+    const selection = await vscode.window.showOpenDialog({
+        canSelectFiles: true,
+        canSelectFolders: false,
+        canSelectMany: false,
+        openLabel: "Import user story markdown",
+        filters: {
+            Markdown: ["md"]
+        }
+    });
+    const sourceUri = selection?.[0];
+    if (!sourceUri) {
+        return;
+    }
+    const sourceText = await fs.promises.readFile(sourceUri.fsPath, "utf8");
+    const firstHeading = sourceText.split(/\r?\n/).find((line) => line.startsWith("# ")) ?? "# Imported user story";
+    const title = firstHeading.replace(/^#\s+/, "").trim();
+    const kind = await pickUserStoryKind();
+    if (!kind) {
+        return;
+    }
+    const category = await pickUserStoryCategory(workspaceRoot);
+    if (!category) {
+        return;
+    }
+    const tags = await promptUserStoryTags();
+    const usId = await nextUserStoryId(workspaceRoot);
+    const result = await getBackendClient(workspaceRoot).importUserStory(usId, sourceUri.fsPath, title, kind, category, (0, userActor_1.getCurrentActor)(), tags);
+    await openTextDocument(result.mainArtifactPath);
+}
+async function promptUserStoryTags() {
+    const value = await vscode.window.showInputBox({
+        prompt: "Custom tags (optional, comma-separated)",
+        ignoreFocusOut: true
+    });
+    return [...new Set((value ?? "")
+            .split(",")
+            .map((tag) => tag.trim().replace(/^#/, "").toLowerCase())
+            .filter((tag) => tag.length > 0))];
+}
+async function initializeRepoPrompts(overwrite = false) {
+    const workspaceRoot = getWorkspaceRoot();
+    if (!workspaceRoot) {
+        void vscode.window.showWarningMessage("Open a workspace folder before exporting prompt templates.");
+        return;
+    }
+    try {
+        const result = await getBackendClient(workspaceRoot).initializeRepoPrompts(overwrite);
+        const createdCount = result.createdFiles.length;
+        const skippedCount = result.skippedFiles.length;
+        void vscode.window.showInformationMessage(overwrite
+            ? `Prompt templates exported with overwrite. Created ${createdCount} files and skipped ${skippedCount}.`
+            : `Prompt templates exported. Created ${createdCount} files and skipped ${skippedCount}.`);
+    }
+    catch (error) {
+        void vscode.window.showErrorMessage((0, utils_1.asErrorMessage)(error));
+    }
+}
+async function openPromptTemplates() {
+    const workspaceRoot = getWorkspaceRoot();
+    if (!workspaceRoot) {
+        void vscode.window.showWarningMessage("Open a workspace folder before opening prompt templates.");
+        return;
+    }
+    const prompts = [
+        [".specs/prompts/shared/system.md", "Shared system"],
+        [".specs/prompts/shared/style.md", "Shared style"],
+        [".specs/prompts/shared/output-rules.md", "Shared output rules"],
+        [".specs/prompts/phases/refinement.execute.system.md", "Refinement execute system"],
+        [".specs/prompts/phases/refinement.execute.md", "Refinement execute"],
+        [".specs/prompts/phases/spec.execute.system.md", "Spec execute system"],
+        [".specs/prompts/phases/spec.execute.md", "Spec execute"],
+        [".specs/prompts/phases/technical-design.execute.system.md", "Technical design execute system"],
+        [".specs/prompts/phases/technical-design.execute.md", "Technical design execute"],
+        [".specs/prompts/phases/implementation.execute.system.md", "Implementation execute system"],
+        [".specs/prompts/phases/implementation.execute.md", "Implementation execute"],
+        [".specs/prompts/phases/review.execute.system.md", "Review execute system"],
+        [".specs/prompts/phases/review.execute.md", "Review execute"],
+        [".specs/prompts/phases/release-approval.execute.system.md", "Release approval execute system"],
+        [".specs/prompts/phases/release-approval.execute.md", "Release approval execute"],
+        [".specs/prompts/phases/pr-preparation.execute.system.md", "PR preparation execute system"],
+        [".specs/prompts/phases/pr-preparation.execute.md", "PR preparation execute"],
+        [".specs/prompts/phases/refinement.auto-answer.system.md", "Refinement auto-answer system"]
+    ];
+    const selected = await vscode.window.showQuickPick(prompts.map(([relativePath, label]) => ({ label, description: relativePath, relativePath })), { placeHolder: "Select a prompt template to export and customize" });
+    if (!selected) {
+        return;
+    }
+    const promptPath = path.join(workspaceRoot, selected.relativePath);
+    await getBackendClient(workspaceRoot).exportPromptTemplate(promptPath, false);
+    await openTextDocument(promptPath);
+}
+async function openMainArtifact(summary) {
+    if (!summary) {
+        void vscode.window.showInformationMessage("Select a user story first.");
+        return;
+    }
+    await openTextDocument(summary.mainArtifactPath);
+}
+async function continuePhase(summary) {
+    if (!summary) {
+        void vscode.window.showInformationMessage("Select a user story first.");
+        return;
+    }
+    const workspaceRoot = getWorkspaceRoot();
+    if (!workspaceRoot) {
+        void vscode.window.showWarningMessage("Open a workspace folder before continuing a phase.");
+        return;
+    }
+    try {
+        const result = await getBackendClient(workspaceRoot).continuePhase(summary.usId, (0, userActor_1.getCurrentActor)());
+        if (result.generatedArtifactPath) {
+            await openTextDocument(result.generatedArtifactPath);
+        }
+        logExecutionWarnings(summary.usId, result.execution);
+        notifyPhaseCommit(summary.usId, result.commit);
+        void vscode.window.showInformationMessage(`${summary.usId} advanced to ${result.currentPhase} with status ${result.status}.`);
+    }
+    catch (error) {
+        void vscode.window.showErrorMessage((0, utils_1.asErrorMessage)(error));
+    }
+}
+function notifyPhaseCommit(usId, commit) {
+    const notification = (0, phaseCommitNotification_1.buildPhaseCommitNotification)(usId, commit);
+    if (!notification) {
+        return;
+    }
+    (0, outputChannel_1.appendSpecForgeLog)(notification.logMessage);
+    void vscode.window.showInformationMessage(notification.userMessage);
+}
+function logExecutionWarnings(usId, execution) {
+    if (!execution?.warnings || execution.warnings.length === 0) {
+        return;
+    }
+    for (const warning of execution.warnings) {
+        (0, outputChannel_1.appendSpecForgeLog)(`Workflow '${usId}' system prompt warning: ${warning}`);
+    }
+}
+async function approveCurrentPhase(summary) {
+    if (!summary) {
+        void vscode.window.showInformationMessage("Select a user story first.");
+        return;
+    }
+    const workspaceRoot = getWorkspaceRoot();
+    if (!workspaceRoot) {
+        void vscode.window.showWarningMessage("Open a workspace folder before approving a phase.");
+        return;
+    }
+    let baseBranch;
+    if (summary.currentPhase === "spec") {
+        baseBranch = await vscode.window.showInputBox({
+            prompt: "Base branch used to create the work branch",
+            value: "main",
+            ignoreFocusOut: true,
+            validateInput: (value) => value.trim().length > 0 ? undefined : "Base branch is required."
+        });
+        if (!baseBranch) {
+            return;
+        }
+    }
+    try {
+        const updatedSummary = await getBackendClient(workspaceRoot).approveCurrentPhase(summary.usId, baseBranch, undefined, (0, userActor_1.getCurrentActor)());
+        void vscode.window.showInformationMessage(`${updatedSummary.usId} approved. Current phase remains ${updatedSummary.currentPhase} until you continue the workflow.`);
+    }
+    catch (error) {
+        void vscode.window.showErrorMessage((0, utils_1.asErrorMessage)(error));
+    }
+}
+async function requestRegression(summary) {
+    if (!summary) {
+        void vscode.window.showInformationMessage("Select a user story first.");
+        return;
+    }
+    const workspaceRoot = getWorkspaceRoot();
+    if (!workspaceRoot) {
+        void vscode.window.showWarningMessage("Open a workspace folder before requesting a regression.");
+        return;
+    }
+    const allowedTargets = REGRESSION_TARGETS[summary.currentPhase] ?? [];
+    if (allowedTargets.length === 0) {
+        void vscode.window.showWarningMessage(`${summary.currentPhase} does not currently allow explicit regression from the extension.`);
+        return;
+    }
+    const targetPhase = await vscode.window.showQuickPick(allowedTargets.map((phase) => ({
+        label: phase,
+        description: `Regress ${summary.usId} to ${phase}`
+    })), {
+        ignoreFocusOut: true,
+        title: `Request regression for ${summary.usId}`,
+        placeHolder: "Choose the target phase"
+    });
+    if (!targetPhase) {
+        return;
+    }
+    const reason = await vscode.window.showInputBox({
+        prompt: "Reason for regression",
+        ignoreFocusOut: true,
+        validateInput: (value) => value.trim().length > 0 ? undefined : "Reason is required."
+    });
+    if (!reason) {
+        return;
+    }
+    try {
+        const destructiveRewindEnabled = (0, extensionSettings_1.getSpecForgeSettings)().destructiveRewindEnabled;
+        const result = await getBackendClient(workspaceRoot).requestRegression(summary.usId, targetPhase.label, reason, (0, userActor_1.getCurrentActor)(), destructiveRewindEnabled);
+        void vscode.window.showInformationMessage(`${summary.usId} regressed to ${result.currentPhase} with status ${result.status}${destructiveRewindEnabled ? " using destructive cleanup" : ""}.`);
+    }
+    catch (error) {
+        void vscode.window.showErrorMessage((0, utils_1.asErrorMessage)(error));
+    }
+}
+async function restartUserStoryFromSource(summary) {
+    if (!summary) {
+        void vscode.window.showInformationMessage("Select a user story first.");
+        return;
+    }
+    const workspaceRoot = getWorkspaceRoot();
+    if (!workspaceRoot) {
+        void vscode.window.showWarningMessage("Open a workspace folder before restarting a user story.");
+        return;
+    }
+    const reason = await vscode.window.showInputBox({
+        prompt: "Reason for restart from source",
+        ignoreFocusOut: true,
+        validateInput: (value) => value.trim().length > 0 ? undefined : "Reason is required."
+    });
+    if (!reason) {
+        return;
+    }
+    try {
+        const result = await getBackendClient(workspaceRoot).restartUserStoryFromSource(summary.usId, reason, (0, userActor_1.getCurrentActor)());
+        if (result.generatedArtifactPath) {
+            await openTextDocument(result.generatedArtifactPath);
+        }
+        void vscode.window.showInformationMessage(`${summary.usId} restarted from source at ${result.currentPhase} with status ${result.status}.`);
+    }
+    catch (error) {
+        void vscode.window.showErrorMessage((0, utils_1.asErrorMessage)(error));
+    }
+}
+function getWorkspaceRoot() {
+    return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+}
+async function pickUserStoryKind() {
+    const selection = await vscode.window.showQuickPick(USER_STORY_KINDS.map((kind) => ({
+        label: kind,
+        description: `Create or import a ${kind} user story`
+    })), {
+        ignoreFocusOut: true,
+        title: "User story kind",
+        placeHolder: "Choose the branch kind for this user story"
+    });
+    return selection?.label;
+}
+async function pickUserStoryCategory(workspaceRoot) {
+    const categories = await getUserStoryCategoriesAsync(workspaceRoot);
+    const selection = await vscode.window.showQuickPick(categories.map((category) => ({
+        label: category,
+        description: `Assign category ${category}`
+    })), {
+        ignoreFocusOut: true,
+        title: "User story category",
+        placeHolder: "Choose the category used to group this user story"
+    });
+    return selection?.label;
+}
+async function getUserStoryCategoriesAsync(workspaceRoot) {
+    const configPath = path.join(workspaceRoot, ".specs", "config.yaml");
+    if (!await pathExistsAsync(configPath)) {
+        return explorerModel_1.DEFAULT_USER_STORY_CATEGORIES;
+    }
+    const yaml = await fs.promises.readFile(configPath, "utf8");
+    const categories = (0, explorerModel_1.parseYamlSequence)(yaml, "categories");
+    return categories.length === 0 ? explorerModel_1.DEFAULT_USER_STORY_CATEGORIES : categories;
+}
+async function nextUserStoryId(workspaceRoot) {
+    const summaries = await getBackendClient(workspaceRoot).listUserStories();
+    return (0, explorerModel_1.nextUserStoryIdFromSummaries)(summaries);
+}
+async function openTextDocument(filePath) {
+    const document = await vscode.workspace.openTextDocument(filePath);
+    await vscode.window.showTextDocument(document, { preview: false });
+}
+async function pathExistsAsync(filePath) {
+    try {
+        await fs.promises.access(filePath, fs.constants.F_OK);
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+function getBackendClient(workspaceRoot) {
+    let client = backendClients.get(workspaceRoot);
+    if (client && pendingBackendClientResets.has(workspaceRoot) && !client.isBusy()) {
+        (0, outputChannel_1.appendSpecForgeLog)(`Applying deferred MCP backend reset for '${workspaceRoot}' before creating the next request.`);
+        resetBackendClient(workspaceRoot);
+        client = undefined;
+    }
+    if (!client) {
+        client = (0, backendClient_1.createMcpBackendClient)(workspaceRoot, backendHostRoot ?? workspaceRoot, (0, extensionSettings_1.getSpecForgeSettings)());
+        backendClients.set(workspaceRoot, client);
+    }
+    return client;
+}
+function getOrCreateBackendClient(workspaceRoot) {
+    return getBackendClient(workspaceRoot);
+}
+function requestBackendClientReset(workspaceRoot) {
+    const client = backendClients.get(workspaceRoot);
+    if (!client) {
+        pendingBackendClientResets.delete(workspaceRoot);
+        return "noop";
+    }
+    if (client.isBusy()) {
+        pendingBackendClientResets.add(workspaceRoot);
+        (0, outputChannel_1.appendSpecForgeLog)(`Deferring MCP backend reset for '${workspaceRoot}' because a workflow phase is still running.`);
+        return "deferred";
+    }
+    resetBackendClient(workspaceRoot);
+    return "applied";
+}
+function applyPendingBackendClientReset(workspaceRoot) {
+    if (!pendingBackendClientResets.has(workspaceRoot)) {
+        return false;
+    }
+    const client = backendClients.get(workspaceRoot);
+    if (client?.isBusy()) {
+        (0, outputChannel_1.appendSpecForgeLog)(`Pending MCP backend reset for '${workspaceRoot}' is still deferred because the backend remains busy.`);
+        return false;
+    }
+    (0, outputChannel_1.appendSpecForgeLog)(`Applying deferred MCP backend reset for '${workspaceRoot}' after the phase boundary.`);
+    resetBackendClient(workspaceRoot);
+    return true;
+}
+function hasPendingBackendClientReset(workspaceRoot) {
+    return pendingBackendClientResets.has(workspaceRoot);
+}
+function resetBackendClient(workspaceRoot) {
+    pendingBackendClientResets.delete(workspaceRoot);
+    const client = backendClients.get(workspaceRoot);
+    client?.dispose();
+    backendClients.delete(workspaceRoot);
+}
+function disposeBackendClients() {
+    pendingBackendClientResets.clear();
+    for (const client of backendClients.values()) {
+        client.dispose();
+    }
+    backendClients.clear();
+}
+async function logUserStoryDiscoveryAsync(workspaceRoot, summaries, source) {
+    const specsRoot = path.join(workspaceRoot, ".specs", "us");
+    const physicalEntries = await describeSpecsUserStoryTreeAsync(specsRoot);
+    (0, outputChannel_1.appendSpecForgeLog)(`[${source}] discovered ${summaries.length} user story item(s) for '${workspaceRoot}'. physical='${physicalEntries.join(", ") || "empty"}'.`);
+}
+async function logUserStoryDiscoveryFailureAsync(workspaceRoot, error, source) {
+    const specsRoot = path.join(workspaceRoot, ".specs", "us");
+    const physicalEntries = await describeSpecsUserStoryTreeAsync(specsRoot);
+    (0, outputChannel_1.appendSpecForgeLog)(`[${source}] failed to list user stories for '${workspaceRoot}': ${(0, utils_1.asErrorMessage)(error)}. physical='${physicalEntries.join(", ") || "empty"}'.`);
+}
+async function describeSpecsUserStoryTreeAsync(specsRoot) {
+    try {
+        const entries = await fs.promises.readdir(specsRoot, { withFileTypes: true });
+        const categories = entries
+            .filter((entry) => entry.isDirectory())
+            .map((entry) => entry.name)
+            .sort((left, right) => left.localeCompare(right));
+        const descriptions = [];
+        for (const category of categories) {
+            const categoryPath = path.join(specsRoot, category);
+            const userStoryDirectories = (await fs.promises.readdir(categoryPath, { withFileTypes: true }))
+                .filter((entry) => entry.isDirectory())
+                .map((entry) => entry.name)
+                .sort((left, right) => left.localeCompare(right));
+            descriptions.push(`${category}[${userStoryDirectories.join(", ") || "no-us"}]`);
+        }
+        return descriptions;
+    }
+    catch (error) {
+        return [`error:${(0, utils_1.asErrorMessage)(error)}`];
+    }
+}
+//# sourceMappingURL=specsExplorer.js.map
