@@ -21,6 +21,9 @@ async function main() {
   const showDroppedUserStories = payload.showDroppedUserStories === true;
   const showCompletedUserStories = payload.showCompletedUserStories === true;
   const showBlockedUserStories = payload.showBlockedUserStories === true;
+  const showHiddenUserStories = payload.showHiddenUserStories === true;
+  const watchingUserStoryIds = Array.isArray(payload.watchingUserStoryIds) ? payload.watchingUserStoryIds : [];
+  const hiddenUserStoryIds = Array.isArray(payload.hiddenUserStoryIds) ? payload.hiddenUserStoryIds : [];
   const droppedUserStoryCount = Number.isFinite(payload.droppedUserStoryCount) ? payload.droppedUserStoryCount : 0;
   const configurationPortalUrl = payload.configurationPortalUrl || "http://localhost:5128/configuration";
   const configurationProvidersUrl = payload.configurationProvidersUrl || configurationPortalUrl;
@@ -396,9 +399,20 @@ const sidebarApiShim = `
 
 function buildCliSidebarHtml(items, options) {
   const currentActor = "cli-user";
+  const normalizedCurrentActor = currentActor.toLowerCase();
+  const watchingIds = new Set(options.watchingUserStoryIds.map(normalizeUserStoryId));
+  const hiddenIds = new Set(options.hiddenUserStoryIds.map(normalizeUserStoryId));
   const scopedItems = options.includeOtherOwners
-    ? items
-    : items.filter(item => (item.owner || "").trim().toLowerCase() === currentActor);
+    ? items.filter(item => options.showHiddenUserStories || !hiddenIds.has(normalizeUserStoryId(item.usId)))
+    : items.filter(item => {
+      const normalizedUsId = normalizeUserStoryId(item.usId);
+      if (!options.showHiddenUserStories && hiddenIds.has(normalizedUsId)) {
+        return false;
+      }
+
+      const normalizedOwner = String(item.owner || "").trim().toLowerCase();
+      return watchingIds.has(normalizedUsId) || normalizedOwner === normalizedCurrentActor;
+    });
 
   return buildSidebarHtml({
     hasWorkspace: true,
@@ -415,11 +429,11 @@ function buildCliSidebarHtml(items, options) {
     showDroppedUserStories: options.showDroppedUserStories,
     showCompletedUserStories: options.showCompletedUserStories,
     showBlockedUserStories: options.showBlockedUserStories,
-    showHiddenUserStories: false,
+    showHiddenUserStories: options.showHiddenUserStories,
     searchIncludesOtherOwners: options.includeOtherOwners,
     currentActor,
-    watchingUserStoryIds: [],
-    hiddenUserStoryIds: [],
+    watchingUserStoryIds: options.watchingUserStoryIds,
+    hiddenUserStoryIds: options.hiddenUserStoryIds,
     maxVisibleUserStories: null,
     totalUserStoryCount: scopedItems.length,
     droppedUserStoryCount,
@@ -432,55 +446,81 @@ function safeScriptJson(value) {
   return JSON.stringify(value).replaceAll("</", "<\\/");
 }
 
-function buildSidebarHtmlModes(includeOtherOwners) {
+function normalizeUserStoryId(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function buildSidebarHtmlModes(includeOtherOwners, showHiddenUserStories, watchingUserStoryIds, hiddenUserStoryIds) {
   return {
     active: buildCliSidebarHtml(activeSidebarUserStories, {
       showDroppedUserStories: false,
       showCompletedUserStories: false,
       showBlockedUserStories: false,
-      includeOtherOwners
+      showHiddenUserStories,
+      includeOtherOwners,
+      watchingUserStoryIds,
+      hiddenUserStoryIds
     }),
     activeCompleted: buildCliSidebarHtml(activeSidebarUserStories, {
       showDroppedUserStories: false,
       showCompletedUserStories: true,
       showBlockedUserStories: false,
-      includeOtherOwners
+      showHiddenUserStories,
+      includeOtherOwners,
+      watchingUserStoryIds,
+      hiddenUserStoryIds
     }),
     activeBlocked: buildCliSidebarHtml(activeSidebarUserStories, {
       showDroppedUserStories: false,
       showCompletedUserStories: false,
       showBlockedUserStories: true,
-      includeOtherOwners
+      showHiddenUserStories,
+      includeOtherOwners,
+      watchingUserStoryIds,
+      hiddenUserStoryIds
     }),
     activeCompletedBlocked: buildCliSidebarHtml(activeSidebarUserStories, {
       showDroppedUserStories: false,
       showCompletedUserStories: true,
       showBlockedUserStories: true,
-      includeOtherOwners
+      showHiddenUserStories,
+      includeOtherOwners,
+      watchingUserStoryIds,
+      hiddenUserStoryIds
     }),
     dropped: buildCliSidebarHtml(droppedSidebarUserStories, {
       showDroppedUserStories: true,
       showCompletedUserStories: false,
       showBlockedUserStories: false,
-      includeOtherOwners
+      showHiddenUserStories,
+      includeOtherOwners,
+      watchingUserStoryIds,
+      hiddenUserStoryIds
     })
   };
 }
 
 const sidebarHtmlByScope = {
-  mine: buildSidebarHtmlModes(false),
-  all: buildSidebarHtmlModes(true)
+  mine: {
+    visible: buildSidebarHtmlModes(false, false, watchingUserStoryIds, hiddenUserStoryIds),
+    hidden: buildSidebarHtmlModes(false, true, watchingUserStoryIds, hiddenUserStoryIds)
+  },
+  all: {
+    visible: buildSidebarHtmlModes(true, false, watchingUserStoryIds, hiddenUserStoryIds),
+    hidden: buildSidebarHtmlModes(true, true, watchingUserStoryIds, hiddenUserStoryIds)
+  }
 };
 
+const initialSidebarModes = showHiddenUserStories ? sidebarHtmlByScope.mine.hidden : sidebarHtmlByScope.mine.visible;
 const sidebarHtml = showDroppedUserStories
-  ? sidebarHtmlByScope.mine.dropped
+  ? initialSidebarModes.dropped
   : showCompletedUserStories && showBlockedUserStories
-    ? sidebarHtmlByScope.mine.activeCompletedBlocked
+    ? initialSidebarModes.activeCompletedBlocked
     : showCompletedUserStories
-    ? sidebarHtmlByScope.mine.activeCompleted
+    ? initialSidebarModes.activeCompleted
     : showBlockedUserStories
-      ? sidebarHtmlByScope.mine.activeBlocked
-    : sidebarHtmlByScope.mine.active;
+      ? initialSidebarModes.activeBlocked
+    : initialSidebarModes.active;
 
 const sidebarShell = `
 <style>
@@ -538,6 +578,9 @@ const sidebarShell = `
     document.body.classList.add("specforge-cli-with-sidebar");
     const collapsedKey = "specforge.cli.sidebar.collapsed";
     const starredUserStoryStorageKey = "specforge.cli.sidebar.starredUserStoryId";
+    const watchingUserStoryIdsStorageKey = "specforge.cli.sidebar.watchingUserStoryIds";
+    const hiddenUserStoryIdsStorageKey = "specforge.cli.sidebar.hiddenUserStoryIds";
+    const showHiddenStorageKey = "specforge.cli.sidebar.showHiddenUserStories";
     const configOverlay = document.querySelector("[data-cli-config-overlay]");
     const configFrame = document.querySelector("[data-cli-config-frame]");
     const sidebarFrame = document.querySelector('iframe[title="User stories"]');
@@ -549,7 +592,10 @@ const sidebarShell = `
     let sidebarShowsDropped = ${showDroppedUserStories ? "true" : "false"};
     let sidebarShowsCompleted = ${showCompletedUserStories ? "true" : "false"};
     let sidebarShowsBlocked = ${showBlockedUserStories ? "true" : "false"};
+    let sidebarShowsHidden = ${showHiddenUserStories ? "true" : "false"};
     let sidebarShowsOtherOwners = false;
+    let sidebarWatchingUserStoryIds = ${safeScriptJson(watchingUserStoryIds)};
+    let sidebarHiddenUserStoryIds = ${safeScriptJson(hiddenUserStoryIds)};
     const openConfiguration = (url) => {
       if (configFrame) {
         configFrame.setAttribute("src", url);
@@ -569,21 +615,29 @@ const sidebarShell = `
         else localStorage.removeItem(starredUserStoryStorageKey);
       } catch {}
     };
-    const replaceSidebarFrame = () => {
-      if (!sidebarFrame) return;
-      const scope = sidebarShowsOtherOwners ? sidebarHtmlByScope.all : sidebarHtmlByScope.mine;
-      sidebarFrame.srcdoc = sidebarShowsDropped
-        ? scope.dropped
-        : sidebarShowsCompleted && sidebarShowsBlocked
-          ? scope.activeCompletedBlocked
-        : sidebarShowsCompleted
-          ? scope.activeCompleted
-        : sidebarShowsBlocked
-          ? scope.activeBlocked
-          : scope.active;
+    const normalizeUserStoryId = (value) => String(value || "").trim().toUpperCase();
+    const parseUserStoryIdList = (value) => Array.from(new Set(String(value || "")
+      .split(",")
+      .map(normalizeUserStoryId)
+      .filter(Boolean)));
+    const readUserStoryIdList = (storageKey) => {
+      try {
+        return parseUserStoryIdList(localStorage.getItem(storageKey) || "");
+      } catch {
+        return [];
+      }
     };
-    const replaceSidebarUrlState = () => {
-      const url = new URL(window.location.href);
+    const writeUserStoryIdList = (storageKey, usIds) => {
+      try {
+        if (Array.isArray(usIds) && usIds.length > 0) {
+          localStorage.setItem(storageKey, usIds.join(","));
+        } else {
+          localStorage.removeItem(storageKey);
+        }
+      } catch {}
+    };
+    const replaceSidebarUrlState = (targetUrl) => {
+      const url = targetUrl || new URL(window.location.href);
       if (sidebarShowsDropped) {
         url.searchParams.set("sidebarVisibility", "dropped");
         url.searchParams.delete("sidebarCompleted");
@@ -601,12 +655,94 @@ const sidebarShell = `
           url.searchParams.delete("sidebarBlocked");
         }
       }
+      if (sidebarShowsHidden) {
+        url.searchParams.set("sidebarHiddenVisible", "true");
+      } else {
+        url.searchParams.delete("sidebarHiddenVisible");
+      }
       if (sidebarShowsOtherOwners) {
         url.searchParams.set("sidebarOtherOwners", "true");
       } else {
         url.searchParams.delete("sidebarOtherOwners");
       }
+      if (sidebarWatchingUserStoryIds.length > 0) {
+        url.searchParams.set("sidebarWatching", sidebarWatchingUserStoryIds.join(","));
+      } else {
+        url.searchParams.delete("sidebarWatching");
+      }
+      if (sidebarHiddenUserStoryIds.length > 0) {
+        url.searchParams.set("sidebarHidden", sidebarHiddenUserStoryIds.join(","));
+      } else {
+        url.searchParams.delete("sidebarHidden");
+      }
       window.history.replaceState(window.history.state, "", url.toString());
+      return url;
+    };
+    const persistSidebarLists = () => {
+      writeUserStoryIdList(watchingUserStoryIdsStorageKey, sidebarWatchingUserStoryIds);
+      writeUserStoryIdList(hiddenUserStoryIdsStorageKey, sidebarHiddenUserStoryIds);
+      try {
+        localStorage.setItem(showHiddenStorageKey, sidebarShowsHidden ? "true" : "false");
+      } catch {}
+    };
+    const hydrateSidebarListsFromStorage = () => {
+      const url = new URL(window.location.href);
+      const hasWatchingInUrl = url.searchParams.has("sidebarWatching");
+      const hasHiddenInUrl = url.searchParams.has("sidebarHidden");
+      const hasShowHiddenInUrl = url.searchParams.has("sidebarHiddenVisible");
+      let shouldReload = false;
+
+      sidebarWatchingUserStoryIds = parseUserStoryIdList(url.searchParams.get("sidebarWatching") || "");
+      sidebarHiddenUserStoryIds = parseUserStoryIdList(url.searchParams.get("sidebarHidden") || "");
+      sidebarShowsHidden = url.searchParams.get("sidebarHiddenVisible") === "true";
+
+      if (!hasWatchingInUrl) {
+        const storedWatching = readUserStoryIdList(watchingUserStoryIdsStorageKey);
+        if (storedWatching.length > 0) {
+          sidebarWatchingUserStoryIds = storedWatching;
+          shouldReload = true;
+        }
+      }
+
+      if (!hasHiddenInUrl) {
+        const storedHidden = readUserStoryIdList(hiddenUserStoryIdsStorageKey);
+        if (storedHidden.length > 0) {
+          sidebarHiddenUserStoryIds = storedHidden;
+          shouldReload = true;
+        }
+      }
+
+      if (!hasShowHiddenInUrl) {
+        try {
+          if (localStorage.getItem(showHiddenStorageKey) === "true") {
+            sidebarShowsHidden = true;
+            shouldReload = true;
+          }
+        } catch {}
+      }
+
+      persistSidebarLists();
+      if (!shouldReload) {
+        return false;
+      }
+
+      const nextUrl = replaceSidebarUrlState(url);
+      window.location.replace(nextUrl.toString());
+      return true;
+    };
+    const replaceSidebarFrame = () => {
+      if (!sidebarFrame) return;
+      const scope = sidebarShowsOtherOwners ? sidebarHtmlByScope.all : sidebarHtmlByScope.mine;
+      const visibilityScope = sidebarShowsHidden ? scope.hidden : scope.visible;
+      sidebarFrame.srcdoc = sidebarShowsDropped
+        ? visibilityScope.dropped
+        : sidebarShowsCompleted && sidebarShowsBlocked
+          ? visibilityScope.activeCompletedBlocked
+        : sidebarShowsCompleted
+          ? visibilityScope.activeCompleted
+        : sidebarShowsBlocked
+          ? visibilityScope.activeBlocked
+          : visibilityScope.active;
     };
     const applySidebarStarredUserStory = () => {
       const starredUserStoryId = getStarredUserStoryId();
@@ -635,6 +771,9 @@ const sidebarShell = `
     };
     applyCollapsed(localStorage.getItem(collapsedKey) === "true");
     sidebarShowsOtherOwners = new URL(window.location.href).searchParams.get("sidebarOtherOwners") === "true";
+    if (hydrateSidebarListsFromStorage()) {
+      return;
+    }
     replaceSidebarFrame();
     sidebarPin?.addEventListener("click", () => applyCollapsed(!document.body.classList.contains("specforge-cli-sidebar-collapsed")));
     document.querySelector("[data-cli-sidebar-settings]")?.addEventListener("click", () => {
@@ -649,6 +788,16 @@ const sidebarShell = `
     window.addEventListener("keydown", event => {
       if (event.key === "Escape" && !configOverlay?.hasAttribute("hidden")) closeConfiguration();
     });
+    const requestJson = (endpoint, body) => fetch(endpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body)
+    }).then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))));
+    const reloadWithSidebarState = () => {
+      persistSidebarLists();
+      const url = replaceSidebarUrlState(new URL(window.location.href));
+      window.location.href = url.toString();
+    };
     window.addEventListener("message", event => {
       if (event.data?.source !== "specforge-cli-sidebar") return;
       const message = event.data.message || {};
@@ -694,6 +843,13 @@ const sidebarShell = `
         replaceSidebarFrame();
         return;
       }
+      if (message.command === "toggleShowHiddenUserStories") {
+        sidebarShowsHidden = !sidebarShowsHidden;
+        persistSidebarLists();
+        replaceSidebarUrlState();
+        replaceSidebarFrame();
+        return;
+      }
       if (message.command === "toggleSearchIncludesOtherOwners") {
         sidebarShowsDropped = false;
         sidebarShowsOtherOwners = !sidebarShowsOtherOwners;
@@ -701,17 +857,80 @@ const sidebarShell = `
         replaceSidebarFrame();
         return;
       }
+      if (message.command === "toggleSidebarVisibilityUserStory" && message.usId) {
+        const normalizedUsId = normalizeUserStoryId(message.usId);
+        const normalizedOwner = String(message.owner || "").trim().toLowerCase();
+        const isOwnedByCurrentActor = normalizedOwner === "cli-user";
+        const isHidden = sidebarHiddenUserStoryIds.includes(normalizedUsId);
+        const isWatched = sidebarWatchingUserStoryIds.includes(normalizedUsId);
+        const isVisibleInSidebar = !isHidden && (sidebarShowsOtherOwners || isWatched || isOwnedByCurrentActor);
+        if (isVisibleInSidebar) {
+          sidebarHiddenUserStoryIds = sidebarHiddenUserStoryIds.includes(normalizedUsId)
+            ? sidebarHiddenUserStoryIds
+            : [...sidebarHiddenUserStoryIds, normalizedUsId];
+          sidebarWatchingUserStoryIds = sidebarWatchingUserStoryIds.filter(usId => usId !== normalizedUsId);
+        } else {
+          sidebarHiddenUserStoryIds = sidebarHiddenUserStoryIds.filter(usId => usId !== normalizedUsId);
+          if (!isOwnedByCurrentActor && !sidebarWatchingUserStoryIds.includes(normalizedUsId)) {
+            sidebarWatchingUserStoryIds = [...sidebarWatchingUserStoryIds, normalizedUsId];
+          }
+        }
+        reloadWithSidebarState();
+        return;
+      }
+      if (message.command === "resetUserStoryToCapture" && message.usId) {
+        if (!window.confirm("Reset " + message.usId + " to capture and delete all derived artifacts after the source?")) {
+          return;
+        }
+        requestJson("/api/reset-user-story-to-capture", { usId: message.usId, actor: "cli-user" })
+          .then(() => {
+            window.location.reload();
+          })
+          .catch(error => {
+            window.alert(error instanceof Error ? error.message : String(error));
+          });
+        return;
+      }
+      if (message.command === "analyzeRepairUserStory" && message.usId) {
+        requestJson("/api/analyze-user-story-lineage", { usId: message.usId, actor: "cli-user" })
+          .then((analysis) => {
+            if (analysis.status === "clean") {
+              window.alert(message.usId + " lineage is clean.");
+              return null;
+            }
+            if (analysis.status !== "inconsistent" || !Array.isArray(analysis.deprecatedCandidatePaths) || analysis.deprecatedCandidatePaths.length === 0 || !analysis.recommendedTargetPhase) {
+              const firstFinding = Array.isArray(analysis.findings) ? analysis.findings[0] : null;
+              throw new Error(firstFinding?.summary || (message.usId + " lineage needs manual review."));
+            }
+            const confirmation = window.confirm(
+              message.usId + " lineage is inconsistent. Repair will archive "
+              + analysis.deprecatedCandidatePaths.length
+              + " artifact(s) and return the workflow to "
+              + analysis.recommendedTargetPhase
+              + "."
+            );
+            if (!confirmation) {
+              return null;
+            }
+            return requestJson("/api/repair-user-story-lineage", { usId: message.usId, actor: "cli-user" });
+          })
+          .then((result) => {
+            if (!result) {
+              return;
+            }
+            window.location.reload();
+          })
+          .catch(error => {
+            window.alert(error instanceof Error ? error.message : String(error));
+          });
+        return;
+      }
       if ((message.command === "dropUserStory" || message.command === "recoverUserStory") && message.usId) {
         if (message.command === "dropUserStory" && !window.confirm("Drop " + message.usId + "? It will be marked as deleted and hidden from the SpecForge panel.")) {
           return;
         }
         const endpoint = message.command === "dropUserStory" ? "/api/drop-user-story" : "/api/recover-user-story";
-        fetch(endpoint, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ usId: message.usId })
-        })
-          .then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))))
+        requestJson(endpoint, { usId: message.usId })
           .then(() => {
             const url = new URL(window.location.href);
             if (message.command === "dropUserStory") {

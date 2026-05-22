@@ -195,6 +195,12 @@ class SidebarViewProvider {
                 }
                 await this.toggleWatchingUserStoryAsync(message.usId);
                 return;
+            case "toggleSidebarVisibilityUserStory":
+                if (!message.usId) {
+                    return;
+                }
+                await this.toggleSidebarVisibilityUserStoryAsync(message.usId, message.owner);
+                return;
             case "toggleHiddenUserStory":
                 if (!message.usId) {
                     return;
@@ -436,6 +442,39 @@ class SidebarViewProvider {
             watching.add(usId);
         }
         await (0, userWorkspacePreferences_1.setWatchingUserStoryIds)(workspaceRoot, [...watching]);
+        await this.safeRenderAsync();
+    }
+    async toggleSidebarVisibilityUserStoryAsync(usId, owner) {
+        const workspaceRoot = getWorkspaceRoot();
+        if (!workspaceRoot) {
+            return;
+        }
+        const preferences = await (0, userWorkspacePreferences_1.readUserWorkspacePreferences)(workspaceRoot);
+        const watching = new Set(preferences.watchingUserStoryIds);
+        const hidden = new Set(preferences.hiddenUserStoryIds);
+        const normalizedUsId = usId.trim().toUpperCase();
+        const normalizedOwner = (owner ?? "").trim().toLowerCase();
+        const normalizedActor = (0, userActor_1.getCurrentActor)().trim().toLowerCase();
+        const isOwnedByCurrentActor = normalizedOwner.length > 0 && normalizedOwner === normalizedActor;
+        const isHidden = hidden.has(normalizedUsId);
+        const isWatched = watching.has(normalizedUsId);
+        const isVisibleInSidebar = !isHidden
+            && (preferences.searchIncludesOtherOwners || isWatched || isOwnedByCurrentActor);
+        if (isVisibleInSidebar) {
+            hidden.add(normalizedUsId);
+            watching.delete(normalizedUsId);
+        }
+        else {
+            hidden.delete(normalizedUsId);
+            if (!isOwnedByCurrentActor) {
+                watching.add(normalizedUsId);
+            }
+        }
+        await (0, userWorkspacePreferences_1.writeUserWorkspacePreferences)(workspaceRoot, {
+            ...preferences,
+            hiddenUserStoryIds: [...hidden],
+            watchingUserStoryIds: [...watching]
+        });
         await this.safeRenderAsync();
     }
     async toggleHiddenUserStoryAsync(usId) {

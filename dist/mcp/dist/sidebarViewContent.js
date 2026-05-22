@@ -1187,7 +1187,7 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
     .story-row {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: 8px;
+      gap: 0;
       align-items: stretch;
     }
     .story-row--shell {
@@ -1305,7 +1305,7 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
     .story-card__content {
       display: grid;
       gap: 4px;
-      padding: 12px 14px;
+      padding: 12px 18px 12px 14px;
       min-width: 0;
     }
     .story-card__head {
@@ -1341,7 +1341,7 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
     }
     .story-actions {
       display: grid;
-      grid-template-rows: 1fr 1fr;
+      grid-template-rows: repeat(3, 1fr);
       gap: 0;
       align-self: stretch;
     }
@@ -1398,9 +1398,27 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
       color: #ffd75a;
       background: rgba(255, 213, 90, 0.1) !important;
     }
+    .story-watch {
+      color: rgba(143, 231, 255, 0.42);
+    }
     .story-watch--active {
       color: #8fe7ff;
       background: rgba(143, 231, 255, 0.1) !important;
+    }
+    .story-watch__icon {
+      width: 16px;
+      height: 16px;
+      display: inline-block;
+    }
+    .story-watch__icon svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
     .story-card__id {
       font-family: var(--specforge-mono-font-family);
@@ -1680,6 +1698,7 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
         vscode.postMessage({
           command: element.dataset.command,
           usId: element.dataset.usId,
+          owner: element.dataset.owner,
           kind: element.dataset.kind,
           sourcePath: element.dataset.sourcePath
         });
@@ -1999,6 +2018,7 @@ function buildStoryRowMarkup(summary, model) {
     const tags = summary.tags ?? [];
     const isWatched = model.watchingUserStoryIds.includes(summary.usId);
     const isHidden = model.hiddenUserStoryIds.includes(summary.usId);
+    const isVisibleInSidebar = isStoryVisibleInSidebar(summary, model, isWatched, isHidden);
     const dependencySearchText = dependencies
         .map((dependency) => `${dependency.usId} ${dependency.title ?? ""} ${dependency.status ?? ""} ${dependency.currentPhase ?? ""}`)
         .join(" ");
@@ -2048,12 +2068,12 @@ function buildStoryRowMarkup(summary, model) {
           <span aria-hidden="true">${model.starredUserStoryId === summary.usId ? "★" : "☆"}</span>
         </button>
         <button
-          class="icon-action story-watch${isWatched ? " story-watch--active" : ""}"
+          class="icon-action story-watch${isVisibleInSidebar ? " story-watch--active" : ""}"
           type="button"
-          ${model.showDroppedUserStories ? "disabled" : `data-command="toggleWatchingUserStory" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}"`}
-          title="${(0, htmlEscape_1.escapeHtmlAttr)(isWatched ? `Stop watching ${summary.usId}` : `Watch ${summary.usId}`)}"
-          aria-label="${(0, htmlEscape_1.escapeHtmlAttr)(isWatched ? `Stop watching ${summary.usId}` : `Watch ${summary.usId}`)}">
-          <span aria-hidden="true">${isWatched ? "👁" : "◌"}</span>
+          ${model.showDroppedUserStories ? "disabled" : `data-command="toggleSidebarVisibilityUserStory" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}" data-owner="${(0, htmlEscape_1.escapeHtmlAttr)(summary.owner)}"`}
+          title="${(0, htmlEscape_1.escapeHtmlAttr)(isVisibleInSidebar ? `Hide ${summary.usId} from my sidebar` : `Show ${summary.usId} in my sidebar`)}"
+          aria-label="${(0, htmlEscape_1.escapeHtmlAttr)(isVisibleInSidebar ? `Hide ${summary.usId} from my sidebar` : `Show ${summary.usId} in my sidebar`)}">
+          <span class="story-watch__icon" aria-hidden="true">${buildEyeIconMarkup()}</span>
         </button>
         <div class="action-menu story-menu" data-action-menu>
           <button
@@ -2084,10 +2104,6 @@ function buildStoryRowMarkup(summary, model) {
                   <span class="action-menu__item-icon" aria-hidden="true">↤</span>
                   <span>Reset workflow</span>
                 </button>
-                <button class="action-menu__item" type="button" data-command="toggleHiddenUserStory" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}" role="menuitem">
-                  <span class="action-menu__item-icon" aria-hidden="true">${isHidden ? "◉" : "◌"}</span>
-                  <span>${isHidden ? "Unhide from my list" : "Hide from my list"}</span>
-                </button>
                 <button class="action-menu__item action-menu__item--danger" type="button" data-command="dropUserStory" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}" role="menuitem">
                   <span class="action-menu__item-icon" aria-hidden="true">⊘</span>
                   <span>Drop US</span>
@@ -2097,6 +2113,17 @@ function buildStoryRowMarkup(summary, model) {
       </div>
     </div>
   `;
+}
+function isStoryVisibleInSidebar(summary, model, isWatched, isHidden) {
+    if (isHidden) {
+        return false;
+    }
+    const normalizedOwner = summary.owner.trim().toLowerCase();
+    const normalizedActor = model.currentActor.trim().toLowerCase();
+    return model.searchIncludesOtherOwners || isWatched || normalizedOwner === normalizedActor;
+}
+function buildEyeIconMarkup() {
+    return `<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M2.4 12c2.3-4.1 5.6-6.1 9.6-6.1s7.3 2 9.6 6.1c-2.3 4.1-5.6 6.1-9.6 6.1S4.7 16.1 2.4 12Z"/><circle cx="12" cy="12" r="3.1"/></svg>`;
 }
 function buildStoryTagMarkup(tags) {
     const visibleTags = tags.slice(0, 1);
