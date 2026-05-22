@@ -188,11 +188,15 @@ test("CLI workflow renderer bridges iframe view-option toggles in the parent por
   const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
 
   for (const content of [script, packagedScript]) {
+    assert.match(content, /data-cli-sidebar-view-options/);
+    assert.match(content, /data-cli-parent-command="toggleSearchIncludesOtherOwners"/);
+    assert.match(content, /const applySidebarScopeCommand = \(command\) =>/);
+    assert.match(content, /sidebarViewOptionsPanel\?\.addEventListener\("click", event =>/);
     assert.match(content, /const bridgeSidebarScopeControls = \(\) =>/);
     assert.match(content, /const commandButtons = \[/);
     assert.match(content, /button\.dataset\.portalBound === "true"/);
     assert.match(content, /case "toggleSearchIncludesOtherOwners":/);
-    assert.match(content, /replaceSidebarUrlState\(\);[\s\S]*replaceSidebarFrame\(\);/);
+    assert.match(content, /replaceSidebarUrlState\(\);[\s\S]*replaceSidebarFrame\(\);[\s\S]*updateSidebarViewOptionsUi\(\);/);
     assert.match(content, /sidebarFrame\?\.addEventListener\("load", \(\) => \{/);
   }
 });

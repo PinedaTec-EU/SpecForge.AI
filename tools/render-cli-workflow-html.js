@@ -538,6 +538,13 @@ const sidebarShell = `
   .specforge-cli-sidebar__button { width: 38px; height: 38px; border-radius: 12px; border: 1px solid rgba(114, 241, 184, 0.18); background: rgba(255, 255, 255, 0.04); color: #72f1b8; font: 700 1rem/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; cursor: pointer; display: inline-grid; place-items: center; }
   .specforge-cli-sidebar__button:hover { background: rgba(114, 241, 184, 0.12); border-color: rgba(114, 241, 184, 0.34); }
   .specforge-cli-sidebar__button--active { background: rgba(114, 241, 184, 0.14); border-color: rgba(114, 241, 184, 0.36); }
+  .specforge-cli-sidebar__menu { position: relative; }
+  .specforge-cli-sidebar__menu-panel { position: absolute; right: 0; top: calc(100% + 8px); z-index: 90; min-width: 220px; padding: 8px; border-radius: 14px; border: 1px solid rgba(114, 241, 184, 0.18); background: rgba(8, 14, 20, 0.96); box-shadow: 0 18px 56px rgba(0, 0, 0, 0.42); display: grid; gap: 4px; }
+  .specforge-cli-sidebar__menu-panel[hidden] { display: none; }
+  .specforge-cli-sidebar__menu-item { display: grid; grid-template-columns: 18px minmax(0, 1fr); align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border-radius: 10px; border: 0; background: transparent; color: rgba(255, 255, 255, 0.86); font: 700 0.83rem/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-align: left; cursor: pointer; }
+  .specforge-cli-sidebar__menu-item:hover { background: rgba(114, 241, 184, 0.10); }
+  .specforge-cli-sidebar__menu-item--active { color: #dfffee; background: rgba(114, 241, 184, 0.12); }
+  .specforge-cli-sidebar__menu-check { color: #72f1b8; font-weight: 900; }
   .specforge-cli-sidebar__brand { min-width: 0; display: flex; align-items: baseline; gap: 8px; white-space: nowrap; overflow: hidden; }
   .specforge-cli-sidebar__title { min-width: 0; color: rgba(255, 255, 255, 0.86); font: 800 0.9rem/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow: hidden; text-overflow: ellipsis; }
   .specforge-cli-sidebar__version { flex-shrink: 0; color: rgba(176, 180, 176, 0.76); font: 700 0.7rem/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
@@ -585,6 +592,16 @@ const sidebarShell = `
     <div class="specforge-cli-sidebar__brand">
       <span class="specforge-cli-sidebar__title">SpecForge.AI</span>
       ${displayRuntimeVersion ? `<span class="specforge-cli-sidebar__version">v.${escapeHtmlAttr(displayRuntimeVersion)}</span>` : ""}
+    </div>
+    <div class="specforge-cli-sidebar__menu" data-cli-sidebar-view-menu>
+      <button class="specforge-cli-sidebar__button" type="button" data-cli-sidebar-view-options title="Sidebar view options" aria-label="Sidebar view options" aria-haspopup="menu" aria-expanded="false">☷</button>
+      <div class="specforge-cli-sidebar__menu-panel" data-cli-sidebar-view-panel role="menu" hidden>
+        <button class="specforge-cli-sidebar__menu-item" type="button" data-cli-parent-command="toggleDroppedUserStories" role="menuitemcheckbox" aria-checked="false"><span class="specforge-cli-sidebar__menu-check" aria-hidden="true"></span><span>Show dropped</span></button>
+        <button class="specforge-cli-sidebar__menu-item" type="button" data-cli-parent-command="toggleCompletedUserStories" role="menuitemcheckbox" aria-checked="false"><span class="specforge-cli-sidebar__menu-check" aria-hidden="true"></span><span>Show completed</span></button>
+        <button class="specforge-cli-sidebar__menu-item" type="button" data-cli-parent-command="toggleBlockedUserStories" role="menuitemcheckbox" aria-checked="false"><span class="specforge-cli-sidebar__menu-check" aria-hidden="true"></span><span>Show blocked</span></button>
+        <button class="specforge-cli-sidebar__menu-item" type="button" data-cli-parent-command="toggleShowHiddenUserStories" role="menuitemcheckbox" aria-checked="false"><span class="specforge-cli-sidebar__menu-check" aria-hidden="true"></span><span>Show hidden</span></button>
+        <button class="specforge-cli-sidebar__menu-item" type="button" data-cli-parent-command="toggleSearchIncludesOtherOwners" role="menuitemcheckbox" aria-checked="false"><span class="specforge-cli-sidebar__menu-check" aria-hidden="true"></span><span>Include other owners</span></button>
+      </div>
     </div>
     <button class="specforge-cli-sidebar__button" type="button" data-cli-sidebar-settings title="Configuration" aria-label="Configuration">⚙</button>
     <button class="specforge-cli-sidebar__button specforge-cli-sidebar__button--active" type="button" data-cli-sidebar-pin title="Unpin sidebar" aria-label="Unpin sidebar" aria-pressed="true">📌</button>
@@ -654,6 +671,8 @@ const sidebarShell = `
     const editAssignToMe = document.querySelector("[data-cli-edit-assign-to-me]");
     const sidebarFrame = document.querySelector('iframe[title="User stories"]');
     const sidebarPin = document.querySelector("[data-cli-sidebar-pin]");
+    const sidebarViewOptionsToggle = document.querySelector("[data-cli-sidebar-view-options]");
+    const sidebarViewOptionsPanel = document.querySelector("[data-cli-sidebar-view-panel]");
     const sidebarHtmlByScope = {
       mine: ${safeScriptJson(sidebarHtmlByScope.mine)},
       all: ${safeScriptJson(sidebarHtmlByScope.all)}
@@ -725,6 +744,22 @@ const sidebarShell = `
       } catch {}
     };
     const normalizeUserStoryId = (value) => String(value || "").trim().toUpperCase();
+    const closeSidebarViewOptions = () => {
+      sidebarViewOptionsPanel?.setAttribute("hidden", "");
+      sidebarViewOptionsToggle?.setAttribute("aria-expanded", "false");
+    };
+    const toggleSidebarViewOptions = () => {
+      if (!(sidebarViewOptionsPanel instanceof HTMLElement)) {
+        return;
+      }
+      const willOpen = sidebarViewOptionsPanel.hasAttribute("hidden");
+      if (willOpen) {
+        sidebarViewOptionsPanel.removeAttribute("hidden");
+        sidebarViewOptionsToggle?.setAttribute("aria-expanded", "true");
+      } else {
+        closeSidebarViewOptions();
+      }
+    };
     const parseUserStoryIdList = (value) => Array.from(new Set(String(value || "")
       .split(",")
       .map(normalizeUserStoryId)
@@ -853,6 +888,62 @@ const sidebarShell = `
           ? visibilityScope.activeBlocked
           : visibilityScope.active;
     };
+    const updateSidebarViewOptionsUi = () => {
+      const activeMap = {
+        toggleDroppedUserStories: sidebarShowsDropped,
+        toggleCompletedUserStories: sidebarShowsCompleted,
+        toggleBlockedUserStories: sidebarShowsBlocked,
+        toggleShowHiddenUserStories: sidebarShowsHidden,
+        toggleSearchIncludesOtherOwners: sidebarShowsOtherOwners
+      };
+      let hasActiveFilter = false;
+      for (const button of document.querySelectorAll("[data-cli-parent-command]")) {
+        if (!(button instanceof HTMLButtonElement)) {
+          continue;
+        }
+        const command = String(button.dataset.cliParentCommand || "");
+        const active = activeMap[command] === true;
+        hasActiveFilter = hasActiveFilter || active;
+        button.classList.toggle("specforge-cli-sidebar__menu-item--active", active);
+        button.setAttribute("aria-checked", active ? "true" : "false");
+        const check = button.querySelector(".specforge-cli-sidebar__menu-check");
+        if (check) {
+          check.textContent = active ? "✓" : "";
+        }
+      }
+      sidebarViewOptionsToggle?.classList.toggle("specforge-cli-sidebar__button--active", hasActiveFilter);
+    };
+    const applySidebarScopeCommand = (command) => {
+      switch (command) {
+        case "toggleDroppedUserStories":
+          sidebarShowsDropped = !sidebarShowsDropped;
+          sidebarShowsCompleted = false;
+          sidebarShowsBlocked = false;
+          break;
+        case "toggleCompletedUserStories":
+          sidebarShowsDropped = false;
+          sidebarShowsCompleted = !sidebarShowsCompleted;
+          break;
+        case "toggleBlockedUserStories":
+          sidebarShowsDropped = false;
+          sidebarShowsBlocked = !sidebarShowsBlocked;
+          break;
+        case "toggleShowHiddenUserStories":
+          sidebarShowsHidden = !sidebarShowsHidden;
+          persistSidebarLists();
+          break;
+        case "toggleSearchIncludesOtherOwners":
+          sidebarShowsDropped = false;
+          sidebarShowsOtherOwners = !sidebarShowsOtherOwners;
+          break;
+        default:
+          return false;
+      }
+      replaceSidebarUrlState();
+      replaceSidebarFrame();
+      updateSidebarViewOptionsUi();
+      return true;
+    };
     const applySidebarStarredUserStory = () => {
       const starredUserStoryId = getStarredUserStoryId();
       const doc = sidebarFrame?.contentDocument;
@@ -887,33 +978,7 @@ const sidebarShell = `
           button.addEventListener("click", (event) => {
             event.preventDefault();
             event.stopPropagation();
-            switch (command) {
-              case "toggleDroppedUserStories":
-                sidebarShowsDropped = !sidebarShowsDropped;
-                sidebarShowsCompleted = false;
-                sidebarShowsBlocked = false;
-                break;
-              case "toggleCompletedUserStories":
-                sidebarShowsDropped = false;
-                sidebarShowsCompleted = !sidebarShowsCompleted;
-                break;
-              case "toggleBlockedUserStories":
-                sidebarShowsDropped = false;
-                sidebarShowsBlocked = !sidebarShowsBlocked;
-                break;
-              case "toggleShowHiddenUserStories":
-                sidebarShowsHidden = !sidebarShowsHidden;
-                persistSidebarLists();
-                break;
-              case "toggleSearchIncludesOtherOwners":
-                sidebarShowsDropped = false;
-                sidebarShowsOtherOwners = !sidebarShowsOtherOwners;
-                break;
-              default:
-                return;
-            }
-            replaceSidebarUrlState();
-            replaceSidebarFrame();
+            applySidebarScopeCommand(command);
           });
         }
       }
@@ -934,7 +999,31 @@ const sidebarShell = `
       return;
     }
     replaceSidebarFrame();
+    updateSidebarViewOptionsUi();
     sidebarPin?.addEventListener("click", () => applyCollapsed(!document.body.classList.contains("specforge-cli-sidebar-collapsed")));
+    sidebarViewOptionsToggle?.addEventListener("click", toggleSidebarViewOptions);
+    sidebarViewOptionsPanel?.addEventListener("click", event => {
+      const button = event.target instanceof Element
+        ? event.target.closest("[data-cli-parent-command]")
+        : null;
+      if (!(button instanceof HTMLButtonElement)) {
+        return;
+      }
+      event.preventDefault();
+      const command = String(button.dataset.cliParentCommand || "");
+      if (applySidebarScopeCommand(command)) {
+        closeSidebarViewOptions();
+      }
+    });
+    document.addEventListener("pointerdown", event => {
+      if (!(event.target instanceof Node)) {
+        return;
+      }
+      if (sidebarViewOptionsPanel?.contains(event.target) || sidebarViewOptionsToggle?.contains(event.target)) {
+        return;
+      }
+      closeSidebarViewOptions();
+    });
     document.querySelector("[data-cli-sidebar-settings]")?.addEventListener("click", () => {
       openConfiguration(${JSON.stringify(configurationPortalUrl)});
     });
@@ -1064,39 +1153,23 @@ const sidebarShell = `
         return;
       }
       if (message.command === "toggleDroppedUserStories") {
-        sidebarShowsDropped = !sidebarShowsDropped;
-        sidebarShowsCompleted = false;
-        sidebarShowsBlocked = false;
-        replaceSidebarUrlState();
-        replaceSidebarFrame();
+        applySidebarScopeCommand("toggleDroppedUserStories");
         return;
       }
       if (message.command === "toggleCompletedUserStories") {
-        sidebarShowsDropped = false;
-        sidebarShowsCompleted = !sidebarShowsCompleted;
-        replaceSidebarUrlState();
-        replaceSidebarFrame();
+        applySidebarScopeCommand("toggleCompletedUserStories");
         return;
       }
       if (message.command === "toggleBlockedUserStories") {
-        sidebarShowsDropped = false;
-        sidebarShowsBlocked = !sidebarShowsBlocked;
-        replaceSidebarUrlState();
-        replaceSidebarFrame();
+        applySidebarScopeCommand("toggleBlockedUserStories");
         return;
       }
       if (message.command === "toggleShowHiddenUserStories") {
-        sidebarShowsHidden = !sidebarShowsHidden;
-        persistSidebarLists();
-        replaceSidebarUrlState();
-        replaceSidebarFrame();
+        applySidebarScopeCommand("toggleShowHiddenUserStories");
         return;
       }
       if (message.command === "toggleSearchIncludesOtherOwners") {
-        sidebarShowsDropped = false;
-        sidebarShowsOtherOwners = !sidebarShowsOtherOwners;
-        replaceSidebarUrlState();
-        replaceSidebarFrame();
+        applySidebarScopeCommand("toggleSearchIncludesOtherOwners");
         return;
       }
       if (message.command === "toggleSidebarVisibilityUserStory" && message.usId) {

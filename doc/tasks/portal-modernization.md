@@ -50,10 +50,11 @@ This is why small portal edits have repeatedly broken unrelated flows.
   Notes: must explicitly state what belongs to the parent shell, what belongs to sidebar markup, and what must never be inferred inside the iframe.
   Evidence: [portal-state-contract.md](../portal-state-contract.md)
 
-- [ ] `PORTAL-002` Status: `todo`
+- [x] `PORTAL-002` Status: `done`
   Move global scope and visibility controls to the parent shell.
   Output: `include other owners`, `show completed`, `show blocked`, `show hidden`, and similar scope controls are rendered and managed by the parent portal, not by embedded sidebar-only wiring.
   Notes: this is the first structural cut because it removes the most failure-prone bridge.
+  Evidence: parent-shell view controls are rendered and handled in `tools/render-cli-workflow-html.js`; iframe commands now delegate into parent-owned scope state instead of owning the toggle logic.
 
 - [ ] `PORTAL-003` Status: `todo`
   Consolidate portal selection resolution into one reusable server and client contract.
