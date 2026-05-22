@@ -43,6 +43,9 @@ const os = __importStar(require("node:os"));
 const path = __importStar(require("node:path"));
 const defaultPreferences = {
     starredUserStoryId: null,
+    hiddenUserStoryIds: [],
+    watchingUserStoryIds: [],
+    maxVisibleUserStories: null,
     pausedWorkflowPhaseIdsByUsId: {}
 };
 async function readUserWorkspacePreferences(workspaceRoot) {
@@ -54,6 +57,9 @@ async function readUserWorkspacePreferences(workspaceRoot) {
             starredUserStoryId: typeof parsed?.starredUserStoryId === "string" && parsed.starredUserStoryId.trim().length > 0
                 ? parsed.starredUserStoryId.trim()
                 : null,
+            hiddenUserStoryIds: normalizeUserStoryIdList(parsed?.hiddenUserStoryIds),
+            watchingUserStoryIds: normalizeUserStoryIdList(parsed?.watchingUserStoryIds),
+            maxVisibleUserStories: normalizeMaxVisibleUserStories(parsed?.maxVisibleUserStories),
             pausedWorkflowPhaseIdsByUsId: normalizePausedWorkflowPhaseIdsByUsId(parsed?.pausedWorkflowPhaseIdsByUsId)
         };
     }
@@ -116,6 +122,22 @@ function normalizePausedWorkflowPhaseIdsByUsId(value) {
         result[normalizedUsId] = normalizedPhaseIds;
     }
     return result;
+}
+function normalizeUserStoryIdList(value) {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+    return [...new Set(value
+            .filter((item) => typeof item === "string")
+            .map((item) => item.trim().toUpperCase())
+            .filter((item) => item.length > 0))];
+}
+function normalizeMaxVisibleUserStories(value) {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+        return null;
+    }
+    const normalized = Math.trunc(value);
+    return normalized > 0 ? normalized : null;
 }
 function getUserWorkspacePreferencesPath(workspaceRoot) {
     return path.join(workspaceRoot, ".specs", "users", normalizeUserSegment(os.userInfo().username), "vscode-preferences.json");
