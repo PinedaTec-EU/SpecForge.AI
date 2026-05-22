@@ -122,3 +122,15 @@
   2. Request `http://localhost:5128/?usId=US-0001`.
   3. Observe that the portal returns `500`.
   4. Inspect the renderer script with `node -c tools/render-cli-workflow-html.js` and observe the syntax error near `querySelectorAll`.
+
+### SFB-011
+
+- Bug code: `SFB-011`
+- Discovery date: `2026-05-22`
+- Status: `Fixed`
+- Short description: The portal empty-state shell referenced `currentActor` before defining it, so the parent-shell script failed during startup and `Sidebar view options` appeared visible but did not open from the in-app browser.
+- Reproduction steps:
+  1. Open the workflow portal in a scope that resolves to no selected visible story.
+  2. Observe the `No user story selected` empty state.
+  3. Click `Sidebar view options`.
+  4. Observe that nothing opens because the shell script has already failed with `ReferenceError: currentActor is not defined`.

@@ -25,9 +25,9 @@ test("CLI workflow shim rejects malformed refinement answer commands locally", a
 test("CLI workflow renderer shows runtime version only in the sidebar header", async () => {
   const script = await fs.promises.readFile(scriptPath, "utf8");
 
-  assert.match(script, /displayRuntimeVersion = formatRuntimeVersion\(payload\.runtimeVersion \?\? workflow\.lastRuntimeVersion \?\? workflow\.createdWithRuntimeVersion \?\? null\)/);
+  assert.match(script, /displayRuntimeVersion = formatRuntimeVersion\(payload\.runtimeVersion \?\? workflow\?\.lastRuntimeVersion \?\? workflow\?\.createdWithRuntimeVersion \?\? null\)/);
   assert.match(script, /runtimeVersion: null/);
-  assert.doesNotMatch(script, /runtimeVersion: payload\.runtimeVersion \?\? workflow\.lastRuntimeVersion \?\? workflow\.createdWithRuntimeVersion \?\? null/);
+  assert.doesNotMatch(script, /runtimeVersion: payload\.runtimeVersion \?\? workflow\?\.lastRuntimeVersion \?\? workflow\?\.createdWithRuntimeVersion \?\? null/);
 });
 
 test("CLI workflow renderer embeds the reusable user-story sidebar with collapsed actions", async () => {
@@ -68,9 +68,21 @@ test("CLI workflow renderer falls back to the embedded workflow configuration ro
 test("CLI workflow renderer routes sidebar story selection through the current portal", async () => {
   const script = await fs.promises.readFile(scriptPath, "utf8");
 
-  assert.match(script, /message\.command === "openWorkflow" && message\.usId/);
+  assert.match(script, /const sidebarMessageHandlers = \{/);
+  assert.match(script, /openWorkflow\(message\) \{/);
+  assert.match(script, /navigateToUserStory\(message\.usId, null, null\)/);
   assert.match(script, /url\.searchParams\.set\("usId", message\.usId\)/);
-  assert.match(script, /activeWorkflowUsId: workflow\.usId/);
+  assert.match(script, /activeWorkflowUsId: workflow\?\.usId \|\| null/);
+});
+
+test("CLI workflow renderer supports a no-selection portal state", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+
+  assert.match(script, /const workflow = payload\.workflow \|\| null/);
+  assert.match(script, /function buildEmptyWorkflowPageHtml\(reason\)/);
+  assert.match(script, /<h1>No user story selected<\/h1>/);
+  assert.match(script, /workflow \? buildWorkflowHtml\(workflow, state, "idle", "", ""\) : buildEmptyWorkflowPageHtml\(payload\.noSelectionReason\)/);
+  assert.match(script, /const renderedWorkflowUsId = \$\{JSON\.stringify\(workflow\?\.usId \?\? null\)\}/);
 });
 
 test("CLI workflow renderer routes sidebar edit action through metadata update prompts", async () => {
@@ -81,7 +93,7 @@ test("CLI workflow renderer routes sidebar edit action through metadata update p
     "utf8");
 
   for (const content of [script, packagedScript]) {
-    assert.match(content, /message\.command === "showEditUserStoryForm" && message\.usId/);
+    assert.match(content, /showEditUserStoryForm\(message\) \{/);
     assert.match(content, /data-cli-edit-overlay/);
     assert.match(content, /const openEditUserStoryForm = \(message\) =>/);
     assert.match(content, /editForm\?\.addEventListener\("submit", event =>/);
@@ -93,6 +105,7 @@ test("CLI workflow renderer routes sidebar edit action through metadata update p
     assert.match(content, /editAssignToMe\?\.addEventListener\("click"/);
     assert.match(content, /editAssignToMe\.hidden = normalizedOwner === normalizedCurrentActor/);
     assert.match(content, /const specForgeCliCurrentActor = /);
+    assert.match(content, /const currentActor = window\.specForgeCliCurrentActor \|\| "cli-user"/);
   }
 
   assert.match(packagedSidebar, /data-command="showEditUserStoryForm"[\s\S]*data-us-id="\$\{[\s\S]*summary\.usId[\s\S]*\}"[\s\S]*data-title="\$\{[\s\S]*editableUserStoryTitle\(summary\.usId, summary\.title\)[\s\S]*\}"[\s\S]*data-owner="\$\{[\s\S]*summary\.owner[\s\S]*\}"[\s\S]*data-category="\$\{[\s\S]*summary\.category[\s\S]*\}"[\s\S]*data-tags="\$\{[\s\S]*\(summary\.tags \?\? \[\]\)\.join\(", "\)[\s\S]*\}"/);
@@ -105,7 +118,7 @@ test("CLI workflow renderer handles sidebar starred story toggles locally", asyn
 
   for (const content of [script, packagedScript]) {
     assert.match(content, /starredUserStoryStorageKey = "specforge\.cli\.sidebar\.starredUserStoryId"/);
-    assert.match(content, /message\.command === "toggleStarredUserStory" && message\.usId/);
+    assert.match(content, /toggleStarredUserStory\(message\) \{/);
     assert.match(content, /setStarredUserStoryId\(current === message\.usId \? null : message\.usId\)/);
     assert.match(content, /button\.classList\.toggle\("story-star--active", active\)/);
     assert.match(content, /const label = \(active \? "Unstar " : "Star "\) \+ usId/);
@@ -116,8 +129,11 @@ test("CLI workflow renderer handles sidebar starred story toggles locally", asyn
 test("CLI workflow renderer confirms before dropping user stories", async () => {
   const script = await fs.promises.readFile(scriptPath, "utf8");
 
-  assert.match(script, /message\.command === "dropUserStory" && !window\.confirm\("Drop " \+ message\.usId \+ "\? It will be marked as deleted and hidden from the SpecForge panel\."\)/);
-  assert.match(script, /return;\s+\}\s+const endpoint = message\.command === "dropUserStory" \? "\/api\/drop-user-story" : "\/api\/recover-user-story"/);
+  assert.match(script, /dropUserStory\(message\) \{/);
+  assert.match(script, /if \(!window\.confirm\("Drop " \+ message\.usId \+ "\? It will be marked as deleted and hidden from the SpecForge panel\."\)\) \{/);
+  assert.match(script, /requestJson\("\/api\/drop-user-story", \{ usId: message\.usId \}\)/);
+  assert.match(script, /recoverUserStory\(message\) \{/);
+  assert.match(script, /requestJson\("\/api\/recover-user-story", \{ usId: message\.usId \}\)/);
 });
 
 test("CLI workflow renderer switches sidebar visibility without navigating the workflow", async () => {
@@ -144,7 +160,7 @@ test("CLI workflow renderer persists completed story visibility in the portal qu
   for (const content of [script, packagedScript]) {
     assert.match(content, /showCompletedUserStories = payload\.showCompletedUserStories === true/);
     assert.match(content, /showCompletedUserStories,/);
-    assert.match(content, /message\.command === "toggleCompletedUserStories"/);
+    assert.match(content, /toggleCompletedUserStories\(\) \{/);
     assert.match(content, /sidebarShowsCompleted = !sidebarShowsCompleted/);
     assert.match(content, /url\.searchParams\.set\("sidebarCompleted", "true"\)/);
     assert.match(content, /replaceSidebarFrame\(\)/);
@@ -158,7 +174,7 @@ test("CLI workflow renderer persists blocked story visibility in the portal quer
   for (const content of [script, packagedScript]) {
     assert.match(content, /showBlockedUserStories = payload\.showBlockedUserStories === true/);
     assert.match(content, /showBlockedUserStories,/);
-    assert.match(content, /message\.command === "toggleBlockedUserStories"/);
+    assert.match(content, /toggleBlockedUserStories\(\) \{/);
     assert.match(content, /sidebarShowsBlocked = !sidebarShowsBlocked/);
     assert.match(content, /url\.searchParams\.set\("sidebarBlocked", "true"\)/);
     assert.match(content, /activeCompletedBlocked/);
@@ -176,7 +192,7 @@ test("CLI workflow renderer keeps other owners hidden by default and toggles the
     assert.match(content, /all: \{\s*visible: buildSidebarHtmlModes\(true, false, watchingUserStoryIds, hiddenUserStoryIds\),\s*hidden: buildSidebarHtmlModes\(true, true, watchingUserStoryIds, hiddenUserStoryIds\)/);
     assert.match(content, /let sidebarShowsOtherOwners = false/);
     assert.match(content, /new URL\(window\.location\.href\)\.searchParams\.get\("sidebarOtherOwners"\) === "true"/);
-    assert.match(content, /message\.command === "toggleSearchIncludesOtherOwners"/);
+    assert.match(content, /toggleSearchIncludesOtherOwners\(\) \{/);
     assert.match(content, /sidebarShowsOtherOwners = !sidebarShowsOtherOwners/);
     assert.match(content, /url\.searchParams\.set\("sidebarOtherOwners", "true"\)/);
     assert.match(content, /url\.searchParams\.delete\("sidebarOtherOwners"\)/);
@@ -209,10 +225,10 @@ test("CLI workflow renderer persists local sidebar visibility state for watched 
     assert.match(content, /watchingUserStoryIdsStorageKey = "specforge\.cli\.sidebar\.watchingUserStoryIds"/);
     assert.match(content, /hiddenUserStoryIdsStorageKey = "specforge\.cli\.sidebar\.hiddenUserStoryIds"/);
     assert.match(content, /showHiddenStorageKey = "specforge\.cli\.sidebar\.showHiddenUserStories"/);
-    assert.match(content, /message\.command === "toggleSidebarVisibilityUserStory" && message\.usId/);
+    assert.match(content, /toggleSidebarVisibilityUserStory\(message\) \{/);
     assert.match(content, /url\.searchParams\.set\("sidebarWatching", sidebarWatchingUserStoryIds\.join\(","\)\)/);
     assert.match(content, /url\.searchParams\.set\("sidebarHidden", sidebarHiddenUserStoryIds\.join\(","\)\)/);
-    assert.match(content, /message\.command === "toggleShowHiddenUserStories"/);
+    assert.match(content, /toggleShowHiddenUserStories\(\) \{/);
     assert.match(content, /url\.searchParams\.set\("sidebarHiddenVisible", "true"\)/);
   }
 });
@@ -222,9 +238,9 @@ test("CLI workflow renderer wires lineage repair and reset actions through porta
   const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
 
   for (const content of [script, packagedScript]) {
-    assert.match(content, /message\.command === "resetUserStoryToCapture" && message\.usId/);
+    assert.match(content, /resetUserStoryToCapture\(message\) \{/);
     assert.match(content, /requestJson\("\/api\/reset-user-story-to-capture", \{ usId: message\.usId, actor: currentActor \}\)/);
-    assert.match(content, /message\.command === "analyzeRepairUserStory" && message\.usId/);
+    assert.match(content, /analyzeRepairUserStory\(message\) \{/);
     assert.match(content, /requestJson\("\/api\/analyze-user-story-lineage", \{ usId: message\.usId, actor: currentActor \}\)/);
     assert.match(content, /requestJson\("\/api\/repair-user-story-lineage", \{ usId: message\.usId, actor: currentActor \}\)/);
   }
@@ -245,7 +261,7 @@ test("CLI workflow renderer canonicalizes the URL to the rendered workflow story
   const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
 
   for (const content of [script, packagedScript]) {
-    assert.match(content, /const renderedWorkflowUsId = \$\{JSON\.stringify\(workflow\.usId\)\}/);
+    assert.match(content, /const renderedWorkflowUsId = \$\{JSON\.stringify\(workflow\?\.usId \?\? null\)\}/);
     assert.match(content, /url\.searchParams\.get\("usId"\) !== renderedWorkflowUsId/);
     assert.match(content, /url\.searchParams\.set\("usId", renderedWorkflowUsId\)/);
     assert.match(content, /window\.history\.replaceState\(window\.history\.state, "", url\.toString\(\)\)/);

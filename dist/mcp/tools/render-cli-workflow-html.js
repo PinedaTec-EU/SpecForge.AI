@@ -14,7 +14,7 @@ function formatRuntimeVersion(runtimeVersion) {
 async function main() {
   const payload = JSON.parse(fs.readFileSync(0, "utf8"));
   const currentActor = String(payload.currentActor || "cli-user").trim() || "cli-user";
-  const workflow = payload.workflow;
+  const workflow = payload.workflow || null;
   const userStories = Array.isArray(payload.userStories) ? payload.userStories : [];
   const sidebarUserStories = Array.isArray(payload.sidebarUserStories) ? payload.sidebarUserStories : userStories;
   const activeSidebarUserStories = Array.isArray(payload.activeSidebarUserStories) ? payload.activeSidebarUserStories : userStories;
@@ -29,12 +29,12 @@ async function main() {
   const configurationPortalUrl = payload.configurationPortalUrl || "http://localhost:5128/configuration";
   const configurationProvidersUrl = payload.configurationProvidersUrl || configurationPortalUrl;
   const configurationAdvancedUrl = payload.configurationAdvancedUrl || configurationPortalUrl;
-  const displayRuntimeVersion = formatRuntimeVersion(payload.runtimeVersion ?? workflow.lastRuntimeVersion ?? workflow.createdWithRuntimeVersion ?? null);
+  const displayRuntimeVersion = formatRuntimeVersion(payload.runtimeVersion ?? workflow?.lastRuntimeVersion ?? workflow?.createdWithRuntimeVersion ?? null);
   const workflowGraphLayout = typeof payload.workspaceRoot === "string" && payload.workspaceRoot.length > 0
     ? await readWorkflowGraphLayoutConfigAsync(payload.workspaceRoot)
     : null;
   const state = {
-    selectedPhaseId: payload.selectedPhaseId ?? workflow.currentPhase,
+    selectedPhaseId: payload.selectedPhaseId ?? workflow?.currentPhase ?? null,
     selectedArtifactContent: payload.selectedArtifactContent ?? null,
     selectedOperationContent: payload.selectedOperationContent ?? null,
     runtimeVersion: null,
@@ -350,7 +350,7 @@ const browserShim = `
 const refreshShim = `
 <script>
   (() => {
-    const renderedWorkflowUsId = ${JSON.stringify(workflow.usId)};
+    const renderedWorkflowUsId = ${JSON.stringify(workflow?.usId ?? null)};
     try {
       const url = new URL(window.location.href);
       if (renderedWorkflowUsId && url.searchParams.get("usId") !== renderedWorkflowUsId) {
@@ -425,7 +425,7 @@ function buildCliSidebarHtml(items, options) {
     settingsConfigured: true,
     settingsMessage: null,
     starredUserStoryId: null,
-    activeWorkflowUsId: workflow.usId,
+    activeWorkflowUsId: workflow?.usId || null,
     runtimeVersion: null,
     viewMode: "category",
     showDroppedUserStories: options.showDroppedUserStories,
@@ -677,6 +677,7 @@ const sidebarShell = `
       mine: ${safeScriptJson(sidebarHtmlByScope.mine)},
       all: ${safeScriptJson(sidebarHtmlByScope.all)}
     };
+    const currentActor = window.specForgeCliCurrentActor || "cli-user";
     let sidebarShowsDropped = ${showDroppedUserStories ? "true" : "false"};
     let sidebarShowsCompleted = ${showCompletedUserStories ? "true" : "false"};
     let sidebarShowsBlocked = ${showBlockedUserStories ? "true" : "false"};
@@ -1118,61 +1119,77 @@ const sidebarShell = `
       const url = replaceSidebarUrlState(new URL(window.location.href));
       window.location.href = url.toString();
     };
-    window.addEventListener("message", event => {
-      if (event.data?.source !== "specforge-cli-sidebar") return;
-      const message = event.data.message || {};
-      if (message.command === "openWorkflow" && message.usId) {
-        const url = new URL(window.location.href);
+    const navigateToUserStory = (usId, selectedPhaseId, artifactFocus) => {
+      const url = new URL(window.location.href);
+      url.searchParams.set("usId", usId);
+      if (selectedPhaseId) {
+        url.searchParams.set("selectedPhaseId", selectedPhaseId);
+      } else {
         url.searchParams.delete("selectedPhaseId");
-        url.searchParams.delete("artifactFocus");
-        url.searchParams.set("usId", message.usId);
-        window.location.href = url.toString();
-        return;
       }
-      if (message.command === "openMainArtifact" && message.usId) {
+      if (artifactFocus) {
+        url.searchParams.set("artifactFocus", artifactFocus);
+      } else {
+        url.searchParams.delete("artifactFocus");
+      }
+      window.location.href = url.toString();
+    };
+    const sidebarMessageHandlers = {
+      openWorkflow(message) {
+        if (!message.usId) {
+          return false;
+        }
+        navigateToUserStory(message.usId, null, null);
+        return true;
+      },
+      openMainArtifact(message) {
+        if (!message.usId) {
+          return false;
+        }
         const url = new URL(window.location.href);
         if (url.searchParams.get("usId") === message.usId && url.searchParams.get("selectedPhaseId") === "capture") {
           if (focusUserStorySourceSection()) {
-            return;
+            return true;
           }
         }
-        url.searchParams.set("usId", message.usId);
-        url.searchParams.set("selectedPhaseId", "capture");
-        url.searchParams.set("artifactFocus", "source");
-        window.location.href = url.toString();
-        return;
-      }
-      if (message.command === "showEditUserStoryForm" && message.usId) {
+        navigateToUserStory(message.usId, "capture", "source");
+        return true;
+      },
+      showEditUserStoryForm(message) {
+        if (!message.usId) {
+          return false;
+        }
         openEditUserStoryForm(message);
-        return;
-      }
-      if (message.command === "toggleStarredUserStory" && message.usId) {
+        return true;
+      },
+      toggleStarredUserStory(message) {
+        if (!message.usId) {
+          return false;
+        }
         const current = getStarredUserStoryId();
         setStarredUserStoryId(current === message.usId ? null : message.usId);
         applySidebarStarredUserStory();
-        return;
-      }
-      if (message.command === "toggleDroppedUserStories") {
-        applySidebarScopeCommand("toggleDroppedUserStories");
-        return;
-      }
-      if (message.command === "toggleCompletedUserStories") {
-        applySidebarScopeCommand("toggleCompletedUserStories");
-        return;
-      }
-      if (message.command === "toggleBlockedUserStories") {
-        applySidebarScopeCommand("toggleBlockedUserStories");
-        return;
-      }
-      if (message.command === "toggleShowHiddenUserStories") {
-        applySidebarScopeCommand("toggleShowHiddenUserStories");
-        return;
-      }
-      if (message.command === "toggleSearchIncludesOtherOwners") {
-        applySidebarScopeCommand("toggleSearchIncludesOtherOwners");
-        return;
-      }
-      if (message.command === "toggleSidebarVisibilityUserStory" && message.usId) {
+        return true;
+      },
+      toggleDroppedUserStories() {
+        return applySidebarScopeCommand("toggleDroppedUserStories");
+      },
+      toggleCompletedUserStories() {
+        return applySidebarScopeCommand("toggleCompletedUserStories");
+      },
+      toggleBlockedUserStories() {
+        return applySidebarScopeCommand("toggleBlockedUserStories");
+      },
+      toggleShowHiddenUserStories() {
+        return applySidebarScopeCommand("toggleShowHiddenUserStories");
+      },
+      toggleSearchIncludesOtherOwners() {
+        return applySidebarScopeCommand("toggleSearchIncludesOtherOwners");
+      },
+      toggleSidebarVisibilityUserStory(message) {
+        if (!message.usId) {
+          return false;
+        }
         const normalizedUsId = normalizeUserStoryId(message.usId);
         const normalizedOwner = String(message.owner || "").trim().toLowerCase();
         const isOwnedByCurrentActor = normalizedOwner === normalizedCurrentActor;
@@ -1191,11 +1208,14 @@ const sidebarShell = `
           }
         }
         reloadWithSidebarState();
-        return;
-      }
-      if (message.command === "resetUserStoryToCapture" && message.usId) {
+        return true;
+      },
+      resetUserStoryToCapture(message) {
+        if (!message.usId) {
+          return false;
+        }
         if (!window.confirm("Reset " + message.usId + " to capture and delete all derived artifacts after the source?")) {
-          return;
+          return true;
         }
         requestJson("/api/reset-user-story-to-capture", { usId: message.usId, actor: currentActor })
           .then(() => {
@@ -1204,9 +1224,12 @@ const sidebarShell = `
           .catch(error => {
             window.alert(error instanceof Error ? error.message : String(error));
           });
-        return;
-      }
-      if (message.command === "analyzeRepairUserStory" && message.usId) {
+        return true;
+      },
+      analyzeRepairUserStory(message) {
+        if (!message.usId) {
+          return false;
+        }
         requestJson("/api/analyze-user-story-lineage", { usId: message.usId, actor: currentActor })
           .then((analysis) => {
             if (analysis.status === "clean") {
@@ -1238,28 +1261,51 @@ const sidebarShell = `
           .catch(error => {
             window.alert(error instanceof Error ? error.message : String(error));
           });
-        return;
-      }
-      if ((message.command === "dropUserStory" || message.command === "recoverUserStory") && message.usId) {
-        if (message.command === "dropUserStory" && !window.confirm("Drop " + message.usId + "? It will be marked as deleted and hidden from the SpecForge panel.")) {
-          return;
+        return true;
+      },
+      dropUserStory(message) {
+        if (!message.usId) {
+          return false;
         }
-        const endpoint = message.command === "dropUserStory" ? "/api/drop-user-story" : "/api/recover-user-story";
-        requestJson(endpoint, { usId: message.usId })
+        if (!window.confirm("Drop " + message.usId + "? It will be marked as deleted and hidden from the SpecForge panel.")) {
+          return true;
+        }
+        requestJson("/api/drop-user-story", { usId: message.usId })
           .then(() => {
             const url = new URL(window.location.href);
-            if (message.command === "dropUserStory") {
-              url.searchParams.delete("sidebarVisibility");
-            }
+            url.searchParams.delete("sidebarVisibility");
             window.location.href = url.toString();
           })
           .catch(error => {
             window.alert(error instanceof Error ? error.message : String(error));
           });
-        return;
-      }
-      if (message.command === "openExecutionSettings") {
+        return true;
+      },
+      recoverUserStory(message) {
+        if (!message.usId) {
+          return false;
+        }
+        requestJson("/api/recover-user-story", { usId: message.usId })
+          .then(() => {
+            window.location.href = new URL(window.location.href).toString();
+          })
+          .catch(error => {
+            window.alert(error instanceof Error ? error.message : String(error));
+          });
+        return true;
+      },
+      openExecutionSettings() {
         openConfiguration(${JSON.stringify(configurationProvidersUrl)});
+        return true;
+      }
+    };
+    window.addEventListener("message", event => {
+      if (event.data?.source !== "specforge-cli-sidebar") return;
+      const message = event.data.message || {};
+      const command = String(message.command || "");
+      const handler = sidebarMessageHandlers[command];
+      if (typeof handler === "function") {
+        handler(message);
       }
     });
     applyArtifactFocusFromUrl();
@@ -1274,7 +1320,47 @@ function escapeHtmlAttr(value) {
     .replaceAll('"', "&quot;");
 }
 
-const html = buildWorkflowHtml(workflow, state, "idle", "", "")
+function buildEmptyWorkflowPageHtml(reason) {
+  const message = String(reason || "Select a user story from the sidebar to inspect its workflow.");
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpecForge Workflow Portal</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #071018; color: rgba(255,255,255,0.92); font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .workflow-page { min-height: 100vh; }
+    .specforge-empty-shell { min-height: 100vh; display: grid; place-items: center; padding: 40px; }
+    .specforge-empty-card { width: min(760px, 100%); border-radius: 24px; border: 1px solid rgba(114, 241, 184, 0.16); background: linear-gradient(180deg, rgba(15, 23, 32, 0.96), rgba(7, 16, 24, 0.98)); box-shadow: 0 28px 96px rgba(0, 0, 0, 0.38); padding: 28px; display: grid; gap: 18px; }
+    .specforge-empty-kicker { color: rgba(114, 241, 184, 0.84); font: 800 0.78rem/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: 0.14em; text-transform: uppercase; }
+    .specforge-empty-card h1 { margin: 0; font-size: clamp(1.8rem, 3vw, 2.6rem); line-height: 1.08; }
+    .specforge-empty-copy { margin: 0; color: rgba(216, 226, 236, 0.82); font-size: 1rem; line-height: 1.6; }
+    .specforge-empty-hints { display: grid; gap: 10px; padding: 16px 18px; border-radius: 18px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); }
+    .specforge-empty-hints strong { color: rgba(255,255,255,0.94); }
+  </style>
+</head>
+<body>
+  <main class="workflow-page">
+    <section class="specforge-empty-shell">
+      <article class="specforge-empty-card">
+        <div class="specforge-empty-kicker">Workflow Portal</div>
+        <h1>No user story selected</h1>
+        <p class="specforge-empty-copy">${escapeHtmlAttr(message)}</p>
+        <div class="specforge-empty-hints">
+          <div><strong>What to do next:</strong> use the sidebar to pick a visible story, or widen the scope from <em>Sidebar view options</em>.</div>
+          <div><strong>Supported fallback:</strong> direct links with a valid <code>usId</code> still open that exact story even if it is outside the default owner scope.</div>
+        </div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>`;
+}
+
+const html = (workflow ? buildWorkflowHtml(workflow, state, "idle", "", "") : buildEmptyWorkflowPageHtml(payload.noSelectionReason))
   .replace("<script", `${browserShim}\n<script`)
   .replace("<body>", `<body>${sidebarShell}`)
   .replace("</body>", `${refreshShim}\n</body>`);

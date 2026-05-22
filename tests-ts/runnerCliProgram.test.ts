@@ -41,8 +41,9 @@ test("CLI workflow portal uses a distinct default port and caches rendered workf
   assert.match(source, /LooksLikeHttpPrefix\(args\[2\]\)/);
   assert.match(source, /var renderCache = new WorkflowPortalRenderCache\(\)/);
   assert.match(source, /var renderCacheSignature = BuildWorkflowPortalRenderCacheSignature\(/);
-  assert.match(source, /renderCache\.TryGet\(renderCacheSignature, resolvedSelectedPhaseId, selectedPhase, out var cachedHtml\)/);
-  assert.match(source, /renderCache\.Store\(renderCacheSignature, resolvedSelectedPhaseId, selectedPhase, html\)/);
+  assert.match(source, /var cachePhaseId = resolvedSelectedPhaseId \?\? "__none__"/);
+  assert.match(source, /renderCache\.TryGet\(renderCacheSignature, cachePhaseId, selectedPhase, out var cachedHtml\)/);
+  assert.match(source, /renderCache\.Store\(renderCacheSignature, cachePhaseId, selectedPhase, html\)/);
   assert.match(renderCacheSource, /ConcurrentDictionary<string, CacheEntry> entries/);
   assert.match(renderCacheSource, /File\.GetLastWriteTimeUtc\(path\)\.Ticks/);
   assert.match(renderCacheSource, /private void Trim\(\)/);
@@ -63,11 +64,11 @@ test("VS Code command opens the CLI workflow portal on the workflow port", async
 test("CLI workflow portal refresh signature includes workflow runtime versions", async () => {
   const source = await fs.promises.readFile(programPath, "utf8");
 
-  assert.match(source, /workflow\.CreatedWithRuntimeVersion/);
-  assert.match(source, /workflow\.LastRuntimeVersion/);
-  assert.match(source, /runtimeVersion = GetRuntimeVersion\(\) \?\? workflow\.LastRuntimeVersion \?\? workflow\.CreatedWithRuntimeVersion/);
+  assert.match(source, /workflowCreatedWithRuntimeVersion = workflow\?\.CreatedWithRuntimeVersion/);
+  assert.match(source, /workflowLastRuntimeVersion = workflow\?\.LastRuntimeVersion/);
+  assert.match(source, /runtimeVersion = GetRuntimeVersion\(\) \?\? workflow\?\.LastRuntimeVersion \?\? workflow\?\.CreatedWithRuntimeVersion/);
   assert.match(source, /typeof\(SpecForgeApplicationService\)\.Assembly\.GetName\(\)\.Version\?\.ToString\(\)/);
-  assert.match(source, /BuildWorkflowSignature\(\s*UserStoryWorkflowDetails workflow,\s*IReadOnlyCollection<UserStorySummary> userStories,\s*IReadOnlyCollection<UserStorySummary> droppedUserStories,\s*string workflowGraphLayoutSignature\s*\)/);
+  assert.match(source, /BuildWorkflowSignature\(\s*UserStoryWorkflowDetails\? workflow,\s*IReadOnlyCollection<UserStorySummary> userStories,\s*IReadOnlyCollection<UserStorySummary> droppedUserStories,\s*string workflowGraphLayoutSignature\s*\)/);
   assert.match(source, /userStories = userStories[\s\S]*?story\.CurrentPhase[\s\S]*?story\.Status/);
   assert.match(source, /droppedUserStories = droppedUserStories[\s\S]*?story\.CurrentPhase[\s\S]*?story\.Status/);
 });
@@ -113,30 +114,32 @@ test("CLI workflow portal payload includes sidebar stories and configuration URL
   assert.match(source, /<div class="tab-panel" id="advanced" role="tabpanel" hidden>/);
   assert.match(source, /<div class="tab-panel" id="central" role="tabpanel" hidden>/);
   assert.match(source, /const configurationTabs = \["providers", "advanced", "central"\]/);
-  assert.match(source, /ResolveWorkflowPortalUserStoryIdAsync\(\s*applicationService,\s*workspaceRoot,\s*context\.Request,\s*usId,/);
+  assert.match(source, /ResolveWorkflowPortalUserStoryIdAsync\(\s*applicationService,\s*workspaceRoot,\s*context\.Request,\s*requestSidebarVisibility,/);
   assert.match(source, /ResolveVisibleWorkflowPortalUserStoryIdAsync\(/);
   assert.match(source, /IsWorkflowPortalStoryVisible\(/);
+  assert.match(source, /if \(string\.IsNullOrWhiteSpace\(requestUsId\)\)[\s\S]*?"No selected user story\."/);
 });
 
-test("CLI workflow portal infers a visible user story when the URL omits or targets an invalid usId", async () => {
+test("CLI workflow portal infers a visible user story when possible and allows a no-selection state otherwise", async () => {
   const source = await fs.promises.readFile(programPath, "utf8");
 
   assert.match(source, /if \(!string\.IsNullOrWhiteSpace\(requestedUsId\) && availableStoryById\.TryGetValue\(requestedUsId\.Trim\(\), out var requestedStory\)\)/);
   assert.match(source, /var firstVisible = availableStories[\s\S]*?IsWorkflowPortalStoryVisible/);
   assert.match(source, /if \(firstVisible is not null\)[\s\S]*?return firstVisible\.UsId;/);
-  assert.match(source, /if \(availableStoryById\.TryGetValue\(fallbackUsId, out var fallbackStory\)\)/);
-  assert.match(source, /return availableStories[\s\S]*?\.OrderBy\(story => story\.UsId, StringComparer\.Ordinal\)[\s\S]*?\.First\(\)\.UsId;/);
+  assert.match(source, /if \(availableStories\.Count == 0\)[\s\S]*?return null;/);
+  assert.match(source, /if \(preferExplicitSelection && !string\.IsNullOrWhiteSpace\(requestedUsId\)\)[\s\S]*?return null;/);
   assert.match(source, /if \(!showCompletedUserStories && string\.Equals\(story\.Status, "completed", StringComparison\.OrdinalIgnoreCase\)\)/);
   assert.match(source, /if \(!showBlockedUserStories && isBlocked\)/);
   assert.match(source, /if \(!showHiddenUserStories && hiddenUserStoryIds\.Contains\(story\.UsId\)\)/);
   assert.match(source, /return includeOtherOwners[\s\S]*?\|\| watchingUserStoryIds\.Contains\(story\.UsId\)/);
+  assert.match(source, /ResolveWorkflowPortalNoSelectionReason\(usId, sidebarUserStories\)/);
 });
 
 test("CLI workflow portal signature ignores local sidebar visibility", async () => {
   const source = await fs.promises.readFile(programPath, "utf8");
 
-  assert.match(source, /BuildWorkflowPortalSignatureAsync\(\s*SpecForgeApplicationService applicationService,\s*string workspaceRoot,\s*string usId,\s*string\? sidebarVisibility,\s*bool showCompletedUserStories,\s*bool showBlockedUserStories\s*\)/);
-  assert.match(source, /GetUserStoryWorkflowAsync\(workspaceRoot, usId\)/);
+  assert.match(source, /BuildWorkflowPortalSignatureAsync\(\s*SpecForgeApplicationService applicationService,\s*string workspaceRoot,\s*string\? usId,\s*string\? sidebarVisibility,\s*bool showCompletedUserStories,\s*bool showBlockedUserStories\s*\)/);
+  assert.match(source, /var workflow = string\.IsNullOrWhiteSpace\(usId\)[\s\S]*?await applicationService\.GetUserStoryWorkflowAsync\(workspaceRoot, usId\)/);
   assert.doesNotMatch(source, /resolvedUsId = ResolveSidebarVisibleUserStoryId\(usId, sidebarUserStories\)/);
   assert.match(source, /BuildWorkflowSignature\([\s\S]*?activeSidebarUserStories,[\s\S]*?droppedSidebarUserStories,[\s\S]*?workflowGraphLayoutSignature\)/);
 });

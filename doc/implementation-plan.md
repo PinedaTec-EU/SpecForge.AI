@@ -280,7 +280,7 @@ Pending subtasks before the MVP is considered complete:
 
 - [ ] enrich `branch.yaml` lifecycle with real Git/PR metadata
 - [ ] switch to the selected user story branch automatically, with `main` fallback before branch creation
-- [ ] modernize the browser workflow portal with cleaner state ownership, a no-selection contract, safer modal flows, and mandatory exhaustive integrated-browser validation
+- [ ] modernize the browser workflow portal with cleaner state ownership, a no-selection contract, safer modal flows, explicit sidebar-shell command dispatch, and mandatory exhaustive integrated-browser validation
 - [ ] add SpecForge Central repository management: catalog, readiness, create/register flow, and target repository selection
 - [ ] broaden PR publication beyond the current GitHub CLI path and add issue-system integration or an export-first bridge where direct integration is still too early
 

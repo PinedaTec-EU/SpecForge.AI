@@ -56,25 +56,29 @@ This is why small portal edits have repeatedly broken unrelated flows.
   Notes: this is the first structural cut because it removes the most failure-prone bridge.
   Evidence: parent-shell view controls are rendered and handled in `tools/render-cli-workflow-html.js`; iframe commands now delegate into parent-owned scope state instead of owning the toggle logic.
 
-- [ ] `PORTAL-003` Status: `todo`
+- [x] `PORTAL-003` Status: `done`
   Consolidate portal selection resolution into one reusable server and client contract.
   Output: the same resolution rules apply to `/`, partial URLs, invalid `usId`, changed filters, and hidden stories.
   Notes: selection must support either an explicit empty detail/workflow state or a deterministic visible fallback; no more accidental divergence between route handling and client reload behavior.
+  Evidence: server-side selection and no-selection resolution now live in `src/SpecForge.Runner.Cli/Program.cs`, with renderer support in `tools/render-cli-workflow-html.js` and coverage in `tests-ts/runnerCliProgram.test.ts`.
 
-- [ ] `PORTAL-004` Status: `todo`
+- [x] `PORTAL-004` Status: `done`
   Replace portal-local ad hoc event bridging with a smaller explicit interaction contract.
   Output: sidebar card actions, modal launches, and workflow navigation use a documented command set with fewer implicit `postMessage` dependencies.
   Notes: the goal is not zero messaging, but predictable messaging with fewer fragile hooks.
+  Evidence: parent-shell sidebar command dispatch is centralized in `tools/render-cli-workflow-html.js` and documented in [portal-interaction-contract.md](../portal-interaction-contract.md).
 
-- [ ] `PORTAL-005` Status: `todo`
+- [x] `PORTAL-005` Status: `done`
   Normalize browser-safe modal flows.
   Output: edit, assign, confirm, repair, reset, and future portal actions use one modal/dialog pattern compatible with the in-app browser and normal browsers.
   Notes: no new use of `alert`, `confirm`, or `prompt` for product-critical actions.
+  Evidence: `Edit US info` and `Assign to me` run through the parent-shell HTML dialog, replacing unsupported prompt-based flows in `tools/render-cli-workflow-html.js`.
 
-- [ ] `PORTAL-006` Status: `todo`
+- [x] `PORTAL-006` Status: `done`
   Create a proper no-selection and empty-state experience.
   Output: if the URL or current scope does not resolve a selected story, the portal still loads with a meaningful empty detail panel, selection guidance, and recoverable controls.
   Notes: fallback to first visible is acceptable only where explicitly defined by the selection contract.
+  Evidence: the portal now renders `No user story selected` from the main route instead of failing, with parent-shell recovery controls available in `tools/render-cli-workflow-html.js`.
 
 - [ ] `PORTAL-007` Status: `todo`
   Reduce duplicated UI logic between VS Code sidebar and browser portal.
@@ -86,10 +90,14 @@ This is why small portal edits have repeatedly broken unrelated flows.
   Output: tests assert behavior categories such as scope changes, selection fallback, modal submit/cancel, persistence, and route normalization.
   Notes: do not stop at snapshot-like checks that only prove generated HTML contains expected literals.
 
-- [ ] `PORTAL-009` Status: `todo`
+- [ ] `PORTAL-009` Status: `doing`
   Execute an exhaustive in-app browser validation pass for the migrated portal.
   Output: Codex manually validates the portal through the integrated browser and records explicit pass/fail evidence for all critical flows.
   Notes: this task is mandatory and cannot be closed by unit tests, renderer assertions, endpoint checks, or shell-only verification.
+  Current evidence:
+  1. `@Browser` validated the no-selection/empty-shell state and verified `Sidebar view options` remains available there.
+  2. `@Browser` validated that `Include other owners` from the parent shell resolves a visible story and updates the portal URL coherently.
+  3. `@Browser` exposed and helped confirm the empty-state regression later tracked as `SFB-011`.
   Required flows:
   1. Open the portal at `/`, with a full URL, with a partial URL, and with an invalid `usId`.
   2. Verify selected-story inference or empty-state behavior matches the contract.

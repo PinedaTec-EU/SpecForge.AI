@@ -317,7 +317,6 @@ static async Task HandleWorkflowPortalRequestAsync(
             applicationService,
             workspaceRoot,
             context.Request,
-            usId,
             requestSidebarVisibility,
             requestShowCompletedUserStories,
             requestShowBlockedUserStories,
@@ -346,6 +345,12 @@ static async Task HandleWorkflowPortalRequestAsync(
                         renderCache));
                 return;
             case ("GET", "/api/workflow"):
+                if (string.IsNullOrWhiteSpace(requestUsId))
+                {
+                    context.Response.StatusCode = 404;
+                    await WriteTextResponseAsync(context.Response, "No selected user story.", "text/plain");
+                    return;
+                }
                 await WriteJsonResponseAsync(context.Response, await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, requestUsId));
                 return;
             case ("GET", "/api/workflow-signature"):
@@ -361,6 +366,12 @@ static async Task HandleWorkflowPortalRequestAsync(
                     "text/plain");
                 return;
             case ("GET", "/api/runtime-status"):
+                if (string.IsNullOrWhiteSpace(requestUsId))
+                {
+                    context.Response.StatusCode = 404;
+                    await WriteTextResponseAsync(context.Response, "No selected user story.", "text/plain");
+                    return;
+                }
                 await WriteJsonResponseAsync(context.Response, await applicationService.GetUserStoryRuntimeStatusAsync(workspaceRoot, requestUsId));
                 return;
             case ("GET", "/configuration"):
@@ -379,7 +390,11 @@ static async Task HandleWorkflowPortalRequestAsync(
                 return;
             }
             case ("GET", "/api/summary"):
-                await WriteJsonResponseAsync(context.Response, await applicationService.GetUserStorySummaryAsync(workspaceRoot, requestUsId));
+                await WriteJsonResponseAsync(
+                    context.Response,
+                    await applicationService.GetUserStorySummaryAsync(
+                        workspaceRoot,
+                        RequireSelectedWorkflowPortalUserStoryId(requestUsId)));
                 return;
             case ("GET", "/api/user-stories"):
                 await WriteJsonResponseAsync(
@@ -412,7 +427,10 @@ static async Task HandleWorkflowPortalRequestAsync(
             case ("POST", "/api/continue"):
                 await WriteJsonResponseAsync(
                     context.Response,
-                    await applicationService.GenerateNextPhaseAsync(workspaceRoot, requestUsId, "cli-user"));
+                    await applicationService.GenerateNextPhaseAsync(
+                        workspaceRoot,
+                        RequireSelectedWorkflowPortalUserStoryId(requestUsId),
+                        "cli-user"));
                 return;
             case ("POST", "/api/approval-answer"):
             {
@@ -426,7 +444,7 @@ static async Task HandleWorkflowPortalRequestAsync(
                     context.Response,
                     await applicationService.SubmitApprovalAnswerAsync(
                         workspaceRoot,
-                        requestUsId,
+                        RequireSelectedWorkflowPortalUserStoryId(requestUsId),
                         request.Question,
                         request.Answer,
                         request.Actor ?? "cli-user"));
@@ -444,7 +462,7 @@ static async Task HandleWorkflowPortalRequestAsync(
                     context.Response,
                     await applicationService.SubmitRefinementAnswersAsync(
                         workspaceRoot,
-                        requestUsId,
+                        RequireSelectedWorkflowPortalUserStoryId(requestUsId),
                         request.Answers,
                         request.Actor ?? "cli-user"));
                 return;
@@ -459,7 +477,10 @@ static async Task HandleWorkflowPortalRequestAsync(
                     ?? throw new InvalidOperationException("Attach files payload could not be parsed.");
                 await WriteJsonResponseAsync(
                     context.Response,
-                    await AttachWorkflowFilesAsync(workspaceRoot, requestUsId, request));
+                    await AttachWorkflowFilesAsync(
+                        workspaceRoot,
+                        RequireSelectedWorkflowPortalUserStoryId(requestUsId),
+                        request));
                 return;
             }
             case ("POST", "/api/add-context-files"):
@@ -472,7 +493,10 @@ static async Task HandleWorkflowPortalRequestAsync(
                     ?? throw new InvalidOperationException("Add context files payload could not be parsed.");
                 await WriteJsonResponseAsync(
                     context.Response,
-                    await AddContextFilesAsync(workspaceRoot, requestUsId, request));
+                    await AddContextFilesAsync(
+                        workspaceRoot,
+                        RequireSelectedWorkflowPortalUserStoryId(requestUsId),
+                        request));
                 return;
             }
             case ("POST", "/api/workflow-graph-layout"):
@@ -500,7 +524,7 @@ static async Task HandleWorkflowPortalRequestAsync(
                     context.Response,
                     await applicationService.ApprovePhaseAsync(
                         workspaceRoot,
-                        requestUsId,
+                        RequireSelectedWorkflowPortalUserStoryId(requestUsId),
                         request.BaseBranch,
                         request.WorkBranch,
                         request.Actor ?? "cli-user"));
@@ -517,8 +541,14 @@ static async Task HandleWorkflowPortalRequestAsync(
                 await WriteJsonResponseAsync(
                     context.Response,
                     string.Equals(request.Decision, "approve", StringComparison.OrdinalIgnoreCase)
-                        ? await applicationService.ApproveDecompositionAsync(workspaceRoot, requestUsId, request.Actor ?? "cli-user")
-                        : await applicationService.RejectDecompositionAsync(workspaceRoot, requestUsId, request.Actor ?? "cli-user"));
+                        ? await applicationService.ApproveDecompositionAsync(
+                            workspaceRoot,
+                            RequireSelectedWorkflowPortalUserStoryId(requestUsId),
+                            request.Actor ?? "cli-user")
+                        : await applicationService.RejectDecompositionAsync(
+                            workspaceRoot,
+                            RequireSelectedWorkflowPortalUserStoryId(requestUsId),
+                            request.Actor ?? "cli-user"));
                 return;
             }
             case ("POST", "/api/suggest-approval-answer"):
@@ -531,7 +561,11 @@ static async Task HandleWorkflowPortalRequestAsync(
                     ?? throw new InvalidOperationException("Suggestion payload could not be parsed.");
                 await WriteJsonResponseAsync(
                     context.Response,
-                    await applicationService.SuggestApprovalAnswerAsync(workspaceRoot, requestUsId, request.Question, request.Actor ?? "user"));
+                    await applicationService.SuggestApprovalAnswerAsync(
+                        workspaceRoot,
+                        RequireSelectedWorkflowPortalUserStoryId(requestUsId),
+                        request.Question,
+                        request.Actor ?? "user"));
                 return;
             }
             default:
@@ -550,7 +584,7 @@ static async Task HandleWorkflowPortalRequestAsync(
 static async Task<string> BuildWorkflowPortalHtmlAsync(
     SpecForgeApplicationService applicationService,
     string workspaceRoot,
-    string usId,
+    string? usId,
     string? selectedPhaseId,
     string? sidebarVisibility,
     bool showCompletedUserStories,
@@ -570,9 +604,15 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
     var sidebarUserStories = normalizedSidebarVisibility == "dropped"
         ? droppedSidebarUserStories
         : activeSidebarUserStories;
-    var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, usId);
-    var resolvedSelectedPhaseId = ResolveSelectedWorkflowPhaseId(workflow, selectedPhaseId);
-    var selectedPhase = ResolveSelectedWorkflowPhase(workflow, resolvedSelectedPhaseId);
+    UserStoryWorkflowDetails? workflow = null;
+    string? resolvedSelectedPhaseId = null;
+    WorkflowPhaseDetails? selectedPhase = null;
+    if (!string.IsNullOrWhiteSpace(usId))
+    {
+        workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, usId);
+        resolvedSelectedPhaseId = ResolveSelectedWorkflowPhaseId(workflow, selectedPhaseId);
+        selectedPhase = ResolveSelectedWorkflowPhase(workflow, resolvedSelectedPhaseId);
+    }
     var droppedUserStoryCount = droppedSidebarUserStories.Count;
     var workflowGraphLayoutSignature = await ReadWorkflowGraphLayoutSignatureAsync(workspaceRoot);
     var signature = BuildWorkflowSignature(
@@ -589,7 +629,8 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
         watchingUserStoryIds,
         hiddenUserStoryIds,
         currentActor);
-    if (renderCache.TryGet(renderCacheSignature, resolvedSelectedPhaseId, selectedPhase, out var cachedHtml))
+    var cachePhaseId = resolvedSelectedPhaseId ?? "__none__";
+    if (renderCache.TryGet(renderCacheSignature, cachePhaseId, selectedPhase, out var cachedHtml))
     {
         return cachedHtml;
     }
@@ -601,7 +642,7 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
             selectedPhaseId = resolvedSelectedPhaseId,
             selectedArtifactContent = await ReadFileContentOrNullAsync(selectedPhase?.ArtifactPath),
             selectedOperationContent = await ReadFileContentOrNullAsync(selectedPhase?.OperationLogPath),
-            runtimeVersion = GetRuntimeVersion() ?? workflow.LastRuntimeVersion ?? workflow.CreatedWithRuntimeVersion,
+            runtimeVersion = GetRuntimeVersion() ?? workflow?.LastRuntimeVersion ?? workflow?.CreatedWithRuntimeVersion,
             userStories = activeSidebarUserStories,
             sidebarUserStories,
             activeSidebarUserStories,
@@ -617,21 +658,22 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
             configurationProvidersUrl = BuildConfigurationPortalUrl(workflowPortalOrigin, "providers"),
             configurationAdvancedUrl = BuildConfigurationPortalUrl(workflowPortalOrigin, "advanced"),
             currentActor,
+            selectedUsId = usId,
+            noSelectionReason = ResolveWorkflowPortalNoSelectionReason(usId, sidebarUserStories),
             workspaceRoot,
             signature
         },
         SpecForgePortalSettingsStore.JsonOptions);
 
     var html = await RenderWorkflowHtmlWithNodeAsync(payload);
-    renderCache.Store(renderCacheSignature, resolvedSelectedPhaseId, selectedPhase, html);
+    renderCache.Store(renderCacheSignature, cachePhaseId, selectedPhase, html);
     return html;
 }
 
-static async Task<string> ResolveWorkflowPortalUserStoryIdAsync(
+static async Task<string?> ResolveWorkflowPortalUserStoryIdAsync(
     SpecForgeApplicationService applicationService,
     string workspaceRoot,
     HttpListenerRequest request,
-    string fallbackUsId,
     string? sidebarVisibility,
     bool showCompletedUserStories,
     bool showBlockedUserStories,
@@ -647,7 +689,7 @@ static async Task<string> ResolveWorkflowPortalUserStoryIdAsync(
             applicationService,
             workspaceRoot,
             queryUsId,
-            fallbackUsId,
+            preferExplicitSelection: true,
             sidebarVisibility,
             showCompletedUserStories,
             showBlockedUserStories,
@@ -663,7 +705,7 @@ static async Task<string> ResolveWorkflowPortalUserStoryIdAsync(
         applicationService,
         workspaceRoot,
         refererUsId,
-        fallbackUsId,
+        preferExplicitSelection: true,
         sidebarVisibility,
         showCompletedUserStories,
         showBlockedUserStories,
@@ -717,11 +759,11 @@ static IReadOnlyList<string> NormalizeUserStoryIds(string? value) =>
         .Distinct(StringComparer.Ordinal)
         .ToArray();
 
-static async Task<string> ResolveVisibleWorkflowPortalUserStoryIdAsync(
+static async Task<string?> ResolveVisibleWorkflowPortalUserStoryIdAsync(
     SpecForgeApplicationService applicationService,
     string workspaceRoot,
     string? requestedUsId,
-    string fallbackUsId,
+    bool preferExplicitSelection,
     string? sidebarVisibility,
     bool showCompletedUserStories,
     bool showBlockedUserStories,
@@ -744,7 +786,7 @@ static async Task<string> ResolveVisibleWorkflowPortalUserStoryIdAsync(
 
     if (availableStories.Count == 0)
     {
-        return fallbackUsId;
+        return null;
     }
 
     var currentActor = ResolveCurrentGitOwner(workspaceRoot);
@@ -767,14 +809,12 @@ static async Task<string> ResolveVisibleWorkflowPortalUserStoryIdAsync(
         return firstVisible.UsId;
     }
 
-    if (availableStoryById.TryGetValue(fallbackUsId, out var fallbackStory))
+    if (preferExplicitSelection && !string.IsNullOrWhiteSpace(requestedUsId))
     {
-        return fallbackStory.UsId;
+        return null;
     }
 
-    return availableStories
-        .OrderBy(story => story.UsId, StringComparer.Ordinal)
-        .First().UsId;
+    return null;
 }
 
 static bool IsWorkflowPortalStoryVisible(
@@ -1131,14 +1171,16 @@ static string BuildConfigurationPortalUrl(string workflowPortalOrigin, string? f
 static async Task<string> BuildWorkflowPortalSignatureAsync(
     SpecForgeApplicationService applicationService,
     string workspaceRoot,
-    string usId,
+    string? usId,
     string? sidebarVisibility,
     bool showCompletedUserStories,
     bool showBlockedUserStories)
 {
     var activeSidebarUserStories = await applicationService.ListUserStoriesAsync(workspaceRoot);
     var droppedSidebarUserStories = await applicationService.ListUserStoriesAsync(workspaceRoot, "dropped");
-    var workflow = await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, usId);
+    var workflow = string.IsNullOrWhiteSpace(usId)
+        ? null
+        : await applicationService.GetUserStoryWorkflowAsync(workspaceRoot, usId);
     var workflowGraphLayoutSignature = await ReadWorkflowGraphLayoutSignatureAsync(workspaceRoot);
 
     return BuildWorkflowSignature(
@@ -1318,7 +1360,7 @@ static async Task<string> ReadWorkflowGraphLayoutSignatureAsync(string workspace
 }
 
 static string BuildWorkflowSignature(
-    UserStoryWorkflowDetails workflow,
+    UserStoryWorkflowDetails? workflow,
     IReadOnlyCollection<UserStorySummary> userStories,
     IReadOnlyCollection<UserStorySummary> droppedUserStories,
     string workflowGraphLayoutSignature)
@@ -1326,14 +1368,14 @@ static string BuildWorkflowSignature(
     var payload = JsonSerializer.Serialize(
         new
         {
-            workflow.UsId,
-            workflow.Status,
-            workflow.CurrentPhase,
-            workflow.CreatedWithRuntimeVersion,
-            workflow.LastRuntimeVersion,
-            workflow.Controls,
-            eventCount = workflow.Events.Count,
-            latestEvent = workflow.Events.LastOrDefault(),
+            selectedUserStoryId = workflow?.UsId,
+            workflowStatus = workflow?.Status,
+            workflowCurrentPhase = workflow?.CurrentPhase,
+            workflowCreatedWithRuntimeVersion = workflow?.CreatedWithRuntimeVersion,
+            workflowLastRuntimeVersion = workflow?.LastRuntimeVersion,
+            workflowControls = workflow?.Controls,
+            eventCount = workflow?.Events.Count ?? 0,
+            latestEvent = workflow?.Events.LastOrDefault(),
             userStories = userStories
                 .OrderBy(story => story.UsId, StringComparer.Ordinal)
                 .Select(story => new
@@ -1365,6 +1407,28 @@ static string BuildWorkflowSignature(
         SpecForgePortalSettingsStore.JsonOptions);
     var hash = SHA256.HashData(Encoding.UTF8.GetBytes(payload));
     return Convert.ToHexString(hash);
+}
+
+static string? ResolveWorkflowPortalNoSelectionReason(string? usId, IReadOnlyCollection<UserStorySummary> sidebarUserStories)
+{
+    if (!string.IsNullOrWhiteSpace(usId))
+    {
+        return null;
+    }
+
+    return sidebarUserStories.Count == 0
+        ? "No user stories exist in this backlog scope yet."
+        : "No visible user story matches the current scope. Adjust view options or select a story directly.";
+}
+
+static string RequireSelectedWorkflowPortalUserStoryId(string? usId)
+{
+    if (!string.IsNullOrWhiteSpace(usId))
+    {
+        return usId;
+    }
+
+    throw new InvalidOperationException("No selected user story.");
 }
 
 static async Task<string> ResolveDefaultWorkflowPortalUserStoryIdAsync(
