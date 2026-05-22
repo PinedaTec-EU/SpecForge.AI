@@ -879,7 +879,7 @@ const sidebarShell = `
         "toggleSearchIncludesOtherOwners"
       ];
       for (const command of commandButtons) {
-        for (const button of doc.querySelectorAll(`[data-command="${command}"]`)) {
+        for (const button of doc.querySelectorAll('[data-command="' + command + '"]')) {
           if (!(button instanceof HTMLButtonElement) || button.dataset.portalBound === "true") {
             continue;
           }
