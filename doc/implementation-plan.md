@@ -271,6 +271,7 @@ Recently completed subtasks:
 - ✅ create a consolidated changelog for the recent release range
 - ✅ add completed and blocked visibility toggles in the sidebar and CLI portal story lists
 - ✅ add in-sidebar user story search by title, description, category, and tags
+- [ ] migrate the workflow portal away from fragile iframe/global-state coupling and validate it exhaustively in the integrated browser before calling the surface stable
 - [ ] complete rich prompt inspection/editing from the extension with diff or visible effective prompt
 - ✅ add shared `createdBy` and `owner` metadata plus local per-user visibility controls so large repositories default to "my active stories" instead of the full backlog
 - ✅ enforce a self-hosting fallback rule so engine defects are tracked outside the SpecForge workflow engine before repair work depends on that same engine
@@ -279,6 +280,7 @@ Pending subtasks before the MVP is considered complete:
 
 - [ ] enrich `branch.yaml` lifecycle with real Git/PR metadata
 - [ ] switch to the selected user story branch automatically, with `main` fallback before branch creation
+- [ ] modernize the browser workflow portal with cleaner state ownership, a no-selection contract, safer modal flows, and mandatory exhaustive integrated-browser validation
 - [ ] add SpecForge Central repository management: catalog, readiness, create/register flow, and target repository selection
 - [ ] broaden PR publication beyond the current GitHub CLI path and add issue-system integration or an export-first bridge where direct integration is still too early
 

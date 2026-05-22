@@ -29,14 +29,14 @@ Use this file to see:
 | Block | Status | Detailed tracking | Scope |
 | --- | --- | --- | --- |
 | `HARNESS` | `doing` | [harness-phase-tasks.md](harness-phase-tasks.md), [harness-implementation-plan.md](harness-implementation-plan.md), [harness-engineering-checklist.md](harness-engineering-checklist.md), [semantic-code-graph-design.md](semantic-code-graph-design.md) | Harness governance, effective prompt/context inspection, policy visibility, evidence, metrics, profiles, and semantic code-graph design plus rollout |
-| `MVP` | `doing` | [implementation-plan.md](implementation-plan.md), [roadmap.md](roadmap.md), [tasks/ownership-visibility-and-self-hosting.md](tasks/ownership-visibility-and-self-hosting.md) | Product MVP sequencing, extension/MCP/portal gaps, ownership and visibility scaling, medium-term product delivery |
+| `MVP` | `doing` | [implementation-plan.md](implementation-plan.md), [roadmap.md](roadmap.md), [tasks/ownership-visibility-and-self-hosting.md](tasks/ownership-visibility-and-self-hosting.md), [tasks/portal-modernization.md](tasks/portal-modernization.md) | Product MVP sequencing, extension/MCP/portal gaps, ownership and visibility scaling, portal modernization, medium-term product delivery |
 | `BRANCH` | `doing` | [tasks/branch-lifecycle.md](tasks/branch-lifecycle.md) | Branch lifecycle, branch activation, Git context switching, PR-oriented branch metadata |
 
 ## Current Focus
 
 - `HARNESS`: finish semantic code-graph design first, then implement lifecycle, flags, MCP/CLI creation, and graph-guided context orchestration on top of explicit decisions.
 - `BRANCH`: add automatic Git branch switching when the active user story changes.
-- `MVP`: keep branch lifecycle, ownership/visibility scaling, and prompt inspection visible as the main near-term product gaps.
+- `MVP`: keep branch lifecycle, portal modernization, ownership/visibility scaling, and prompt inspection visible as the main near-term product gaps.
 
 ## Intake Rule For New Work
 
