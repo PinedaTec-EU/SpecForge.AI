@@ -546,6 +546,22 @@ const sidebarShell = `
   .specforge-cli-config-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 14px; border-bottom: 1px solid rgba(114, 241, 184, 0.14); background: #080e14; color: rgba(255, 255, 255, 0.86); font: 800 0.82rem/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
   .specforge-cli-config-close { width: 34px; height: 34px; border-radius: 10px; border: 1px solid rgba(114, 241, 184, 0.2); background: rgba(255, 255, 255, 0.05); color: #72f1b8; font: 900 1.1rem/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; cursor: pointer; }
   .specforge-cli-config-frame { width: 100%; height: 100%; border: 0; background: #0f1720; }
+  .specforge-cli-edit-overlay { position: fixed; inset: 0; z-index: 220; display: grid; place-items: center; padding: 28px; background: rgba(3, 8, 12, 0.72); backdrop-filter: blur(8px); }
+  .specforge-cli-edit-overlay[hidden] { display: none; }
+  .specforge-cli-edit-dialog { width: min(560px, 100%); border: 1px solid rgba(114, 241, 184, 0.18); border-radius: 18px; background: #0f1720; box-shadow: 0 28px 90px rgba(0, 0, 0, 0.52); overflow: hidden; }
+  .specforge-cli-edit-form { display: grid; gap: 14px; padding: 18px; }
+  .specforge-cli-edit-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .specforge-cli-edit-kicker { display: block; color: rgba(114, 241, 184, 0.86); font: 800 0.72rem/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: 0.14em; text-transform: uppercase; }
+  .specforge-cli-edit-head h2 { margin: 6px 0 0; color: rgba(255, 255, 255, 0.94); font: 800 1.05rem/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .specforge-cli-edit-close, .specforge-cli-edit-secondary, .specforge-cli-edit-primary { border-radius: 10px; border: 1px solid rgba(114, 241, 184, 0.2); cursor: pointer; font: 700 0.9rem/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .specforge-cli-edit-close { width: 34px; height: 34px; background: rgba(255, 255, 255, 0.05); color: #72f1b8; font-size: 1.1rem; }
+  .specforge-cli-edit-field { display: grid; gap: 6px; }
+  .specforge-cli-edit-field span { color: rgba(255, 255, 255, 0.78); font: 700 0.78rem/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-transform: uppercase; letter-spacing: 0.08em; }
+  .specforge-cli-edit-field input { width: 100%; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.04); color: rgba(255, 255, 255, 0.94); padding: 12px 14px; font: 500 0.94rem/1.4 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .specforge-cli-edit-error { margin: 0; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255, 139, 139, 0.2); background: rgba(120, 29, 29, 0.18); color: #ffb8b8; font: 600 0.85rem/1.4 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .specforge-cli-edit-actions { display: flex; justify-content: flex-end; gap: 10px; }
+  .specforge-cli-edit-secondary { background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.86); padding: 11px 14px; }
+  .specforge-cli-edit-primary { background: linear-gradient(180deg, rgba(114, 241, 184, 0.24), rgba(16, 36, 28, 0.96)); color: #f3fff9; padding: 11px 16px; }
   .specforge-cli-source-focus { outline: 2px solid rgba(114, 241, 184, 0.78); outline-offset: 6px; border-radius: 16px; transition: outline-color 180ms ease; }
   @media (max-width: 860px) {
     body.specforge-cli-with-sidebar { grid-template-columns: 58px minmax(0, 1fr); }
@@ -574,6 +590,41 @@ const sidebarShell = `
     <iframe class="specforge-cli-config-frame" title="SpecForge Configuration" data-cli-config-frame></iframe>
   </section>
 </div>
+<div class="specforge-cli-edit-overlay" data-cli-edit-overlay hidden>
+  <section class="specforge-cli-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="specforge-cli-edit-title">
+    <form class="specforge-cli-edit-form" data-cli-edit-form>
+      <div class="specforge-cli-edit-head">
+        <div>
+          <span class="specforge-cli-edit-kicker">User Story Metadata</span>
+          <h2 id="specforge-cli-edit-title">Edit US info</h2>
+        </div>
+        <button class="specforge-cli-edit-close" type="button" data-cli-edit-close aria-label="Close edit form">×</button>
+      </div>
+      <input type="hidden" name="usId" />
+      <label class="specforge-cli-edit-field">
+        <span>Title</span>
+        <input name="title" type="text" required />
+      </label>
+      <label class="specforge-cli-edit-field">
+        <span>Owner</span>
+        <input name="owner" type="text" required />
+      </label>
+      <label class="specforge-cli-edit-field">
+        <span>Category</span>
+        <input name="category" type="text" required />
+      </label>
+      <label class="specforge-cli-edit-field">
+        <span>Tags</span>
+        <input name="tags" type="text" />
+      </label>
+      <p class="specforge-cli-edit-error" data-cli-edit-error hidden></p>
+      <div class="specforge-cli-edit-actions">
+        <button class="specforge-cli-edit-secondary" type="button" data-cli-edit-cancel>Cancel</button>
+        <button class="specforge-cli-edit-primary" type="submit" data-cli-edit-submit>Save</button>
+      </div>
+    </form>
+  </section>
+</div>
 <script>
   (() => {
     document.body.classList.add("specforge-cli-with-sidebar");
@@ -584,6 +635,9 @@ const sidebarShell = `
     const showHiddenStorageKey = "specforge.cli.sidebar.showHiddenUserStories";
     const configOverlay = document.querySelector("[data-cli-config-overlay]");
     const configFrame = document.querySelector("[data-cli-config-frame]");
+    const editOverlay = document.querySelector("[data-cli-edit-overlay]");
+    const editForm = document.querySelector("[data-cli-edit-form]");
+    const editError = document.querySelector("[data-cli-edit-error]");
     const sidebarFrame = document.querySelector('iframe[title="User stories"]');
     const sidebarPin = document.querySelector("[data-cli-sidebar-pin]");
     const sidebarHtmlByScope = {
@@ -605,6 +659,36 @@ const sidebarShell = `
     };
     const closeConfiguration = () => {
       configOverlay?.setAttribute("hidden", "");
+    };
+    const setEditError = (message) => {
+      if (!(editError instanceof HTMLElement)) {
+        return;
+      }
+      const normalized = String(message || "").trim();
+      editError.textContent = normalized;
+      editError.hidden = normalized.length === 0;
+    };
+    const closeEditUserStoryForm = () => {
+      editOverlay?.setAttribute("hidden", "");
+      setEditError("");
+      if (editForm instanceof HTMLFormElement) {
+        editForm.reset();
+        editForm.dataset.busy = "false";
+      }
+    };
+    const openEditUserStoryForm = (message) => {
+      if (!(editForm instanceof HTMLFormElement)) {
+        return;
+      }
+      editForm.dataset.busy = "false";
+      editForm.elements.namedItem("usId").value = String(message.usId || "");
+      editForm.elements.namedItem("title").value = String(message.title || "");
+      editForm.elements.namedItem("owner").value = String(message.owner || "cli-user");
+      editForm.elements.namedItem("category").value = String(message.category || "");
+      editForm.elements.namedItem("tags").value = String(message.tags || "");
+      setEditError("");
+      editOverlay?.removeAttribute("hidden");
+      editForm.elements.namedItem("title")?.focus();
     };
     const getStarredUserStoryId = () => {
       try { return localStorage.getItem(starredUserStoryStorageKey) || null; }
@@ -786,51 +870,49 @@ const sidebarShell = `
     configOverlay?.addEventListener("click", event => {
       if (event.target === configOverlay) closeConfiguration();
     });
+    document.querySelector("[data-cli-edit-close]")?.addEventListener("click", closeEditUserStoryForm);
+    document.querySelector("[data-cli-edit-cancel]")?.addEventListener("click", closeEditUserStoryForm);
+    editOverlay?.addEventListener("click", event => {
+      if (event.target === editOverlay) closeEditUserStoryForm();
+    });
+    editForm?.addEventListener("submit", event => {
+      event.preventDefault();
+      if (!(editForm instanceof HTMLFormElement) || editForm.dataset.busy === "true") {
+        return;
+      }
+      const usId = String(editForm.elements.namedItem("usId")?.value || "").trim();
+      const title = String(editForm.elements.namedItem("title")?.value || "").trim();
+      const owner = String(editForm.elements.namedItem("owner")?.value || "").trim();
+      const category = String(editForm.elements.namedItem("category")?.value || "").trim();
+      const tags = String(editForm.elements.namedItem("tags")?.value || "")
+        .split(",")
+        .map(item => item.trim().toLowerCase())
+        .filter(Boolean);
+      if (!usId || !title || !owner || !category) {
+        setEditError("Title, owner, and category are required.");
+        return;
+      }
+      editForm.dataset.busy = "true";
+      setEditError("");
+      requestJson("/api/update-user-story-info", { usId, title, owner, category, tags })
+        .then(() => {
+          closeEditUserStoryForm();
+          window.location.reload();
+        })
+        .catch(error => {
+          editForm.dataset.busy = "false";
+          setEditError(error instanceof Error ? error.message : String(error));
+        });
+    });
     window.addEventListener("keydown", event => {
       if (event.key === "Escape" && !configOverlay?.hasAttribute("hidden")) closeConfiguration();
+      if (event.key === "Escape" && !editOverlay?.hasAttribute("hidden")) closeEditUserStoryForm();
     });
     const requestJson = (endpoint, body) => fetch(endpoint, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body)
     }).then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))));
-    const promptRequiredValue = (label, initialValue) => {
-      const nextValue = window.prompt(label, String(initialValue || ""));
-      if (nextValue === null) {
-        return null;
-      }
-      if (!nextValue.trim()) {
-        throw new Error(label + " is required.");
-      }
-      return nextValue.trim();
-    };
-    const promptUserStoryInfoUpdate = (message) => {
-      const title = promptRequiredValue("Title", message.title);
-      if (title === null) {
-        return null;
-      }
-      const owner = promptRequiredValue("Owner", message.owner || "cli-user");
-      if (owner === null) {
-        return null;
-      }
-      const category = promptRequiredValue("Category", message.category);
-      if (category === null) {
-        return null;
-      }
-      const tags = window.prompt("Tags (comma-separated)", String(message.tags || ""));
-      if (tags === null) {
-        return null;
-      }
-      return {
-        title,
-        owner,
-        category,
-        tags: tags
-          .split(",")
-          .map(item => item.trim().toLowerCase())
-          .filter(Boolean)
-      };
-    };
     const focusUserStorySourceSection = () => {
       const section = document.querySelector("[data-user-story-source-section]");
       if (!(section instanceof HTMLElement)) {
@@ -880,29 +962,7 @@ const sidebarShell = `
         return;
       }
       if (message.command === "showEditUserStoryForm" && message.usId) {
-        let update;
-        try {
-          update = promptUserStoryInfoUpdate(message);
-        } catch (error) {
-          window.alert(error instanceof Error ? error.message : String(error));
-          return;
-        }
-        if (!update) {
-          return;
-        }
-        requestJson("/api/update-user-story-info", {
-          usId: message.usId,
-          title: update.title,
-          owner: update.owner,
-          category: update.category,
-          tags: update.tags
-        })
-          .then(() => {
-            window.location.reload();
-          })
-          .catch(error => {
-            window.alert(error instanceof Error ? error.message : String(error));
-          });
+        openEditUserStoryForm(message);
         return;
       }
       if (message.command === "toggleStarredUserStory" && message.usId) {
