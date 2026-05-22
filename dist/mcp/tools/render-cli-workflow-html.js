@@ -868,6 +868,56 @@ const sidebarShell = `
         if (icon) icon.textContent = active ? "★" : "☆";
       }
     };
+    const bridgeSidebarScopeControls = () => {
+      const doc = sidebarFrame?.contentDocument;
+      if (!doc) return;
+      const commandButtons = [
+        "toggleDroppedUserStories",
+        "toggleCompletedUserStories",
+        "toggleBlockedUserStories",
+        "toggleShowHiddenUserStories",
+        "toggleSearchIncludesOtherOwners"
+      ];
+      for (const command of commandButtons) {
+        for (const button of doc.querySelectorAll(`[data-command="${command}"]`)) {
+          if (!(button instanceof HTMLButtonElement) || button.dataset.portalBound === "true") {
+            continue;
+          }
+          button.dataset.portalBound = "true";
+          button.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            switch (command) {
+              case "toggleDroppedUserStories":
+                sidebarShowsDropped = !sidebarShowsDropped;
+                sidebarShowsCompleted = false;
+                sidebarShowsBlocked = false;
+                break;
+              case "toggleCompletedUserStories":
+                sidebarShowsDropped = false;
+                sidebarShowsCompleted = !sidebarShowsCompleted;
+                break;
+              case "toggleBlockedUserStories":
+                sidebarShowsDropped = false;
+                sidebarShowsBlocked = !sidebarShowsBlocked;
+                break;
+              case "toggleShowHiddenUserStories":
+                sidebarShowsHidden = !sidebarShowsHidden;
+                persistSidebarLists();
+                break;
+              case "toggleSearchIncludesOtherOwners":
+                sidebarShowsDropped = false;
+                sidebarShowsOtherOwners = !sidebarShowsOtherOwners;
+                break;
+              default:
+                return;
+            }
+            replaceSidebarUrlState();
+            replaceSidebarFrame();
+          });
+        }
+      }
+    };
     const applyCollapsed = (collapsed) => {
       document.body.classList.toggle("specforge-cli-sidebar-collapsed", collapsed);
       if (sidebarPin) {
@@ -888,8 +938,12 @@ const sidebarShell = `
     document.querySelector("[data-cli-sidebar-settings]")?.addEventListener("click", () => {
       openConfiguration(${JSON.stringify(configurationPortalUrl)});
     });
-    sidebarFrame?.addEventListener("load", applySidebarStarredUserStory);
+    sidebarFrame?.addEventListener("load", () => {
+      applySidebarStarredUserStory();
+      bridgeSidebarScopeControls();
+    });
     applySidebarStarredUserStory();
+    bridgeSidebarScopeControls();
     document.querySelector("[data-cli-config-close]")?.addEventListener("click", closeConfiguration);
     configOverlay?.addEventListener("click", event => {
       if (event.target === configOverlay) closeConfiguration();
