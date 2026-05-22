@@ -21,6 +21,7 @@ import type {
   RewindWorkflowResult,
   SpecForgeBackendClient,
   SubmitApprovalAnswerResult,
+  UpdateUserStoryInfoResult,
   UserStoryRuntimeStatus,
   UserStorySummary,
   UserStoryWorkflowDetails,
@@ -154,6 +155,27 @@ export class StdioMcpBackendClient implements SpecForgeBackendClient {
       category,
       ...(tags && tags.length > 0 ? { tags } : {}),
       ...(actor && actor.trim().length > 0 ? { actor } : {})
+    });
+  }
+
+  public async updateUserStoryInfo(
+    usId: string,
+    values: {
+      readonly title?: string;
+      readonly kind?: string;
+      readonly owner?: string;
+      readonly category?: string;
+      readonly tags?: readonly string[];
+    }
+  ): Promise<UpdateUserStoryInfoResult> {
+    return this.callTool<UpdateUserStoryInfoResult>("update_user_story_info", {
+      workspaceRoot: this.workspaceRoot,
+      usId,
+      ...(values.title !== undefined ? { title: values.title } : {}),
+      ...(values.kind !== undefined ? { kind: values.kind } : {}),
+      ...(values.owner !== undefined ? { owner: values.owner } : {}),
+      ...(values.category !== undefined ? { category: values.category } : {}),
+      ...(values.tags !== undefined ? { tags: values.tags } : {})
     });
   }
 

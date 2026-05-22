@@ -36,6 +36,7 @@ import { closeWorkflowView } from "./workflowPanel";
 type SidebarMessage =
   | { readonly command: "showCreateForm" }
   | { readonly command: "hideCreateForm" }
+  | { readonly command: "showEditUserStoryForm"; readonly usId?: string }
   | { readonly command: "openExecutionSettings" }
   | { readonly command: "initializeRepoPrompts" }
   | { readonly command: "openSettings" }
@@ -78,6 +79,8 @@ type DraftCreateFile = {
   readonly name: string;
   readonly kind: "context" | "attachment";
 };
+
+const USER_STORY_KINDS = ["feature", "bug", "hotfix", "chore", "refactor", "spike"] as const;
 
 export class SidebarViewProvider implements vscode.WebviewViewProvider {
   private webviewView: vscode.WebviewView | undefined;
@@ -142,6 +145,13 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
         this.showCreateForm = false;
         this.createFiles = [];
         await this.safeRenderAsync();
+        return;
+      case "showEditUserStoryForm":
+        if (!message.usId) {
+          return;
+        }
+
+        await this.showEditUserStoryFormAsync(message.usId);
         return;
       case "openExecutionSettings":
         await vscode.commands.executeCommand("specForge.openExecutionSettings");
@@ -367,6 +377,90 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 
     const summary = await getOrCreateBackendClient(workspaceRoot).getUserStorySummary(usId);
     await vscode.commands.executeCommand("specForge.openMainArtifact", summary);
+  }
+
+  private async showEditUserStoryFormAsync(usId: string): Promise<void> {
+    const workspaceRoot = getWorkspaceRoot();
+    if (!workspaceRoot) {
+      return;
+    }
+
+    const backendClient = getOrCreateBackendClient(workspaceRoot);
+    const summary = await backendClient.getUserStorySummary(usId);
+    const categories = [...new Set([...(await getUserStoryCategoriesAsync(workspaceRoot)), summary.category])];
+
+    const title = await vscode.window.showInputBox({
+      title: `Edit ${usId}`,
+      prompt: "User story title",
+      value: editableUserStoryTitle(summary.usId, summary.title),
+      ignoreFocusOut: true,
+      validateInput: (value) => value.trim().length === 0 ? "Title is required." : null
+    });
+    if (title === undefined) {
+      return;
+    }
+
+    const owner = await vscode.window.showInputBox({
+      title: `Edit ${usId}`,
+      prompt: "Owner",
+      value: summary.owner,
+      ignoreFocusOut: true,
+      validateInput: (value) => value.trim().length === 0 ? "Owner is required." : null
+    });
+    if (owner === undefined) {
+      return;
+    }
+
+    const category = await vscode.window.showQuickPick(
+      categories.map((item) => ({
+        label: item,
+        picked: item === summary.category
+      })),
+      {
+        title: `Edit ${usId}`,
+        placeHolder: "Category",
+        ignoreFocusOut: true
+      });
+    if (!category) {
+      return;
+    }
+
+    const workflow = await backendClient.getUserStoryWorkflow(usId);
+    const kind = await vscode.window.showQuickPick(
+      USER_STORY_KINDS.map((item) => ({
+        label: item,
+        picked: item === (workflow.kind ?? "feature")
+      })),
+      {
+        title: `Edit ${usId}`,
+        placeHolder: "Kind",
+        ignoreFocusOut: true
+      });
+    if (!kind) {
+      return;
+    }
+
+    const tags = await vscode.window.showInputBox({
+      title: `Edit ${usId}`,
+      prompt: "Tags (comma-separated)",
+      value: (summary.tags ?? []).join(", "),
+      ignoreFocusOut: true
+    });
+    if (tags === undefined) {
+      return;
+    }
+
+    await this.runBusyActionAsync(`Updating ${usId} info...`, async () => {
+      await backendClient.updateUserStoryInfo(usId, {
+        title: title.trim(),
+        kind: kind.label,
+        owner: owner.trim(),
+        category: category.label,
+        tags: parseCustomTags(tags)
+      });
+      await this.onDidCreateUserStory();
+      void vscode.window.showInformationMessage(`${usId} info updated.`);
+    });
   }
 
   private async dropUserStoryAsync(usId: string): Promise<void> {
@@ -963,6 +1057,18 @@ function filterSidebarUserStories(
       : prioritized.slice(0, maxVisible),
     totalInScope: prioritized.length
   };
+}
+
+function editableUserStoryTitle(usId: string, title: string): string {
+  const normalizedTitle = title.trim();
+  if (!normalizedTitle) {
+    return "";
+  }
+
+  return normalizedTitle.startsWith(`${usId} `) || normalizedTitle.startsWith(`${usId}·`)
+    || normalizedTitle.startsWith(`${usId}-`) || normalizedTitle.startsWith(`${usId}:`)
+    ? normalizedTitle.slice(usId.length).trimStart().replace(/^[·\-:]\s*/, "")
+    : normalizedTitle;
 }
 
 function compareSidebarStories(

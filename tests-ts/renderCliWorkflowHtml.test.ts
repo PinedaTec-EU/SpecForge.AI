@@ -73,7 +73,7 @@ test("CLI workflow renderer routes sidebar story selection through the current p
   assert.match(script, /activeWorkflowUsId: workflow\.usId/);
 });
 
-test("CLI workflow renderer routes sidebar edit action to the user story source phase", async () => {
+test("CLI workflow renderer routes sidebar edit action through metadata update prompts", async () => {
   const script = await fs.promises.readFile(scriptPath, "utf8");
   const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
   const packagedSidebar = await fs.promises.readFile(
@@ -81,14 +81,14 @@ test("CLI workflow renderer routes sidebar edit action to the user story source 
     "utf8");
 
   for (const content of [script, packagedScript]) {
-    assert.match(content, /message\.command === "openMainArtifact" && message\.usId/);
-    assert.match(content, /if \(url\.searchParams\.get\("usId"\) === message\.usId && url\.searchParams\.get\("selectedPhaseId"\) === "capture"\)/);
-    assert.match(content, /url\.searchParams\.set\("selectedPhaseId", "capture"\)/);
-    assert.match(content, /url\.searchParams\.set\("artifactFocus", "source"\)/);
-    assert.match(content, /focusUserStorySourceSection\(\)/);
+    assert.match(content, /message\.command === "showEditUserStoryForm" && message\.usId/);
+    assert.match(content, /const promptUserStoryInfoUpdate = \(message\) =>/);
+    assert.match(content, /requestJson\("\/api\/update-user-story-info", \{/);
+    assert.match(content, /window\.prompt\("Tags \(comma-separated\)"/);
+    assert.match(content, /window\.location\.reload\(\)/);
   }
 
-  assert.match(packagedSidebar, /data-command="openMainArtifact" data-us-id="\$\{[\s\S]*?summary\.usId[\s\S]*?\}" role="menuitem"/);
+  assert.match(packagedSidebar, /data-command="showEditUserStoryForm"[\s\S]*data-us-id="\$\{[\s\S]*summary\.usId[\s\S]*\}"[\s\S]*data-title="\$\{[\s\S]*editableUserStoryTitle\(summary\.usId, summary\.title\)[\s\S]*\}"[\s\S]*data-owner="\$\{[\s\S]*summary\.owner[\s\S]*\}"[\s\S]*data-category="\$\{[\s\S]*summary\.category[\s\S]*\}"[\s\S]*data-tags="\$\{[\s\S]*\(summary\.tags \?\? \[\]\)\.join\(", "\)[\s\S]*\}"/);
   assert.doesNotMatch(packagedSidebar, /<button class="action-menu__item" type="button" role="menuitem" disabled>\s+<span class="action-menu__item-icon" aria-hidden="true">✎<\/span>\s+<span>Edit US info<\/span>/);
 });
 

@@ -385,6 +385,9 @@ static async Task HandleWorkflowPortalRequestAsync(
             case ("POST", "/api/recover-user-story"):
                 await HandleDropOrRecoverUserStoryAsync(context, workspaceRoot, drop: false);
                 return;
+            case ("POST", "/api/update-user-story-info"):
+                await HandleUpdateUserStoryInfoAsync(context, applicationService, workspaceRoot);
+                return;
             case ("POST", "/api/reset-user-story-to-capture"):
                 await HandleResetUserStoryToCaptureAsync(context, applicationService, workspaceRoot);
                 return;
@@ -707,6 +710,30 @@ static async Task HandleResetUserStoryToCaptureAsync(
     await WriteJsonResponseAsync(
         context.Response,
         await applicationService.ResetUserStoryToCaptureAsync(workspaceRoot, request.UsId));
+}
+
+static async Task HandleUpdateUserStoryInfoAsync(
+    HttpListenerContext context,
+    SpecForgeApplicationService applicationService,
+    string workspaceRoot)
+{
+    using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+    var payload = await reader.ReadToEndAsync();
+    var request = JsonSerializer.Deserialize<UpdateUserStoryInfoRequest>(
+        payload,
+        SpecForgePortalSettingsStore.JsonOptions)
+        ?? throw new InvalidOperationException("Update user story info payload could not be parsed.");
+
+    await WriteJsonResponseAsync(
+        context.Response,
+        await applicationService.UpdateUserStoryInfoAsync(
+            workspaceRoot,
+            request.UsId,
+            request.Title,
+            request.Kind,
+            request.Owner,
+            request.Category,
+            request.Tags));
 }
 
 static async Task HandleAnalyzeUserStoryLineageAsync(
@@ -1882,3 +1909,11 @@ internal sealed record DecompositionApprovalSubmitRequest(string Decision, strin
 internal sealed record UserStoryActionRequest(string UsId, string? Actor);
 
 internal sealed record UserStoryVisibilityRequest(string UsId);
+
+internal sealed record UpdateUserStoryInfoRequest(
+    string UsId,
+    string? Title,
+    string? Kind,
+    string? Owner,
+    string? Category,
+    IReadOnlyList<string>? Tags);

@@ -132,6 +132,12 @@ export interface CreateOrImportUserStoryResult {
   readonly mainArtifactPath: string;
 }
 
+export interface UpdateUserStoryInfoResult {
+  readonly usId: string;
+  readonly mainArtifactPath: string;
+  readonly summary: UserStorySummary;
+}
+
 export interface OperateCurrentPhaseArtifactResult {
   readonly usId: string;
   readonly currentPhase: string;
@@ -1117,6 +1123,16 @@ export interface SpecForgeBackendClient {
   repairUserStoryLineage(usId: string, actor?: string): Promise<WorkflowLineageRepairResult>;
   createUserStory(usId: string, title: string, kind: string, category: string, sourceText: string, actor?: string, tags?: readonly string[]): Promise<CreateOrImportUserStoryResult>;
   importUserStory(usId: string, sourcePath: string, title: string, kind: string, category: string, actor?: string, tags?: readonly string[]): Promise<CreateOrImportUserStoryResult>;
+  updateUserStoryInfo(
+    usId: string,
+    values: {
+      readonly title?: string;
+      readonly kind?: string;
+      readonly owner?: string;
+      readonly category?: string;
+      readonly tags?: readonly string[];
+    }
+  ): Promise<UpdateUserStoryInfoResult>;
   initializeRepoPrompts(overwrite?: boolean): Promise<InitializeRepoPromptsResult>;
   exportPromptTemplate(promptPath: string, overwrite?: boolean): Promise<InitializeRepoPromptsResult>;
   continuePhase(usId: string, actor?: string): Promise<ContinuePhaseResult>;

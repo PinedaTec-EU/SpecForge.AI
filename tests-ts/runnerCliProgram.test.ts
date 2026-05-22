@@ -137,6 +137,15 @@ test("CLI workflow portal exposes reset and lineage endpoints for sidebar action
   assert.match(source, /internal sealed record UserStoryActionRequest\(string UsId, string\? Actor\);/);
 });
 
+test("CLI workflow portal exposes user-story metadata update endpoint for sidebar editing", async () => {
+  const source = await fs.promises.readFile(programPath, "utf8");
+
+  assert.match(source, /case \("POST", "\/api\/update-user-story-info"\):/);
+  assert.match(source, /JsonSerializer\.Deserialize<UpdateUserStoryInfoRequest>/);
+  assert.match(source, /UpdateUserStoryInfoAsync\([\s\S]*?request\.UsId,[\s\S]*?request\.Title,[\s\S]*?request\.Kind,[\s\S]*?request\.Owner,[\s\S]*?request\.Category,[\s\S]*?request\.Tags/);
+  assert.match(source, /internal sealed record UpdateUserStoryInfoRequest\(\s*string UsId,\s*string\? Title,\s*string\? Kind,\s*string\? Owner,\s*string\? Category,\s*IReadOnlyList<string>\? Tags\);/);
+});
+
 test("CLI writes JSON with web serializer options for record responses", async () => {
   const source = await fs.promises.readFile(programPath, "utf8");
 

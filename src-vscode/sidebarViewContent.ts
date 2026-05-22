@@ -1763,6 +1763,9 @@ function wrapHtml(content: string, busy: boolean, createFormResetToken: number, 
           command: element.dataset.command,
           usId: element.dataset.usId,
           owner: element.dataset.owner,
+          title: element.dataset.title,
+          category: element.dataset.category,
+          tags: element.dataset.tags,
           kind: element.dataset.kind,
           sourcePath: element.dataset.sourcePath
         });
@@ -2156,7 +2159,13 @@ function buildStoryRowMarkup(summary: UserStorySummary, model: SidebarViewModel)
             <span aria-hidden="true">☰</span>
           </button>
           <div class="action-menu__panel" data-action-menu-panel role="menu" hidden>
-            <button class="action-menu__item" type="button" ${model.showDroppedUserStories ? "disabled" : `data-command="openMainArtifact" data-us-id="${escapeHtmlAttr(summary.usId)}"`} role="menuitem">
+            <button
+              class="action-menu__item"
+              type="button"
+              ${model.showDroppedUserStories
+                ? "disabled"
+                : `data-command="showEditUserStoryForm" data-us-id="${escapeHtmlAttr(summary.usId)}" data-title="${escapeHtmlAttr(editableUserStoryTitle(summary.usId, summary.title))}" data-owner="${escapeHtmlAttr(summary.owner)}" data-category="${escapeHtmlAttr(summary.category)}" data-tags="${escapeHtmlAttr((summary.tags ?? []).join(", "))}"`}
+              role="menuitem">
               <span class="action-menu__item-icon" aria-hidden="true">✎</span>
               <span>Edit US info</span>
             </button>
@@ -2274,6 +2283,18 @@ function buildStoryDisplayTitle(summary: UserStorySummary): string {
   return normalizedTitle.startsWith(`${summary.usId} `) || normalizedTitle.startsWith(`${summary.usId}·`)
     || normalizedTitle.startsWith(`${summary.usId}-`) || normalizedTitle.startsWith(`${summary.usId}:`)
     ? normalizedTitle.slice(summary.usId.length).trimStart().replace(/^[·\-:]\s*/, "")
+    : normalizedTitle;
+}
+
+function editableUserStoryTitle(usId: string, title: string): string {
+  const normalizedTitle = title.trim();
+  if (!normalizedTitle) {
+    return "";
+  }
+
+  return normalizedTitle.startsWith(`${usId} `) || normalizedTitle.startsWith(`${usId}·`)
+    || normalizedTitle.startsWith(`${usId}-`) || normalizedTitle.startsWith(`${usId}:`)
+    ? normalizedTitle.slice(usId.length).trimStart().replace(/^[·\-:]\s*/, "")
     : normalizedTitle;
 }
 

@@ -62,3 +62,27 @@
   2. Observe that the second action button shows a circle instead of an eye and does not clearly reflect effective sidebar visibility.
   3. Open the story context menu and observe that `Hide from my list` duplicates the intended visibility action.
   4. Trigger `Analyze / Repair` or `Reset workflow` from the CLI portal and observe that nothing happens because the renderer is missing the corresponding portal handlers.
+
+### SFB-006
+
+- Bug code: `SFB-006`
+- Discovery date: `2026-05-22`
+- Status: `Fixed`
+- Short description: The sidebar `Edit US info` action was wired as a navigation shortcut to the capture source instead of a real metadata edit flow, so users could not update owner, title, category, or tags from the story card actions.
+- Reproduction steps:
+  1. Open the sidebar or CLI workflow portal on a repository with at least one user story.
+  2. Open the context menu for that story and click `Edit US info`.
+  3. Observe that the UI either just navigates to the capture/source view or appears to do nothing when already there.
+  4. Observe that no metadata editing flow is presented for owner, title, category, or tags.
+
+### SFB-007
+
+- Bug code: `SFB-007`
+- Discovery date: `2026-05-22`
+- Status: `Fixed`
+- Short description: The edit metadata flow reused the rendered story title as the edit default, so stories whose visible title already included the `US-xxxx` prefix could save that prefix back into metadata and duplicate it on the next render.
+- Reproduction steps:
+  1. Open a story whose current title is rendered as `US-xxxx · ...`.
+  2. Trigger `Edit US info` and accept the default title without removing the prefix.
+  3. Save the metadata update.
+  4. Observe that the story can later render as `US-xxxx · US-xxxx · ...`.

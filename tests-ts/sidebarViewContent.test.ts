@@ -589,8 +589,9 @@ test("buildSidebarHtml wires user story row actions to selectable commands", () 
     categories: ["workflow"],
     userStories: [{
       usId: "US-0010",
-      title: "Editable workflow",
+      title: "US-0010 · Edit metadata",
       category: "workflow",
+      tags: ["ux", "cli"],
       currentPhase: "capture",
       status: "active",
       mainArtifactPath: "/tmp/us.md",
@@ -600,7 +601,7 @@ test("buildSidebarHtml wires user story row actions to selectable commands", () 
   }));
 
   assert.match(html, /class="story-card[^"]*" type="button" data-command="openWorkflow" data-us-id="US-0010"/);
-  assert.match(html, /data-command="openMainArtifact" data-us-id="US-0010" role="menuitem">\s+<span class="action-menu__item-icon" aria-hidden="true">✎<\/span>\s+<span>Edit US info<\/span>/);
+  assert.match(html, /data-command="showEditUserStoryForm"[\s\S]*data-us-id="US-0010"[\s\S]*data-title="Edit metadata"[\s\S]*data-owner="alice"[\s\S]*data-category="workflow"[\s\S]*data-tags="ux, cli"[\s\S]*role="menuitem">[\s\S]*<span class="action-menu__item-icon" aria-hidden="true">✎<\/span>[\s\S]*<span>Edit US info<\/span>/);
   assert.match(html, /data-command="toggleSidebarVisibilityUserStory" data-us-id="US-0010" data-owner="alice"/);
   assert.doesNotMatch(html, /<button class="action-menu__item" type="button" role="menuitem" disabled>\s+<span class="action-menu__item-icon" aria-hidden="true">✎<\/span>\s+<span>Edit US info<\/span>/);
 });
