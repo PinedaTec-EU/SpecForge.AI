@@ -44,10 +44,11 @@ This is why small portal edits have repeatedly broken unrelated flows.
 
 ## Migration Plan
 
-- [ ] `PORTAL-001` Status: `todo`
+- [x] `PORTAL-001` Status: `done`
   Write and freeze the portal state ownership contract.
   Output: one documented source-of-truth map for selection, filters, visible scope, modal state, local preferences, and persisted URL state.
   Notes: must explicitly state what belongs to the parent shell, what belongs to sidebar markup, and what must never be inferred inside the iframe.
+  Evidence: [portal-state-contract.md](../portal-state-contract.md)
 
 - [ ] `PORTAL-002` Status: `todo`
   Move global scope and visibility controls to the parent shell.

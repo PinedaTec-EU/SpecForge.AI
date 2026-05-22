@@ -12,6 +12,8 @@ In practice, use:
 - MCP tools
 - the browser workflow portal
 
+When the browser workflow portal is involved, page-level scope, selection, URL normalization, and modal orchestration must follow the explicit ownership rules in [portal-state-contract.md](portal-state-contract.md) instead of being inferred ad hoc from embedded sidebar behavior.
+
 ## Domain Capabilities
 
 The current core already supports:

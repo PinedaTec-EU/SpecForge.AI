@@ -77,6 +77,8 @@ Responsibilities:
 
 The extension, MCP clients, self-contained workflow portal, and central portal orchestrate interaction. The MCP/domain boundary decides lifecycle. SpecForge Central selects and monitors repositories. Each repository preserves traceability for its own workflows.
 
+For the browser workflow portal specifically, page-level state ownership must stay explicit. Global portal state belongs to the parent shell, repository truth belongs to the backend/domain, and host-specific UI behavior must not leak browser-only routing or iframe assumptions into the VS Code extension. The frozen contract is documented in [portal-state-contract.md](portal-state-contract.md).
+
 ## Non-VS Code Runtime
 
 The repository ships a packaged local plugin at `plugins/specforge-ai/` so agent environments that do not host the VS Code extension can still operate SpecForge.
