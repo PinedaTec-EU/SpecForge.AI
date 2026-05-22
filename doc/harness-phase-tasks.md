@@ -327,3 +327,8 @@ Record debt here as soon as it is discovered during implementation.
   Impact: layout editing is not trustworthy because persisted changes are not preserved.
   Notes: fixed by invalidating the browser-served workflow portal cache/signature when `workflow-graph-layout.yaml` changes.
   Notes: verify save path, restore path, and any re-render/cache invalidation behavior in both VS Code and CLI-served portal flows.
+
+- [ ] `BUG-PORTAL-001` Status: `todo`
+  A corrupted or legacy-colliding user story can make the workflow portal fail to open altogether with HTTP 500.
+  Impact: one broken `.specs/us/**` entry prevents the operator from opening and inspecting otherwise valid user stories in the portal.
+  Notes: current observed case is the legacy collision between `.specs/us/workflow/US-0010` and `.specs/us/US-0010`; portal should degrade gracefully, isolate the broken US, and keep the rest of the workflow UI available.
