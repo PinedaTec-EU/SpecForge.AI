@@ -62,8 +62,22 @@ test("buildSidebarHtml shows a single prominent create action when prompts are i
   assert.match(html, /Create your first user story/);
   assert.match(html, /Create User Story/);
   assert.doesNotMatch(html, /aria-label="Reinitialize repo prompts"/);
-  assert.doesNotMatch(html, /aria-label="Create new user story"/);
   assert.doesNotMatch(html, /Workflow backlog/);
+});
+
+test("buildSidebarHtml keeps compact actions visible when the current ownership scope is empty", () => {
+  const html = buildSidebarHtml(model({
+    totalUserStoryCount: 4,
+    currentActor: "alice",
+    categories: ["workflow"],
+    userStories: []
+  }));
+
+  assert.match(html, /No user stories in current scope/);
+  assert.match(html, /Showing 0 of 4 stories in scope · owner alice\./);
+  assert.match(html, /Sidebar view options/);
+  assert.match(html, /Include other owners/);
+  assert.doesNotMatch(html, /Create your first user story/);
 });
 
 test("buildSidebarHtml renders the embedded creation form inside the sidebar", () => {

@@ -87,6 +87,14 @@ export function buildSidebarHtml(model: SidebarViewModel): string {
       `, isBusy, model.createFormResetToken ?? 0, model.typographyCssVars ?? "");
     }
 
+    const hasStoriesOutsideCurrentScope = model.totalUserStoryCount > 0;
+    const emptyTitle = hasStoriesOutsideCurrentScope
+      ? "No user stories in current scope"
+      : "Create your first user story";
+    const emptyCopy = hasStoriesOutsideCurrentScope
+      ? `The current sidebar scope is hiding every story. Use view options to include other owners, or change your filters to bring stories back into view.`
+      : "No faded text-buttons, no scattered prompts. Start here and the sidebar opens the full intake form in place.";
+
     return wrapHtml(`
       ${busyIndicatorMarkup}
       ${buildSettingsWarningMarkup(model)}
@@ -98,13 +106,12 @@ export function buildSidebarHtml(model: SidebarViewModel): string {
               <p class="eyebrow">SpecForge.AI</p>
               ${buildRuntimeVersionMarkup(model.runtimeVersion)}
             </div>
-            <h1>Create your first user story</h1>
+            <h1>${escapeHtml(emptyTitle)}</h1>
           </div>
-          <div class="compact-actions">
-            ${buildDroppedStoriesActionButton(model.showDroppedUserStories, model.droppedUserStoryCount)}
-          </div>
+          ${buildCompactActions(model)}
         </div>
-        <p class="copy">No faded text-buttons, no scattered prompts. Start here and the sidebar opens the full intake form in place.</p>
+        ${hasStoriesOutsideCurrentScope ? `<p class="copy">${escapeHtml(buildOwnershipScopeSummary(model))}</p>` : ""}
+        <p class="copy">${escapeHtml(emptyCopy)}</p>
         <button class="primary-action" data-command="showCreateForm">Create User Story</button>
       </section>
     `, isBusy, model.createFormResetToken ?? 0, model.typographyCssVars ?? "");
