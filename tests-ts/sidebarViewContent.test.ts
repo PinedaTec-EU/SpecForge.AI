@@ -122,6 +122,7 @@ test("buildSidebarHtml exposes a compact prompt customization action", () => {
   assert.doesNotMatch(html, /aria-label="Configure execution providers"/);
   assert.match(html, /data-story-search/);
   assert.match(html, /Search by title, description, category, owner, or #tag/);
+  assert.match(html, /data-command="toggleSearchIncludesOtherOwners"[\s\S]*Include other owners/);
   assert.doesNotMatch(html, /data-command="toggleViewMode"/);
   assert.doesNotMatch(html, /Repo prompts ready/);
 });
@@ -513,7 +514,7 @@ test("buildSidebarHtml marks the starred user story with a highlighted star acti
   assert.match(html, />★</);
 });
 
-test("buildSidebarHtml renders owner scope, watch action, and owner-aware search toggle", () => {
+test("buildSidebarHtml renders owner scope, watch action, and owner scope view option", () => {
   const html = buildSidebarHtml(model({
     searchIncludesOtherOwners: false,
     currentActor: "alice",
@@ -537,7 +538,7 @@ test("buildSidebarHtml renders owner scope, watch action, and owner-aware search
 
   assert.match(html, /Showing 1 of 3 stories in scope · owner alice\./);
   assert.match(html, /placeholder="Search by title, description, category, owner, or #tag"/);
-  assert.match(html, /data-command-toggle="toggleSearchIncludesOtherOwners"/);
+  assert.match(html, /data-command="toggleSearchIncludesOtherOwners"[\s\S]*Include other owners/);
   assert.match(html, /aria-label="Stop watching US-0012"/);
   assert.match(html, /story-watch--active/);
   assert.match(html, /owner alice/);

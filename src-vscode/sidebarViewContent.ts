@@ -436,10 +436,6 @@ function buildStorySearchMarkup(model: SidebarViewModel): string {
           <span class="story-search__icon" aria-hidden="true">🔍</span>
         </span>
       </label>
-      <label class="story-search__switch">
-        <input type="checkbox" data-command-toggle="toggleSearchIncludesOtherOwners" ${model.searchIncludesOtherOwners ? "checked" : ""} />
-        <span>Include other owners</span>
-      </label>
     </div>
   `;
 }
@@ -471,7 +467,10 @@ function buildViewOptionsMenu(model: SidebarViewModel): string {
   const blockedCount = model.userStories.filter(isBlockedStory).length;
   const completedDisabled = model.showDroppedUserStories || completedCount === 0;
   const blockedDisabled = model.showDroppedUserStories || blockedCount === 0;
-  const hasVisibleFilters = model.showCompletedUserStories || model.showBlockedUserStories || model.showHiddenUserStories;
+  const hasVisibleFilters = model.showCompletedUserStories
+    || model.showBlockedUserStories
+    || model.showHiddenUserStories
+    || model.searchIncludesOtherOwners;
 
   return `
     <div class="action-menu" data-action-menu>
@@ -514,6 +513,15 @@ function buildViewOptionsMenu(model: SidebarViewModel): string {
           aria-checked="${model.showHiddenUserStories ? "true" : "false"}">
           <span class="action-menu__item-icon" aria-hidden="true">${model.showHiddenUserStories ? "✓" : ""}</span>
           <span>Show hidden</span>
+        </button>
+        <button
+          class="action-menu__item"
+          type="button"
+          data-command="toggleSearchIncludesOtherOwners"
+          role="menuitemcheckbox"
+          aria-checked="${model.searchIncludesOtherOwners ? "true" : "false"}">
+          <span class="action-menu__item-icon" aria-hidden="true">${model.searchIncludesOtherOwners ? "✓" : ""}</span>
+          <span>Include other owners</span>
         </button>
       </div>
     </div>
@@ -1177,13 +1185,6 @@ function wrapHtml(content: string, busy: boolean, createFormResetToken: number, 
       display: grid;
       gap: 6px;
       margin: 0 0 14px;
-    }
-    .story-search__switch {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.8rem;
-      color: rgba(255, 255, 255, 0.72);
     }
     .story-search__label {
       position: absolute;

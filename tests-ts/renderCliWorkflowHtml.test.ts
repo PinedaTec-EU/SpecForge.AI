@@ -52,6 +52,7 @@ test("CLI workflow renderer groups sidebar stories by category", async () => {
 
   assert.match(script, /viewMode: "category"/);
   assert.doesNotMatch(script, /viewMode: "phase"/);
+  assert.match(script, /searchIncludesOtherOwners: options\.includeOtherOwners/);
 });
 
 test("CLI workflow renderer falls back to the embedded workflow configuration route", async () => {
@@ -116,8 +117,8 @@ test("CLI workflow renderer switches sidebar visibility without navigating the w
   for (const content of [script, packagedScript]) {
     assert.match(content, /activeSidebarUserStories = Array\.isArray\(payload\.activeSidebarUserStories\)/);
     assert.match(content, /droppedSidebarUserStories = Array\.isArray\(payload\.droppedSidebarUserStories\)/);
-    assert.match(content, /activeSidebarHtml = buildCliSidebarHtml\(activeSidebarUserStories/);
-    assert.match(content, /droppedSidebarHtml = buildCliSidebarHtml\(droppedSidebarUserStories/);
+    assert.match(content, /buildSidebarHtmlModes\(includeOtherOwners\)/);
+    assert.match(content, /const scope = sidebarShowsOtherOwners \? sidebarHtmlByScope\.all : sidebarHtmlByScope\.mine/);
     assert.match(content, /sidebarFrame\.srcdoc = sidebarShowsDropped/);
     assert.match(content, /window\.history\.replaceState\(window\.history\.state, "", url\.toString\(\)\)/);
     assert.doesNotMatch(content, /resolveTargetUserStoryId/);
@@ -151,6 +152,23 @@ test("CLI workflow renderer persists blocked story visibility in the portal quer
     assert.match(content, /url\.searchParams\.set\("sidebarBlocked", "true"\)/);
     assert.match(content, /activeCompletedBlocked/);
     assert.match(content, /replaceSidebarFrame\(\)/);
+  }
+});
+
+test("CLI workflow renderer keeps other owners hidden by default and toggles them from view options", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+  const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
+
+  for (const content of [script, packagedScript]) {
+    assert.match(content, /const sidebarHtmlByScope = \{/);
+    assert.match(content, /mine: buildSidebarHtmlModes\(false\)/);
+    assert.match(content, /all: buildSidebarHtmlModes\(true\)/);
+    assert.match(content, /let sidebarShowsOtherOwners = false/);
+    assert.match(content, /new URL\(window\.location\.href\)\.searchParams\.get\("sidebarOtherOwners"\) === "true"/);
+    assert.match(content, /message\.command === "toggleSearchIncludesOtherOwners"/);
+    assert.match(content, /sidebarShowsOtherOwners = !sidebarShowsOtherOwners/);
+    assert.match(content, /url\.searchParams\.set\("sidebarOtherOwners", "true"\)/);
+    assert.match(content, /url\.searchParams\.delete\("sidebarOtherOwners"\)/);
   }
 });
 
