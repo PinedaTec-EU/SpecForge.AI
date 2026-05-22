@@ -546,6 +546,7 @@ const sidebarShell = `
   .specforge-cli-config-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 14px; border-bottom: 1px solid rgba(114, 241, 184, 0.14); background: #080e14; color: rgba(255, 255, 255, 0.86); font: 800 0.82rem/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
   .specforge-cli-config-close { width: 34px; height: 34px; border-radius: 10px; border: 1px solid rgba(114, 241, 184, 0.2); background: rgba(255, 255, 255, 0.05); color: #72f1b8; font: 900 1.1rem/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; cursor: pointer; }
   .specforge-cli-config-frame { width: 100%; height: 100%; border: 0; background: #0f1720; }
+  .specforge-cli-source-focus { outline: 2px solid rgba(114, 241, 184, 0.78); outline-offset: 6px; border-radius: 16px; transition: outline-color 180ms ease; }
   @media (max-width: 860px) {
     body.specforge-cli-with-sidebar { grid-template-columns: 58px minmax(0, 1fr); }
     body.specforge-cli-with-sidebar:not(.specforge-cli-sidebar-collapsed) { grid-template-columns: minmax(280px, 86vw) minmax(0, 1fr); }
@@ -793,6 +794,25 @@ const sidebarShell = `
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body)
     }).then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))));
+    const focusUserStorySourceSection = () => {
+      const section = document.querySelector("[data-user-story-source-section]");
+      if (!(section instanceof HTMLElement)) {
+        return false;
+      }
+      section.scrollIntoView({ behavior: "smooth", block: "start" });
+      section.classList.add("specforge-cli-source-focus");
+      window.setTimeout(() => section.classList.remove("specforge-cli-source-focus"), 1600);
+      return true;
+    };
+    const applyArtifactFocusFromUrl = () => {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("artifactFocus") !== "source") {
+        return;
+      }
+      window.requestAnimationFrame(() => {
+        focusUserStorySourceSection();
+      });
+    };
     const reloadWithSidebarState = () => {
       persistSidebarLists();
       const url = replaceSidebarUrlState(new URL(window.location.href));
@@ -804,14 +824,21 @@ const sidebarShell = `
       if (message.command === "openWorkflow" && message.usId) {
         const url = new URL(window.location.href);
         url.searchParams.delete("selectedPhaseId");
+        url.searchParams.delete("artifactFocus");
         url.searchParams.set("usId", message.usId);
         window.location.href = url.toString();
         return;
       }
       if (message.command === "openMainArtifact" && message.usId) {
         const url = new URL(window.location.href);
+        if (url.searchParams.get("usId") === message.usId && url.searchParams.get("selectedPhaseId") === "capture") {
+          if (focusUserStorySourceSection()) {
+            return;
+          }
+        }
         url.searchParams.set("usId", message.usId);
         url.searchParams.set("selectedPhaseId", "capture");
+        url.searchParams.set("artifactFocus", "source");
         window.location.href = url.toString();
         return;
       }
@@ -947,6 +974,7 @@ const sidebarShell = `
         openConfiguration(${JSON.stringify(configurationProvidersUrl)});
       }
     });
+    applyArtifactFocusFromUrl();
   })();
 </script>`;
 

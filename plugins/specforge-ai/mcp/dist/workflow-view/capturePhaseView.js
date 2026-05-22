@@ -37,7 +37,7 @@ function buildCapturePhaseSections(args) {
         : "";
     const captureSourceSection = captureSourcePath
         ? `
-      <section class="detail-card">
+      <section class="detail-card" id="user-story-source-section" data-user-story-source-section>
         <h3>User Story Source</h3>
         ${buildArtifactPreviewSection(captureSourcePath, artifactPreviewHtml, selectedArtifactContent ?? "Artifact content unavailable.")}
       </section>
