@@ -272,6 +272,8 @@ Recently completed subtasks:
 - ✅ add completed and blocked visibility toggles in the sidebar and CLI portal story lists
 - ✅ add in-sidebar user story search by title, description, category, and tags
 - [ ] complete rich prompt inspection/editing from the extension with diff or visible effective prompt
+- [ ] add shared `createdBy` and `owner` metadata plus local per-user visibility controls so large repositories default to "my active stories" instead of the full backlog
+- [ ] enforce a self-hosting fallback rule so engine defects are tracked outside the SpecForge workflow engine before repair work depends on that same engine
 
 Pending subtasks before the MVP is considered complete:
 

@@ -6,6 +6,8 @@ export interface UserStorySummary {
   readonly usId: string;
   readonly title: string;
   readonly description?: string;
+  readonly createdBy: string;
+  readonly owner: string;
   readonly category: string;
   readonly tags?: readonly string[];
   readonly directoryPath: string;

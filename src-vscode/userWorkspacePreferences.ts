@@ -4,11 +4,17 @@ import * as path from "node:path";
 
 export interface UserWorkspacePreferences {
   readonly starredUserStoryId: string | null;
+  readonly hiddenUserStoryIds: readonly string[];
+  readonly watchingUserStoryIds: readonly string[];
+  readonly maxVisibleUserStories: number | null;
   readonly pausedWorkflowPhaseIdsByUsId: Record<string, readonly string[]>;
 }
 
 const defaultPreferences: UserWorkspacePreferences = {
   starredUserStoryId: null,
+  hiddenUserStoryIds: [],
+  watchingUserStoryIds: [],
+  maxVisibleUserStories: null,
   pausedWorkflowPhaseIdsByUsId: {}
 };
 
@@ -22,6 +28,9 @@ export async function readUserWorkspacePreferences(workspaceRoot: string): Promi
       starredUserStoryId: typeof parsed?.starredUserStoryId === "string" && parsed.starredUserStoryId.trim().length > 0
         ? parsed.starredUserStoryId.trim()
         : null,
+      hiddenUserStoryIds: normalizeUserStoryIdList(parsed?.hiddenUserStoryIds),
+      watchingUserStoryIds: normalizeUserStoryIdList(parsed?.watchingUserStoryIds),
+      maxVisibleUserStories: normalizeMaxVisibleUserStories(parsed?.maxVisibleUserStories),
       pausedWorkflowPhaseIdsByUsId: normalizePausedWorkflowPhaseIdsByUsId(parsed?.pausedWorkflowPhaseIdsByUsId)
     };
   } catch {
@@ -104,6 +113,30 @@ function normalizePausedWorkflowPhaseIdsByUsId(value: unknown): Record<string, r
   }
 
   return result;
+}
+
+function normalizeUserStoryIdList(value: unknown): readonly string[] {
+  if (!Array.isArray(value))
+  {
+    return [];
+  }
+
+  return [...new Set(
+    value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim().toUpperCase())
+      .filter((item) => item.length > 0)
+  )];
+}
+
+function normalizeMaxVisibleUserStories(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value))
+  {
+    return null;
+  }
+
+  const normalized = Math.trunc(value);
+  return normalized > 0 ? normalized : null;
 }
 export function getUserWorkspacePreferencesPath(workspaceRoot: string): string {
   return path.join(workspaceRoot, ".specs", "users", normalizeUserSegment(os.userInfo().username), "vscode-preferences.json");

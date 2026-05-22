@@ -4,6 +4,8 @@ public sealed record UserStorySummary(
     string UsId,
     string Title,
     string Description,
+    string CreatedBy,
+    string Owner,
     string Category,
     IReadOnlyCollection<string> Tags,
     string DirectoryPath,

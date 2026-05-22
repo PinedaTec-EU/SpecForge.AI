@@ -652,6 +652,7 @@ static async Task<object> HandleSpecForgeActionAsync(
             GetRequired(arguments, "usId"),
             GetOptional(parameters, "title"),
             GetOptional(parameters, "kind"),
+            GetOptional(parameters, "owner"),
             GetOptional(parameters, "category"),
             GetNullableStringArray(parameters, "tags")),
         "advance_phase" => await applicationService.GenerateNextPhaseAsync(

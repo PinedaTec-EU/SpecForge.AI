@@ -182,7 +182,7 @@ public sealed class WorkflowRunner
                 paths.TimelineFilePath.Replace('\\', '/')
             ]);
 
-        await File.WriteAllTextAsync(paths.MainArtifactPath, BuildUserStoryMarkdown(usId, title, kind, category, sourceText, tags), cancellationToken);
+        await File.WriteAllTextAsync(paths.MainArtifactPath, BuildUserStoryMarkdown(usId, title, kind, normalizedActor, normalizedActor, category, sourceText, tags), cancellationToken);
         await File.WriteAllTextAsync(paths.TimelineFilePath, BuildInitialTimeline(usId, title, normalizedActor, runtimeVersion), cancellationToken);
         await File.WriteAllTextAsync(
             paths.CaptureRecordPath,
@@ -3860,6 +3860,8 @@ public sealed class WorkflowRunner
         string usId,
         string title,
         string kind,
+        string createdBy,
+        string owner,
         string category,
         string sourceText,
         IReadOnlyCollection<string>? tags)
@@ -3871,6 +3873,8 @@ public sealed class WorkflowRunner
             string.Empty,
             "## Metadata",
             $"- Kind: `{kind}`",
+            $"- Created By: `{createdBy}`",
+            $"- Owner: `{owner}`",
             $"- Category: `{category}`"
         };
 
@@ -3906,10 +3910,12 @@ public sealed class WorkflowRunner
             .Replace($"{usId} - ", string.Empty, StringComparison.Ordinal)
             .Trim();
         var kind = ReadUserStoryKind(userStory);
+        var createdBy = ReadUserStoryMetadataScalar(userStory, "- Created By:", "unknown");
+        var owner = ReadUserStoryMetadataScalar(userStory, "- Owner:", createdBy);
         var category = ReadUserStoryCategory(userStory);
         var tags = ReadUserStoryTags(userStory);
         ValidateUserStoryKind(kind);
-        return new UserStoryMetadata(normalizedTitle, kind, category, tags);
+        return new UserStoryMetadata(normalizedTitle, kind, createdBy, owner, category, tags);
     }
 
     private static string ComputeSourceHash(string sourceText)
@@ -4291,40 +4297,31 @@ public sealed class WorkflowRunner
 
     private static string ReadUserStoryKind(string markdown)
     {
-        using var reader = new StringReader(markdown);
-        string? line;
-        while ((line = reader.ReadLine()) is not null)
-        {
-            var trimmed = line.Trim();
-            if (!trimmed.StartsWith("- Kind:", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            var value = trimmed["- Kind:".Length..].Trim().Trim('`').ToLowerInvariant();
-            return string.IsNullOrWhiteSpace(value) ? "feature" : value;
-        }
-
-        return "feature";
+        return ReadUserStoryMetadataScalar(markdown, "- Kind:", "feature").ToLowerInvariant();
     }
 
     private static string ReadUserStoryCategory(string markdown)
+    {
+        return ReadUserStoryMetadataScalar(markdown, "- Category:", "uncategorized").ToLowerInvariant();
+    }
+
+    private static string ReadUserStoryMetadataScalar(string markdown, string prefix, string fallback)
     {
         using var reader = new StringReader(markdown);
         string? line;
         while ((line = reader.ReadLine()) is not null)
         {
             var trimmed = line.Trim();
-            if (!trimmed.StartsWith("- Category:", StringComparison.OrdinalIgnoreCase))
+            if (!trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
 
-            var value = trimmed["- Category:".Length..].Trim().Trim('`').ToLowerInvariant();
-            return string.IsNullOrWhiteSpace(value) ? "uncategorized" : value;
+            var value = trimmed[prefix.Length..].Trim().Trim('`');
+            return string.IsNullOrWhiteSpace(value) ? fallback : value;
         }
 
-        return "uncategorized";
+        return fallback;
     }
 
     private static IReadOnlyList<string> ReadUserStoryTags(string markdown)
@@ -4439,5 +4436,5 @@ public sealed class WorkflowRunner
         return ascii.Length <= 48 ? ascii : ascii[..48].Trim('-');
     }
 
-    internal sealed record UserStoryMetadata(string Title, string Kind, string Category, IReadOnlyList<string> Tags);
+    internal sealed record UserStoryMetadata(string Title, string Kind, string CreatedBy, string Owner, string Category, IReadOnlyList<string> Tags);
 }

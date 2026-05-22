@@ -85,6 +85,8 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
 
         Assert.Equal(["mcp", "ux"], summary.Tags);
         Assert.Equal(["mcp", "ux"], workflow.Tags);
+        Assert.Equal("user", summary.CreatedBy);
+        Assert.Equal("user", summary.Owner);
         Assert.Contains("- Tags: `mcp`, `ux`", usMarkdown);
     }
 
@@ -106,6 +108,7 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
             "US-0001",
             title: "Updated story",
             kind: "bug",
+            owner: "alice",
             category: "configuration",
             tags: ["#sf-central", "configuration"]);
 
@@ -113,10 +116,14 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
 
         Assert.Equal("US-0001", result.UsId);
         Assert.Equal("Updated story", result.Summary.Title.Replace("US-0001 · ", string.Empty, StringComparison.Ordinal));
+        Assert.Equal("user", result.Summary.CreatedBy);
+        Assert.Equal("alice", result.Summary.Owner);
         Assert.Equal("configuration", result.Summary.Category);
         Assert.Equal(["configuration", "sf-central"], result.Summary.Tags);
         Assert.Contains("# US-0001 · Updated story", usMarkdown);
         Assert.Contains("- Kind: `bug`", usMarkdown);
+        Assert.Contains("- Created By: `user`", usMarkdown);
+        Assert.Contains("- Owner: `alice`", usMarkdown);
         Assert.Contains("- Category: `configuration`", usMarkdown);
         Assert.Contains("- Tags: `configuration`, `sf-central`", usMarkdown);
         Assert.Contains("Initial source", usMarkdown);

@@ -27,7 +27,7 @@ public static class McpToolRegistry
                             ("workspaceRoot", Prop("string", "Absolute path to the workspace root.")),
                             ("action",        EnumProp("Mutation operation. Broad goals should be clarified into small MVP slices before create_user_stories_from_goal.", "create_user_story", "create_user_stories_from_goal", "import_user_story", "update_user_story_info", "advance_phase", "approve_phase", "approve_decomposition", "reject_decomposition", "approve_review_anyway", "request_regression", "restart_from_source", "rewind_workflow", "reopen_completed", "reset_to_capture", "submit_refinement_answers", "submit_approval_answer", "suggest_approval_answer", "operate_artifact", "add_files", "set_file_kind", "repair_lineage")),
                             ("usId",          Prop("string", "User story identifier when the action targets an existing user story.")),
-                            ("params",        Prop("object", "Action-specific parameters. update_user_story_info accepts title, kind, category, and tags."))))),
+                            ("params",        Prop("object", "Action-specific parameters. update_user_story_info accepts title, kind, owner, category, and tags."))))),
 
                 Tool("specforge_prompts", "Compact SpecForge prompt-template facade.",
                     Schema(

@@ -22,7 +22,10 @@ public sealed class WorkflowRunnerTests : IDisposable
         Assert.True(File.Exists(Path.Combine(rootDirectory, "timeline.md")));
         Assert.True(File.Exists(Path.Combine(rootDirectory, "capture.json")));
         var timeline = await File.ReadAllTextAsync(Path.Combine(rootDirectory, "timeline.md"));
+        var userStory = await File.ReadAllTextAsync(Path.Combine(rootDirectory, "us.md"));
         Assert.Contains("runtime-version: `0.1.3.224`", timeline);
+        Assert.Contains("- Created By: `user`", userStory);
+        Assert.Contains("- Owner: `user`", userStory);
     }
 
     [Fact]

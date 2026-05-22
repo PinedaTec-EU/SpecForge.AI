@@ -141,6 +141,7 @@ public sealed class SpecForgeApplicationService
         string usId,
         string? title = null,
         string? kind = null,
+        string? owner = null,
         string? category = null,
         IReadOnlyCollection<string>? tags = null,
         CancellationToken cancellationToken = default)
@@ -150,6 +151,7 @@ public sealed class SpecForgeApplicationService
         var metadata = await WorkflowRunner.ReadUserStoryMetadataAsync(paths.MainArtifactPath, workflowRun.UsId, cancellationToken);
         var nextTitle = UserStoryMarkdown.NormalizeOptionalScalar(title) ?? metadata.Title;
         var nextKind = UserStoryMarkdown.NormalizeOptionalScalar(kind)?.ToLowerInvariant() ?? metadata.Kind;
+        var nextOwner = UserStoryMarkdown.NormalizeOptionalScalar(owner) ?? metadata.Owner;
         var nextCategory = UserStoryMarkdown.NormalizeOptionalScalar(category)?.ToLowerInvariant() ?? metadata.Category;
         var nextTags = tags is null
             ? metadata.Tags
@@ -159,7 +161,7 @@ public sealed class SpecForgeApplicationService
         repositoryCategoryCatalog.EnsureCategoryIsAllowed(workspaceRoot, nextCategory);
 
         var content = await File.ReadAllTextAsync(paths.MainArtifactPath, cancellationToken);
-        var updated = UserStoryMarkdown.RewriteUserStoryInfo(content, workflowRun.UsId, nextTitle, nextKind, nextCategory, nextTags);
+        var updated = UserStoryMarkdown.RewriteUserStoryInfo(content, workflowRun.UsId, nextTitle, nextKind, metadata.CreatedBy, nextOwner, nextCategory, nextTags);
         await File.WriteAllTextAsync(paths.MainArtifactPath, updated, cancellationToken);
 
         var summary = await GetUserStorySummaryAsync(workspaceRoot, workflowRun.UsId, cancellationToken);
@@ -351,6 +353,8 @@ public sealed class SpecForgeApplicationService
             workflowRun.UsId,
             title,
             description,
+            metadata.CreatedBy,
+            metadata.Owner,
             metadata.Category,
             metadata.Tags,
             directory,
@@ -1266,6 +1270,8 @@ public sealed class SpecForgeApplicationService
                     childUsId,
                     childUsId,
                     "Missing child user story.",
+                    "unknown",
+                    "unknown",
                     string.Empty,
                     [],
                     string.Empty,

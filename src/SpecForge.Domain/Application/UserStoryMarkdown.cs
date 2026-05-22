@@ -33,6 +33,8 @@ internal static class UserStoryMarkdown
         string usId,
         string title,
         string kind,
+        string createdBy,
+        string owner,
         string category,
         IReadOnlyCollection<string> tags)
     {
@@ -63,6 +65,8 @@ internal static class UserStoryMarkdown
         {
             MetadataHeading,
             $"- Kind: `{kind}`",
+            $"- Created By: `{createdBy}`",
+            $"- Owner: `{owner}`",
             $"- Category: `{category}`"
         };
 
