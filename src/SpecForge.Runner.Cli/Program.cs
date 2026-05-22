@@ -306,13 +306,25 @@ static async Task HandleWorkflowPortalRequestAsync(
             path = "/";
         }
 
-        var requestUsId = ResolveWorkflowPortalUserStoryId(context.Request, usId);
         var requestSidebarVisibility = ResolveWorkflowPortalSidebarVisibility(context.Request);
         var requestShowCompletedUserStories = ResolveWorkflowPortalQueryFlag(context.Request, "sidebarCompleted");
         var requestShowBlockedUserStories = ResolveWorkflowPortalQueryFlag(context.Request, "sidebarBlocked");
         var requestShowHiddenUserStories = ResolveWorkflowPortalQueryFlag(context.Request, "sidebarHiddenVisible");
+        var requestIncludeOtherOwners = ResolveWorkflowPortalQueryFlag(context.Request, "sidebarOtherOwners");
         var requestSidebarWatchingUserStoryIds = ResolveWorkflowPortalUserStoryIdList(context.Request, "sidebarWatching");
         var requestSidebarHiddenUserStoryIds = ResolveWorkflowPortalUserStoryIdList(context.Request, "sidebarHidden");
+        var requestUsId = await ResolveWorkflowPortalUserStoryIdAsync(
+            applicationService,
+            workspaceRoot,
+            context.Request,
+            usId,
+            requestSidebarVisibility,
+            requestShowCompletedUserStories,
+            requestShowBlockedUserStories,
+            requestShowHiddenUserStories,
+            requestIncludeOtherOwners,
+            requestSidebarWatchingUserStoryIds,
+            requestSidebarHiddenUserStoryIds);
 
         switch ((context.Request.HttpMethod, path))
         {
@@ -615,17 +627,50 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
     return html;
 }
 
-static string ResolveWorkflowPortalUserStoryId(HttpListenerRequest request, string fallbackUsId)
+static async Task<string> ResolveWorkflowPortalUserStoryIdAsync(
+    SpecForgeApplicationService applicationService,
+    string workspaceRoot,
+    HttpListenerRequest request,
+    string fallbackUsId,
+    string? sidebarVisibility,
+    bool showCompletedUserStories,
+    bool showBlockedUserStories,
+    bool showHiddenUserStories,
+    bool includeOtherOwners,
+    IReadOnlyList<string> watchingUserStoryIds,
+    IReadOnlyList<string> hiddenUserStoryIds)
 {
     var queryUsId = request.QueryString["usId"];
     if (!string.IsNullOrWhiteSpace(queryUsId))
     {
-        return queryUsId;
+        return await ResolveVisibleWorkflowPortalUserStoryIdAsync(
+            applicationService,
+            workspaceRoot,
+            queryUsId,
+            fallbackUsId,
+            sidebarVisibility,
+            showCompletedUserStories,
+            showBlockedUserStories,
+            showHiddenUserStories,
+            includeOtherOwners,
+            watchingUserStoryIds,
+            hiddenUserStoryIds);
     }
 
     var referer = request.UrlReferrer;
     var refererUsId = referer is null ? null : ParseQueryValue(referer.Query, "usId");
-    return string.IsNullOrWhiteSpace(refererUsId) ? fallbackUsId : refererUsId;
+    return await ResolveVisibleWorkflowPortalUserStoryIdAsync(
+        applicationService,
+        workspaceRoot,
+        refererUsId,
+        fallbackUsId,
+        sidebarVisibility,
+        showCompletedUserStories,
+        showBlockedUserStories,
+        showHiddenUserStories,
+        includeOtherOwners,
+        watchingUserStoryIds,
+        hiddenUserStoryIds);
 }
 
 static string? ResolveWorkflowPortalSidebarVisibility(HttpListenerRequest request)
@@ -671,6 +716,99 @@ static IReadOnlyList<string> NormalizeUserStoryIds(string? value) =>
         .Where(item => item.Length > 0)
         .Distinct(StringComparer.Ordinal)
         .ToArray();
+
+static async Task<string> ResolveVisibleWorkflowPortalUserStoryIdAsync(
+    SpecForgeApplicationService applicationService,
+    string workspaceRoot,
+    string? requestedUsId,
+    string fallbackUsId,
+    string? sidebarVisibility,
+    bool showCompletedUserStories,
+    bool showBlockedUserStories,
+    bool showHiddenUserStories,
+    bool includeOtherOwners,
+    IReadOnlyList<string> watchingUserStoryIds,
+    IReadOnlyList<string> hiddenUserStoryIds)
+{
+    var normalizedSidebarVisibility = string.Equals(sidebarVisibility, "dropped", StringComparison.OrdinalIgnoreCase)
+        ? "dropped"
+        : "active";
+    var availableStories = normalizedSidebarVisibility == "dropped"
+        ? await applicationService.ListUserStoriesAsync(workspaceRoot, "dropped")
+        : await applicationService.ListUserStoriesAsync(workspaceRoot);
+    var availableStoryById = availableStories.ToDictionary(item => item.UsId, StringComparer.OrdinalIgnoreCase);
+    if (!string.IsNullOrWhiteSpace(requestedUsId) && availableStoryById.TryGetValue(requestedUsId.Trim(), out var requestedStory))
+    {
+        return requestedStory.UsId;
+    }
+
+    if (availableStories.Count == 0)
+    {
+        return fallbackUsId;
+    }
+
+    var currentActor = ResolveCurrentGitOwner(workspaceRoot);
+    var hiddenSet = new HashSet<string>(hiddenUserStoryIds, StringComparer.OrdinalIgnoreCase);
+    var watchingSet = new HashSet<string>(watchingUserStoryIds, StringComparer.OrdinalIgnoreCase);
+    var firstVisible = availableStories
+        .Where(story => IsWorkflowPortalStoryVisible(
+            story,
+            currentActor,
+            showCompletedUserStories,
+            showBlockedUserStories,
+            showHiddenUserStories,
+            includeOtherOwners,
+            watchingSet,
+            hiddenSet))
+        .OrderBy(story => story.UsId, StringComparer.Ordinal)
+        .FirstOrDefault();
+    if (firstVisible is not null)
+    {
+        return firstVisible.UsId;
+    }
+
+    if (availableStoryById.TryGetValue(fallbackUsId, out var fallbackStory))
+    {
+        return fallbackStory.UsId;
+    }
+
+    return availableStories
+        .OrderBy(story => story.UsId, StringComparer.Ordinal)
+        .First().UsId;
+}
+
+static bool IsWorkflowPortalStoryVisible(
+    UserStorySummary story,
+    string currentActor,
+    bool showCompletedUserStories,
+    bool showBlockedUserStories,
+    bool showHiddenUserStories,
+    bool includeOtherOwners,
+    IReadOnlySet<string> watchingUserStoryIds,
+    IReadOnlySet<string> hiddenUserStoryIds)
+{
+    if (!showHiddenUserStories && hiddenUserStoryIds.Contains(story.UsId))
+    {
+        return false;
+    }
+
+    var isBlocked = story.Dependencies.Any(static dependency => !dependency.IsSatisfied);
+    if (!showBlockedUserStories && isBlocked)
+    {
+        return false;
+    }
+
+    if (!showCompletedUserStories && string.Equals(story.Status, "completed", StringComparison.OrdinalIgnoreCase))
+    {
+        return false;
+    }
+
+    var normalizedOwner = story.Owner.Trim().ToLowerInvariant();
+    var normalizedActor = currentActor.Trim().ToLowerInvariant();
+    return includeOtherOwners
+        || watchingUserStoryIds.Contains(story.UsId)
+        || string.Equals(normalizedOwner, normalizedActor, StringComparison.Ordinal);
+}
 
 static async Task HandleDropOrRecoverUserStoryAsync(
     HttpListenerContext context,

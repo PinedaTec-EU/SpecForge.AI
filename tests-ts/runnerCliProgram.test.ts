@@ -90,6 +90,7 @@ test("CLI workflow portal payload includes sidebar stories and configuration URL
   assert.match(source, /requestShowCompletedUserStories = ResolveWorkflowPortalQueryFlag\(context\.Request, "sidebarCompleted"\)/);
   assert.match(source, /requestShowBlockedUserStories = ResolveWorkflowPortalQueryFlag\(context\.Request, "sidebarBlocked"\)/);
   assert.match(source, /requestShowHiddenUserStories = ResolveWorkflowPortalQueryFlag\(context\.Request, "sidebarHiddenVisible"\)/);
+  assert.match(source, /requestIncludeOtherOwners = ResolveWorkflowPortalQueryFlag\(context\.Request, "sidebarOtherOwners"\)/);
   assert.match(source, /requestSidebarWatchingUserStoryIds = ResolveWorkflowPortalUserStoryIdList\(context\.Request, "sidebarWatching"\)/);
   assert.match(source, /requestSidebarHiddenUserStoryIds = ResolveWorkflowPortalUserStoryIdList\(context\.Request, "sidebarHidden"\)/);
   assert.match(source, /static string\? ResolveWorkflowPortalSidebarVisibility\(HttpListenerRequest request\)/);
@@ -112,7 +113,23 @@ test("CLI workflow portal payload includes sidebar stories and configuration URL
   assert.match(source, /<div class="tab-panel" id="advanced" role="tabpanel" hidden>/);
   assert.match(source, /<div class="tab-panel" id="central" role="tabpanel" hidden>/);
   assert.match(source, /const configurationTabs = \["providers", "advanced", "central"\]/);
-  assert.match(source, /ResolveWorkflowPortalUserStoryId\(context\.Request, usId\)/);
+  assert.match(source, /ResolveWorkflowPortalUserStoryIdAsync\(\s*applicationService,\s*workspaceRoot,\s*context\.Request,\s*usId,/);
+  assert.match(source, /ResolveVisibleWorkflowPortalUserStoryIdAsync\(/);
+  assert.match(source, /IsWorkflowPortalStoryVisible\(/);
+});
+
+test("CLI workflow portal infers a visible user story when the URL omits or targets an invalid usId", async () => {
+  const source = await fs.promises.readFile(programPath, "utf8");
+
+  assert.match(source, /if \(!string\.IsNullOrWhiteSpace\(requestedUsId\) && availableStoryById\.TryGetValue\(requestedUsId\.Trim\(\), out var requestedStory\)\)/);
+  assert.match(source, /var firstVisible = availableStories[\s\S]*?IsWorkflowPortalStoryVisible/);
+  assert.match(source, /if \(firstVisible is not null\)[\s\S]*?return firstVisible\.UsId;/);
+  assert.match(source, /if \(availableStoryById\.TryGetValue\(fallbackUsId, out var fallbackStory\)\)/);
+  assert.match(source, /return availableStories[\s\S]*?\.OrderBy\(story => story\.UsId, StringComparer\.Ordinal\)[\s\S]*?\.First\(\)\.UsId;/);
+  assert.match(source, /if \(!showCompletedUserStories && string\.Equals\(story\.Status, "completed", StringComparison\.OrdinalIgnoreCase\)\)/);
+  assert.match(source, /if \(!showBlockedUserStories && isBlocked\)/);
+  assert.match(source, /if \(!showHiddenUserStories && hiddenUserStoryIds\.Contains\(story\.UsId\)\)/);
+  assert.match(source, /return includeOtherOwners[\s\S]*?\|\| watchingUserStoryIds\.Contains\(story\.UsId\)/);
 });
 
 test("CLI workflow portal signature ignores local sidebar visibility", async () => {
