@@ -86,3 +86,15 @@
   2. Trigger `Edit US info` and accept the default title without removing the prefix.
   3. Save the metadata update.
   4. Observe that the story can later render as `US-xxxx · US-xxxx · ...`.
+
+### SFB-008
+
+- Bug code: `SFB-008`
+- Discovery date: `2026-05-22`
+- Status: `Fixed`
+- Short description: The CLI workflow portal implemented `Edit US info` with `window.prompt()`, which is not supported in the in-app browser, so the action failed before the user could edit or persist metadata.
+- Reproduction steps:
+  1. Open the workflow portal in the in-app browser.
+  2. Open a user-story context menu and click `Edit US info`.
+  3. Observe the browser error `prompt() is not supported.`
+  4. Observe that no metadata form appears and no edits can be saved.

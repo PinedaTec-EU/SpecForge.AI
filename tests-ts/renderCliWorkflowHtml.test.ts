@@ -82,9 +82,12 @@ test("CLI workflow renderer routes sidebar edit action through metadata update p
 
   for (const content of [script, packagedScript]) {
     assert.match(content, /message\.command === "showEditUserStoryForm" && message\.usId/);
-    assert.match(content, /const promptUserStoryInfoUpdate = \(message\) =>/);
+    assert.match(content, /data-cli-edit-overlay/);
+    assert.match(content, /const openEditUserStoryForm = \(message\) =>/);
+    assert.match(content, /editForm\?\.addEventListener\("submit", event =>/);
     assert.match(content, /requestJson\("\/api\/update-user-story-info", \{/);
-    assert.match(content, /window\.prompt\("Tags \(comma-separated\)"/);
+    assert.match(content, /setEditError\("Title, owner, and category are required\."\)/);
+    assert.doesNotMatch(content, /window\.prompt\(/);
     assert.match(content, /window\.location\.reload\(\)/);
   }
 
