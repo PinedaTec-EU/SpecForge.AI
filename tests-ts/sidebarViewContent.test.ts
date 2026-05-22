@@ -553,13 +553,13 @@ test("buildSidebarHtml renders owner scope, watch action, and owner scope view o
   assert.match(html, /Showing 1 of 3 stories in scope · owner alice\./);
   assert.match(html, /placeholder="Search by title, description, category, owner, or #tag"/);
   assert.match(html, /data-command="toggleSearchIncludesOtherOwners"[\s\S]*Include other owners/);
-  assert.match(html, /aria-label="Stop watching US-0012"/);
+  assert.match(html, /aria-label="Hide US-0012 from my sidebar"/);
   assert.match(html, /story-watch--active/);
   assert.match(html, /owner alice/);
   assert.match(html, /data-story-search-text="[^"]*Track user-specific scope[^"]*alice/);
 });
 
-test("buildSidebarHtml exposes hidden-state actions in the story menu", () => {
+test("buildSidebarHtml uses the eye control for local sidebar visibility and keeps hidden toggle in view options only", () => {
   const html = buildSidebarHtml(model({
     hiddenUserStoryIds: ["US-0013"],
     showHiddenUserStories: true,
@@ -578,9 +578,10 @@ test("buildSidebarHtml exposes hidden-state actions in the story menu", () => {
     }]
   }));
 
-  assert.match(html, /data-command="toggleHiddenUserStory" data-us-id="US-0013"/);
-  assert.match(html, /Unhide from my list/);
+  assert.match(html, /data-command="toggleSidebarVisibilityUserStory" data-us-id="US-0013" data-owner="alice"/);
+  assert.match(html, /aria-label="Show US-0013 in my sidebar"/);
   assert.match(html, /data-command="toggleShowHiddenUserStories"[\s\S]*Show hidden/);
+  assert.doesNotMatch(html, /Hide from my list|Unhide from my list/);
 });
 
 test("buildSidebarHtml wires user story row actions to selectable commands", () => {
@@ -600,6 +601,7 @@ test("buildSidebarHtml wires user story row actions to selectable commands", () 
 
   assert.match(html, /class="story-card[^"]*" type="button" data-command="openWorkflow" data-us-id="US-0010"/);
   assert.match(html, /data-command="openMainArtifact" data-us-id="US-0010" role="menuitem">\s+<span class="action-menu__item-icon" aria-hidden="true">✎<\/span>\s+<span>Edit US info<\/span>/);
+  assert.match(html, /data-command="toggleSidebarVisibilityUserStory" data-us-id="US-0010" data-owner="alice"/);
   assert.doesNotMatch(html, /<button class="action-menu__item" type="button" role="menuitem" disabled>\s+<span class="action-menu__item-icon" aria-hidden="true">✎<\/span>\s+<span>Edit US info<\/span>/);
 });
 

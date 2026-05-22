@@ -40,8 +40,9 @@ test("CLI workflow portal uses a distinct default port and caches rendered workf
   assert.match(source, /ResolveDefaultWorkflowPortalUserStoryIdAsync\(applicationService, workspaceRoot\)/);
   assert.match(source, /LooksLikeHttpPrefix\(args\[2\]\)/);
   assert.match(source, /var renderCache = new WorkflowPortalRenderCache\(\)/);
-  assert.match(source, /renderCache\.TryGet\(signature, resolvedSelectedPhaseId, selectedPhase, out var cachedHtml\)/);
-  assert.match(source, /renderCache\.Store\(signature, resolvedSelectedPhaseId, selectedPhase, html\)/);
+  assert.match(source, /var renderCacheSignature = BuildWorkflowPortalRenderCacheSignature\(/);
+  assert.match(source, /renderCache\.TryGet\(renderCacheSignature, resolvedSelectedPhaseId, selectedPhase, out var cachedHtml\)/);
+  assert.match(source, /renderCache\.Store\(renderCacheSignature, resolvedSelectedPhaseId, selectedPhase, html\)/);
   assert.match(renderCacheSource, /ConcurrentDictionary<string, CacheEntry> entries/);
   assert.match(renderCacheSource, /File\.GetLastWriteTimeUtc\(path\)\.Ticks/);
   assert.match(renderCacheSource, /private void Trim\(\)/);
@@ -86,11 +87,16 @@ test("CLI workflow portal payload includes sidebar stories and configuration URL
   assert.match(source, /configurationAdvancedUrl = BuildConfigurationPortalUrl\(workflowPortalOrigin, "advanced"\)/);
   assert.match(source, /requestSidebarVisibility = ResolveWorkflowPortalSidebarVisibility\(context\.Request\)/);
   assert.match(source, /BuildWorkflowPortalSignatureAsync\([\s\S]*?requestUsId,[\s\S]*?requestSidebarVisibility,[\s\S]*?requestShowCompletedUserStories,[\s\S]*?requestShowBlockedUserStories\)/);
-  assert.match(source, /requestShowCompletedUserStories = string\.Equals\(/);
-  assert.match(source, /requestShowBlockedUserStories = string\.Equals\(/);
-  assert.match(source, /context\.Request\.QueryString\["sidebarCompleted"\]/);
+  assert.match(source, /requestShowCompletedUserStories = ResolveWorkflowPortalQueryFlag\(context\.Request, "sidebarCompleted"\)/);
+  assert.match(source, /requestShowBlockedUserStories = ResolveWorkflowPortalQueryFlag\(context\.Request, "sidebarBlocked"\)/);
+  assert.match(source, /requestShowHiddenUserStories = ResolveWorkflowPortalQueryFlag\(context\.Request, "sidebarHiddenVisible"\)/);
+  assert.match(source, /requestSidebarWatchingUserStoryIds = ResolveWorkflowPortalUserStoryIdList\(context\.Request, "sidebarWatching"\)/);
+  assert.match(source, /requestSidebarHiddenUserStoryIds = ResolveWorkflowPortalUserStoryIdList\(context\.Request, "sidebarHidden"\)/);
   assert.match(source, /static string\? ResolveWorkflowPortalSidebarVisibility\(HttpListenerRequest request\)/);
+  assert.match(source, /static bool ResolveWorkflowPortalQueryFlag\(HttpListenerRequest request, string key\)/);
+  assert.match(source, /static IReadOnlyList<string> ResolveWorkflowPortalUserStoryIdList\(HttpListenerRequest request, string key\)/);
   assert.match(source, /ParseQueryValue\(referer\.Query, "sidebarVisibility"\)/);
+  assert.match(source, /NormalizeUserStoryIds\(queryValue\)/);
   assert.match(source, /case \("GET", "\/configuration"\):/);
   assert.match(source, /case \("GET", "\/api\/settings"\):/);
   assert.match(source, /case \("PUT", "\/api\/settings"\):/);
@@ -116,6 +122,19 @@ test("CLI workflow portal signature ignores local sidebar visibility", async () 
   assert.match(source, /GetUserStoryWorkflowAsync\(workspaceRoot, usId\)/);
   assert.doesNotMatch(source, /resolvedUsId = ResolveSidebarVisibleUserStoryId\(usId, sidebarUserStories\)/);
   assert.match(source, /BuildWorkflowSignature\([\s\S]*?activeSidebarUserStories,[\s\S]*?droppedSidebarUserStories,[\s\S]*?workflowGraphLayoutSignature\)/);
+});
+
+test("CLI workflow portal exposes reset and lineage endpoints for sidebar actions", async () => {
+  const source = await fs.promises.readFile(programPath, "utf8");
+
+  assert.match(source, /case \("POST", "\/api\/reset-user-story-to-capture"\):/);
+  assert.match(source, /case \("POST", "\/api\/analyze-user-story-lineage"\):/);
+  assert.match(source, /case \("POST", "\/api\/repair-user-story-lineage"\):/);
+  assert.match(source, /JsonSerializer\.Deserialize<UserStoryActionRequest>/);
+  assert.match(source, /ResetUserStoryToCaptureAsync\(workspaceRoot, request\.UsId\)/);
+  assert.match(source, /AnalyzeUserStoryLineageAsync\(workspaceRoot, request\.UsId\)/);
+  assert.match(source, /RepairUserStoryLineageAsync\(workspaceRoot, request\.UsId, request\.Actor \?\? "cli-user"\)/);
+  assert.match(source, /internal sealed record UserStoryActionRequest\(string UsId, string\? Actor\);/);
 });
 
 test("CLI writes JSON with web serializer options for record responses", async () => {

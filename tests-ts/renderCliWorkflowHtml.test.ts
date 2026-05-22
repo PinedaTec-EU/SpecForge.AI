@@ -117,8 +117,9 @@ test("CLI workflow renderer switches sidebar visibility without navigating the w
   for (const content of [script, packagedScript]) {
     assert.match(content, /activeSidebarUserStories = Array\.isArray\(payload\.activeSidebarUserStories\)/);
     assert.match(content, /droppedSidebarUserStories = Array\.isArray\(payload\.droppedSidebarUserStories\)/);
-    assert.match(content, /buildSidebarHtmlModes\(includeOtherOwners\)/);
+    assert.match(content, /buildSidebarHtmlModes\(includeOtherOwners, showHiddenUserStories, watchingUserStoryIds, hiddenUserStoryIds\)/);
     assert.match(content, /const scope = sidebarShowsOtherOwners \? sidebarHtmlByScope\.all : sidebarHtmlByScope\.mine/);
+    assert.match(content, /const visibilityScope = sidebarShowsHidden \? scope\.hidden : scope\.visible/);
     assert.match(content, /sidebarFrame\.srcdoc = sidebarShowsDropped/);
     assert.match(content, /window\.history\.replaceState\(window\.history\.state, "", url\.toString\(\)\)/);
     assert.doesNotMatch(content, /resolveTargetUserStoryId/);
@@ -161,14 +162,43 @@ test("CLI workflow renderer keeps other owners hidden by default and toggles the
 
   for (const content of [script, packagedScript]) {
     assert.match(content, /const sidebarHtmlByScope = \{/);
-    assert.match(content, /mine: buildSidebarHtmlModes\(false\)/);
-    assert.match(content, /all: buildSidebarHtmlModes\(true\)/);
+    assert.match(content, /mine: \{\s*visible: buildSidebarHtmlModes\(false, false, watchingUserStoryIds, hiddenUserStoryIds\),\s*hidden: buildSidebarHtmlModes\(false, true, watchingUserStoryIds, hiddenUserStoryIds\)/);
+    assert.match(content, /all: \{\s*visible: buildSidebarHtmlModes\(true, false, watchingUserStoryIds, hiddenUserStoryIds\),\s*hidden: buildSidebarHtmlModes\(true, true, watchingUserStoryIds, hiddenUserStoryIds\)/);
     assert.match(content, /let sidebarShowsOtherOwners = false/);
     assert.match(content, /new URL\(window\.location\.href\)\.searchParams\.get\("sidebarOtherOwners"\) === "true"/);
     assert.match(content, /message\.command === "toggleSearchIncludesOtherOwners"/);
     assert.match(content, /sidebarShowsOtherOwners = !sidebarShowsOtherOwners/);
     assert.match(content, /url\.searchParams\.set\("sidebarOtherOwners", "true"\)/);
     assert.match(content, /url\.searchParams\.delete\("sidebarOtherOwners"\)/);
+  }
+});
+
+test("CLI workflow renderer persists local sidebar visibility state for watched and hidden stories", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+  const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
+
+  for (const content of [script, packagedScript]) {
+    assert.match(content, /watchingUserStoryIdsStorageKey = "specforge\.cli\.sidebar\.watchingUserStoryIds"/);
+    assert.match(content, /hiddenUserStoryIdsStorageKey = "specforge\.cli\.sidebar\.hiddenUserStoryIds"/);
+    assert.match(content, /showHiddenStorageKey = "specforge\.cli\.sidebar\.showHiddenUserStories"/);
+    assert.match(content, /message\.command === "toggleSidebarVisibilityUserStory" && message\.usId/);
+    assert.match(content, /url\.searchParams\.set\("sidebarWatching", sidebarWatchingUserStoryIds\.join\(","\)\)/);
+    assert.match(content, /url\.searchParams\.set\("sidebarHidden", sidebarHiddenUserStoryIds\.join\(","\)\)/);
+    assert.match(content, /message\.command === "toggleShowHiddenUserStories"/);
+    assert.match(content, /url\.searchParams\.set\("sidebarHiddenVisible", "true"\)/);
+  }
+});
+
+test("CLI workflow renderer wires lineage repair and reset actions through portal endpoints", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+  const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
+
+  for (const content of [script, packagedScript]) {
+    assert.match(content, /message\.command === "resetUserStoryToCapture" && message\.usId/);
+    assert.match(content, /requestJson\("\/api\/reset-user-story-to-capture", \{ usId: message\.usId, actor: "cli-user" \}\)/);
+    assert.match(content, /message\.command === "analyzeRepairUserStory" && message\.usId/);
+    assert.match(content, /requestJson\("\/api\/analyze-user-story-lineage", \{ usId: message\.usId, actor: "cli-user" \}\)/);
+    assert.match(content, /requestJson\("\/api\/repair-user-story-lineage", \{ usId: message\.usId, actor: "cli-user" \}\)/);
   }
 });
 

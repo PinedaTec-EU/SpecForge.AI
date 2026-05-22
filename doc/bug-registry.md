@@ -31,7 +31,7 @@
 
 - Bug code: `SFB-003`
 - Discovery date: `2026-05-22`
-- Status: `Open`
+- Status: `Fixed`
 - Short description: The browser workflow portal renders ownership-visibility controls but does not honor them. It defaults to showing stories from other owners and does not handle watch, hide, or `Include other owners` commands.
 - Reproduction steps:
   1. Start the workflow portal against a workspace that contains at least one user story owned by `cli-user` and another owned by a different developer.
@@ -43,10 +43,22 @@
 
 - Bug code: `SFB-004`
 - Discovery date: `2026-05-22`
-- Status: `Open`
+- Status: `Fixed`
 - Short description: When ownership filtering leaves the sidebar with zero visible user stories, the sidebar falls back to the “Create your first user story” empty state and hides the compact action controls, preventing users from reopening view options and restoring other stories.
 - Reproduction steps:
   1. Open the workflow portal or extension sidebar in a repository where user stories exist but none match the current owner scope.
   2. Observe that the sidebar shows “Create your first user story”.
   3. Observe that the usual compact action buttons, including sidebar view options, are missing.
   4. Observe that the user cannot recover the hidden stories from the sidebar without leaving that state.
+
+### SFB-005
+
+- Bug code: `SFB-005`
+- Discovery date: `2026-05-22`
+- Status: `Fixed`
+- Short description: The sidebar user-story card used an ambiguous circle visibility control, left a visual gap before the action rail, duplicated hide/show state inside the context menu, and exposed repair/reset actions in the CLI portal without wiring them to runnable endpoints.
+- Reproduction steps:
+  1. Open the workflow portal sidebar with at least one visible user story card.
+  2. Observe that the second action button shows a circle instead of an eye and does not clearly reflect effective sidebar visibility.
+  3. Open the story context menu and observe that `Hide from my list` duplicates the intended visibility action.
+  4. Trigger `Analyze / Repair` or `Reset workflow` from the CLI portal and observe that nothing happens because the renderer is missing the corresponding portal handlers.

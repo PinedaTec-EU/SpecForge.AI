@@ -308,14 +308,11 @@ static async Task HandleWorkflowPortalRequestAsync(
 
         var requestUsId = ResolveWorkflowPortalUserStoryId(context.Request, usId);
         var requestSidebarVisibility = ResolveWorkflowPortalSidebarVisibility(context.Request);
-        var requestShowCompletedUserStories = string.Equals(
-            context.Request.QueryString["sidebarCompleted"],
-            "true",
-            StringComparison.OrdinalIgnoreCase);
-        var requestShowBlockedUserStories = string.Equals(
-            context.Request.QueryString["sidebarBlocked"],
-            "true",
-            StringComparison.OrdinalIgnoreCase);
+        var requestShowCompletedUserStories = ResolveWorkflowPortalQueryFlag(context.Request, "sidebarCompleted");
+        var requestShowBlockedUserStories = ResolveWorkflowPortalQueryFlag(context.Request, "sidebarBlocked");
+        var requestShowHiddenUserStories = ResolveWorkflowPortalQueryFlag(context.Request, "sidebarHiddenVisible");
+        var requestSidebarWatchingUserStoryIds = ResolveWorkflowPortalUserStoryIdList(context.Request, "sidebarWatching");
+        var requestSidebarHiddenUserStoryIds = ResolveWorkflowPortalUserStoryIdList(context.Request, "sidebarHidden");
 
         switch ((context.Request.HttpMethod, path))
         {
@@ -330,6 +327,9 @@ static async Task HandleWorkflowPortalRequestAsync(
                         requestSidebarVisibility,
                         requestShowCompletedUserStories,
                         requestShowBlockedUserStories,
+                        requestShowHiddenUserStories,
+                        requestSidebarWatchingUserStoryIds,
+                        requestSidebarHiddenUserStoryIds,
                         context.Request.Url?.GetLeftPart(UriPartial.Authority) ?? "http://localhost:5128",
                         renderCache));
                 return;
@@ -384,6 +384,15 @@ static async Task HandleWorkflowPortalRequestAsync(
                 return;
             case ("POST", "/api/recover-user-story"):
                 await HandleDropOrRecoverUserStoryAsync(context, workspaceRoot, drop: false);
+                return;
+            case ("POST", "/api/reset-user-story-to-capture"):
+                await HandleResetUserStoryToCaptureAsync(context, applicationService, workspaceRoot);
+                return;
+            case ("POST", "/api/analyze-user-story-lineage"):
+                await HandleAnalyzeUserStoryLineageAsync(context, applicationService, workspaceRoot);
+                return;
+            case ("POST", "/api/repair-user-story-lineage"):
+                await HandleRepairUserStoryLineageAsync(context, applicationService, workspaceRoot);
                 return;
             case ("POST", "/api/continue"):
                 await WriteJsonResponseAsync(
@@ -531,6 +540,9 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
     string? sidebarVisibility,
     bool showCompletedUserStories,
     bool showBlockedUserStories,
+    bool showHiddenUserStories,
+    IReadOnlyList<string> watchingUserStoryIds,
+    IReadOnlyList<string> hiddenUserStoryIds,
     string workflowPortalOrigin,
     WorkflowPortalRenderCache renderCache)
 {
@@ -552,7 +564,15 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
         activeSidebarUserStories,
         droppedSidebarUserStories,
         workflowGraphLayoutSignature);
-    if (renderCache.TryGet(signature, resolvedSelectedPhaseId, selectedPhase, out var cachedHtml))
+    var renderCacheSignature = BuildWorkflowPortalRenderCacheSignature(
+        signature,
+        normalizedSidebarVisibility,
+        showCompletedUserStories,
+        showBlockedUserStories,
+        showHiddenUserStories,
+        watchingUserStoryIds,
+        hiddenUserStoryIds);
+    if (renderCache.TryGet(renderCacheSignature, resolvedSelectedPhaseId, selectedPhase, out var cachedHtml))
     {
         return cachedHtml;
     }
@@ -572,6 +592,9 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
             showDroppedUserStories = normalizedSidebarVisibility == "dropped",
             showCompletedUserStories,
             showBlockedUserStories,
+            showHiddenUserStories,
+            watchingUserStoryIds,
+            hiddenUserStoryIds,
             droppedUserStoryCount,
             configurationPortalUrl = BuildConfigurationPortalUrl(workflowPortalOrigin),
             configurationProvidersUrl = BuildConfigurationPortalUrl(workflowPortalOrigin, "providers"),
@@ -582,7 +605,7 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
         SpecForgePortalSettingsStore.JsonOptions);
 
     var html = await RenderWorkflowHtmlWithNodeAsync(payload);
-    renderCache.Store(signature, resolvedSelectedPhaseId, selectedPhase, html);
+    renderCache.Store(renderCacheSignature, resolvedSelectedPhaseId, selectedPhase, html);
     return html;
 }
 
@@ -611,6 +634,38 @@ static string? ResolveWorkflowPortalSidebarVisibility(HttpListenerRequest reques
     return referer is null ? null : ParseQueryValue(referer.Query, "sidebarVisibility");
 }
 
+static bool ResolveWorkflowPortalQueryFlag(HttpListenerRequest request, string key)
+{
+    var queryValue = request.QueryString[key];
+    if (!string.IsNullOrWhiteSpace(queryValue))
+    {
+        return string.Equals(queryValue, "true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    var referer = request.UrlReferrer;
+    return string.Equals(ParseQueryValue(referer?.Query ?? string.Empty, key), "true", StringComparison.OrdinalIgnoreCase);
+}
+
+static IReadOnlyList<string> ResolveWorkflowPortalUserStoryIdList(HttpListenerRequest request, string key)
+{
+    var queryValue = request.QueryString[key];
+    if (string.IsNullOrWhiteSpace(queryValue))
+    {
+        var referer = request.UrlReferrer;
+        queryValue = referer is null ? null : ParseQueryValue(referer.Query, key);
+    }
+
+    return NormalizeUserStoryIds(queryValue);
+}
+
+static IReadOnlyList<string> NormalizeUserStoryIds(string? value) =>
+    (value ?? string.Empty)
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Select(item => item.Trim().ToUpperInvariant())
+        .Where(item => item.Length > 0)
+        .Distinct(StringComparer.Ordinal)
+        .ToArray();
+
 static async Task HandleDropOrRecoverUserStoryAsync(
     HttpListenerContext context,
     string workspaceRoot,
@@ -635,6 +690,57 @@ static async Task HandleDropOrRecoverUserStoryAsync(
     }
 
     await WriteJsonResponseAsync(context.Response, new { usId = request.UsId, dropped = drop });
+}
+
+static async Task HandleResetUserStoryToCaptureAsync(
+    HttpListenerContext context,
+    SpecForgeApplicationService applicationService,
+    string workspaceRoot)
+{
+    using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+    var payload = await reader.ReadToEndAsync();
+    var request = JsonSerializer.Deserialize<UserStoryActionRequest>(
+        payload,
+        SpecForgePortalSettingsStore.JsonOptions)
+        ?? throw new InvalidOperationException("Reset request payload could not be parsed.");
+
+    await WriteJsonResponseAsync(
+        context.Response,
+        await applicationService.ResetUserStoryToCaptureAsync(workspaceRoot, request.UsId));
+}
+
+static async Task HandleAnalyzeUserStoryLineageAsync(
+    HttpListenerContext context,
+    SpecForgeApplicationService applicationService,
+    string workspaceRoot)
+{
+    using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+    var payload = await reader.ReadToEndAsync();
+    var request = JsonSerializer.Deserialize<UserStoryActionRequest>(
+        payload,
+        SpecForgePortalSettingsStore.JsonOptions)
+        ?? throw new InvalidOperationException("Lineage analysis payload could not be parsed.");
+
+    await WriteJsonResponseAsync(
+        context.Response,
+        await applicationService.AnalyzeUserStoryLineageAsync(workspaceRoot, request.UsId));
+}
+
+static async Task HandleRepairUserStoryLineageAsync(
+    HttpListenerContext context,
+    SpecForgeApplicationService applicationService,
+    string workspaceRoot)
+{
+    using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+    var payload = await reader.ReadToEndAsync();
+    var request = JsonSerializer.Deserialize<UserStoryActionRequest>(
+        payload,
+        SpecForgePortalSettingsStore.JsonOptions)
+        ?? throw new InvalidOperationException("Lineage repair payload could not be parsed.");
+
+    await WriteJsonResponseAsync(
+        context.Response,
+        await applicationService.RepairUserStoryLineageAsync(workspaceRoot, request.UsId, request.Actor ?? "cli-user"));
 }
 
 static async Task<object> AttachWorkflowFilesAsync(
@@ -871,6 +977,29 @@ static async Task<string> BuildWorkflowPortalSignatureAsync(
         activeSidebarUserStories,
         droppedSidebarUserStories,
         workflowGraphLayoutSignature);
+}
+
+static string BuildWorkflowPortalRenderCacheSignature(
+    string workflowSignature,
+    string sidebarVisibility,
+    bool showCompletedUserStories,
+    bool showBlockedUserStories,
+    bool showHiddenUserStories,
+    IReadOnlyList<string> watchingUserStoryIds,
+    IReadOnlyList<string> hiddenUserStoryIds)
+{
+    var viewState = JsonSerializer.Serialize(
+        new
+        {
+            sidebarVisibility,
+            showCompletedUserStories,
+            showBlockedUserStories,
+            showHiddenUserStories,
+            watchingUserStoryIds,
+            hiddenUserStoryIds
+        },
+        SpecForgePortalSettingsStore.JsonOptions);
+    return $"{workflowSignature}:{viewState}";
 }
 
 static async Task<string> RenderWorkflowHtmlWithNodeAsync(string payload)
@@ -1749,5 +1878,7 @@ internal sealed record WorkflowAggregateGraphLayoutRequest(
 internal sealed record ApprovalSubmitRequest(string? BaseBranch, string? WorkBranch, string? Actor);
 
 internal sealed record DecompositionApprovalSubmitRequest(string Decision, string? Actor);
+
+internal sealed record UserStoryActionRequest(string UsId, string? Actor);
 
 internal sealed record UserStoryVisibilityRequest(string UsId);
