@@ -76,4 +76,33 @@ public sealed class UserStoryFilePathsTests
             }
         }
     }
+
+    [Fact]
+    public async Task ResolveFromWorkspaceRoot_IgnoresLegacyConflictWhenFlatDirectoryAlreadyExists()
+    {
+        var workspaceRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        var flatRoot = Path.Combine(workspaceRoot, ".specs", "us", "US-0010");
+        var legacyRoot = Path.Combine(workspaceRoot, ".specs", "us", "workflow", "US-0010");
+        try
+        {
+            Directory.CreateDirectory(flatRoot);
+            Directory.CreateDirectory(legacyRoot);
+            await File.WriteAllTextAsync(Path.Combine(flatRoot, "state.yaml"), "usId: US-0010");
+            await File.WriteAllTextAsync(Path.Combine(flatRoot, "us.md"), "# US-0010");
+            await File.WriteAllTextAsync(Path.Combine(legacyRoot, "us.md"), "# legacy duplicate");
+
+            var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0010");
+
+            Assert.Equal(flatRoot, paths.RootDirectory);
+            Assert.True(Directory.Exists(flatRoot));
+            Assert.True(Directory.Exists(legacyRoot));
+        }
+        finally
+        {
+            if (Directory.Exists(workspaceRoot))
+            {
+                Directory.Delete(workspaceRoot, recursive: true);
+            }
+        }
+    }
 }

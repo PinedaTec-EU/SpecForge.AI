@@ -328,7 +328,7 @@ Record debt here as soon as it is discovered during implementation.
   Notes: fixed by invalidating the browser-served workflow portal cache/signature when `workflow-graph-layout.yaml` changes.
   Notes: verify save path, restore path, and any re-render/cache invalidation behavior in both VS Code and CLI-served portal flows.
 
-- [ ] `BUG-PORTAL-001` Status: `todo`
+- [x] `BUG-PORTAL-001` Status: `done`
   A corrupted or legacy-colliding user story can make the workflow portal fail to open altogether with HTTP 500.
   Impact: one broken `.specs/us/**` entry prevents the operator from opening and inspecting otherwise valid user stories in the portal.
-  Notes: current observed case is the legacy collision between `.specs/us/workflow/US-0010` and `.specs/us/US-0010`; portal should degrade gracefully, isolate the broken US, and keep the rest of the workflow UI available.
+  Notes: current observed case was the legacy collision between `.specs/us/workflow/US-0010` and `.specs/us/US-0010`; fixed by treating the flat user story as source of truth and ignoring stale legacy duplicates during migration so the portal keeps loading.

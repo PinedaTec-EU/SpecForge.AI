@@ -119,8 +119,9 @@ public sealed class UserStoryFilePaths
                 var flatUserStoryDirectory = Path.Combine(specsRoot, userStoryDirectoryName);
                 if (Directory.Exists(flatUserStoryDirectory))
                 {
-                    throw new InvalidOperationException(
-                        $"Cannot migrate legacy user story directory '{legacyUserStoryDirectory}' because '{flatUserStoryDirectory}' already exists.");
+                    // Keep the flat user story as the source of truth and ignore stale or corrupt
+                    // legacy duplicates so a single bad entry cannot block the whole portal/workflow.
+                    continue;
                 }
 
                 Directory.Move(legacyUserStoryDirectory, flatUserStoryDirectory);
