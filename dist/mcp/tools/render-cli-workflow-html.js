@@ -794,6 +794,43 @@ const sidebarShell = `
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body)
     }).then(response => response.ok ? response.json() : response.text().then(text => Promise.reject(new Error(text))));
+    const promptRequiredValue = (label, initialValue) => {
+      const nextValue = window.prompt(label, String(initialValue || ""));
+      if (nextValue === null) {
+        return null;
+      }
+      if (!nextValue.trim()) {
+        throw new Error(label + " is required.");
+      }
+      return nextValue.trim();
+    };
+    const promptUserStoryInfoUpdate = (message) => {
+      const title = promptRequiredValue("Title", message.title);
+      if (title === null) {
+        return null;
+      }
+      const owner = promptRequiredValue("Owner", message.owner || "cli-user");
+      if (owner === null) {
+        return null;
+      }
+      const category = promptRequiredValue("Category", message.category);
+      if (category === null) {
+        return null;
+      }
+      const tags = window.prompt("Tags (comma-separated)", String(message.tags || ""));
+      if (tags === null) {
+        return null;
+      }
+      return {
+        title,
+        owner,
+        category,
+        tags: tags
+          .split(",")
+          .map(item => item.trim().toLowerCase())
+          .filter(Boolean)
+      };
+    };
     const focusUserStorySourceSection = () => {
       const section = document.querySelector("[data-user-story-source-section]");
       if (!(section instanceof HTMLElement)) {
@@ -840,6 +877,32 @@ const sidebarShell = `
         url.searchParams.set("selectedPhaseId", "capture");
         url.searchParams.set("artifactFocus", "source");
         window.location.href = url.toString();
+        return;
+      }
+      if (message.command === "showEditUserStoryForm" && message.usId) {
+        let update;
+        try {
+          update = promptUserStoryInfoUpdate(message);
+        } catch (error) {
+          window.alert(error instanceof Error ? error.message : String(error));
+          return;
+        }
+        if (!update) {
+          return;
+        }
+        requestJson("/api/update-user-story-info", {
+          usId: message.usId,
+          title: update.title,
+          owner: update.owner,
+          category: update.category,
+          tags: update.tags
+        })
+          .then(() => {
+            window.location.reload();
+          })
+          .catch(error => {
+            window.alert(error instanceof Error ? error.message : String(error));
+          });
         return;
       }
       if (message.command === "toggleStarredUserStory" && message.usId) {

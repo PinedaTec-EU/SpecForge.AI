@@ -144,6 +144,17 @@ class StdioMcpBackendClient {
             ...(actor && actor.trim().length > 0 ? { actor } : {})
         });
     }
+    async updateUserStoryInfo(usId, values) {
+        return this.callTool("update_user_story_info", {
+            workspaceRoot: this.workspaceRoot,
+            usId,
+            ...(values.title !== undefined ? { title: values.title } : {}),
+            ...(values.kind !== undefined ? { kind: values.kind } : {}),
+            ...(values.owner !== undefined ? { owner: values.owner } : {}),
+            ...(values.category !== undefined ? { category: values.category } : {}),
+            ...(values.tags !== undefined ? { tags: values.tags } : {})
+        });
+    }
     async initializeRepoPrompts(overwrite = false) {
         return this.callTool("initialize_repo_prompts", {
             workspaceRoot: this.workspaceRoot,

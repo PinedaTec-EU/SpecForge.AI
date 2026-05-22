@@ -1699,6 +1699,9 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
           command: element.dataset.command,
           usId: element.dataset.usId,
           owner: element.dataset.owner,
+          title: element.dataset.title,
+          category: element.dataset.category,
+          tags: element.dataset.tags,
           kind: element.dataset.kind,
           sourcePath: element.dataset.sourcePath
         });
@@ -2087,7 +2090,13 @@ function buildStoryRowMarkup(summary, model) {
             <span aria-hidden="true">☰</span>
           </button>
           <div class="action-menu__panel" data-action-menu-panel role="menu" hidden>
-            <button class="action-menu__item" type="button" ${model.showDroppedUserStories ? "disabled" : `data-command="openMainArtifact" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}"`} role="menuitem">
+            <button
+              class="action-menu__item"
+              type="button"
+              ${model.showDroppedUserStories
+        ? "disabled"
+        : `data-command="showEditUserStoryForm" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}" data-title="${(0, htmlEscape_1.escapeHtmlAttr)(editableUserStoryTitle(summary.usId, summary.title))}" data-owner="${(0, htmlEscape_1.escapeHtmlAttr)(summary.owner)}" data-category="${(0, htmlEscape_1.escapeHtmlAttr)(summary.category)}" data-tags="${(0, htmlEscape_1.escapeHtmlAttr)((summary.tags ?? []).join(", "))}"`}
+              role="menuitem">
               <span class="action-menu__item-icon" aria-hidden="true">✎</span>
               <span>Edit US info</span>
             </button>
@@ -2181,6 +2190,16 @@ function buildStoryDisplayTitle(summary) {
     return normalizedTitle.startsWith(`${summary.usId} `) || normalizedTitle.startsWith(`${summary.usId}·`)
         || normalizedTitle.startsWith(`${summary.usId}-`) || normalizedTitle.startsWith(`${summary.usId}:`)
         ? normalizedTitle.slice(summary.usId.length).trimStart().replace(/^[·\-:]\s*/, "")
+        : normalizedTitle;
+}
+function editableUserStoryTitle(usId, title) {
+    const normalizedTitle = title.trim();
+    if (!normalizedTitle) {
+        return "";
+    }
+    return normalizedTitle.startsWith(`${usId} `) || normalizedTitle.startsWith(`${usId}·`)
+        || normalizedTitle.startsWith(`${usId}-`) || normalizedTitle.startsWith(`${usId}:`)
+        ? normalizedTitle.slice(usId.length).trimStart().replace(/^[·\-:]\s*/, "")
         : normalizedTitle;
 }
 function phaseLabelFor(currentPhase) {
