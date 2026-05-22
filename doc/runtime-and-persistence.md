@@ -55,6 +55,24 @@ The packaged bundle exposes:
 
 This is the intended boundary for non-VS Code agent clients.
 
+## Workspace Convention
+
+SpecForge uses two Git workspace roles for user-story work:
+
+- a stable control workspace
+- one dedicated Git worktree per user story once that user story has a recorded work branch
+
+This convention exists to prevent user-story visibility and runtime context from depending on branch switches inside a single checkout.
+
+Operational rules:
+
+- The control workspace is the canonical place to create, inspect, list, and govern user stories.
+- The global user-story catalog must remain visible from the control workspace even after individual user stories move to their own worktrees.
+- A user story with recorded branch metadata must execute phase work from its dedicated worktree, not by switching branches inside the control workspace.
+- Changing the active user story must activate the corresponding worktree when one exists.
+- A user story without a recorded work branch remains in the control workspace until that branch contract exists.
+- SpecForge must not treat branch switching inside one checkout as the canonical way to change active user stories.
+
 ## User Story Layout
 
 Each user story lives under:
