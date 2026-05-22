@@ -32,6 +32,8 @@ export interface SidebarViewModel {
   readonly userStories: readonly UserStorySummary[];
 }
 
+const USER_STORY_KINDS = ["feature", "bug", "hotfix", "chore", "refactor", "spike"] as const;
+
 export function buildSidebarHtml(model: SidebarViewModel): string {
   const busyIndicatorMarkup = buildBusyIndicatorMarkup(model);
   const isBusy = model.busyMessage !== null;
@@ -165,9 +167,7 @@ export function buildSidebarHtml(model: SidebarViewModel): string {
           <label>
             <span>Kind</span>
             <select name="kind" data-create-field="kind">
-              <option value="feature">feature</option>
-              <option value="bug">bug</option>
-              <option value="hotfix">hotfix</option>
+              ${USER_STORY_KINDS.map((kind) => `<option value="${kind}">${kind}</option>`).join("")}
             </select>
           </label>
           <label>

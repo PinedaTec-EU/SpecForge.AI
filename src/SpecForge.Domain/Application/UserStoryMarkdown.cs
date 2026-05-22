@@ -22,7 +22,7 @@ internal static class UserStoryMarkdown
 
     public static void ValidateUserStoryKind(string kind)
     {
-        if (kind is not ("feature" or "bug" or "hotfix"))
+        if (!UserStoryKinds.IsSupported(kind))
         {
             throw new Workflow.WorkflowDomainException($"Unsupported user story kind '{kind}'.");
         }

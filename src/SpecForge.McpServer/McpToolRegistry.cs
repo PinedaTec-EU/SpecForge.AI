@@ -1,3 +1,4 @@
+using SpecForge.Domain.Application;
 using System.Text.Json.Nodes;
 
 namespace SpecForge.McpServer;
@@ -71,7 +72,7 @@ public static class McpToolRegistry
                             ("workspaceRoot", Prop("string", "Absolute path to the workspace root (folder containing .specs/).")),
                             ("usId",          Prop("string", "User story identifier, e.g. US-001.")),
                             ("title",         Prop("string", "Short descriptive title for the user story.")),
-                            ("kind",          EnumProp("User story kind.", "feature", "bug", "hotfix")),
+                            ("kind",          EnumProp("User story kind.", UserStoryKinds.Supported)),
                             ("category",      Prop("string", "Category that groups the user story, e.g. core, ux, api.")),
                             ("tags",          ArrayProp("string", "Optional custom tags for search and UI display.")),
                             ("sourceText",    Prop("string", "Free-text description of the user story intent. Vague stories are allowed at capture, but refinement will keep asking until the MVP slice is buildable.")),
@@ -85,7 +86,7 @@ public static class McpToolRegistry
                             ("usId",          Prop("string", "User story identifier, e.g. US-001.")),
                             ("sourcePath",    Prop("string", "Absolute path to the source markdown file to import.")),
                             ("title",         Prop("string", "Short descriptive title for the user story.")),
-                            ("kind",          EnumProp("User story kind.", "feature", "bug", "hotfix")),
+                            ("kind",          EnumProp("User story kind.", UserStoryKinds.Supported)),
                             ("category",      Prop("string", "Category that groups the user story.")),
                             ("tags",          ArrayProp("string", "Optional custom tags for search and UI display.")),
                             ("actor",         Prop("string", "Actor performing the action. Defaults to 'user'."))))),
@@ -244,6 +245,9 @@ public static class McpToolRegistry
             ["enum"] = enumValues
         };
     }
+
+    private static JsonObject EnumProp(string description, IEnumerable<string> values) =>
+        EnumProp(description, values.ToArray());
 
     private static JsonObject PhaseSlugProp(string description) =>
         EnumProp(

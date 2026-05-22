@@ -139,6 +139,26 @@ public sealed class WorkflowRunnerTests : IDisposable
         Assert.DoesNotContain("- Status: `needs_refinement`", refinement);
     }
 
+    [Theory]
+    [InlineData("chore", "Developer tooling cleanup", "chore/us-0001-developer-tooling-cleanup")]
+    [InlineData("refactor", "Parser simplification", "refactor/us-0001-parser-simplification")]
+    [InlineData("spike", "Evaluate portal indexing", "spike/us-0001-evaluate-portal-indexing")]
+    public async Task ApproveCurrentPhaseAsync_UsesExpandedKindInWorkBranchName(string kind, string title, string expectedBranch)
+    {
+        var runner = new WorkflowRunner();
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", title, kind, "workflow", "Initial source text");
+        await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+        await ResolvePendingApprovalQuestionsAsync(runner, "US-0001");
+        await runner.ApproveCurrentPhaseAsync(workspaceRoot, "US-0001", "main");
+
+        var loadedRun = await new UserStoryFileStore().LoadAsync(
+            UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0001").RootDirectory,
+            CancellationToken.None);
+
+        Assert.Equal(expectedBranch, loadedRun.Branch!.WorkBranchName);
+        Assert.Equal(kind, loadedRun.Branch.Kind);
+    }
+
     [Fact]
     public async Task ContinuePhaseAsync_FromCapture_WithInsufficientSource_RequestsRefinement()
     {

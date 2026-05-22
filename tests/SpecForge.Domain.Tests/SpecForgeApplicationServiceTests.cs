@@ -82,6 +82,32 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
         Assert.Contains("Initial source", usMarkdown);
     }
 
+    [Theory]
+    [InlineData("chore")]
+    [InlineData("refactor")]
+    [InlineData("spike")]
+    public async Task UpdateUserStoryInfoAsync_AcceptsExpandedKinds(string kind)
+    {
+        var applicationService = new SpecForgeApplicationService();
+        await applicationService.CreateUserStoryAsync(
+            workspaceRoot,
+            "US-0001",
+            "Original story",
+            "feature",
+            "workflow",
+            "Initial source");
+
+        var result = await applicationService.UpdateUserStoryInfoAsync(
+            workspaceRoot,
+            "US-0001",
+            kind: kind);
+
+        var usMarkdown = await File.ReadAllTextAsync(result.MainArtifactPath);
+
+        Assert.Contains($"- Kind: `{kind}`", usMarkdown);
+        Assert.Equal("workflow", result.Summary.Category);
+    }
+
     [Fact]
     public async Task GetCurrentPhaseAsync_WithIncompleteDependency_BlocksWorkflowStart()
     {

@@ -29,7 +29,7 @@ const REGRESSION_TARGETS: Record<string, readonly string[]> = {
   review: ["implementation", "technical-design", "spec"],
   "release-approval": ["implementation", "technical-design", "spec"]
 };
-const USER_STORY_KINDS = ["feature", "bug", "hotfix"] as const;
+const USER_STORY_KINDS = ["feature", "bug", "hotfix", "chore", "refactor", "spike"] as const;
 let backendHostRoot: string | undefined;
 
 export function configureBackendHostRoot(hostRoot: string): void {
