@@ -23,6 +23,13 @@ export interface SidebarViewModel {
   readonly showDroppedUserStories: boolean;
   readonly showCompletedUserStories: boolean;
   readonly showBlockedUserStories: boolean;
+  readonly showHiddenUserStories: boolean;
+  readonly searchIncludesOtherOwners: boolean;
+  readonly currentActor: string;
+  readonly watchingUserStoryIds: readonly string[];
+  readonly hiddenUserStoryIds: readonly string[];
+  readonly maxVisibleUserStories: number | null;
+  readonly totalUserStoryCount: number;
   readonly droppedUserStoryCount: number;
   readonly createFileMode?: "context" | "attachment";
   readonly createFiles?: readonly DraftCreateFile[];
@@ -103,18 +110,14 @@ export function buildSidebarHtml(model: SidebarViewModel): string {
     `, isBusy, model.createFormResetToken ?? 0, model.typographyCssVars ?? "");
   }
 
-  const visibleUserStories = model.showDroppedUserStories
-    ? model.userStories
-    : model.userStories.filter((summary) =>
-        (model.showCompletedUserStories || !isCompletedStory(summary))
-        && (model.showBlockedUserStories || !isBlockedStory(summary)));
+  const visibleUserStories = model.userStories;
   const storySections = model.viewMode === "phase"
     ? [{ heading: null, items: sortStoriesByPhase(visibleUserStories) }]
     : groupStories(visibleUserStories).map((group) => ({ heading: group.category, items: group.items }));
   const storiesMarkup = storySections.map((section) => `
     <section class="story-group${section.heading ? "" : " story-group--flat"}">
       ${section.heading ? `<div class="group-header">${escapeHtml(section.heading)}</div>` : ""}
-      ${section.items.map((summary) => buildStoryRowMarkup(summary, model.starredUserStoryId, model.activeWorkflowUsId, model.showDroppedUserStories)).join("")}
+      ${section.items.map((summary) => buildStoryRowMarkup(summary, model)).join("")}
     </section>
   `).join("");
 
@@ -331,10 +334,11 @@ export function buildSidebarHtml(model: SidebarViewModel): string {
             ${buildRuntimeVersionMarkup(model.runtimeVersion)}
           </div>
           <h2>${model.showDroppedUserStories ? "Dropped backlog" : model.viewMode === "phase" ? "Workflow backlog by phase" : "Workflow backlog"}</h2>
+          <p class="copy">${buildOwnershipScopeSummary(model)}</p>
         </div>
         ${buildCompactActions(model)}
       </div>
-      ${buildStorySearchMarkup()}
+      ${buildStorySearchMarkup(model)}
       ${storiesMarkup || `<p class="copy story-list__empty">${emptyStoryListMessage(model, visibleUserStories.length)}</p>`}
       <p class="copy story-list__empty" data-story-search-empty hidden>No user stories match this search.</p>
     </section>
@@ -349,7 +353,8 @@ function emptyStoryListMessage(model: SidebarViewModel, visibleUserStoryCount: n
   if (model.userStories.length > 0 && visibleUserStoryCount === 0) {
     const hiddenTypes = [
       !model.showCompletedUserStories && model.userStories.some(isCompletedStory) ? "completed" : null,
-      !model.showBlockedUserStories && model.userStories.some(isBlockedStory) ? "blocked" : null
+      !model.showBlockedUserStories && model.userStories.some(isBlockedStory) ? "blocked" : null,
+      !model.showHiddenUserStories && model.hiddenUserStoryIds.length > 0 ? "hidden" : null
     ].filter((item): item is string => item !== null);
     if (hiddenTypes.length > 0) {
       return `Only ${formatList(hiddenTypes)} user stories are hidden. Use the view menu to show them.`;
@@ -421,15 +426,21 @@ function buildCreateActionButton(enabled: boolean): string {
   `;
 }
 
-function buildStorySearchMarkup(): string {
+function buildStorySearchMarkup(model: SidebarViewModel): string {
   return `
-    <label class="story-search">
-      <span class="story-search__label">Search user stories</span>
-      <span class="story-search__control">
-        <input type="search" placeholder="Search by title, description, category, or #tag" data-story-search />
-        <span class="story-search__icon" aria-hidden="true">🔍</span>
-      </span>
-    </label>
+    <div class="story-search">
+      <label>
+        <span class="story-search__label">Search user stories</span>
+        <span class="story-search__control">
+          <input type="search" placeholder="Search by title, description, category, owner, or #tag" data-story-search />
+          <span class="story-search__icon" aria-hidden="true">🔍</span>
+        </span>
+      </label>
+      <label class="story-search__switch">
+        <input type="checkbox" data-command-toggle="toggleSearchIncludesOtherOwners" ${model.searchIncludesOtherOwners ? "checked" : ""} />
+        <span>Include other owners</span>
+      </label>
+    </div>
   `;
 }
 function buildPromptMenu(promptsInitialized: boolean): string {
@@ -460,7 +471,7 @@ function buildViewOptionsMenu(model: SidebarViewModel): string {
   const blockedCount = model.userStories.filter(isBlockedStory).length;
   const completedDisabled = model.showDroppedUserStories || completedCount === 0;
   const blockedDisabled = model.showDroppedUserStories || blockedCount === 0;
-  const hasVisibleFilters = model.showCompletedUserStories || model.showBlockedUserStories;
+  const hasVisibleFilters = model.showCompletedUserStories || model.showBlockedUserStories || model.showHiddenUserStories;
 
   return `
     <div class="action-menu" data-action-menu>
@@ -494,6 +505,15 @@ function buildViewOptionsMenu(model: SidebarViewModel): string {
           ${blockedDisabled ? "disabled" : ""}>
           <span class="action-menu__item-icon" aria-hidden="true">${model.showBlockedUserStories ? "✓" : ""}</span>
           <span>Show blocked</span>
+        </button>
+        <button
+          class="action-menu__item"
+          type="button"
+          data-command="toggleShowHiddenUserStories"
+          role="menuitemcheckbox"
+          aria-checked="${model.showHiddenUserStories ? "true" : "false"}">
+          <span class="action-menu__item-icon" aria-hidden="true">${model.showHiddenUserStories ? "✓" : ""}</span>
+          <span>Show hidden</span>
         </button>
       </div>
     </div>
@@ -1158,6 +1178,13 @@ function wrapHtml(content: string, busy: boolean, createFormResetToken: number, 
       gap: 6px;
       margin: 0 0 14px;
     }
+    .story-search__switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.72);
+    }
     .story-search__label {
       position: absolute;
       width: 1px;
@@ -1426,6 +1453,10 @@ function wrapHtml(content: string, busy: boolean, createFormResetToken: number, 
     .story-star--active {
       color: #ffd75a;
       background: rgba(255, 213, 90, 0.1) !important;
+    }
+    .story-watch--active {
+      color: #8fe7ff;
+      background: rgba(143, 231, 255, 0.1) !important;
     }
     .story-card__id {
       font-family: var(--specforge-mono-font-family);
@@ -1707,6 +1738,20 @@ function wrapHtml(content: string, busy: boolean, createFormResetToken: number, 
           usId: element.dataset.usId,
           kind: element.dataset.kind,
           sourcePath: element.dataset.sourcePath
+        });
+      });
+    }
+    for (const element of document.querySelectorAll("[data-command-toggle]")) {
+      if (!(element instanceof HTMLInputElement)) {
+        continue;
+      }
+      element.disabled = busy;
+      element.addEventListener("change", () => {
+        if (busy) {
+          return;
+        }
+        vscode.postMessage({
+          command: element.dataset.commandToggle
         });
       });
     }
@@ -2005,14 +2050,16 @@ function sortStoriesByPhase(items: readonly UserStorySummary[]): UserStorySummar
   });
 }
 
-function buildStoryRowMarkup(summary: UserStorySummary, starredUserStoryId: string | null, activeWorkflowUsId: string | null, isDroppedView: boolean): string {
-  const isActiveWorkflow = activeWorkflowUsId === summary.usId;
+function buildStoryRowMarkup(summary: UserStorySummary, model: SidebarViewModel): string {
+  const isActiveWorkflow = model.activeWorkflowUsId === summary.usId;
   const effectiveStatus = effectiveStoryStatus(summary);
   const statusTone = phaseRailStatus(effectiveStatus);
   const displayTitle = buildStoryDisplayTitle(summary);
   const isAggregate = summary.workflowKind === "aggregate";
   const dependencies = summary.dependencies ?? [];
   const tags = summary.tags ?? [];
+  const isWatched = model.watchingUserStoryIds.includes(summary.usId);
+  const isHidden = model.hiddenUserStoryIds.includes(summary.usId);
   const dependencySearchText = dependencies
     .map((dependency) => `${dependency.usId} ${dependency.title ?? ""} ${dependency.status ?? ""} ${dependency.currentPhase ?? ""}`)
     .join(" ");
@@ -2020,6 +2067,8 @@ function buildStoryRowMarkup(summary: UserStorySummary, starredUserStoryId: stri
     summary.usId,
     summary.title,
     summary.description ?? "",
+    summary.owner,
+    summary.createdBy,
     summary.category,
     tags.map(formatTagLabel).join(" "),
     summary.currentPhase,
@@ -2046,18 +2095,26 @@ function buildStoryRowMarkup(summary: UserStorySummary, starredUserStoryId: stri
             ${buildStoryTagMarkup(tags)}
           </span>
           <strong>${escapeHtml(displayTitle)}</strong>
-          <span class="story-card__meta">${escapeHtml(summary.currentPhase)} · ${escapeHtml(effectiveStatus)}${isAggregate ? ` · ${escapeHtml(String(summary.childUsIds?.length ?? 0))} children` : ""}${summary.parentUsId ? ` · parent ${escapeHtml(summary.parentUsId)}` : ""}</span>
+          <span class="story-card__meta">${escapeHtml(summary.currentPhase)} · ${escapeHtml(effectiveStatus)} · owner ${escapeHtml(summary.owner)}${isAggregate ? ` · ${escapeHtml(String(summary.childUsIds?.length ?? 0))} children` : ""}${summary.parentUsId ? ` · parent ${escapeHtml(summary.parentUsId)}` : ""}</span>
           ${buildDependencyLineMarkup(dependencies)}
         </span>
       </button>
       <div class="story-actions">
         <button
-          class="icon-action story-star${starredUserStoryId === summary.usId ? " story-star--active" : ""}"
+          class="icon-action story-star${model.starredUserStoryId === summary.usId ? " story-star--active" : ""}"
           type="button"
-          ${isDroppedView ? "disabled" : `data-command="toggleStarredUserStory" data-us-id="${escapeHtmlAttr(summary.usId)}"`}
-          title="${escapeHtmlAttr(starredUserStoryId === summary.usId ? `Unstar ${summary.usId}` : `Star ${summary.usId}`)}"
-          aria-label="${escapeHtmlAttr(starredUserStoryId === summary.usId ? `Unstar ${summary.usId}` : `Star ${summary.usId}`)}">
-          <span aria-hidden="true">${starredUserStoryId === summary.usId ? "★" : "☆"}</span>
+          ${model.showDroppedUserStories ? "disabled" : `data-command="toggleStarredUserStory" data-us-id="${escapeHtmlAttr(summary.usId)}"`}
+          title="${escapeHtmlAttr(model.starredUserStoryId === summary.usId ? `Unstar ${summary.usId}` : `Star ${summary.usId}`)}"
+          aria-label="${escapeHtmlAttr(model.starredUserStoryId === summary.usId ? `Unstar ${summary.usId}` : `Star ${summary.usId}`)}">
+          <span aria-hidden="true">${model.starredUserStoryId === summary.usId ? "★" : "☆"}</span>
+        </button>
+        <button
+          class="icon-action story-watch${isWatched ? " story-watch--active" : ""}"
+          type="button"
+          ${model.showDroppedUserStories ? "disabled" : `data-command="toggleWatchingUserStory" data-us-id="${escapeHtmlAttr(summary.usId)}"`}
+          title="${escapeHtmlAttr(isWatched ? `Stop watching ${summary.usId}` : `Watch ${summary.usId}`)}"
+          aria-label="${escapeHtmlAttr(isWatched ? `Stop watching ${summary.usId}` : `Watch ${summary.usId}`)}">
+          <span aria-hidden="true">${isWatched ? "👁" : "◌"}</span>
         </button>
         <div class="action-menu story-menu" data-action-menu>
           <button
@@ -2071,11 +2128,11 @@ function buildStoryRowMarkup(summary: UserStorySummary, starredUserStoryId: stri
             <span aria-hidden="true">☰</span>
           </button>
           <div class="action-menu__panel" data-action-menu-panel role="menu" hidden>
-            <button class="action-menu__item" type="button" ${isDroppedView ? "disabled" : `data-command="openMainArtifact" data-us-id="${escapeHtmlAttr(summary.usId)}"`} role="menuitem">
+            <button class="action-menu__item" type="button" ${model.showDroppedUserStories ? "disabled" : `data-command="openMainArtifact" data-us-id="${escapeHtmlAttr(summary.usId)}"`} role="menuitem">
               <span class="action-menu__item-icon" aria-hidden="true">✎</span>
               <span>Edit US info</span>
             </button>
-            ${isDroppedView
+            ${model.showDroppedUserStories
               ? `<button class="action-menu__item" type="button" data-command="recoverUserStory" data-us-id="${escapeHtmlAttr(summary.usId)}" role="menuitem">
                   <span class="action-menu__item-icon" aria-hidden="true">↩</span>
                   <span>Recover US</span>
@@ -2087,6 +2144,10 @@ function buildStoryRowMarkup(summary: UserStorySummary, starredUserStoryId: stri
                 <button class="action-menu__item action-menu__item--danger" type="button" data-command="resetUserStoryToCapture" data-us-id="${escapeHtmlAttr(summary.usId)}" role="menuitem">
                   <span class="action-menu__item-icon" aria-hidden="true">↤</span>
                   <span>Reset workflow</span>
+                </button>
+                <button class="action-menu__item" type="button" data-command="toggleHiddenUserStory" data-us-id="${escapeHtmlAttr(summary.usId)}" role="menuitem">
+                  <span class="action-menu__item-icon" aria-hidden="true">${isHidden ? "◉" : "◌"}</span>
+                  <span>${isHidden ? "Unhide from my list" : "Hide from my list"}</span>
                 </button>
                 <button class="action-menu__item action-menu__item--danger" type="button" data-command="dropUserStory" data-us-id="${escapeHtmlAttr(summary.usId)}" role="menuitem">
                   <span class="action-menu__item-icon" aria-hidden="true">⊘</span>
@@ -2106,6 +2167,15 @@ function buildStoryTagMarkup(tags: readonly string[]): string {
   }
 
   return `<span class="story-card__tags">${visibleTags.map((tag) => `<span class="story-card__tag">${escapeHtml(formatTagLabel(tag))}</span>`).join("")}</span>`;
+}
+
+function buildOwnershipScopeSummary(model: SidebarViewModel): string {
+  const scope = model.searchIncludesOtherOwners ? "all owners" : `owner ${model.currentActor}`;
+  if (model.totalUserStoryCount > model.userStories.length) {
+    return `Showing ${model.userStories.length} of ${model.totalUserStoryCount} stories in scope · ${scope}.`;
+  }
+
+  return `${model.userStories.length} stories in scope · ${scope}.`;
 }
 
 function formatTagLabel(tag: string): string {

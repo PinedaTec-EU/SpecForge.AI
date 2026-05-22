@@ -410,6 +410,13 @@ function buildCliSidebarHtml(items, options) {
     showDroppedUserStories: options.showDroppedUserStories,
     showCompletedUserStories: options.showCompletedUserStories,
     showBlockedUserStories: options.showBlockedUserStories,
+    showHiddenUserStories: false,
+    searchIncludesOtherOwners: true,
+    currentActor: "cli-user",
+    watchingUserStoryIds: [],
+    hiddenUserStoryIds: [],
+    maxVisibleUserStories: null,
+    totalUserStoryCount: items.length,
     droppedUserStoryCount,
     categories: [...new Set(items.map(item => item.category).filter(Boolean))],
     userStories: items

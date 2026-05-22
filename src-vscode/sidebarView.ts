@@ -20,7 +20,14 @@ import {
   type CreateIntakeMode,
   type UserStoryWizardDraft
 } from "./userStoryIntake";
-import { readUserWorkspacePreferences, setStarredUserStory } from "./userWorkspacePreferences";
+import {
+  readUserWorkspacePreferences,
+  setHiddenUserStoryIds,
+  setSearchIncludesOtherOwners,
+  setStarredUserStory,
+  setWatchingUserStoryIds,
+  type UserWorkspacePreferences
+} from "./userWorkspacePreferences";
 import { asErrorMessage, getNextAttachmentPathAsync } from "./utils";
 import { getEditorTypographyCssVars } from "./webviewTypography";
 import { closeWorkflowView } from "./workflowPanel";
@@ -35,6 +42,10 @@ type SidebarMessage =
   | { readonly command: "openWorkflow"; readonly usId?: string }
   | { readonly command: "openMainArtifact"; readonly usId?: string }
   | { readonly command: "toggleStarredUserStory"; readonly usId?: string }
+  | { readonly command: "toggleWatchingUserStory"; readonly usId?: string }
+  | { readonly command: "toggleHiddenUserStory"; readonly usId?: string }
+  | { readonly command: "toggleSearchIncludesOtherOwners" }
+  | { readonly command: "toggleShowHiddenUserStories" }
   | { readonly command: "toggleDroppedUserStories" }
   | { readonly command: "toggleCompletedUserStories" }
   | { readonly command: "toggleBlockedUserStories" }
@@ -74,6 +85,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
   private showDroppedUserStories = false;
   private showCompletedUserStories = false;
   private showBlockedUserStories = false;
+  private showHiddenUserStories = false;
   private createFileMode: "context" | "attachment" = "context";
   private createFiles: DraftCreateFile[] = [];
   private createReferenceScanVersion = 0;
@@ -220,6 +232,27 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
         return;
       case "toggleDroppedUserStories":
         this.showDroppedUserStories = !this.showDroppedUserStories;
+        await this.safeRenderAsync();
+        return;
+      case "toggleWatchingUserStory":
+        if (!message.usId) {
+          return;
+        }
+
+        await this.toggleWatchingUserStoryAsync(message.usId);
+        return;
+      case "toggleHiddenUserStory":
+        if (!message.usId) {
+          return;
+        }
+
+        await this.toggleHiddenUserStoryAsync(message.usId);
+        return;
+      case "toggleSearchIncludesOtherOwners":
+        await this.toggleSearchIncludesOtherOwnersAsync();
+        return;
+      case "toggleShowHiddenUserStories":
+        this.showHiddenUserStories = !this.showHiddenUserStories;
         await this.safeRenderAsync();
         return;
       case "toggleCompletedUserStories":
@@ -504,6 +537,53 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
     await this.safeRenderAsync();
   }
 
+  private async toggleWatchingUserStoryAsync(usId: string): Promise<void> {
+    const workspaceRoot = getWorkspaceRoot();
+    if (!workspaceRoot) {
+      return;
+    }
+
+    const preferences = await readUserWorkspacePreferences(workspaceRoot);
+    const watching = new Set(preferences.watchingUserStoryIds);
+    if (watching.has(usId)) {
+      watching.delete(usId);
+    } else {
+      watching.add(usId);
+    }
+
+    await setWatchingUserStoryIds(workspaceRoot, [...watching]);
+    await this.safeRenderAsync();
+  }
+
+  private async toggleHiddenUserStoryAsync(usId: string): Promise<void> {
+    const workspaceRoot = getWorkspaceRoot();
+    if (!workspaceRoot) {
+      return;
+    }
+
+    const preferences = await readUserWorkspacePreferences(workspaceRoot);
+    const hidden = new Set(preferences.hiddenUserStoryIds);
+    if (hidden.has(usId)) {
+      hidden.delete(usId);
+    } else {
+      hidden.add(usId);
+    }
+
+    await setHiddenUserStoryIds(workspaceRoot, [...hidden]);
+    await this.safeRenderAsync();
+  }
+
+  private async toggleSearchIncludesOtherOwnersAsync(): Promise<void> {
+    const workspaceRoot = getWorkspaceRoot();
+    if (!workspaceRoot) {
+      return;
+    }
+
+    const preferences = await readUserWorkspacePreferences(workspaceRoot);
+    await setSearchIncludesOtherOwners(workspaceRoot, !preferences.searchIncludesOtherOwners);
+    await this.safeRenderAsync();
+  }
+
   private async addCreateFilesAsync(kind: "context" | "attachment"): Promise<void> {
     const selection = await vscode.window.showOpenDialog({
       canSelectFiles: true,
@@ -666,6 +746,13 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
         showDroppedUserStories: this.showDroppedUserStories,
         showCompletedUserStories: this.showCompletedUserStories,
         showBlockedUserStories: this.showBlockedUserStories,
+        showHiddenUserStories: this.showHiddenUserStories,
+        searchIncludesOtherOwners: false,
+        currentActor: getCurrentActor(),
+        watchingUserStoryIds: [],
+        hiddenUserStoryIds: [],
+        maxVisibleUserStories: null,
+        totalUserStoryCount: 0,
         droppedUserStoryCount: 0,
         createFileMode: this.createFileMode,
         createFiles: this.createFiles,
@@ -680,11 +767,11 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
     const hasPersistedStories = await hasPersistedUserStoriesAsync(workspaceRoot);
     appendSpecForgeLog(`Sidebar persisted user story probe for '${workspaceRoot}': ${hasPersistedStories}.`);
     const backendClient = getOrCreateBackendClient(workspaceRoot);
-    const userStories = hasPersistedStories
+    const allVisibleUserStories = hasPersistedStories
       ? await backendClient.listUserStories(this.showDroppedUserStories ? "dropped" : "active")
       : [];
     const droppedUserStoryCount = hasPersistedStories
-      ? (this.showDroppedUserStories ? userStories.length : (await backendClient.listUserStories("dropped")).length)
+      ? (this.showDroppedUserStories ? allVisibleUserStories.length : (await backendClient.listUserStories("dropped")).length)
       : 0;
     const categories = await getUserStoryCategoriesAsync(workspaceRoot);
     const promptsStatus = await getRepoPromptsStatusAsync(workspaceRoot);
@@ -697,6 +784,17 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
       appendSpecForgeLog(`Sidebar prompt override warning for '${workspaceRoot}': ${promptsStatus.message ?? "prompt overrides not materialized"}. Checked: ${promptsStatus.checkedPaths.join(", ")}`);
     }
     const preferences = await readUserWorkspacePreferences(workspaceRoot);
+    const currentActor = getCurrentActor();
+    const filteredUserStories = filterSidebarUserStories(
+      allVisibleUserStories,
+      preferences,
+      currentActor,
+      {
+        showDroppedUserStories: this.showDroppedUserStories,
+        showCompletedUserStories: this.showCompletedUserStories,
+        showBlockedUserStories: this.showBlockedUserStories,
+        showHiddenUserStories: this.showHiddenUserStories
+      });
     const runtimeVersion = await readRuntimeVersionAsync();
     this.webviewView.webview.html = buildSidebarHtml({
       hasWorkspace: true,
@@ -713,13 +811,20 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
       showDroppedUserStories: this.showDroppedUserStories,
       showCompletedUserStories: this.showCompletedUserStories,
       showBlockedUserStories: this.showBlockedUserStories,
+      showHiddenUserStories: this.showHiddenUserStories,
+      searchIncludesOtherOwners: preferences.searchIncludesOtherOwners,
+      currentActor,
+      watchingUserStoryIds: preferences.watchingUserStoryIds,
+      hiddenUserStoryIds: preferences.hiddenUserStoryIds,
+      maxVisibleUserStories: preferences.maxVisibleUserStories,
       droppedUserStoryCount,
       createFileMode: this.createFileMode,
       createFiles: this.createFiles,
       createFormResetToken: this.createFormResetToken,
       typographyCssVars: getEditorTypographyCssVars(),
       categories,
-      userStories
+      userStories: filteredUserStories.visibleStories,
+      totalUserStoryCount: filteredUserStories.totalInScope
     });
   }
 
@@ -746,6 +851,13 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
         showDroppedUserStories: this.showDroppedUserStories,
         showCompletedUserStories: this.showCompletedUserStories,
         showBlockedUserStories: this.showBlockedUserStories,
+        showHiddenUserStories: this.showHiddenUserStories,
+        searchIncludesOtherOwners: false,
+        currentActor: getCurrentActor(),
+        watchingUserStoryIds: [],
+        hiddenUserStoryIds: [],
+        maxVisibleUserStories: null,
+        totalUserStoryCount: 0,
         droppedUserStoryCount: 0,
         createFileMode: this.createFileMode,
         createFiles: this.createFiles,
@@ -757,6 +869,97 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
       void vscode.window.showErrorMessage(`SpecForge sidebar failed to load: ${asErrorMessage(error)}`);
     }
   }
+}
+
+function filterSidebarUserStories(
+  userStories: readonly UserStorySummary[],
+  preferences: UserWorkspacePreferences,
+  currentActor: string,
+  options: {
+    readonly showDroppedUserStories: boolean;
+    readonly showCompletedUserStories: boolean;
+    readonly showBlockedUserStories: boolean;
+    readonly showHiddenUserStories: boolean;
+  }
+): { readonly visibleStories: readonly UserStorySummary[]; readonly totalInScope: number } {
+  const normalizedActor = currentActor.trim().toLowerCase();
+  const hiddenIds = new Set(preferences.hiddenUserStoryIds);
+  const watchingIds = new Set(preferences.watchingUserStoryIds);
+  const maxVisible = preferences.maxVisibleUserStories ?? 100;
+
+  const filtered = userStories.filter((summary) => {
+    if (!options.showCompletedUserStories && summary.currentPhase === "completed") {
+      return false;
+    }
+
+    if (!options.showBlockedUserStories && summary.status === "blocked") {
+      return false;
+    }
+
+    if (!options.showHiddenUserStories && hiddenIds.has(summary.usId)) {
+      return false;
+    }
+
+    if (options.showDroppedUserStories) {
+      return preferences.searchIncludesOtherOwners
+        || watchingIds.has(summary.usId)
+        || summary.owner.trim().toLowerCase() === normalizedActor;
+    }
+
+    return preferences.searchIncludesOtherOwners
+      || watchingIds.has(summary.usId)
+      || summary.owner.trim().toLowerCase() === normalizedActor;
+  });
+
+  const prioritized = [...filtered].sort((left, right) => compareSidebarStories(left, right, preferences, normalizedActor));
+  return {
+    visibleStories: preferences.searchIncludesOtherOwners
+      ? prioritized
+      : prioritized.slice(0, maxVisible),
+    totalInScope: prioritized.length
+  };
+}
+
+function compareSidebarStories(
+  left: UserStorySummary,
+  right: UserStorySummary,
+  preferences: UserWorkspacePreferences,
+  currentActor: string
+): number {
+  const watching = new Set(preferences.watchingUserStoryIds);
+  const leftScore = sidebarPriority(left, preferences.starredUserStoryId, watching, currentActor);
+  const rightScore = sidebarPriority(right, preferences.starredUserStoryId, watching, currentActor);
+  if (leftScore !== rightScore) {
+    return rightScore - leftScore;
+  }
+
+  return left.usId.localeCompare(right.usId);
+}
+
+function sidebarPriority(
+  summary: UserStorySummary,
+  starredUserStoryId: string | null,
+  watchingUserStoryIds: ReadonlySet<string>,
+  currentActor: string
+): number {
+  let score = 0;
+  if (summary.usId === starredUserStoryId) {
+    score += 100;
+  }
+  if (watchingUserStoryIds.has(summary.usId)) {
+    score += 50;
+  }
+  if (summary.owner.trim().toLowerCase() === currentActor) {
+    score += 25;
+  }
+  if (summary.status === "waiting-user") {
+    score += 10;
+  }
+  if (summary.status === "blocked") {
+    score += 5;
+  }
+
+  return score;
 }
 
 function parseCustomTags(value: string | undefined): readonly string[] {

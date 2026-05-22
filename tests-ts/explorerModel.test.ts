@@ -12,6 +12,8 @@ function createSummary(usId: string): UserStorySummary {
   return {
     usId,
     title: usId,
+    createdBy: "alice",
+    owner: "alice",
     category: "workflow",
     directoryPath: `/tmp/${usId}`,
     mainArtifactPath: `/tmp/${usId}/us.md`,

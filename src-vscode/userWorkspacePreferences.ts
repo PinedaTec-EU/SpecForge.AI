@@ -7,6 +7,7 @@ export interface UserWorkspacePreferences {
   readonly hiddenUserStoryIds: readonly string[];
   readonly watchingUserStoryIds: readonly string[];
   readonly maxVisibleUserStories: number | null;
+  readonly searchIncludesOtherOwners: boolean;
   readonly pausedWorkflowPhaseIdsByUsId: Record<string, readonly string[]>;
 }
 
@@ -15,6 +16,7 @@ const defaultPreferences: UserWorkspacePreferences = {
   hiddenUserStoryIds: [],
   watchingUserStoryIds: [],
   maxVisibleUserStories: null,
+  searchIncludesOtherOwners: false,
   pausedWorkflowPhaseIdsByUsId: {}
 };
 
@@ -31,6 +33,7 @@ export async function readUserWorkspacePreferences(workspaceRoot: string): Promi
       hiddenUserStoryIds: normalizeUserStoryIdList(parsed?.hiddenUserStoryIds),
       watchingUserStoryIds: normalizeUserStoryIdList(parsed?.watchingUserStoryIds),
       maxVisibleUserStories: normalizeMaxVisibleUserStories(parsed?.maxVisibleUserStories),
+      searchIncludesOtherOwners: parsed?.searchIncludesOtherOwners === true,
       pausedWorkflowPhaseIdsByUsId: normalizePausedWorkflowPhaseIdsByUsId(parsed?.pausedWorkflowPhaseIdsByUsId)
     };
   } catch {
@@ -52,6 +55,38 @@ export async function setStarredUserStory(workspaceRoot: string, usId: string | 
   await writeUserWorkspacePreferences(workspaceRoot, {
     ...preferences,
     starredUserStoryId: usId?.trim() || null
+  });
+}
+
+export async function setWatchingUserStoryIds(workspaceRoot: string, usIds: readonly string[]): Promise<void> {
+  const preferences = await readUserWorkspacePreferences(workspaceRoot);
+  await writeUserWorkspacePreferences(workspaceRoot, {
+    ...preferences,
+    watchingUserStoryIds: normalizeUserStoryIdList(usIds)
+  });
+}
+
+export async function setHiddenUserStoryIds(workspaceRoot: string, usIds: readonly string[]): Promise<void> {
+  const preferences = await readUserWorkspacePreferences(workspaceRoot);
+  await writeUserWorkspacePreferences(workspaceRoot, {
+    ...preferences,
+    hiddenUserStoryIds: normalizeUserStoryIdList(usIds)
+  });
+}
+
+export async function setSearchIncludesOtherOwners(workspaceRoot: string, enabled: boolean): Promise<void> {
+  const preferences = await readUserWorkspacePreferences(workspaceRoot);
+  await writeUserWorkspacePreferences(workspaceRoot, {
+    ...preferences,
+    searchIncludesOtherOwners: enabled
+  });
+}
+
+export async function setMaxVisibleUserStories(workspaceRoot: string, maxVisible: number | null): Promise<void> {
+  const preferences = await readUserWorkspacePreferences(workspaceRoot);
+  await writeUserWorkspacePreferences(workspaceRoot, {
+    ...preferences,
+    maxVisibleUserStories: normalizeMaxVisibleUserStories(maxVisible)
   });
 }
 
@@ -138,6 +173,7 @@ function normalizeMaxVisibleUserStories(value: unknown): number | null {
   const normalized = Math.trunc(value);
   return normalized > 0 ? normalized : null;
 }
+
 export function getUserWorkspacePreferencesPath(workspaceRoot: string): string {
   return path.join(workspaceRoot, ".specs", "users", normalizeUserSegment(os.userInfo().username), "vscode-preferences.json");
 }

@@ -42,7 +42,7 @@ Current limitations:
 
 - `stop` is still best-effort, not durable job control
 - prompt diffing and effective prompt inspection are not finished
-- completed-work visibility and sidebar search are still pending
+- completed-work visibility and scoped sidebar search now exist, but effective prompt inspection is still pending
 
 ## Packaged MCP Surface
 

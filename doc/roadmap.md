@@ -25,7 +25,7 @@ Near-term priorities:
 - richer branch lifecycle and Git/PR metadata
 - provider-neutral issue and PR integrations beyond the current GitHub-oriented path
 - prompt diffing and effective prompt inspection UX
-- completed-work visibility and sidebar search
+- branch auto-switch with `main` fallback before work-branch activation
 - one-command plugin release, sync, and validation pipeline
 
 ## Later

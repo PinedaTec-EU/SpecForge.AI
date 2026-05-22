@@ -57,27 +57,27 @@ Store these per user, not in shared repository workflow metadata:
 
 ## Tasks
 
-- [ ] `OVS-001` Status: `todo`
+- [x] `OVS-001` Status: `done`
   Add shared user-story metadata for `createdBy` and `owner`.
   Output: user-story create/import/update flows persist and expose both fields through domain, application, MCP, and UI summary models.
 
-- [ ] `OVS-002` Status: `todo`
+- [x] `OVS-002` Status: `done`
   Define the local per-user visibility model.
   Output: local preferences support hidden stories, watched stories, starred stories, and a maximum visible story limit without polluting shared workflow metadata.
 
-- [ ] `OVS-003` Status: `todo`
+- [x] `OVS-003` Status: `done`
   Change the default list pipeline to filter early by active status, owner, and local visibility before render.
   Output: the sidebar and portal no longer need to enumerate and render the whole backlog before showing "my active stories."
 
-- [ ] `OVS-004` Status: `todo`
+- [x] `OVS-004` Status: `done`
   Add explicit watch visibility in the UI.
   Output: a per-user "eye" control can include a story in the visible queue even when it is not owned by the current user.
 
-- [ ] `OVS-005` Status: `todo`
+- [x] `OVS-005` Status: `done`
   Extend search with an explicit `include other owners` switch.
   Output: users can discover other stories on demand without making the default queue heavy.
 
-- [ ] `OVS-006` Status: `todo`
+- [x] `OVS-006` Status: `done`
   Document and enforce the self-hosting fallback rule for engine defects.
   Output: engine defects are always registered in docs and an external tracker before implementation starts.
 

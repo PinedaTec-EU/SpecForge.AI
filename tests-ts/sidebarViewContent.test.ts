@@ -3,7 +3,14 @@ import assert from "node:assert/strict";
 import { buildSidebarHtml } from "../src-vscode/sidebarViewContent";
 import type { SidebarViewModel } from "../src-vscode/sidebarViewContent";
 
-function model(overrides: Partial<SidebarViewModel>): SidebarViewModel {
+function model(overrides: Record<string, unknown>): SidebarViewModel {
+  const userStories = Array.isArray(overrides.userStories)
+    ? overrides.userStories.map((story) => ({
+        createdBy: "alice",
+        owner: "alice",
+        ...story
+      }))
+    : [];
   return {
     hasWorkspace: true,
     showCreateForm: false,
@@ -18,11 +25,18 @@ function model(overrides: Partial<SidebarViewModel>): SidebarViewModel {
     showDroppedUserStories: false,
     showCompletedUserStories: false,
     showBlockedUserStories: false,
+    showHiddenUserStories: false,
+    searchIncludesOtherOwners: false,
+    currentActor: "alice",
+    watchingUserStoryIds: [],
+    hiddenUserStoryIds: [],
+    maxVisibleUserStories: null,
+    totalUserStoryCount: 0,
     droppedUserStoryCount: 0,
     categories: ["workflow"],
-    userStories: [],
-    ...overrides
-  };
+    ...overrides,
+    userStories
+  } as SidebarViewModel;
 }
 
 test("buildSidebarHtml does not block first user story creation when prompt overrides are absent", () => {
@@ -107,7 +121,7 @@ test("buildSidebarHtml exposes a compact prompt customization action", () => {
   assert.match(html, /aria-label="Create new user story"/);
   assert.doesNotMatch(html, /aria-label="Configure execution providers"/);
   assert.match(html, /data-story-search/);
-  assert.match(html, /Search by title, description, category, or #tag/);
+  assert.match(html, /Search by title, description, category, owner, or #tag/);
   assert.doesNotMatch(html, /data-command="toggleViewMode"/);
   assert.doesNotMatch(html, /Repo prompts ready/);
 });
@@ -236,7 +250,7 @@ test("buildSidebarHtml surfaces blocked dependency state in story rows", () => {
   assert.match(html, /data-story-search-text="[^"]*US-0001[^"]*First workflow/);
 });
 
-test("buildSidebarHtml filters blocked user stories from the active sidebar by default", () => {
+test("buildSidebarHtml keeps blocked filter toggle available when blocked stories are in scope", () => {
   const html = buildSidebarHtml(model({
     categories: ["workflow"],
     userStories: [{
@@ -251,14 +265,12 @@ test("buildSidebarHtml filters blocked user stories from the active sidebar by d
     }],
   }));
 
-  assert.doesNotMatch(html, /<button class="story-card story-card--active/);
-  assert.doesNotMatch(html, /<span class="story-card__phase-label">/);
-  assert.match(html, /Only blocked user stories are hidden/);
+  assert.match(html, /story-row--status-blocked/);
+  assert.match(html, /<span class="story-card__phase-label">🔒 BLOCK<\/span>/);
   assert.match(html, />Show blocked<\/span>/);
   assert.doesNotMatch(html, /Show blocked \(1\)/);
   assert.match(html, /data-command="toggleBlockedUserStories"[^>]*aria-checked="false"/);
   assert.doesNotMatch(html, /data-command="toggleBlockedUserStories"[^>]*disabled/);
-  assert.match(html, /aria-checked="false"/);
 });
 
 test("buildSidebarHtml shows blocked user stories when enabled", () => {
@@ -341,7 +353,7 @@ test("buildSidebarHtml labels error stories explicitly on the phase rail", () =>
   assert.match(html, /<span class="story-card__phase-label">ERROR<\/span>/);
 });
 
-test("buildSidebarHtml filters completed user stories from the active sidebar by default", () => {
+test("buildSidebarHtml keeps completed filter toggle available when completed stories are in scope", () => {
   const html = buildSidebarHtml(model({
     categories: ["workflow"],
     userStories: [{
@@ -356,11 +368,12 @@ test("buildSidebarHtml filters completed user stories from the active sidebar by
     }],
   }));
 
-  assert.doesNotMatch(html, /<button class="story-card story-card--active/);
-  assert.doesNotMatch(html, /<span class="story-card__phase-label">/);
-  assert.match(html, /Only completed user stories are hidden/);
+  assert.match(html, /story-row--status-completed/);
+  assert.match(html, /<span class="story-card__phase-label">DONE<\/span>/);
   assert.match(html, />Show completed<\/span>/);
   assert.doesNotMatch(html, /Show completed \(1\)/);
+  assert.match(html, /data-command="toggleCompletedUserStories"[^>]*aria-checked="false"/);
+  assert.doesNotMatch(html, /data-command="toggleCompletedUserStories"[^>]*disabled/);
 });
 
 test("buildSidebarHtml disables sidebar filter options when there are no matching stories", () => {
@@ -498,6 +511,61 @@ test("buildSidebarHtml marks the starred user story with a highlighted star acti
   assert.match(html, /class="icon-action story-star story-star--active"\s+type="button"\s+data-command="toggleStarredUserStory"\s+data-us-id="US-0009"/);
   assert.match(html, /aria-label="Unstar US-0009"/);
   assert.match(html, />★</);
+});
+
+test("buildSidebarHtml renders owner scope, watch action, and owner-aware search toggle", () => {
+  const html = buildSidebarHtml(model({
+    searchIncludesOtherOwners: false,
+    currentActor: "alice",
+    watchingUserStoryIds: ["US-0012"],
+    totalUserStoryCount: 3,
+    categories: ["workflow"],
+    userStories: [{
+      usId: "US-0012",
+      title: "Owned workflow",
+      description: "Track user-specific scope in the sidebar.",
+      createdBy: "alice",
+      owner: "alice",
+      category: "workflow",
+      currentPhase: "implementation",
+      status: "waiting-user",
+      mainArtifactPath: "/tmp/us.md",
+      directoryPath: "/tmp/us.US-0012",
+      workBranch: null
+    }]
+  }));
+
+  assert.match(html, /Showing 1 of 3 stories in scope · owner alice\./);
+  assert.match(html, /placeholder="Search by title, description, category, owner, or #tag"/);
+  assert.match(html, /data-command-toggle="toggleSearchIncludesOtherOwners"/);
+  assert.match(html, /aria-label="Stop watching US-0012"/);
+  assert.match(html, /story-watch--active/);
+  assert.match(html, /owner alice/);
+  assert.match(html, /data-story-search-text="[^"]*Track user-specific scope[^"]*alice/);
+});
+
+test("buildSidebarHtml exposes hidden-state actions in the story menu", () => {
+  const html = buildSidebarHtml(model({
+    hiddenUserStoryIds: ["US-0013"],
+    showHiddenUserStories: true,
+    categories: ["workflow"],
+    userStories: [{
+      usId: "US-0013",
+      title: "Hidden workflow",
+      createdBy: "alice",
+      owner: "alice",
+      category: "workflow",
+      currentPhase: "capture",
+      status: "active",
+      mainArtifactPath: "/tmp/us.md",
+      directoryPath: "/tmp/us.US-0013",
+      workBranch: null
+    }]
+  }));
+
+  assert.match(html, /data-command="toggleHiddenUserStory" data-us-id="US-0013"/);
+  assert.match(html, /Unhide from my list/);
+  assert.match(html, /data-command="toggleShowHiddenUserStories"[\s\S]*Show hidden/);
 });
 
 test("buildSidebarHtml wires user story row actions to selectable commands", () => {

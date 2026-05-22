@@ -26,7 +26,7 @@ test("MCP schemas constrain common phase, kind, and reason values", async () => 
   assert.match(source, /JsonObject PhaseSlugProp\(string description\)/);
   assert.match(source, /"reasonKind",\s*EnumProp\("Typed reopen reason\.", "merge-conflict", "defect", "functional-issue", "technical-issue"\)/);
   assert.match(source, /"kind",\s*EnumProp\("File kind\.", "context", "attachment"\)/);
-  assert.match(source, /"kind",\s*EnumProp\("User story kind\.", "feature", "bug", "hotfix"\)/);
+  assert.match(source, /"kind",\s*EnumProp\("User story kind\.", UserStoryKinds\.Supported\)/);
 });
 
 test("MCP required array arguments fail fast when missing or empty", async () => {
