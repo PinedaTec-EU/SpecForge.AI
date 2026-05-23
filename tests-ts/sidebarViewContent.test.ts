@@ -141,6 +141,27 @@ test("buildSidebarHtml exposes a compact prompt customization action", () => {
   assert.doesNotMatch(html, /Repo prompts ready/);
 });
 
+test("buildSidebarHtml can hide local view options when the host owns them", () => {
+  const html = buildSidebarHtml(model({
+    showViewOptionsMenu: false,
+    categories: ["workflow"],
+    userStories: [{
+      usId: "US-0001",
+      title: "Workflow graph",
+      category: "workflow",
+      currentPhase: "spec",
+      status: "active",
+      mainArtifactPath: "/tmp/us.md",
+      directoryPath: "/tmp/us.US-0001",
+      workBranch: null
+    }],
+  }));
+
+  assert.doesNotMatch(html, /aria-label="Sidebar view options"/);
+  assert.match(html, /aria-label="Prompt actions"/);
+  assert.match(html, /aria-label="Create new user story"/);
+});
+
 test("buildSidebarHtml trims commit metadata from the displayed runtime version", () => {
   const html = buildSidebarHtml(model({
     runtimeVersion: "0.1.4.415+71ff1a243f81f3eea815e2df4bcb1c39be185a98",

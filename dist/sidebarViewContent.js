@@ -475,10 +475,11 @@ function buildViewOptionsMenu(model) {
   `;
 }
 function buildCompactActions(model) {
+    const showViewOptionsMenu = model.showViewOptionsMenu !== false;
     return `
     <div class="compact-actions">
       ${buildDroppedStoriesActionButton(model.showDroppedUserStories, model.droppedUserStoryCount)}
-      ${model.showDroppedUserStories ? "" : buildViewOptionsMenu(model)}
+      ${model.showDroppedUserStories || !showViewOptionsMenu ? "" : buildViewOptionsMenu(model)}
       ${model.showDroppedUserStories ? "" : buildCreateActionButton(model.promptsInitialized)}
       ${buildPromptMenu(model.promptsInitialized)}
     </div>

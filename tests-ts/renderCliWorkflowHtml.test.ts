@@ -34,6 +34,7 @@ test("CLI workflow renderer embeds the reusable user-story sidebar with collapse
   const script = await fs.promises.readFile(scriptPath, "utf8");
 
   assert.match(script, /buildSidebarHtml/);
+  assert.match(script, /showViewOptionsMenu: false/);
   assert.match(script, /SpecForge\.AI/);
   assert.match(script, /data-cli-sidebar-pin/);
   assert.match(script, /data-cli-sidebar-settings/);

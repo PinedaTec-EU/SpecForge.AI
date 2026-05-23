@@ -134,3 +134,15 @@
   2. Observe the `No user story selected` empty state.
   3. Click `Sidebar view options`.
   4. Observe that nothing opens because the shell script has already failed with `ReferenceError: currentActor is not defined`.
+
+### SFB-012
+
+- Bug code: `SFB-012`
+- Discovery date: `2026-05-23`
+- Status: `Fixed`
+- Short description: The browser workflow portal rendered `Sidebar view options` twice: once in the parent shell and again inside the embedded sidebar `srcdoc`, creating duplicated controls for the same global scope behavior.
+- Reproduction steps:
+  1. Open the workflow portal in the browser with the sidebar visible.
+  2. Observe the shell-level `Sidebar view options` control near the portal header actions.
+  3. Observe a second `Sidebar view options` control inside the embedded sidebar compact actions.
+  4. Observe that both controls refer to the same global scope concern, even though the parent shell already owns that behavior.

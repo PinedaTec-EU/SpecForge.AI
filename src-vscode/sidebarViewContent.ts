@@ -19,6 +19,7 @@ export interface SidebarViewModel {
   readonly starredUserStoryId: string | null;
   readonly activeWorkflowUsId: string | null;
   readonly runtimeVersion: string | null;
+  readonly showViewOptionsMenu?: boolean;
   readonly viewMode: "category" | "phase";
   readonly showDroppedUserStories: boolean;
   readonly showCompletedUserStories: boolean;
@@ -536,10 +537,11 @@ function buildViewOptionsMenu(model: SidebarViewModel): string {
 }
 
 function buildCompactActions(model: SidebarViewModel): string {
+  const showViewOptionsMenu = model.showViewOptionsMenu !== false;
   return `
     <div class="compact-actions">
       ${buildDroppedStoriesActionButton(model.showDroppedUserStories, model.droppedUserStoryCount)}
-      ${model.showDroppedUserStories ? "" : buildViewOptionsMenu(model)}
+      ${model.showDroppedUserStories || !showViewOptionsMenu ? "" : buildViewOptionsMenu(model)}
       ${model.showDroppedUserStories ? "" : buildCreateActionButton(model.promptsInitialized)}
       ${buildPromptMenu(model.promptsInitialized)}
     </div>
