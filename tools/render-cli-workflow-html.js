@@ -56,6 +56,7 @@ async function main() {
 const browserShim = `
 <script>
   const specForgeCliCurrentActor = ${JSON.stringify(currentActor)};
+  window.specForgeCliCurrentActor = specForgeCliCurrentActor;
   window.__specForgeVsCodeApi = window.__specForgeVsCodeApi || {
     getState() {
       try {
@@ -572,14 +573,21 @@ const sidebarShell = `
   .specforge-cli-edit-close { width: 34px; height: 34px; background: rgba(255, 255, 255, 0.05); color: #72f1b8; font-size: 1.1rem; }
   .specforge-cli-edit-field { display: grid; gap: 6px; }
   .specforge-cli-edit-field span { color: rgba(255, 255, 255, 0.78); font: 700 0.78rem/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-transform: uppercase; letter-spacing: 0.08em; }
-  .specforge-cli-edit-field input { width: 100%; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.04); color: rgba(255, 255, 255, 0.94); padding: 12px 14px; font: 500 0.94rem/1.4 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .specforge-cli-edit-field input { width: 100%; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.04); color: rgba(255, 255, 255, 0.94); padding: 12px 14px; font: 500 0.94rem/1.4 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; transition: border-color 160ms ease, box-shadow 160ms ease; }
+  .specforge-cli-edit-field input:focus { outline: none; border-color: rgba(114, 241, 184, 0.54); box-shadow: 0 0 0 3px rgba(114, 241, 184, 0.12); }
+  .specforge-cli-edit-field--invalid span { color: #ffb8b8; }
+  .specforge-cli-edit-field--invalid input { border-color: rgba(255, 139, 139, 0.72); box-shadow: 0 0 0 3px rgba(120, 29, 29, 0.16); }
+  .specforge-cli-edit-field-error { display: flex; align-items: center; gap: 6px; color: #ffb8b8; font: 600 0.78rem/1.35 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .specforge-cli-edit-field-error::before { content: "!"; display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 999px; border: 1px solid rgba(255, 139, 139, 0.48); background: rgba(120, 29, 29, 0.3); color: #ffd3d3; font-size: 0.72rem; font-weight: 800; flex: 0 0 auto; }
   .specforge-cli-edit-owner-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; }
   .specforge-cli-edit-owner-assign { border-radius: 12px; border: 1px solid rgba(114, 241, 184, 0.22); background: rgba(20, 53, 40, 0.9); color: #dfffee; padding: 12px 14px; font: 700 0.84rem/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; cursor: pointer; white-space: nowrap; }
+  .specforge-cli-edit-owner-assign:disabled { opacity: 0.45; cursor: not-allowed; }
   .specforge-cli-edit-owner-assign[hidden] { display: none; }
   .specforge-cli-edit-error { margin: 0; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255, 139, 139, 0.2); background: rgba(120, 29, 29, 0.18); color: #ffb8b8; font: 600 0.85rem/1.4 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
   .specforge-cli-edit-actions { display: flex; justify-content: flex-end; gap: 10px; }
   .specforge-cli-edit-secondary { background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.86); padding: 11px 14px; }
   .specforge-cli-edit-primary { background: linear-gradient(180deg, rgba(114, 241, 184, 0.24), rgba(16, 36, 28, 0.96)); color: #f3fff9; padding: 11px 16px; }
+  .specforge-cli-edit-primary:disabled { opacity: 0.5; cursor: not-allowed; }
   .specforge-cli-source-focus { outline: 2px solid rgba(114, 241, 184, 0.78); outline-offset: 6px; border-radius: 16px; transition: outline-color 180ms ease; }
   @media (max-width: 860px) {
     body.specforge-cli-with-sidebar { grid-template-columns: 58px minmax(0, 1fr); }
@@ -632,17 +640,20 @@ const sidebarShell = `
       <label class="specforge-cli-edit-field">
         <span>Title</span>
         <input name="title" type="text" required />
+        <span class="specforge-cli-edit-field-error" data-cli-edit-field-error-for="title" hidden></span>
       </label>
       <label class="specforge-cli-edit-field">
         <span>Owner</span>
         <div class="specforge-cli-edit-owner-row">
           <input name="owner" type="text" required />
-          <button class="specforge-cli-edit-owner-assign" type="button" data-cli-edit-assign-to-me hidden>Assign to me</button>
+          <button class="specforge-cli-edit-owner-assign" type="button" data-cli-edit-assign-to-me>Assign to me</button>
         </div>
+        <span class="specforge-cli-edit-field-error" data-cli-edit-field-error-for="owner" hidden></span>
       </label>
       <label class="specforge-cli-edit-field">
         <span>Category</span>
         <input name="category" type="text" required />
+        <span class="specforge-cli-edit-field-error" data-cli-edit-field-error-for="category" hidden></span>
       </label>
       <label class="specforge-cli-edit-field">
         <span>Tags</span>
@@ -670,6 +681,7 @@ const sidebarShell = `
     const editForm = document.querySelector("[data-cli-edit-form]");
     const editError = document.querySelector("[data-cli-edit-error]");
     const editAssignToMe = document.querySelector("[data-cli-edit-assign-to-me]");
+    const editSubmit = document.querySelector("[data-cli-edit-submit]");
     const sidebarFrame = document.querySelector('iframe[title="User stories"]');
     const sidebarPin = document.querySelector("[data-cli-sidebar-pin]");
     const sidebarViewOptionsToggle = document.querySelector("[data-cli-sidebar-view-options]");
@@ -688,6 +700,9 @@ const sidebarShell = `
     let sidebarShowsOtherOwners = false;
     let sidebarWatchingUserStoryIds = ${safeScriptJson(watchingUserStoryIds)};
     let sidebarHiddenUserStoryIds = ${safeScriptJson(hiddenUserStoryIds)};
+    let editInitialState = null;
+    let editTouchedFields = new Set();
+    let editSubmitAttempted = false;
     const normalizedCurrentActor = currentActor.toLowerCase();
     const openConfiguration = (url) => {
       if (configFrame) {
@@ -713,6 +728,74 @@ const sidebarShell = `
         editForm.reset();
         editForm.dataset.busy = "false";
       }
+      editInitialState = null;
+      editTouchedFields = new Set();
+      editSubmitAttempted = false;
+      updateEditFormValidity();
+    };
+    const getEditFieldContainer = (name) => {
+      const input = editForm instanceof HTMLFormElement ? editForm.elements.namedItem(name) : null;
+      return input instanceof HTMLElement ? input.closest(".specforge-cli-edit-field") : null;
+    };
+    const getEditFieldError = (name) => document.querySelector('[data-cli-edit-field-error-for="' + name + '"]');
+    const setEditFieldError = (name, message) => {
+      const container = getEditFieldContainer(name);
+      const error = getEditFieldError(name);
+      const normalized = String(message || "").trim();
+      container?.classList.toggle("specforge-cli-edit-field--invalid", normalized.length > 0);
+      if (error instanceof HTMLElement) {
+        error.textContent = normalized;
+        error.hidden = normalized.length === 0;
+      }
+    };
+    const readEditFormState = () => ({
+      title: String(editForm?.elements?.namedItem("title")?.value || "").trim(),
+      owner: String(editForm?.elements?.namedItem("owner")?.value || "").trim(),
+      category: String(editForm?.elements?.namedItem("category")?.value || "").trim()
+    });
+    const validateEditForm = () => {
+      const state = readEditFormState();
+      const errors = {};
+      if (!state.title) {
+        errors.title = "Title is required.";
+      } else if (state.title.length < 8) {
+        errors.title = "Title must be at least 8 characters.";
+      }
+
+      if (!state.owner) {
+        errors.owner = "Owner is required.";
+      } else if (state.owner.length < 4) {
+        errors.owner = "Owner must be at least 4 characters.";
+      }
+
+      if (!state.category) {
+        errors.category = "Category is required.";
+      } else if (state.category.length < 2) {
+        errors.category = "Category must be at least 2 characters.";
+      }
+
+      return { state, errors };
+    };
+    const updateEditFormValidity = () => {
+      const { state, errors } = validateEditForm();
+      const visibleTitleError = editSubmitAttempted || editTouchedFields.has("title") ? (errors.title || "") : "";
+      const visibleOwnerError = editSubmitAttempted || editTouchedFields.has("owner") ? (errors.owner || "") : "";
+      const visibleCategoryError = editSubmitAttempted || editTouchedFields.has("category") ? (errors.category || "") : "";
+      setEditFieldError("title", visibleTitleError);
+      setEditFieldError("owner", visibleOwnerError);
+      setEditFieldError("category", visibleCategoryError);
+      const isDirty = editInitialState !== null
+        && (state.title !== editInitialState.title
+          || state.owner !== editInitialState.owner
+          || state.category !== editInitialState.category);
+      const isBusy = editForm instanceof HTMLFormElement && editForm.dataset.busy === "true";
+      if (editSubmit instanceof HTMLButtonElement) {
+        editSubmit.disabled = isBusy || !isDirty || Object.keys(errors).length > 0;
+        editSubmit.title = !isDirty
+          ? "Change at least one field to save."
+          : (errors.title || errors.owner || errors.category || "");
+      }
+      return { state, errors, isDirty };
     };
     const updateAssignToMeVisibility = () => {
       if (!(editForm instanceof HTMLFormElement) || !(editAssignToMe instanceof HTMLElement)) {
@@ -720,7 +803,7 @@ const sidebarShell = `
       }
       const ownerInput = editForm.elements.namedItem("owner");
       const normalizedOwner = String(ownerInput?.value || "").trim().toLowerCase();
-      editAssignToMe.hidden = normalizedOwner === normalizedCurrentActor;
+      editAssignToMe.disabled = normalizedCurrentActor.length === 0 || normalizedOwner === normalizedCurrentActor;
     };
     const openEditUserStoryForm = (message) => {
       if (!(editForm instanceof HTMLFormElement)) {
@@ -732,8 +815,12 @@ const sidebarShell = `
       editForm.elements.namedItem("owner").value = String(message.owner || currentActor);
       editForm.elements.namedItem("category").value = String(message.category || "");
       editForm.elements.namedItem("tags").value = String(message.tags || "");
+      editInitialState = readEditFormState();
+      editTouchedFields = new Set();
+      editSubmitAttempted = false;
       setEditError("");
       updateAssignToMeVisibility();
+      updateEditFormValidity();
       editOverlay?.removeAttribute("hidden");
       editForm.elements.namedItem("title")?.focus();
     };
@@ -1059,11 +1146,23 @@ const sidebarShell = `
         .split(",")
         .map(item => item.trim().toLowerCase())
         .filter(Boolean);
-      if (!usId || !title || !owner || !category) {
-        setEditError("Title, owner, and category are required.");
+      const validation = updateEditFormValidity();
+      if (!usId) {
+        setEditError("User story id is required.");
+        return;
+      }
+      if (!validation.isDirty) {
+        setEditError("Change at least one field before saving.");
+        return;
+      }
+      if (Object.keys(validation.errors).length > 0) {
+        editSubmitAttempted = true;
+        updateEditFormValidity();
+        setEditError(validation.errors.title || validation.errors.owner || validation.errors.category || "Please fix the highlighted fields.");
         return;
       }
       editForm.dataset.busy = "true";
+      updateEditFormValidity();
       setEditError("");
       requestJson("/api/update-user-story-info", { usId, title, owner, category, tags, actor: currentActor })
         .then(() => {
@@ -1072,20 +1171,33 @@ const sidebarShell = `
         })
         .catch(error => {
           editForm.dataset.busy = "false";
+          updateEditFormValidity();
           setEditError(error instanceof Error ? error.message : String(error));
         });
     });
-    editForm?.elements?.namedItem("owner")?.addEventListener?.("input", updateAssignToMeVisibility);
+    ["title", "owner", "category"].forEach((fieldName) => {
+      editForm?.elements?.namedItem(fieldName)?.addEventListener?.("input", () => {
+        editTouchedFields.add(fieldName);
+        if (fieldName === "owner") {
+          updateAssignToMeVisibility();
+        }
+        setEditError("");
+        updateEditFormValidity();
+      });
+    });
     editAssignToMe?.addEventListener("click", () => {
       if (!(editForm instanceof HTMLFormElement)) {
         return;
       }
       const ownerInput = editForm.elements.namedItem("owner");
-      if (!(ownerInput instanceof HTMLInputElement)) {
+      if (!(ownerInput instanceof HTMLInputElement) || currentActor.length === 0) {
         return;
       }
       ownerInput.value = currentActor;
+      editTouchedFields.add("owner");
       updateAssignToMeVisibility();
+      setEditError("");
+      updateEditFormValidity();
       ownerInput.focus();
       ownerInput.select();
     });

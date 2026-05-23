@@ -250,17 +250,7 @@ static async Task HandleServeWorkflowAsync(IReadOnlyList<string> args)
     }
 
     var workspaceRoot = Path.GetFullPath(args[1]);
-    var runner = new WorkflowRunner(CreatePhaseExecutionProvider(workspaceRoot));
-    var portalSettings = SpecForgePortalSettingsStore.LoadOrDefault(workspaceRoot);
-    var harnessProfileSettings = new HarnessProfileRuntimeSettings(
-        DefaultProfile: portalSettings.DefaultHarnessProfile,
-        PhaseProfiles: portalSettings.PhaseHarnessProfiles ?? HarnessProfileRuntimeSettings.Default.PhaseProfiles,
-        Governance: new HarnessProfileGovernance(
-            portalSettings.HarnessProfileAuthority,
-            portalSettings.HarnessProfileLockMode,
-            portalSettings.AllowPerUserStoryHarnessProfileOverrides,
-            portalSettings.LockedHarnessPhaseIds));
-    var applicationService = new SpecForgeApplicationService(new UserStoryFileStore(), runner, harnessProfileSettings: harnessProfileSettings);
+    var applicationService = CreateApplicationServiceForWorkspace(workspaceRoot);
     var usId = args.Count >= 3 && !LooksLikeHttpPrefix(args[2])
         ? args[2]
         : await ResolveDefaultWorkflowPortalUserStoryIdAsync(applicationService, workspaceRoot);
@@ -290,6 +280,34 @@ static string? NormalizeOptionalArgument(string? value) =>
     string.IsNullOrWhiteSpace(value) || string.Equals(value, "-", StringComparison.Ordinal)
         ? null
         : value;
+
+static async Task<T> ReadJsonRequestAsync<T>(
+    HttpListenerRequest request,
+    string errorMessage)
+{
+    using var reader = new StreamReader(request.InputStream, request.ContentEncoding);
+    var payload = await reader.ReadToEndAsync();
+    return JsonSerializer.Deserialize<T>(payload, SpecForgePortalSettingsStore.JsonOptions)
+        ?? throw new InvalidOperationException(errorMessage);
+}
+
+static async Task<T> ReadJsonRequestWithParserAsync<T>(
+    HttpListenerRequest request,
+    Func<string, T> parser,
+    string errorMessage)
+{
+    using var reader = new StreamReader(request.InputStream, request.ContentEncoding);
+    var payload = await reader.ReadToEndAsync();
+
+    try
+    {
+        return parser(payload);
+    }
+    catch (Exception exception) when (exception is JsonException or InvalidOperationException or ArgumentException)
+    {
+        throw new InvalidOperationException(errorMessage, exception);
+    }
+}
 
 static async Task HandleWorkflowPortalRequestAsync(
     HttpListenerContext context,
@@ -382,9 +400,10 @@ static async Task HandleWorkflowPortalRequestAsync(
                 return;
             case ("PUT", "/api/settings"):
             {
-                using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var payload = await reader.ReadToEndAsync();
-                var settings = SpecForgePortalSettingsStore.Deserialize(payload);
+                var settings = await ReadJsonRequestWithParserAsync(
+                    context.Request,
+                    static payload => SpecForgePortalSettingsStore.Deserialize(payload),
+                    "Settings payload could not be parsed.");
                 SpecForgePortalSettingsStore.Save(workspaceRoot, settings);
                 await WriteJsonResponseAsync(context.Response, settings);
                 return;
@@ -434,12 +453,9 @@ static async Task HandleWorkflowPortalRequestAsync(
                 return;
             case ("POST", "/api/approval-answer"):
             {
-                using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var payload = await reader.ReadToEndAsync();
-                var request = JsonSerializer.Deserialize<ApprovalAnswerSubmitRequest>(
-                    payload,
-                    SpecForgePortalSettingsStore.JsonOptions)
-                    ?? throw new InvalidOperationException("Approval answer payload could not be parsed.");
+                var request = await ReadJsonRequestAsync<ApprovalAnswerSubmitRequest>(
+                    context.Request,
+                    "Approval answer payload could not be parsed.");
                 await WriteJsonResponseAsync(
                     context.Response,
                     await applicationService.SubmitApprovalAnswerAsync(
@@ -452,12 +468,9 @@ static async Task HandleWorkflowPortalRequestAsync(
             }
             case ("POST", "/api/refinement-answers"):
             {
-                using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var payload = await reader.ReadToEndAsync();
-                var request = JsonSerializer.Deserialize<RefinementAnswersSubmitRequest>(
-                    payload,
-                    SpecForgePortalSettingsStore.JsonOptions)
-                    ?? throw new InvalidOperationException("Refinement answers payload could not be parsed.");
+                var request = await ReadJsonRequestAsync<RefinementAnswersSubmitRequest>(
+                    context.Request,
+                    "Refinement answers payload could not be parsed.");
                 await WriteJsonResponseAsync(
                     context.Response,
                     await applicationService.SubmitRefinementAnswersAsync(
@@ -469,12 +482,9 @@ static async Task HandleWorkflowPortalRequestAsync(
             }
             case ("POST", "/api/attach-files"):
             {
-                using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var payload = await reader.ReadToEndAsync();
-                var request = JsonSerializer.Deserialize<AttachWorkflowFilesRequest>(
-                    payload,
-                    SpecForgePortalSettingsStore.JsonOptions)
-                    ?? throw new InvalidOperationException("Attach files payload could not be parsed.");
+                var request = await ReadJsonRequestAsync<AttachWorkflowFilesRequest>(
+                    context.Request,
+                    "Attach files payload could not be parsed.");
                 await WriteJsonResponseAsync(
                     context.Response,
                     await AttachWorkflowFilesAsync(
@@ -485,12 +495,9 @@ static async Task HandleWorkflowPortalRequestAsync(
             }
             case ("POST", "/api/add-context-files"):
             {
-                using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var payload = await reader.ReadToEndAsync();
-                var request = JsonSerializer.Deserialize<AddContextFilesRequest>(
-                    payload,
-                    SpecForgePortalSettingsStore.JsonOptions)
-                    ?? throw new InvalidOperationException("Add context files payload could not be parsed.");
+                var request = await ReadJsonRequestAsync<AddContextFilesRequest>(
+                    context.Request,
+                    "Add context files payload could not be parsed.");
                 await WriteJsonResponseAsync(
                     context.Response,
                     await AddContextFilesAsync(
@@ -501,12 +508,9 @@ static async Task HandleWorkflowPortalRequestAsync(
             }
             case ("POST", "/api/workflow-graph-layout"):
             {
-                using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var payload = await reader.ReadToEndAsync();
-                var request = JsonSerializer.Deserialize<SaveWorkflowGraphLayoutRequest>(
-                    payload,
-                    SpecForgePortalSettingsStore.JsonOptions)
-                    ?? throw new InvalidOperationException("Workflow graph layout payload could not be parsed.");
+                var request = await ReadJsonRequestAsync<SaveWorkflowGraphLayoutRequest>(
+                    context.Request,
+                    "Workflow graph layout payload could not be parsed.");
                 await WriteJsonResponseAsync(
                     context.Response,
                     await SaveWorkflowGraphLayoutAsync(workspaceRoot, request));
@@ -514,12 +518,9 @@ static async Task HandleWorkflowPortalRequestAsync(
             }
             case ("POST", "/api/approve"):
             {
-                using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var payload = await reader.ReadToEndAsync();
-                var request = JsonSerializer.Deserialize<ApprovalSubmitRequest>(
-                    payload,
-                    SpecForgePortalSettingsStore.JsonOptions)
-                    ?? throw new InvalidOperationException("Approval payload could not be parsed.");
+                var request = await ReadJsonRequestAsync<ApprovalSubmitRequest>(
+                    context.Request,
+                    "Approval payload could not be parsed.");
                 await WriteJsonResponseAsync(
                     context.Response,
                     await applicationService.ApprovePhaseAsync(
@@ -532,12 +533,9 @@ static async Task HandleWorkflowPortalRequestAsync(
             }
             case ("POST", "/api/decomposition-approval"):
             {
-                using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var payload = await reader.ReadToEndAsync();
-                var request = JsonSerializer.Deserialize<DecompositionApprovalSubmitRequest>(
-                    payload,
-                    SpecForgePortalSettingsStore.JsonOptions)
-                    ?? throw new InvalidOperationException("Decomposition approval payload could not be parsed.");
+                var request = await ReadJsonRequestAsync<DecompositionApprovalSubmitRequest>(
+                    context.Request,
+                    "Decomposition approval payload could not be parsed.");
                 await WriteJsonResponseAsync(
                     context.Response,
                     string.Equals(request.Decision, "approve", StringComparison.OrdinalIgnoreCase)
@@ -553,12 +551,9 @@ static async Task HandleWorkflowPortalRequestAsync(
             }
             case ("POST", "/api/suggest-approval-answer"):
             {
-                using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var payload = await reader.ReadToEndAsync();
-                var request = JsonSerializer.Deserialize<ApprovalAnswerSuggestionRequest>(
-                    payload,
-                    SpecForgePortalSettingsStore.JsonOptions)
-                    ?? throw new InvalidOperationException("Suggestion payload could not be parsed.");
+                var request = await ReadJsonRequestAsync<ApprovalAnswerSuggestionRequest>(
+                    context.Request,
+                    "Suggestion payload could not be parsed.");
                 await WriteJsonResponseAsync(
                     context.Response,
                     await applicationService.SuggestApprovalAnswerAsync(
@@ -1504,19 +1499,15 @@ static int ExitWithError(string message)
 static SpecForgeApplicationService CreateApplicationService(IReadOnlyList<string> args)
 {
     var workspaceRoot = args.Count > 1 ? args[1] : null;
+    return CreateApplicationServiceForWorkspace(workspaceRoot);
+}
+
+static SpecForgeApplicationService CreateApplicationServiceForWorkspace(string? workspaceRoot)
+{
     var portalSettings = string.IsNullOrWhiteSpace(workspaceRoot)
         ? null
         : SpecForgePortalSettingsStore.LoadOrDefault(workspaceRoot);
-    var harnessProfileSettings = portalSettings is null
-        ? HarnessProfileRuntimeSettings.Default
-        : new HarnessProfileRuntimeSettings(
-            DefaultProfile: portalSettings.DefaultHarnessProfile,
-            PhaseProfiles: portalSettings.PhaseHarnessProfiles ?? HarnessProfileRuntimeSettings.Default.PhaseProfiles,
-            Governance: new HarnessProfileGovernance(
-                portalSettings.HarnessProfileAuthority,
-                portalSettings.HarnessProfileLockMode,
-                portalSettings.AllowPerUserStoryHarnessProfileOverrides,
-                portalSettings.LockedHarnessPhaseIds));
+    var harnessProfileSettings = CreateHarnessProfileSettings(portalSettings);
     var runner = new WorkflowRunner(
         CreatePhaseExecutionProvider(workspaceRoot),
         refinementTolerance: portalSettings?.RefinementTolerance ?? "balanced",
@@ -1529,6 +1520,20 @@ static SpecForgeApplicationService CreateApplicationService(IReadOnlyList<string
             MaxChildren: portalSettings?.DecompositionMaxChildren ?? 5));
 
     return new SpecForgeApplicationService(new UserStoryFileStore(), runner, harnessProfileSettings: harnessProfileSettings);
+}
+
+static HarnessProfileRuntimeSettings CreateHarnessProfileSettings(SpecForgePortalSettings? portalSettings)
+{
+    return portalSettings is null
+        ? HarnessProfileRuntimeSettings.Default
+        : new HarnessProfileRuntimeSettings(
+            DefaultProfile: portalSettings.DefaultHarnessProfile,
+            PhaseProfiles: portalSettings.PhaseHarnessProfiles ?? HarnessProfileRuntimeSettings.Default.PhaseProfiles,
+            Governance: new HarnessProfileGovernance(
+                portalSettings.HarnessProfileAuthority,
+                portalSettings.HarnessProfileLockMode,
+                portalSettings.AllowPerUserStoryHarnessProfileOverrides,
+                portalSettings.LockedHarnessPhaseIds));
 }
 
 static IPhaseExecutionProvider CreatePhaseExecutionProvider(string? workspaceRoot)
