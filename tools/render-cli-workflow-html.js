@@ -547,7 +547,7 @@ const sidebarShell = `
   .specforge-cli-sidebar__menu-item--active { color: #dfffee; background: rgba(114, 241, 184, 0.12); }
   .specforge-cli-sidebar__menu-check { color: #72f1b8; font-weight: 900; }
   .specforge-cli-sidebar__brand { min-width: 0; display: flex; align-items: baseline; gap: 8px; white-space: nowrap; overflow: hidden; }
-  .specforge-cli-sidebar__title { min-width: 0; color: rgba(255, 255, 255, 0.86); font: 800 0.9rem/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow: hidden; text-overflow: ellipsis; }
+  .specforge-cli-sidebar__title { min-width: 0; color: #72f1b8; font: 900 1.12rem/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.02em; }
   .specforge-cli-sidebar__version { flex-shrink: 0; color: rgba(176, 180, 176, 0.76); font: 700 0.7rem/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
   .specforge-cli-sidebar__frame { width: 100%; height: 100%; border: 0; min-width: 0; background: transparent; }
   body.specforge-cli-sidebar-collapsed .specforge-cli-sidebar { grid-template-rows: 1fr; }
