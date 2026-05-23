@@ -125,6 +125,7 @@ test("buildWorkflowHtml renders phase detail for the selected phase", () => {
   assert.doesNotMatch(html, /Workflow Blocked/);
   assert.match(html, /--phase-pending: rgba\(255, 255, 255, 0\.04\);/);
   assert.match(html, /phase-current-rail/);
+  assert.match(html, /\.phase-current-rail \{\s*position: absolute;\s*top: 14px;\s*bottom: 14px;\s*left: -41px;\s*width: 42px;/);
   assert.match(html, /phase-current-rail__label">Current</);
   assert.match(html, /phase-viewing-rail">/);
   assert.match(html, /phase-viewing-rail__label">Viewing</);

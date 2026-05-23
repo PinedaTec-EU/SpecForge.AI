@@ -4881,10 +4881,10 @@ export function buildWorkflowHtml(
     }
     .phase-current-rail {
       position: absolute;
-      top: 26px;
-      bottom: 26px;
-      left: -39px;
-      width: 40px;
+      top: 14px;
+      bottom: 14px;
+      left: -41px;
+      width: 42px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
