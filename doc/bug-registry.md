@@ -168,3 +168,27 @@
   1. Open the workflow portal on a user story with the graph visible.
   2. Observe the `Workflow Constellation` panel header.
   3. Observe the helper text beginning with `The graph is the primary surface...` below the title.
+
+### SFB-015
+
+- Bug code: `SFB-015`
+- Discovery date: `2026-05-23`
+- Status: `Fixed`
+- Short description: The `Assign to me` action in the portal metadata modal could resolve to `cli-user` instead of the Git identity configured for the current repository, producing incorrect ownership assignments.
+- Reproduction steps:
+  1. Open the workflow portal for any user story.
+  2. Open `Edit US info`.
+  3. Click `Assign to me`.
+  4. Observe that the owner field resolves to `cli-user` instead of the repo Git user.
+
+### SFB-016
+
+- Bug code: `SFB-016`
+- Discovery date: `2026-05-23`
+- Status: `Fixed`
+- Short description: The top-level documentation did not clearly explain the methodological pillars behind SpecForge, so a developer could read the README and still miss that the product is built on governed SDD, harness engineering, structured criticism/reconstruction, human gates, and phase-specialized agents.
+- Reproduction steps:
+  1. Open [README.md](../README.md).
+  2. Read the product framing and onboarding links from the perspective of a new contributor.
+  3. Observe that SDD and governance are implied, but the methodology stack and its concrete pillars are not summarized in one explicit section.
+  4. Observe that a developer can finish the README without a clear map of the engineering principles SpecForge is built on.

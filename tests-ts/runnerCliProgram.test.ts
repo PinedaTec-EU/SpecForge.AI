@@ -166,6 +166,14 @@ test("CLI workflow portal exposes user-story metadata update endpoint for sideba
   assert.match(source, /internal sealed record UpdateUserStoryInfoRequest\(\s*string UsId,\s*string\? Title,\s*string\? Kind,\s*string\? Owner,\s*string\? Category,\s*IReadOnlyList<string>\? Tags,\s*string\? Actor\);/);
 });
 
+test("CLI workflow portal resolves current actor from git user.name before email", async () => {
+  const source = await fs.promises.readFile(programPath, "utf8");
+
+  assert.match(source, /static string ResolveCurrentGitOwner\(string workspaceRoot\)/);
+  assert.match(source, /var userName = TryRunGitConfig\(workspaceRoot, "user\.name"\);[\s\S]*?return candidate;/);
+  assert.match(source, /var email = TryRunGitConfig\(workspaceRoot, "user\.email"\);[\s\S]*?email\.Split\('@', 2\)\[0\]/);
+});
+
 test("CLI writes JSON with web serializer options for record responses", async () => {
   const source = await fs.promises.readFile(programPath, "utf8");
 

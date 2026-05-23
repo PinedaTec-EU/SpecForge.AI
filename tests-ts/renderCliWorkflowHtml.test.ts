@@ -107,7 +107,8 @@ test("CLI workflow renderer routes sidebar edit action through metadata update p
     assert.match(content, /editAssignToMe\?\.addEventListener\("click"/);
     assert.match(content, /editAssignToMe\.hidden = normalizedOwner === normalizedCurrentActor/);
     assert.match(content, /const specForgeCliCurrentActor = /);
-    assert.match(content, /const currentActor = window\.specForgeCliCurrentActor \|\| "cli-user"/);
+    assert.match(content, /const currentActor = typeof window\.specForgeCliCurrentActor === "string"/);
+    assert.doesNotMatch(content, /window\.specForgeCliCurrentActor \|\| "cli-user"/);
   }
 
   assert.match(packagedSidebar, /data-command="showEditUserStoryForm"[\s\S]*data-us-id="\$\{[\s\S]*summary\.usId[\s\S]*\}"[\s\S]*data-title="\$\{[\s\S]*editableUserStoryTitle\(summary\.usId, summary\.title\)[\s\S]*\}"[\s\S]*data-owner="\$\{[\s\S]*summary\.owner[\s\S]*\}"[\s\S]*data-category="\$\{[\s\S]*summary\.category[\s\S]*\}"[\s\S]*data-tags="\$\{[\s\S]*\(summary\.tags \?\? \[\]\)\.join\(", "\)[\s\S]*\}"/);

@@ -1217,20 +1217,20 @@ static string BuildWorkflowPortalRenderCacheSignature(
 
 static string ResolveCurrentGitOwner(string workspaceRoot)
 {
-    var email = TryRunGitConfig(workspaceRoot, "user.email");
-    if (!string.IsNullOrWhiteSpace(email))
+    var userName = TryRunGitConfig(workspaceRoot, "user.name");
+    if (!string.IsNullOrWhiteSpace(userName))
     {
-        var candidate = NormalizeGitOwnerIdentity(email.Split('@', 2)[0]);
+        var candidate = NormalizeGitOwnerIdentity(userName);
         if (!string.IsNullOrWhiteSpace(candidate))
         {
             return candidate;
         }
     }
 
-    var userName = TryRunGitConfig(workspaceRoot, "user.name");
-    if (!string.IsNullOrWhiteSpace(userName))
+    var email = TryRunGitConfig(workspaceRoot, "user.email");
+    if (!string.IsNullOrWhiteSpace(email))
     {
-        var candidate = NormalizeGitOwnerIdentity(userName);
+        var candidate = NormalizeGitOwnerIdentity(email.Split('@', 2)[0]);
         if (!string.IsNullOrWhiteSpace(candidate))
         {
             return candidate;
