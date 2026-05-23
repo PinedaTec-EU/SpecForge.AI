@@ -6472,9 +6472,6 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
           <div class="graph-panel__head">
             <div>
               <h2 class="panel-title">Workflow Constellation</h2>
-              <p class="panel-copy">${isAggregateWorkflow
-        ? "This aggregate layout keeps the parent journey, split rationale, and created child stories together without reusing the constellation viewport."
-        : "The graph is the primary surface. Click any phase node to move the detail focus and inspect its artifact and phase context."}</p>
             </div>
             <div class="graph-stage-actions">
               <button

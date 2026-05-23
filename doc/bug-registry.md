@@ -157,3 +157,14 @@
   1. Open the workflow portal with the sidebar visible.
   2. Observe the top sidebar rail with brand, view options, configuration, and pin controls.
   3. Observe that the pin button appears displaced on the left instead of aligned with the top-right controls.
+
+### SFB-014
+
+- Bug code: `SFB-014`
+- Discovery date: `2026-05-23`
+- Status: `Fixed`
+- Short description: The workflow graph panel rendered explanatory helper copy under `Workflow Constellation`, adding visual noise without contributing meaningful action guidance.
+- Reproduction steps:
+  1. Open the workflow portal on a user story with the graph visible.
+  2. Observe the `Workflow Constellation` panel header.
+  3. Observe the helper text beginning with `The graph is the primary surface...` below the title.

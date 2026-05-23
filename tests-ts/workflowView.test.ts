@@ -117,6 +117,7 @@ test("buildWorkflowHtml renders phase detail for the selected phase", () => {
 
   assert.match(html, /US-0001 · Workflow view/);
   assert.match(html, /Workflow Constellation/);
+  assert.doesNotMatch(html, /The graph is the primary surface\./);
   assert.match(html, /phase-graph/);
   assert.match(html, /phase-node spec phase-tone-waiting-user selected phase-node--current/);
   assert.doesNotMatch(html, /data-command="togglePhasePause"[^>]*data-phase-id="spec"/);
