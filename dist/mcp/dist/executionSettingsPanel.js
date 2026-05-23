@@ -78,7 +78,44 @@ class ExecutionSettingsPanelController {
                     return;
                 case "saveExecutionSettings":
                     try {
-                        await saveExecutionSettingsAsync(message.modelProfiles ?? [], message.agentProfiles ?? [], message.phaseAgentAssignments ?? {}, message.defaultHarnessProfile ?? "balanced", message.phaseHarnessProfiles ?? {}, message.harnessProfileAuthority ?? "workspace", message.harnessProfileLockMode ?? "none", message.lockedHarnessPhaseIds ?? [], message.allowPerUserStoryHarnessProfileOverrides ?? true, message.refinementTolerance ?? "balanced", message.mvpRigor ?? "medium", message.reviewTolerance ?? "balanced", message.reviewEvidencePolicy ?? "balanced", message.technicalDesignSubagentsEnabled ?? false, message.reviewSubagentsEnabled ?? false, message.watcherEnabled ?? true, message.attentionNotificationsEnabled ?? true, message.contextSuggestionsEnabled ?? true, message.workflowGraphLayoutMode ?? "vertical", message.workflowGraphInitialZoomMode ?? "actual-size", message.userStoryListViewMode ?? "category", message.visualTimelineEnabled ?? false, message.requireExplicitApprovalBranchAcceptance ?? false, message.autoRefinementAnswersEnabled ?? false, message.autoRefinementAnswersProfile, message.autoPlayEnabled ?? false, message.autoReviewEnabled ?? false, message.maxRefinementCycles ?? null, message.maxImplementationReviewCycles ?? null, message.destructiveRewindEnabled ?? false, message.pauseOnFailedReview ?? false, message.useSemanticGraphWhenAvailable ?? true, message.allowGraphBuildRefreshForTouchedUserStoryScope ?? false, message.reviewLearningEnabled ?? true, message.reviewLearningSkillPath, message.completedUsLockOnCompleted ?? true);
+                        await saveExecutionSettingsAsync({
+                            modelProfiles: message.modelProfiles ?? [],
+                            agentProfiles: message.agentProfiles ?? [],
+                            phaseAgentAssignments: message.phaseAgentAssignments ?? {},
+                            defaultHarnessProfile: message.defaultHarnessProfile ?? "balanced",
+                            phaseHarnessProfiles: message.phaseHarnessProfiles ?? {},
+                            harnessProfileAuthority: message.harnessProfileAuthority ?? "workspace",
+                            harnessProfileLockMode: message.harnessProfileLockMode ?? "none",
+                            lockedHarnessPhaseIds: message.lockedHarnessPhaseIds ?? [],
+                            allowPerUserStoryHarnessProfileOverrides: message.allowPerUserStoryHarnessProfileOverrides ?? true,
+                            refinementTolerance: message.refinementTolerance ?? "balanced",
+                            mvpRigor: message.mvpRigor ?? "medium",
+                            reviewTolerance: message.reviewTolerance ?? "balanced",
+                            reviewEvidencePolicy: message.reviewEvidencePolicy ?? "balanced",
+                            technicalDesignSubagentsEnabled: message.technicalDesignSubagentsEnabled ?? false,
+                            reviewSubagentsEnabled: message.reviewSubagentsEnabled ?? false,
+                            watcherEnabled: message.watcherEnabled ?? true,
+                            attentionNotificationsEnabled: message.attentionNotificationsEnabled ?? true,
+                            contextSuggestionsEnabled: message.contextSuggestionsEnabled ?? true,
+                            workflowGraphLayoutMode: message.workflowGraphLayoutMode ?? "vertical",
+                            workflowGraphInitialZoomMode: message.workflowGraphInitialZoomMode ?? "actual-size",
+                            userStoryListViewMode: message.userStoryListViewMode ?? "category",
+                            visualTimelineEnabled: message.visualTimelineEnabled ?? false,
+                            requireExplicitApprovalBranchAcceptance: message.requireExplicitApprovalBranchAcceptance ?? false,
+                            autoRefinementAnswersEnabled: message.autoRefinementAnswersEnabled ?? false,
+                            autoRefinementAnswersProfile: message.autoRefinementAnswersProfile,
+                            autoPlayEnabled: message.autoPlayEnabled ?? false,
+                            autoReviewEnabled: message.autoReviewEnabled ?? false,
+                            maxRefinementCycles: message.maxRefinementCycles ?? null,
+                            maxImplementationReviewCycles: message.maxImplementationReviewCycles ?? null,
+                            destructiveRewindEnabled: message.destructiveRewindEnabled ?? false,
+                            pauseOnFailedReview: message.pauseOnFailedReview ?? false,
+                            useSemanticGraphWhenAvailable: message.useSemanticGraphWhenAvailable ?? true,
+                            allowGraphBuildRefreshForTouchedUserStoryScope: message.allowGraphBuildRefreshForTouchedUserStoryScope ?? false,
+                            reviewLearningEnabled: message.reviewLearningEnabled ?? true,
+                            reviewLearningSkillPath: message.reviewLearningSkillPath,
+                            completedUsLockOnCompleted: message.completedUsLockOnCompleted ?? true
+                        });
                         await this.onDidSave();
                         await this.refreshAsync();
                     }
@@ -1917,7 +1954,8 @@ function buildExecutionSettingsHtml(model) {
 </body>
 </html>`;
 }
-async function saveExecutionSettingsAsync(modelProfiles, agentProfiles, phaseAgentAssignments, defaultHarnessProfile = "balanced", phaseHarnessProfiles = {}, harnessProfileAuthority = "workspace", harnessProfileLockMode = "none", lockedHarnessPhaseIds = [], allowPerUserStoryHarnessProfileOverrides = true, refinementTolerance = "balanced", mvpRigor = "medium", reviewTolerance = "balanced", reviewEvidencePolicy = "balanced", technicalDesignSubagentsEnabled = false, reviewSubagentsEnabled = false, watcherEnabled = true, attentionNotificationsEnabled = true, contextSuggestionsEnabled = true, workflowGraphLayoutMode = "vertical", workflowGraphInitialZoomMode = "actual-size", userStoryListViewMode = "category", visualTimelineEnabled = false, requireExplicitApprovalBranchAcceptance = false, autoRefinementAnswersEnabled = false, autoRefinementAnswersProfile, autoPlayEnabled = false, autoReviewEnabled = false, maxRefinementCycles, maxImplementationReviewCycles, destructiveRewindEnabled = false, pauseOnFailedReview = false, useSemanticGraphWhenAvailable = true, allowGraphBuildRefreshForTouchedUserStoryScope = false, reviewLearningEnabled = true, reviewLearningSkillPath, completedUsLockOnCompleted = false) {
+async function saveExecutionSettingsAsync(request) {
+    const { modelProfiles, agentProfiles, phaseAgentAssignments, defaultHarnessProfile, phaseHarnessProfiles, harnessProfileAuthority, harnessProfileLockMode, lockedHarnessPhaseIds, allowPerUserStoryHarnessProfileOverrides, refinementTolerance, mvpRigor, reviewTolerance, reviewEvidencePolicy, technicalDesignSubagentsEnabled, reviewSubagentsEnabled, watcherEnabled, attentionNotificationsEnabled, contextSuggestionsEnabled, workflowGraphLayoutMode, workflowGraphInitialZoomMode, userStoryListViewMode, visualTimelineEnabled, requireExplicitApprovalBranchAcceptance, autoRefinementAnswersEnabled, autoRefinementAnswersProfile, autoPlayEnabled, autoReviewEnabled, maxRefinementCycles, maxImplementationReviewCycles, destructiveRewindEnabled, pauseOnFailedReview, useSemanticGraphWhenAvailable, allowGraphBuildRefreshForTouchedUserStoryScope, reviewLearningEnabled, reviewLearningSkillPath, completedUsLockOnCompleted } = request;
     const configuration = vscode.workspace.getConfiguration("specForge");
     const normalizedProfiles = modelProfiles
         .map((profile) => ({
