@@ -1,0 +1,446 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.StdioMcpBackendClient = void 0;
+const node_child_process_1 = require("node:child_process");
+const path = __importStar(require("node:path"));
+const backendClientModel_1 = require("./backendClientModel");
+const backendClient_1 = require("./backendClient");
+const extensionSettings_1 = require("./extensionSettings");
+const mcpDiagnostics_1 = require("./mcpDiagnostics");
+const outputChannel_1 = require("./outputChannel");
+const utils_1 = require("./utils");
+class StdioMcpBackendClient {
+    process;
+    pending = new Map();
+    bufferChunks = [];
+    workspaceRoot;
+    stderrRemainder = "";
+    writeQueue = Promise.resolve();
+    nextRequestId = 1;
+    initialized = false;
+    initializationPromise = null;
+    disposed = false;
+    constructor(workspaceRoot, hostRoot, settings) {
+        this.workspaceRoot = workspaceRoot;
+        const launchConfig = (0, backendClientModel_1.resolveMcpServerLaunchConfig)(hostRoot);
+        (0, outputChannel_1.appendSpecForgeLog)(`Starting MCP backend for '${path.basename(workspaceRoot)}' using ${launchConfig.source} server '${launchConfig.targetPath}'.`);
+        this.process = (0, node_child_process_1.spawn)(launchConfig.command, [...launchConfig.args], {
+            cwd: launchConfig.cwd,
+            stdio: "pipe",
+            env: {
+                ...process.env,
+                ...(0, extensionSettings_1.buildBackendEnvironment)(settings)
+            }
+        });
+        this.process.stdout.on("data", (chunk) => {
+            this.bufferChunks.push(chunk);
+            void this.drainMessagesAsync();
+        });
+        this.process.stderr.on("data", (chunk) => {
+            this.handleStderrChunk(chunk.toString("utf8"));
+        });
+        this.process.on("exit", (code, signal) => {
+            this.flushPendingStderr();
+            (0, outputChannel_1.appendSpecForgeLog)(`MCP backend exited with code ${code ?? "null"} and signal ${signal ?? "null"}.`);
+            if (!this.disposed) {
+                this.rejectPendingRequests("SpecForge MCP backend exited while a request was in progress.");
+            }
+        });
+    }
+    async listUserStories(visibility = "active") {
+        (0, outputChannel_1.appendSpecForgeLog)(`Listing ${visibility} user stories for workspace '${this.workspaceRoot}'.`);
+        const result = await this.callTool("list_user_stories", {
+            workspaceRoot: this.workspaceRoot,
+            visibility
+        });
+        (0, outputChannel_1.appendSpecForgeLog)(`list_user_stories(${visibility}) returned ${result.items.length} item(s) for '${this.workspaceRoot}': ${result.items.map((item) => `${item.usId}@${item.category}`).join(", ") || "none"}.`);
+        return result.items;
+    }
+    async getUserStorySummary(usId) {
+        return this.callTool("get_user_story_summary", {
+            workspaceRoot: this.workspaceRoot,
+            usId
+        });
+    }
+    async getUserStoryWorkflow(usId) {
+        return this.callTool("get_user_story_workflow", {
+            workspaceRoot: this.workspaceRoot,
+            usId
+        });
+    }
+    async getUserStoryRuntimeStatus(usId) {
+        return this.callTool("get_user_story_runtime_status", {
+            workspaceRoot: this.workspaceRoot,
+            usId
+        });
+    }
+    async analyzeUserStoryLineage(usId) {
+        return this.callTool("analyze_user_story_lineage", {
+            workspaceRoot: this.workspaceRoot,
+            usId
+        });
+    }
+    async repairUserStoryLineage(usId, actor) {
+        return this.callTool("repair_user_story_lineage", {
+            workspaceRoot: this.workspaceRoot,
+            usId,
+            ...(actor && actor.trim().length > 0 ? { actor } : {})
+        });
+    }
+    async createUserStory(usId, title, kind, category, sourceText, actor, tags) {
+        return this.callTool("create_us_from_chat", {
+            workspaceRoot: this.workspaceRoot,
+            usId,
+            title,
+            kind,
+            category,
+            sourceText,
+            ...(tags && tags.length > 0 ? { tags } : {}),
+            ...(actor && actor.trim().length > 0 ? { actor } : {})
+        });
+    }
+    async importUserStory(usId, sourcePath, title, kind, category, actor, tags) {
+        return this.callTool("import_us_from_markdown", {
+            workspaceRoot: this.workspaceRoot,
+            usId,
+            sourcePath,
+            title,
+            kind,
+            category,
+            ...(tags && tags.length > 0 ? { tags } : {}),
+            ...(actor && actor.trim().length > 0 ? { actor } : {})
+        });
+    }
+    async updateUserStoryInfo(usId, values) {
+        return this.callTool("update_user_story_info", {
+            workspaceRoot: this.workspaceRoot,
+            usId,
+            ...(values.title !== undefined ? { title: values.title } : {}),
+            ...(values.kind !== undefined ? { kind: values.kind } : {}),
+            ...(values.owner !== undefined ? { owner: values.owner } : {}),
+            ...(values.category !== undefined ? { category: values.category } : {}),
+            ...(values.tags !== undefined ? { tags: values.tags } : {}),
+            ...(values.actor !== undefined ? { actor: values.actor } : {})
+        });
+    }
+    async initializeRepoPrompts(overwrite = false) {
+        return this.callTool("initialize_repo_prompts", {
+            workspaceRoot: this.workspaceRoot,
+            overwrite
+        });
+    }
+    async exportPromptTemplate(promptPath, overwrite = false) {
+        return this.callTool("export_prompt_template", {
+            workspaceRoot: this.workspaceRoot,
+            promptPath,
+            overwrite
+        });
+    }
+    async continuePhase(usId, actor) {
+        return this.callTool("generate_next_phase", {
+            workspaceRoot: this.workspaceRoot,
+            usId,
+            ...(actor && actor.trim().length > 0 ? { actor } : {})
+        });
+    }
+    async approveReviewAnyway(usId, reason, actor) {
+        return this.callTool("approve_review_anyway", {
+            workspaceRoot: this.workspaceRoot,
+            usId,
+            reason,
+            ...(actor && actor.trim().length > 0 ? { actor } : {})
+        });
+    }
+    async approveCurrentPhase(usId, baseBranch, workBranch, actor) {
+        return this.callTool("approve_phase", (0, backendClientModel_1.buildApprovePhaseArguments)(this.workspaceRoot, usId, baseBranch, workBranch, actor));
+    }
+    async requestRegression(usId, targetPhase, reason, actor, destructive) {
+        return this.callTool("request_regression", (0, backendClientModel_1.buildRequestRegressionArguments)(this.workspaceRoot, usId, targetPhase, reason, actor, destructive));
+    }
+    async reopenCompletedWorkflow(usId, reasonKind, description, actor) {
+        return this.callTool("reopen_completed_workflow", (0, backendClientModel_1.buildReopenCompletedWorkflowArguments)(this.workspaceRoot, usId, reasonKind, description, actor));
+    }
+    async restartUserStoryFromSource(usId, reason, actor) {
+        return this.callTool("restart_user_story_from_source", (0, backendClientModel_1.buildRestartUserStoryArguments)(this.workspaceRoot, usId, reason, actor));
+    }
+    async rewindWorkflow(usId, targetPhase, actor, destructive) {
+        return this.callTool("rewind_workflow", (0, backendClientModel_1.buildRewindWorkflowArguments)(this.workspaceRoot, usId, targetPhase, actor, destructive));
+    }
+    async resetUserStoryToCapture(usId) {
+        return this.callTool("reset_user_story_to_capture", {
+            workspaceRoot: this.workspaceRoot,
+            usId
+        });
+    }
+    async submitRefinementAnswers(usId, answers, actor) {
+        await this.callTool("submit_refinement_answers", {
+            workspaceRoot: this.workspaceRoot,
+            usId,
+            answers,
+            ...(actor && actor.trim().length > 0 ? { actor } : {})
+        });
+    }
+    async submitApprovalAnswer(usId, question, answer, actor) {
+        return this.callTool("submit_approval_answer", {
+            workspaceRoot: this.workspaceRoot,
+            usId,
+            question,
+            answer,
+            ...(actor && actor.trim().length > 0 ? { actor } : {})
+        });
+    }
+    async suggestApprovalAnswer(usId, question, actor) {
+        return this.callTool("suggest_approval_answer", {
+            workspaceRoot: this.workspaceRoot,
+            usId,
+            question,
+            ...(actor && actor.trim().length > 0 ? { actor } : {})
+        });
+    }
+    async operateCurrentPhaseArtifact(usId, prompt, actor, includeReviewArtifactInContext) {
+        return this.callTool("operate_current_phase_artifact", {
+            workspaceRoot: this.workspaceRoot,
+            usId,
+            prompt,
+            ...(actor && actor.trim().length > 0 ? { actor } : {}),
+            ...(includeReviewArtifactInContext === false ? { includeReviewArtifactInContext: false } : {})
+        });
+    }
+    isBusy() {
+        return this.pending.size > 0 || this.initializationPromise !== null;
+    }
+    cancelActiveOperations() {
+        this.dispose();
+    }
+    dispose() {
+        if (this.disposed) {
+            return;
+        }
+        this.disposed = true;
+        this.flushPendingStderr();
+        (0, outputChannel_1.appendSpecForgeLog)("Disposing MCP backend client.");
+        this.rejectPendingRequests("SpecForge MCP backend was stopped.");
+        this.process.kill();
+    }
+    async ensureInitializedAsync() {
+        if (this.initialized) {
+            return;
+        }
+        if (this.initializationPromise) {
+            (0, outputChannel_1.appendSpecForgeDebugLog)("Awaiting in-flight MCP session initialization.");
+            await this.initializationPromise;
+            return;
+        }
+        this.initializationPromise = (async () => {
+            (0, outputChannel_1.appendSpecForgeLog)("Initializing MCP session.");
+            await this.sendRequestAsync("initialize", {
+                protocolVersion: "2024-11-05",
+                capabilities: {},
+                clientInfo: {
+                    name: "SpecForge VS Code Extension",
+                    version: "0.0.1"
+                }
+            });
+            await this.sendNotificationAsync("notifications/initialized", {});
+            this.initialized = true;
+            (0, outputChannel_1.appendSpecForgeLog)("MCP session initialized.");
+        })();
+        try {
+            await this.initializationPromise;
+        }
+        finally {
+            this.initializationPromise = null;
+        }
+    }
+    async callTool(toolName, args) {
+        await this.ensureInitializedAsync();
+        const startedAt = Date.now();
+        (0, outputChannel_1.appendSpecForgeLog)(`Calling tool '${toolName}' with ${JSON.stringify(args)}.`);
+        try {
+            const result = await this.sendRequestAsync("tools/call", {
+                name: toolName,
+                arguments: args
+            });
+            (0, outputChannel_1.appendSpecForgeLog)(`Tool '${toolName}' completed in ${Date.now() - startedAt} ms.`);
+            return (0, backendClientModel_1.parseToolContent)(toolName, result);
+        }
+        catch (error) {
+            (0, outputChannel_1.appendSpecForgeLog)(`Tool '${toolName}' failed after ${Date.now() - startedAt} ms: ${(0, utils_1.asErrorMessage)(error)}`);
+            throw error;
+        }
+    }
+    async sendNotificationAsync(method, params) {
+        const payload = {
+            jsonrpc: "2.0",
+            method,
+            params
+        };
+        await this.writePayloadAsync(JSON.stringify(payload));
+    }
+    async sendRequestAsync(method, params) {
+        if (this.disposed) {
+            throw new Error("SpecForge MCP backend client is disposed.");
+        }
+        const id = this.nextRequestId++;
+        const payload = {
+            jsonrpc: "2.0",
+            id,
+            method,
+            params
+        };
+        const resultPromise = new Promise((resolve, reject) => {
+            this.pending.set(id, { method, resolve, reject });
+        });
+        (0, outputChannel_1.appendSpecForgeDebugLog)(`MCP request queued. id=${id}, method='${method}', pending=${this.pending.size}, bytes=${Buffer.byteLength(JSON.stringify(payload), "utf8")}.`);
+        await this.writePayloadAsync(JSON.stringify(payload));
+        return resultPromise;
+    }
+    async writePayloadAsync(json) {
+        const payload = Buffer.from(json, "utf8");
+        const header = Buffer.from(`Content-Length: ${payload.length}\r\n\r\n`, "ascii");
+        const writeOperation = this.writeQueue.then(async () => {
+            await writeAsync(this.process.stdin, header);
+            await writeAsync(this.process.stdin, payload);
+        });
+        this.writeQueue = writeOperation.catch(() => undefined);
+        await writeOperation;
+    }
+    async drainMessagesAsync() {
+        let buffer = Buffer.concat(this.bufferChunks);
+        this.bufferChunks.length = 0;
+        while (true) {
+            const separatorIndex = buffer.indexOf("\r\n\r\n");
+            if (separatorIndex < 0) {
+                if (buffer.length > 0) {
+                    this.bufferChunks.push(buffer);
+                }
+                return;
+            }
+            const header = buffer.subarray(0, separatorIndex).toString("utf8");
+            const match = /Content-Length:\s*(\d+)/i.exec(header);
+            if (!match) {
+                throw new Error("Invalid MCP response header.");
+            }
+            const contentLength = Number.parseInt(match[1], 10);
+            const bodyStart = separatorIndex + 4;
+            if (buffer.length < bodyStart + contentLength) {
+                this.bufferChunks.push(buffer);
+                return;
+            }
+            const body = buffer.subarray(bodyStart, bodyStart + contentLength).toString("utf8");
+            const message = JSON.parse(body);
+            this.handleMessage(message);
+            buffer = buffer.subarray(bodyStart + contentLength);
+        }
+    }
+    handleMessage(message) {
+        (0, outputChannel_1.appendSpecForgeDebugLog)(`MCP message received. id=${typeof message.id === "number" ? message.id : "n/a"}, hasResult=${message.result !== undefined}, hasError=${message.error !== undefined}.`);
+        if (typeof message.id !== "number") {
+            return;
+        }
+        const pending = this.pending.get(message.id);
+        if (!pending) {
+            (0, outputChannel_1.appendSpecForgeDebugLog)(`MCP response ignored because no pending request matched id=${message.id}.`);
+            return;
+        }
+        this.pending.delete(message.id);
+        if (message.error) {
+            (0, outputChannel_1.appendSpecForgeDebugLog)(`MCP request failed. id=${message.id}, method='${pending.method}', pending=${this.pending.size}, error='${message.error.message}'.`);
+            pending.reject(new Error(message.error.message));
+            return;
+        }
+        (0, outputChannel_1.appendSpecForgeDebugLog)(`MCP request resolved. id=${message.id}, method='${pending.method}', pending=${this.pending.size}.`);
+        pending.resolve(message.result);
+    }
+    rejectPendingRequests(message) {
+        (0, outputChannel_1.appendSpecForgeDebugLog)(`Rejecting ${this.pending.size} pending MCP request(s). reason='${message}'.`);
+        for (const request of this.pending.values()) {
+            request.reject(new Error(message));
+        }
+        this.pending.clear();
+    }
+    handleStderrChunk(chunk) {
+        if (!chunk) {
+            return;
+        }
+        this.stderrRemainder += chunk;
+        const lines = this.stderrRemainder.split(/\r?\n/);
+        this.stderrRemainder = lines.pop() ?? "";
+        for (const line of lines) {
+            this.logStderrLine(line);
+        }
+    }
+    flushPendingStderr() {
+        if (!this.stderrRemainder.trim()) {
+            this.stderrRemainder = "";
+            return;
+        }
+        this.logStderrLine(this.stderrRemainder);
+        this.stderrRemainder = "";
+    }
+    logStderrLine(line) {
+        const message = line.trim();
+        if (!message) {
+            return;
+        }
+        const summarized = (0, mcpDiagnostics_1.summarizeMcpDiagnosticLine)(message);
+        const modelResponse = (0, mcpDiagnostics_1.parseModelResponseDiagnosticLine)(message);
+        if (modelResponse) {
+            (0, backendClient_1.notifyModelResponseDiagnostic)(modelResponse);
+        }
+        if (summarized) {
+            (0, outputChannel_1.appendSpecForgeLog)(summarized);
+            (0, outputChannel_1.appendSpecForgeDebugLog)(`MCP stderr: ${message}`);
+            (0, outputChannel_1.appendSpecForgeDebugLog)("MCP stderr was summarized without rejecting pending requests.");
+            return;
+        }
+        (0, outputChannel_1.appendSpecForgeLog)(`MCP stderr: ${message}`);
+        (0, outputChannel_1.appendSpecForgeDebugLog)("MCP stderr was logged without rejecting pending requests.");
+    }
+}
+exports.StdioMcpBackendClient = StdioMcpBackendClient;
+async function writeAsync(stream, payload) {
+    await new Promise((resolve, reject) => {
+        stream.write(payload, (error) => {
+            if (error) {
+                reject(error);
+                return;
+            }
+            resolve();
+        });
+    });
+}
+//# sourceMappingURL=stdioMcpBackendClient.js.map
