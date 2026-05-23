@@ -14,6 +14,16 @@ SpecForge is not a single app. The main development surfaces are:
 
 The source of truth for workflow state remains the repository under `.specs/`.
 
+## Methodology First
+
+Before changing code, internalize the operating model behind the product:
+
+- `SDD`: the spec is the governing contract and phases advance only through explicit workflow rules.
+- `Harness engineering`: SpecForge is the execution-control layer around models, tools, permissions, evidence, and audit.
+- `Structured criticism before commitment`: the `spec` phase requires criticism and reconstruction before approval; review and release also operate through explicit gates rather than informal trust.
+- `Human checkpoints with reversible flow`: approval, regression, rewind, restart, and reopen are part of the method, not exceptional escape hatches.
+- `Phase-specialized agents`: model routing, agent profiles, repository access, and optional subagents are phase controls, not cosmetic configuration.
+
 ## Bootstrap
 
 Typical setup:
@@ -37,11 +47,13 @@ npm run test:ts
 ## Read In This Order
 
 1. [../README.md](../README.md)
-2. [architecture.md](architecture.md)
-3. [workflow-canonico-fase-1.md](workflow-canonico-fase-1.md)
-4. [mcp-contract-fase-1.md](mcp-contract-fase-1.md)
+2. [sdd-seven-layers.md](sdd-seven-layers.md)
+3. [harness-engineering-checklist.md](harness-engineering-checklist.md)
+4. [architecture.md](architecture.md)
+5. [workflow-canonico-fase-1.md](workflow-canonico-fase-1.md)
+6. [mcp-contract-fase-1.md](mcp-contract-fase-1.md)
 
-That sequence gives the product boundary before implementation details.
+That sequence gives the product boundary, methodology, and control model before implementation details.
 
 ## Main Local Entry Points
 

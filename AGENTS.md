@@ -19,6 +19,9 @@ This repository consumes shared skills from `../ai-skills-shared`.
 - `./.codex/skills/sdd-phase-agents/SKILL.md`
 - This local skill applies only to the repository's SDD engineering workflow.
 - It does not replace or duplicate shared domain skills.
+- `./.codex/skills/specforge-frontend-runtime-guardrails/SKILL.md`
+- This local skill applies to SpecForge webviews, workflow rendering, CLI portal runtime, and browser bridge entrypoints.
+- It exists to prevent repo-specific renderer and runtime monoliths that generic shared skills do not describe in enough detail.
 - `./.codex/skills/functional-commit-version-bump/SKILL.md`
 - This local skill applies after completing any new functionality or functional subtask.
 - It enforces a functional commit followed by a separate version bump commit using the repository version bumper.

@@ -192,3 +192,16 @@
   2. Read the product framing and onboarding links from the perspective of a new contributor.
   3. Observe that SDD and governance are implied, but the methodology stack and its concrete pillars are not summarized in one explicit section.
   4. Observe that a developer can finish the README without a clear map of the engineering principles SpecForge is built on.
+
+### SFB-017
+
+- Bug code: `SFB-017`
+- Discovery date: `2026-05-23`
+- Status: `Fixed`
+- Short description: The portal `Edit US info` modal exposed `Assign to me` even when the browser script had no usable current actor on `window`, so clicking it could blank the owner field; the modal also allowed an always-enabled save path without inline validity feedback for invalid metadata.
+- Reproduction steps:
+  1. Open the workflow portal for any user story.
+  2. Open `Edit US info`.
+  3. Click `Assign to me`.
+  4. Observe that the owner field can become blank because the modal reads `window.specForgeCliCurrentActor` while the script only defined a local constant.
+  5. Edit title, owner, or category into an invalid value and observe that the modal lacks inline field error state while still relying on a late submit-time error.

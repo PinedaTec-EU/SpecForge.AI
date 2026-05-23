@@ -22,6 +22,24 @@ It is a product for running AI-assisted delivery with repository-local truth:
 - humans can approve, regress, rewind, or reopen with traceability
 - agents operate through MCP tools instead of manually editing workflow state
 
+## Methodological Pillars
+
+A developer reading this repository should understand that SpecForge is built on a small set of explicit engineering pillars, not on ad hoc prompting.
+
+- `Spec-Driven Development (SDD)`: the spec is the contract, phases are explicit, and delivery advances through governed transitions rather than free-form chat continuation.
+- `Harness engineering`: the product is the control layer around model execution, including workflow, permissions, routing, evidence, audit, and human checkpoints.
+- `Structured critic/rebuilder loop`: the `spec` phase already requires structured criticism and reconstruction before baseline approval. In practice this is the repository's current equivalent of an actor-critic-governor pattern, even when the codebase does not name it `actor-critic-boss`.
+- `Human-gated governance`: important risk changes require human approval, and regression, rewind, restart, and reopen are first-class control actions.
+- `Repository-local truth`: `.specs/` artifacts, runtime state, and audit history live in the repo and are mutated through MCP operations, not by conversational edits to workflow files.
+- `Phase-specialized agents`: model profiles, agent profiles, repository-access levels, and optional subagents let each phase run with a defined operating posture instead of one generic agent mode.
+
+If you want the deeper framing behind these pillars, start with:
+
+- [doc/sdd-seven-layers.md](doc/sdd-seven-layers.md)
+- [doc/harness-engineering-checklist.md](doc/harness-engineering-checklist.md)
+- [doc/workflow-canonico-fase-1.md](doc/workflow-canonico-fase-1.md)
+- [doc/model-configuration.md](doc/model-configuration.md)
+
 Today the product ships as:
 
 - a VS Code extension
