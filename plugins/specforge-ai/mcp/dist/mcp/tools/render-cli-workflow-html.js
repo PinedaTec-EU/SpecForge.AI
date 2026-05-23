@@ -13,7 +13,7 @@ function formatRuntimeVersion(runtimeVersion) {
 
 async function main() {
   const payload = JSON.parse(fs.readFileSync(0, "utf8"));
-  const currentActor = String(payload.currentActor || "cli-user").trim() || "cli-user";
+  const currentActor = String(payload.currentActor || "").trim();
   const workflow = payload.workflow || null;
   const userStories = Array.isArray(payload.userStories) ? payload.userStories : [];
   const sidebarUserStories = Array.isArray(payload.sidebarUserStories) ? payload.sidebarUserStories : userStories;
@@ -400,7 +400,7 @@ const sidebarApiShim = `
 </script>`;
 
 function buildCliSidebarHtml(items, options) {
-  const currentActor = String(options.currentActor || "cli-user").trim() || "cli-user";
+  const currentActor = String(options.currentActor || "").trim();
   const normalizedCurrentActor = currentActor.toLowerCase();
   const watchingIds = new Set(options.watchingUserStoryIds.map(normalizeUserStoryId));
   const hiddenIds = new Set(options.hiddenUserStoryIds.map(normalizeUserStoryId));
@@ -678,7 +678,9 @@ const sidebarShell = `
       mine: ${safeScriptJson(sidebarHtmlByScope.mine)},
       all: ${safeScriptJson(sidebarHtmlByScope.all)}
     };
-    const currentActor = window.specForgeCliCurrentActor || "cli-user";
+    const currentActor = typeof window.specForgeCliCurrentActor === "string"
+      ? window.specForgeCliCurrentActor.trim()
+      : "";
     let sidebarShowsDropped = ${showDroppedUserStories ? "true" : "false"};
     let sidebarShowsCompleted = ${showCompletedUserStories ? "true" : "false"};
     let sidebarShowsBlocked = ${showBlockedUserStories ? "true" : "false"};
