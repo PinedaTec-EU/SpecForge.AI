@@ -35,6 +35,7 @@ test("CLI workflow renderer embeds the reusable user-story sidebar with collapse
 
   assert.match(script, /buildSidebarHtml/);
   assert.match(script, /showViewOptionsMenu: false/);
+  assert.match(script, /grid-template-columns: minmax\(0, 1fr\) auto auto auto/);
   assert.match(script, /SpecForge\.AI/);
   assert.match(script, /data-cli-sidebar-pin/);
   assert.match(script, /data-cli-sidebar-settings/);

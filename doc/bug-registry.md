@@ -146,3 +146,14 @@
   2. Observe the shell-level `Sidebar view options` control near the portal header actions.
   3. Observe a second `Sidebar view options` control inside the embedded sidebar compact actions.
   4. Observe that both controls refer to the same global scope concern, even though the parent shell already owns that behavior.
+
+### SFB-013
+
+- Bug code: `SFB-013`
+- Discovery date: `2026-05-23`
+- Status: `Fixed`
+- Short description: The workflow portal sidebar shell defined only three grid columns in its top rail while rendering four controls, causing the pin button to fall out of the intended top-right action group.
+- Reproduction steps:
+  1. Open the workflow portal with the sidebar visible.
+  2. Observe the top sidebar rail with brand, view options, configuration, and pin controls.
+  3. Observe that the pin button appears displaced on the left instead of aligned with the top-right controls.
