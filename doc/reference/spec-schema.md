@@ -1,4 +1,4 @@
-# SpecForge · `01-spec.md` schema phase 1
+# SpecForge · `01-spec.md` schema baseline
 
 ## Goal
 

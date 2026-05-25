@@ -122,7 +122,7 @@ Today the key checkpoints are:
 - `spec` as the approved baseline
 - `release-approval` as the final human release gate
 
-For the canonical workflow semantics, see [workflow-canonico-fase-1.md](workflow-canonico-fase-1.md).
+For the canonical workflow semantics, see [reference/workflow-canonical.md](reference/workflow-canonical.md).
 
 For a phase-by-phase runtime view with execution graphs, see [phase-runtime-graphs.md](phase-runtime-graphs.md).
 

@@ -1,4 +1,4 @@
-# SpecForge · `branch.yaml` phase 1
+# SpecForge · `branch.yaml` baseline
 
 ## Goal
 

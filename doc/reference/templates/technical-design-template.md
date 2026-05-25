@@ -1,4 +1,4 @@
-# SpecForge · `02-technical-design.md` template phase 1
+# SpecForge · `02-technical-design.md` template baseline
 
 ## Goal
 

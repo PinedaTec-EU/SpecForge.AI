@@ -40,10 +40,10 @@ This repository consumes shared skills from `../ai-skills-shared`.
 - Backlog tracking in this repository must use GitHub Issues as the canonical tracker. Use `bug` for defects, `enhancement` for features, and `tech-debt` for technical debt.
 - Open bug issues in this repository must carry a `Severity` property using `critical`, `high`, `medium`, or `low`.
 - Open non-bug backlog issues in this repository must carry a `Priority` property using `P0`, `P1`, `P2`, or `P3`.
-- When a local open-work view is needed in this repository, use the generated unified backlog file `doc/backlog-open.md` via `node tools/sync-open-backlog.js`. Do not maintain that file by hand.
-- The repository-local script `tools/sync-open-backlog.js` must stay aligned with the shared template at `/Users/jmr.pineda/SynologyDrive/Projects/codex/rules/conventions/sync-open-backlog.js`.
+- When a local open-work cache is needed in this repository, use the generated unified backlog file `doc/github-backlog.md` via `node tools/sync-github-backlog.js`. Do not maintain that file by hand.
+- The repository-local script `tools/sync-github-backlog.js` must stay aligned with the shared template at `/Users/jmr.pineda/SynologyDrive/Projects/codex/rules/conventions/sync-github-backlog.js`.
 - Do not maintain separate local backlog mirrors by issue type or status such as `bugs-open.md`, `features-open.md`, `tech-debt-open.md`, `bug-registry.md`, or any `*-closed.md` files.
-- Local Markdown under `doc/` must remain roadmap, architecture, reference, planning context, or the generated unified open backlog view, not a parallel execution ledger.
+- Local Markdown under `doc/` must remain roadmap, architecture, reference, planning context, or the generated `github-backlog.md` cache, not a parallel execution ledger.
 - Bug issue titles must stay short. Keep the detailed defect description in the issue body.
 - GitHub issue authoring in this repository must use the global skill `/Users/jmr.pineda/.codex/skills/github-issue-authoring/SKILL.md`.
 - The issue body structure must come from the matching global final template under `/Users/jmr.pineda/.codex/skills/github-issue-authoring/references/final-templates/`.

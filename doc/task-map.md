@@ -10,7 +10,7 @@ Active non-bug backlog tracking lives in GitHub Issues:
 - technical debt: `tech-debt`
 - bugs: `bug`
 
-If you need a single local view of what is currently open, use [backlog-open.md](backlog-open.md).
+If you need a single local cache of what is currently open, use [github-backlog.md](github-backlog.md).
 
 Use this document to understand how the work is grouped and where the planning context lives. Do not treat it as the live execution ledger.
 

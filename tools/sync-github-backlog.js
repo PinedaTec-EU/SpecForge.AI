@@ -26,7 +26,7 @@ function resolveRepoRoot() {
 }
 
 const effectiveRepoRoot = resolveRepoRoot();
-const outputPath = path.join(effectiveRepoRoot, "doc", "backlog-open.md");
+const outputPath = path.join(effectiveRepoRoot, "doc", "github-backlog.md");
 
 function inferRepoFullName() {
   const explicitRepo = process.env.BACKLOG_REPO?.trim();
@@ -83,6 +83,97 @@ function bodyField(body, fieldName) {
   const regex = new RegExp(`^${fieldName}:\\s*(.+)$`, "mi");
   const match = (body || "").match(regex);
   return match ? match[1].trim() : "";
+}
+
+function firstSectionParagraph(body, sectionName) {
+  const lines = (body || "").split(/\r?\n/);
+  const heading = new RegExp(`^##\\s+${sectionName}\\s*$`, "i");
+  let inSection = false;
+  let paragraph = [];
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!inSection) {
+      if (heading.test(line)) {
+        inSection = true;
+      }
+      continue;
+    }
+
+    if (/^##\s+/.test(line)) {
+      break;
+    }
+
+    if (!line) {
+      if (paragraph.length > 0) {
+        break;
+      }
+      continue;
+    }
+
+    if (/^[-*]\s+\[[ xX]\]\s+/.test(line)) {
+      continue;
+    }
+
+    paragraph.push(line.replace(/^[-*]\s+/, ""));
+  }
+
+  return paragraph.join(" ").trim();
+}
+
+function inferSummary(body) {
+  const preferredSections = ["Summary", "Problem", "Objective", "Description", "Context"];
+  for (const sectionName of preferredSections) {
+    const sectionParagraph = firstSectionParagraph(body, sectionName);
+    if (sectionParagraph) {
+      return sectionParagraph;
+    }
+  }
+
+  const paragraphs = [];
+  let current = [];
+  const lines = (body || "").split(/\r?\n/);
+  let inCodeBlock = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (line.startsWith("```")) {
+      inCodeBlock = !inCodeBlock;
+      continue;
+    }
+
+    if (inCodeBlock) {
+      continue;
+    }
+
+    if (!line) {
+      if (current.length > 0) {
+        paragraphs.push(current.join(" ").trim());
+        current = [];
+      }
+      continue;
+    }
+
+    if (/^#/.test(line) || /^[-*]\s+\[[ xX]\]\s+/.test(line) || /^[A-Za-z][A-Za-z /_-]+:\s+\S+/.test(line)) {
+      continue;
+    }
+
+    current.push(line.replace(/^[-*]\s+/, ""));
+  }
+
+  if (current.length > 0) {
+    paragraphs.push(current.join(" ").trim());
+  }
+
+  return paragraphs.find(Boolean) || "";
+}
+
+function truncate(text, maxLength) {
+  if (!text || text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
 function issueCode(issue) {
@@ -144,6 +235,7 @@ function renderIssue(issue) {
   const group = issueGroup(issue);
   const severity = bodyField(issue.body, "Severity") || "unknown";
   const priority = bodyField(issue.body, "Priority") || "unknown";
+  const summary = truncate(inferSummary(issue.body), 240) || "No summary extracted.";
 
   const extraField = group === "Bugs"
     ? `- Severity: \`${severity}\``
@@ -155,6 +247,7 @@ function renderIssue(issue) {
     `- GitHub issue: [#${issue.number}](${issue.url})`,
     `- Type: ${labels}`,
     `- State: \`OPEN\``,
+    `- Summary: ${summary}`,
     extraField,
     `- Assignees: ${assignees}`,
     `- Milestone: ${milestone}`,
@@ -175,7 +268,7 @@ function renderBacklog(repoFullName, issues) {
 
   const orderedGroups = ["Bugs", "Features", "Technical Debt", "Other Open Work"];
   const lines = [
-    "# Open Backlog",
+    "# GitHub Backlog",
     "",
     `Generated from open GitHub issues in \`${repoFullName}\`. Do not edit manually; run \`npm run backlog:sync\`.`,
     "",

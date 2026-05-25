@@ -17,7 +17,7 @@ test("suggestContextFiles mixes heuristic matches with repo neighbors", async ()
     await fs.writeFile(path.join(workspaceRoot, "src/SpecForge.Domain/Application/WorkflowRunner.cs"), "// source");
     await fs.writeFile(path.join(workspaceRoot, "src/SpecForge.Domain/Application/TelemetrySnapshot.cs"), "// neighbor");
     await fs.writeFile(path.join(workspaceRoot, "tests/SpecForge.Domain.Tests/Application/WorkflowRunnerTests.cs"), "// tests");
-    await fs.writeFile(path.join(workspaceRoot, "doc/workflow-canonico-fase-1.md"), "# workflow");
+    await fs.writeFile(path.join(workspaceRoot, "doc/reference/workflow-canonical.md"), "# workflow");
     await fs.writeFile(path.join(workspaceRoot, ".specs/ignored.md"), "ignored");
 
     const suggestions = await suggestContextFiles(workspaceRoot, buildWorkflow(), `

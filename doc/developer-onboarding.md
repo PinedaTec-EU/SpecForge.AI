@@ -52,8 +52,8 @@ npm run test:ts
 2. [sdd-seven-layers.md](sdd-seven-layers.md)
 3. [harness-engineering-checklist.md](harness-engineering-checklist.md)
 4. [architecture.md](architecture.md)
-5. [workflow-canonico-fase-1.md](workflow-canonico-fase-1.md)
-6. [mcp-contract-fase-1.md](mcp-contract-fase-1.md)
+5. [reference/workflow-canonical.md](reference/workflow-canonical.md)
+6. [reference/mcp-contract.md](reference/mcp-contract.md)
 
 That sequence gives the product boundary, methodology, and control model before implementation details.
 

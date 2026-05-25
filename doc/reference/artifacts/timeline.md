@@ -1,4 +1,4 @@
-# SpecForge · `timeline.md` phase 1
+# SpecForge · `timeline.md` baseline
 
 ## Goal
 

@@ -30,7 +30,7 @@ SpecForge must not rely on its own workflow engine as the only place where engin
 When the defect affects SpecForge itself:
 
 1. register the bug as a GitHub issue labeled `bug`;
-2. synchronize the generated unified open backlog in `doc/backlog-open.md`;
+2. synchronize the generated GitHub backlog cache in `doc/github-backlog.md`;
 3. update the relevant planning documents only when architectural context or roadmap framing changed;
 4. only then implement the repair work inside product code and UI surfaces.
 

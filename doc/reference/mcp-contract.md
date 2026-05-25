@@ -1,4 +1,4 @@
-# SpecForge · MCP contract phase 1
+# SpecForge · MCP contract baseline
 
 ## Goal
 
@@ -9,7 +9,7 @@ Define the minimum MCP backend interface required to execute the canonical phase
 - tools operate on artifacts persisted in the repository
 - MCP returns enough state so the extension does not need to infer business rules
 - business errors must be explicit and actionable
-- the contract aligns with `workflow-canonico-fase-1.md`, `state.yaml`, and `branch.yaml`
+- the contract aligns with `workflow-canonical.md`, `state.yaml`, and `branch.yaml`
 - phase advance is strictly linear; arbitrary jumps to future phases do not exist
 
 ## Conventions

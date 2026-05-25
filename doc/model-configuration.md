@@ -163,5 +163,5 @@ Technical design uses repository, solution-planning, and validation-strategy sub
 ## Related Docs
 
 - runtime behavior: [runtime-and-persistence.md](runtime-and-persistence.md)
-- external contract: [mcp-contract-fase-1.md](mcp-contract-fase-1.md)
+- external contract: [reference/mcp-contract.md](reference/mcp-contract.md)
 - product framing: [product-vision.md](product-vision.md)

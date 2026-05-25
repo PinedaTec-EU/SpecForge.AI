@@ -22,17 +22,17 @@ Positioning sentence:
 ## Current Posture
 
 - [x] Workflow governance is explicit and deterministic.
-  Evidence: the canonical workflow defines ordered phases, checkpoints, regression paths, and operational invariants in [workflow-canonico-fase-1.md](workflow-canonico-fase-1.md).
+  Evidence: the canonical workflow defines ordered phases, checkpoints, regression paths, and operational invariants in [reference/workflow-canonical.md](reference/workflow-canonical.md).
 - [x] Repository-local artifacts remain the source of truth.
   Evidence: runtime and product documents keep `.specs/` as the persisted workflow state and artifact boundary in [runtime-and-persistence.md](runtime-and-persistence.md) and [product-vision.md](product-vision.md).
 - [x] Workflow mutation is constrained behind an MCP boundary.
   Evidence: non-VS Code clients are expected to use `specforge_query`, `specforge_action`, `specforge_prompts`, and `open_workflow_portal` instead of manually editing workflow files, as documented in [runtime-and-persistence.md](runtime-and-persistence.md) and [architecture.md](architecture.md).
 - [x] Human checkpoints and approvals are first-class controls.
-  Evidence: `spec` and `release-approval` are mandatory approval points in [workflow-canonico-fase-1.md](workflow-canonico-fase-1.md).
+  Evidence: `spec` and `release-approval` are mandatory approval points in [reference/workflow-canonical.md](reference/workflow-canonical.md).
 - [x] Audit timeline and persisted phase artifacts already exist.
   Evidence: user stories persist `state.yaml`, `runtime.yaml`, `branch.yaml`, `timeline.md`, and phase artifacts under `.specs/us/...` as described in [runtime-and-persistence.md](runtime-and-persistence.md).
 - [x] Regression, rewind, restart, and reopen semantics already exist.
-  Evidence: the current workflow and product posture explicitly support regression and safe restart, with rewind/reopen called out across [README.md](../README.md), [workflow-canonico-fase-1.md](workflow-canonico-fase-1.md), and [runtime-and-persistence.md](runtime-and-persistence.md).
+  Evidence: the current workflow and product posture explicitly support regression and safe restart, with rewind/reopen called out across [README.md](../README.md), [reference/workflow-canonical.md](reference/workflow-canonical.md), and [runtime-and-persistence.md](runtime-and-persistence.md).
 - [x] Model and agent routing are configurable runtime concepts.
   Evidence: model profiles, agent profiles, repository access, subagents, and phase routing are already documented in [model-configuration.md](model-configuration.md).
 - [x] Browser and non-IDE operation already exist.

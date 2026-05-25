@@ -1,4 +1,4 @@
-# SpecForge · `01-spec.md` template phase 1
+# SpecForge · `01-spec.md` template baseline
 
 ## Goal
 

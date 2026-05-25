@@ -1,4 +1,4 @@
-# SpecForge · Canonical workflow phase 1
+# SpecForge · Canonical workflow baseline
 
 ## Goal
 
@@ -117,7 +117,7 @@ Definition of Done:
 - a `red-team` evaluation exists
 - a `blue-team` reconstruction over relevant findings exists
 - the output enables design without inventing critical requirements
-- the artifact satisfies the required schema defined in `doc/spec-schema-fase-1.md`
+- the artifact satisfies the required schema defined in `spec-schema.md`
 
 Checkpoint:
 

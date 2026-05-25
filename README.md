@@ -39,7 +39,7 @@ If you want the deeper framing behind these pillars, start with:
 
 - [doc/sdd-seven-layers.md](doc/sdd-seven-layers.md)
 - [doc/harness-engineering-checklist.md](doc/harness-engineering-checklist.md)
-- [doc/workflow-canonico-fase-1.md](doc/workflow-canonico-fase-1.md)
+- [doc/reference/workflow-canonical.md](doc/reference/workflow-canonical.md)
 - [doc/model-configuration.md](doc/model-configuration.md)
 
 Today the product ships as:
@@ -116,7 +116,7 @@ The fuller roadmap lives in [doc/roadmap.md](doc/roadmap.md) and the implementat
 - understanding runtime behavior and persistence: [doc/runtime-and-persistence.md](doc/runtime-and-persistence.md)
 - contributing to the codebase: [doc/developer-onboarding.md](doc/developer-onboarding.md)
 
-Active backlog tracking lives in GitHub Issues: use `enhancement` for features, `tech-debt` for technical debt, and `bug` for defects. The `doc/` tree is product, architecture, reference, and planning context, not the canonical execution backlog. When a local open-work view is needed, use the generated unified file [doc/backlog-open.md](doc/backlog-open.md).
+Active backlog tracking lives in GitHub Issues: use `enhancement` for features, `tech-debt` for technical debt, and `bug` for defects. The `doc/` tree is product, architecture, reference, and planning context, not the canonical execution backlog. When a local open-work cache is needed, use the generated unified file [doc/github-backlog.md](doc/github-backlog.md).
 Regenerate that view with `npm run backlog:sync`.
 
 ## Core Documents
@@ -124,9 +124,9 @@ Regenerate that view with `npm run backlog:sync`.
 - [doc/product-vision.md](doc/product-vision.md)
 - [doc/architecture.md](doc/architecture.md)
 - [doc/harness-engineering-checklist.md](doc/harness-engineering-checklist.md)
-- [doc/workflow-canonico-fase-1.md](doc/workflow-canonico-fase-1.md)
-- [doc/mcp-contract-fase-1.md](doc/mcp-contract-fase-1.md)
-- [doc/spec-schema-fase-1.md](doc/spec-schema-fase-1.md)
+- [doc/reference/workflow-canonical.md](doc/reference/workflow-canonical.md)
+- [doc/reference/mcp-contract.md](doc/reference/mcp-contract.md)
+- [doc/reference/spec-schema.md](doc/reference/spec-schema.md)
 - [doc/market-positioning.md](doc/market-positioning.md)
 
 ## License

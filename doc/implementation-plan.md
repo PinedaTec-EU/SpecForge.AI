@@ -85,7 +85,7 @@ Deliverables:
 
 - ✅ define a stable boundary between extension and backend
 - ✅ encapsulate `WorkflowRunner` behind application services
-- ✅ align real operations with `mcp-contract-fase-1.md`
+- ✅ align real operations with `reference/mcp-contract.md`
 - ✅ prepare replacement of the local runner with an MCP backend without breaking the UI
 
 ### ✅ Step 5.3. Replace placeholder generation with real phase execution
