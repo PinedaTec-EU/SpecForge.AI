@@ -283,7 +283,7 @@ class SidebarViewProvider {
         const backendClient = (0, specsExplorer_1.getOrCreateBackendClient)(workspaceRoot);
         const summaries = await backendClient.listUserStories();
         const usId = (0, explorerModel_1.nextUserStoryIdFromSummaries)(summaries);
-        const result = await backendClient.createUserStory(usId, title, kind, category, sourceText, (0, userActor_1.getCurrentActor)(), tags);
+        const result = await backendClient.createUserStory(usId, title, kind, category, sourceText, (0, userActor_1.getCurrentActor)(workspaceRoot), tags);
         await this.materializeCreateFilesAsync(result.rootDirectory);
         this.showCreateForm = false;
         this.createFiles = [];
@@ -376,7 +376,7 @@ class SidebarViewProvider {
                 owner: owner.trim(),
                 category: category.label,
                 tags: parseCustomTags(tags),
-                actor: (0, userActor_1.getCurrentActor)()
+                actor: (0, userActor_1.getCurrentActor)(workspaceRoot)
             });
             await this.onDidCreateUserStory();
             void vscode.window.showInformationMessage(`${usId} info updated.`);
@@ -401,7 +401,7 @@ class SidebarViewProvider {
         }
         await this.runBusyActionAsync(`Dropping ${usId}...`, async () => {
             (0, workflowPanel_1.closeWorkflowView)(workspaceRoot, usId);
-            await fs.promises.writeFile(path.join(targetPath, ".dropped"), `Dropped at ${new Date().toISOString()} by ${(0, userActor_1.getCurrentActor)()}.\n`, "utf8");
+            await fs.promises.writeFile(path.join(targetPath, ".dropped"), `Dropped at ${new Date().toISOString()} by ${(0, userActor_1.getCurrentActor)(workspaceRoot)}.\n`, "utf8");
             const preferences = await (0, userWorkspacePreferences_1.readUserWorkspacePreferences)(workspaceRoot);
             if (preferences.starredUserStoryId === usId) {
                 await (0, userWorkspacePreferences_1.setStarredUserStory)(workspaceRoot, null);
@@ -488,7 +488,7 @@ class SidebarViewProvider {
             return;
         }
         await this.runBusyActionAsync("Repairing user story lineage...", async () => {
-            const repair = await (0, specsExplorer_1.getOrCreateBackendClient)(workspaceRoot).repairUserStoryLineage(usId, (0, userActor_1.getCurrentActor)());
+            const repair = await (0, specsExplorer_1.getOrCreateBackendClient)(workspaceRoot).repairUserStoryLineage(usId, (0, userActor_1.getCurrentActor)(workspaceRoot));
             (0, outputChannel_1.appendSpecForgeLog)(`Lineage repair for '${usId}': status=${repair.status}, currentPhase=${repair.currentPhase}, archived=${repair.archivedPaths.length}, archive='${repair.archiveDirectoryPath}'.`);
             await this.onDidCreateUserStory();
             void vscode.window.showInformationMessage(`${usId} repaired. Archived ${repair.archivedPaths.length} artifact(s) and returned to ${repair.currentPhase}.`);
@@ -530,7 +530,7 @@ class SidebarViewProvider {
         const hidden = new Set(preferences.hiddenUserStoryIds);
         const normalizedUsId = usId.trim().toUpperCase();
         const normalizedOwner = (owner ?? "").trim().toLowerCase();
-        const normalizedActor = (0, userActor_1.getCurrentActor)().trim().toLowerCase();
+        const normalizedActor = (0, userActor_1.getCurrentActor)(workspaceRoot).trim().toLowerCase();
         const isOwnedByCurrentActor = normalizedOwner.length > 0 && normalizedOwner === normalizedActor;
         const isHidden = hidden.has(normalizedUsId);
         const isWatched = watching.has(normalizedUsId);
@@ -747,7 +747,7 @@ class SidebarViewProvider {
             (0, outputChannel_1.appendSpecForgeLog)(`Sidebar prompt override warning for '${workspaceRoot}': ${promptsStatus.message ?? "prompt overrides not materialized"}. Checked: ${promptsStatus.checkedPaths.join(", ")}`);
         }
         const preferences = await (0, userWorkspacePreferences_1.readUserWorkspacePreferences)(workspaceRoot);
-        const currentActor = (0, userActor_1.getCurrentActor)();
+        const currentActor = (0, userActor_1.getCurrentActor)(workspaceRoot);
         const filteredUserStories = filterSidebarUserStories(allVisibleUserStories, preferences, currentActor, {
             showDroppedUserStories: this.showDroppedUserStories,
             showCompletedUserStories: this.showCompletedUserStories,

@@ -207,7 +207,7 @@ async function createUserStoryFromInput() {
         return;
     }
     const usId = await nextUserStoryId(workspaceRoot);
-    const result = await getBackendClient(workspaceRoot).createUserStory(usId, title, kind, category, sourceText, (0, userActor_1.getCurrentActor)(), tags);
+    const result = await getBackendClient(workspaceRoot).createUserStory(usId, title, kind, category, sourceText, (0, userActor_1.getCurrentActor)(workspaceRoot), tags);
     await openTextDocument(result.mainArtifactPath);
 }
 async function importUserStoryFromMarkdown() {
@@ -242,7 +242,7 @@ async function importUserStoryFromMarkdown() {
     }
     const tags = await promptUserStoryTags();
     const usId = await nextUserStoryId(workspaceRoot);
-    const result = await getBackendClient(workspaceRoot).importUserStory(usId, sourceUri.fsPath, title, kind, category, (0, userActor_1.getCurrentActor)(), tags);
+    const result = await getBackendClient(workspaceRoot).importUserStory(usId, sourceUri.fsPath, title, kind, category, (0, userActor_1.getCurrentActor)(workspaceRoot), tags);
     await openTextDocument(result.mainArtifactPath);
 }
 async function promptUserStoryTags() {
@@ -325,7 +325,7 @@ async function continuePhase(summary) {
         return;
     }
     try {
-        const result = await getBackendClient(workspaceRoot).continuePhase(summary.usId, (0, userActor_1.getCurrentActor)());
+        const result = await getBackendClient(workspaceRoot).continuePhase(summary.usId, (0, userActor_1.getCurrentActor)(workspaceRoot));
         if (result.generatedArtifactPath) {
             await openTextDocument(result.generatedArtifactPath);
         }
@@ -376,7 +376,7 @@ async function approveCurrentPhase(summary) {
         }
     }
     try {
-        const updatedSummary = await getBackendClient(workspaceRoot).approveCurrentPhase(summary.usId, baseBranch, undefined, (0, userActor_1.getCurrentActor)());
+        const updatedSummary = await getBackendClient(workspaceRoot).approveCurrentPhase(summary.usId, baseBranch, undefined, (0, userActor_1.getCurrentActor)(workspaceRoot));
         void vscode.window.showInformationMessage(`${updatedSummary.usId} approved. Current phase remains ${updatedSummary.currentPhase} until you continue the workflow.`);
     }
     catch (error) {
@@ -419,7 +419,7 @@ async function requestRegression(summary) {
     }
     try {
         const destructiveRewindEnabled = (0, extensionSettings_1.getSpecForgeSettings)().destructiveRewindEnabled;
-        const result = await getBackendClient(workspaceRoot).requestRegression(summary.usId, targetPhase.label, reason, (0, userActor_1.getCurrentActor)(), destructiveRewindEnabled);
+        const result = await getBackendClient(workspaceRoot).requestRegression(summary.usId, targetPhase.label, reason, (0, userActor_1.getCurrentActor)(workspaceRoot), destructiveRewindEnabled);
         void vscode.window.showInformationMessage(`${summary.usId} regressed to ${result.currentPhase} with status ${result.status}${destructiveRewindEnabled ? " using destructive cleanup" : ""}.`);
     }
     catch (error) {
@@ -445,7 +445,7 @@ async function restartUserStoryFromSource(summary) {
         return;
     }
     try {
-        const result = await getBackendClient(workspaceRoot).restartUserStoryFromSource(summary.usId, reason, (0, userActor_1.getCurrentActor)());
+        const result = await getBackendClient(workspaceRoot).restartUserStoryFromSource(summary.usId, reason, (0, userActor_1.getCurrentActor)(workspaceRoot));
         if (result.generatedArtifactPath) {
             await openTextDocument(result.generatedArtifactPath);
         }

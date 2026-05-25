@@ -442,7 +442,7 @@ class WorkflowPanelController {
     async continueCurrentPhaseAsync() {
         await this.materializePendingRewindAsync("continue");
         const previousPhase = this.summary.currentPhase;
-        const result = await this.getBackendClient().continuePhase(this.summary.usId, (0, userActor_1.getCurrentActor)());
+        const result = await this.getBackendClient().continuePhase(this.summary.usId, (0, userActor_1.getCurrentActor)(this.workspaceRoot));
         const usageSummary = result.usage
             ? ` Tokens in/out/total: ${result.usage.inputTokens}/${result.usage.outputTokens}/${result.usage.totalTokens}.`
             : "";
@@ -538,7 +538,7 @@ class WorkflowPanelController {
     }
     async submitRefinementAnswersAsync(answers) {
         await this.materializePendingRewindAsync("refinement answers");
-        await this.getBackendClient().submitRefinementAnswers(this.summary.usId, answers, (0, userActor_1.getCurrentActor)());
+        await this.getBackendClient().submitRefinementAnswers(this.summary.usId, answers, (0, userActor_1.getCurrentActor)(this.workspaceRoot));
         (0, outputChannel_1.appendSpecForgeLog)(`Workflow '${this.summary.usId}' stored ${answers.length} refinement answer(s).`);
         this.playbackState = (0, workflowPlaybackState_1.normalizePlaybackStateAfterManualWorkflowChange)(this.playbackState);
         this.clearTransientExecutionPhase();
@@ -554,7 +554,7 @@ class WorkflowPanelController {
         }
         await this.materializePendingRewindAsync("phase input");
         const previousPhase = this.summary.currentPhase;
-        const result = await this.getBackendClient().operateCurrentPhaseArtifact(this.summary.usId, normalizedPrompt, (0, userActor_1.getCurrentActor)());
+        const result = await this.getBackendClient().operateCurrentPhaseArtifact(this.summary.usId, normalizedPrompt, (0, userActor_1.getCurrentActor)(this.workspaceRoot));
         (0, outputChannel_1.appendSpecForgeLog)(`Workflow '${this.summary.usId}' regenerated phase '${result.currentPhase}' after human input.${this.formatExecutionSummary(result.execution)}`);
         this.notifyPhaseCommit(result.commit);
         this.logExecutionWarnings(result.execution);
@@ -589,7 +589,7 @@ class WorkflowPanelController {
             correctionReasonParts.push(`Correction note: ${normalizedPrompt.split(/\r?\n/, 1)[0]?.trim() ?? normalizedPrompt}`);
         }
         const correctionReason = correctionReasonParts.join(" ");
-        const regression = await this.getBackendClient().requestRegression(this.summary.usId, "implementation", correctionReason, (0, userActor_1.getCurrentActor)(), false);
+        const regression = await this.getBackendClient().requestRegression(this.summary.usId, "implementation", correctionReason, (0, userActor_1.getCurrentActor)(this.workspaceRoot), false);
         (0, outputChannel_1.appendSpecForgeLog)(`Workflow '${this.summary.usId}' returned implementation to the review correction loop by explicit user decision. reviewArtifactIncluded=${includeReviewArtifactInContext}.`);
         this.summary = {
             ...this.summary,
@@ -621,7 +621,7 @@ class WorkflowPanelController {
         await this.refreshAsync("sendReviewToImplementationAsync:running");
         let operation;
         try {
-            operation = await this.getBackendClient().operateCurrentPhaseArtifact(this.summary.usId, operationPrompt, (0, userActor_1.getCurrentActor)(), includeReviewArtifactInContext);
+            operation = await this.getBackendClient().operateCurrentPhaseArtifact(this.summary.usId, operationPrompt, (0, userActor_1.getCurrentActor)(this.workspaceRoot), includeReviewArtifactInContext);
         }
         finally {
             if (this.playbackState === "playing") {
@@ -654,7 +654,7 @@ class WorkflowPanelController {
         await this.materializePendingRewindAsync("approve review anyway");
         const previousPhase = this.summary.currentPhase;
         await this.focusPhaseForAction("release-approval", "approveReviewAnywayAsync:focus");
-        const result = await this.getBackendClient().approveReviewAnyway(this.summary.usId, normalizedReason, (0, userActor_1.getCurrentActor)());
+        const result = await this.getBackendClient().approveReviewAnyway(this.summary.usId, normalizedReason, (0, userActor_1.getCurrentActor)(this.workspaceRoot));
         (0, outputChannel_1.appendSpecForgeLog)(`Workflow '${this.summary.usId}' was force-approved from review to release-approval by explicit user decision.`);
         this.summary = {
             ...this.summary,
@@ -672,7 +672,7 @@ class WorkflowPanelController {
     async submitApprovalAnswerAsync(question, answer) {
         await this.materializePendingRewindAsync("approval answer");
         const previousPhase = this.summary.currentPhase;
-        const result = await this.getBackendClient().submitApprovalAnswer(this.summary.usId, question, answer, (0, userActor_1.getCurrentActor)());
+        const result = await this.getBackendClient().submitApprovalAnswer(this.summary.usId, question, answer, (0, userActor_1.getCurrentActor)(this.workspaceRoot));
         (0, outputChannel_1.appendSpecForgeLog)(`Workflow '${this.summary.usId}' recorded a human approval answer and generated '${result.generatedArtifactPath}'.`);
         this.summary = {
             ...this.summary,
@@ -688,7 +688,7 @@ class WorkflowPanelController {
         await this.refreshAsync("submitApprovalAnswerAsync");
     }
     async suggestApprovalAnswerAsync(question, index) {
-        const result = await this.getBackendClient().suggestApprovalAnswer(this.summary.usId, question, (0, userActor_1.getCurrentActor)());
+        const result = await this.getBackendClient().suggestApprovalAnswer(this.summary.usId, question, (0, userActor_1.getCurrentActor)(this.workspaceRoot));
         (0, outputChannel_1.appendSpecForgeLog)(`Workflow '${this.summary.usId}' suggested a model answer for approval question '${question.slice(0, 80)}'.`);
         await this.panel.webview.postMessage({
             command: "approvalAnswerSuggested",
@@ -765,7 +765,7 @@ class WorkflowPanelController {
         const normalizedWorkBranch = this.summary.currentPhase === "spec"
             ? (workBranch?.trim() || this.buildSpecApprovalWorkBranchProposal(this.lastWorkflow))
             : undefined;
-        this.summary = await this.getBackendClient().approveCurrentPhase(this.summary.usId, normalizedBaseBranch, normalizedWorkBranch, (0, userActor_1.getCurrentActor)());
+        this.summary = await this.getBackendClient().approveCurrentPhase(this.summary.usId, normalizedBaseBranch, normalizedWorkBranch, (0, userActor_1.getCurrentActor)(this.workspaceRoot));
         (0, outputChannel_1.appendSpecForgeLog)(`Workflow '${this.summary.usId}' approved phase '${this.summary.currentPhase}' with base='${normalizedBaseBranch ?? "(none)"}' and work='${normalizedWorkBranch ?? "(none)"}'.`);
         this.playbackState = (0, workflowPlaybackState_1.normalizePlaybackStateAfterManualWorkflowChange)(this.playbackState);
         this.clearTransientExecutionPhase();
@@ -799,7 +799,7 @@ class WorkflowPanelController {
             return;
         }
         await this.focusPhaseForAction(targetPhase, "requestRegressionAsync:focus");
-        const result = await this.getBackendClient().requestRegression(this.summary.usId, targetPhase, reason, (0, userActor_1.getCurrentActor)(), destructiveRewindEnabled);
+        const result = await this.getBackendClient().requestRegression(this.summary.usId, targetPhase, reason, (0, userActor_1.getCurrentActor)(this.workspaceRoot), destructiveRewindEnabled);
         (0, outputChannel_1.appendSpecForgeLog)(`Workflow '${this.summary.usId}' regressed to '${result.currentPhase}' with status '${result.status}'${destructiveRewindEnabled ? " using destructive cleanup" : " without deleting later artifacts"}.`);
         this.summary = {
             ...this.summary,
@@ -827,7 +827,7 @@ class WorkflowPanelController {
         const previousPhase = this.summary.currentPhase;
         await this.focusPhaseForAction(rejectPlan.mode === "rewind-and-operate" ? rejectPlan.targetPhaseId : this.summary.currentPhase, "rejectCurrentApprovalAsync:focus");
         if (rejectPlan.mode === "rewind-and-operate") {
-            const rewindResult = await this.getBackendClient().rewindWorkflow(this.summary.usId, rejectPlan.targetPhaseId, (0, userActor_1.getCurrentActor)(), false);
+            const rewindResult = await this.getBackendClient().rewindWorkflow(this.summary.usId, rejectPlan.targetPhaseId, (0, userActor_1.getCurrentActor)(this.workspaceRoot), false);
             (0, outputChannel_1.appendSpecForgeLog)(`Workflow '${this.summary.usId}' rejected approval, rewound to '${rewindResult.currentPhase}', and will apply the rejection note via model.`);
             this.summary = {
                 ...this.summary,
@@ -837,7 +837,7 @@ class WorkflowPanelController {
             this.selectedPhaseId = rewindResult.currentPhase;
             this.applyDeferredExecutionSettingsAfterPhaseChange(previousPhase, rewindResult.currentPhase, "reject");
         }
-        const operationResult = await this.getBackendClient().operateCurrentPhaseArtifact(this.summary.usId, normalizedReason, (0, userActor_1.getCurrentActor)());
+        const operationResult = await this.getBackendClient().operateCurrentPhaseArtifact(this.summary.usId, normalizedReason, (0, userActor_1.getCurrentActor)(this.workspaceRoot));
         (0, outputChannel_1.appendSpecForgeLog)(`Workflow '${this.summary.usId}' applied reject feedback to '${operationResult.currentPhase}' and generated '${operationResult.generatedArtifactPath}'.`);
         this.playbackState = (0, workflowPlaybackState_1.normalizePlaybackStateAfterManualWorkflowChange)(this.playbackState);
         this.clearTransientExecutionPhase();
@@ -856,7 +856,7 @@ class WorkflowPanelController {
             return;
         }
         await this.focusPhaseForAction(this.summary.currentPhase, "restartCurrentWorkflowAsync:focus");
-        const result = await this.getBackendClient().restartUserStoryFromSource(this.summary.usId, reason, (0, userActor_1.getCurrentActor)());
+        const result = await this.getBackendClient().restartUserStoryFromSource(this.summary.usId, reason, (0, userActor_1.getCurrentActor)(this.workspaceRoot));
         (0, outputChannel_1.appendSpecForgeLog)(`Workflow '${this.summary.usId}' restarted from source. Current phase '${result.currentPhase}', status '${result.status}'.`);
         this.summary = {
             ...this.summary,
@@ -903,7 +903,7 @@ class WorkflowPanelController {
         if (confirmation !== "Reopen Workflow") {
             return;
         }
-        const result = await this.getBackendClient().reopenCompletedWorkflow(this.summary.usId, reasonKind, normalizedDescription, (0, userActor_1.getCurrentActor)());
+        const result = await this.getBackendClient().reopenCompletedWorkflow(this.summary.usId, reasonKind, normalizedDescription, (0, userActor_1.getCurrentActor)(this.workspaceRoot));
         (0, outputChannel_1.appendSpecForgeLog)(`Workflow '${this.summary.usId}' was reopened with reason '${reasonKind}' to '${result.currentPhase}' and status '${result.status}'.`);
         this.summary = {
             ...this.summary,
@@ -925,7 +925,7 @@ class WorkflowPanelController {
             await this.refreshAsync("reopenCompletedWorkflowAsync:running");
             let operation;
             try {
-                operation = await this.getBackendClient().operateCurrentPhaseArtifact(this.summary.usId, operationPrompt, (0, userActor_1.getCurrentActor)());
+                operation = await this.getBackendClient().operateCurrentPhaseArtifact(this.summary.usId, operationPrompt, (0, userActor_1.getCurrentActor)(this.workspaceRoot));
             }
             finally {
                 if (this.playbackState === "playing") {
@@ -1324,7 +1324,7 @@ class WorkflowPanelController {
         const settings = (0, extensionSettings_1.getSpecForgeSettings)();
         const destructiveRewindEnabled = settings.destructiveRewindEnabled;
         await this.focusPhaseForAction(targetPhase, `materializePendingRewindAsync:${source}`);
-        const result = await this.getBackendClient().rewindWorkflow(this.summary.usId, targetPhase, (0, userActor_1.getCurrentActor)(), destructiveRewindEnabled);
+        const result = await this.getBackendClient().rewindWorkflow(this.summary.usId, targetPhase, (0, userActor_1.getCurrentActor)(this.workspaceRoot), destructiveRewindEnabled);
         (0, outputChannel_1.appendSpecForgeLog)(`Workflow '${this.summary.usId}' materialized the pending rewind to '${result.currentPhase}' before ${source}${destructiveRewindEnabled ? " using destructive cleanup" : " without deleting later artifacts"}.`);
         (0, outputChannel_1.appendSpecForgeDebugLog)(`Workflow '${this.summary.usId}' rewind deleted paths: ${result.deletedPaths.length > 0 ? result.deletedPaths.join(", ") : "(none)"}.`);
         (0, outputChannel_1.appendSpecForgeDebugLog)(`Workflow '${this.summary.usId}' rewind preserved paths: ${result.preservedPaths.length > 0 ? result.preservedPaths.join(", ") : "(none)"}.`);
