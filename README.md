@@ -22,6 +22,8 @@ It is a product for running AI-assisted delivery with repository-local truth:
 - humans can approve, regress, rewind, or reopen with traceability
 - agents operate through MCP tools instead of manually editing workflow state
 
+For this repository itself, that product behavior is not the engineering process. Do not use this repo's `.specs/` tree as the backlog or change-tracking mechanism for developing SpecForge.AI. Self-hosted SpecForge product management, when used, belongs in `specforge-ai-central`.
+
 ## Methodological Pillars
 
 A developer reading this repository should understand that SpecForge is built on a small set of explicit engineering pillars, not on ad hoc prompting.

@@ -570,6 +570,7 @@
     }
   },
   "scripts": {
+    "bugs:sync": "node tools/sync-bug-docs.js",
     "compile": "npm run compile:ts && npm run compile:mcp && npm run sync:packaged-plugin",
     "compile:ts": "node node_modules/typescript/lib/tsc.js -p ./",
     "compile:mcp": "dotnet publish src/SpecForge.McpServer/SpecForge.McpServer.csproj -c Release -o dist/mcp --no-self-contained /p:DebugType=None /p:DebugSymbols=false && dotnet publish src/SpecForge.Runner.Cli/SpecForge.Runner.Cli.csproj -c Release -o dist/mcp --no-self-contained /p:DebugType=None /p:DebugSymbols=false",

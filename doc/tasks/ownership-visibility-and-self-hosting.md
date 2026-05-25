@@ -29,9 +29,9 @@ SpecForge must not rely on its own workflow engine as the only place where engin
 
 When the defect affects SpecForge itself:
 
-1. register the bug in `doc/bug-registry.md`;
-2. register the work in `doc/task-map.md` and this task file;
-3. register an external issue or equivalent durable tracker outside the engine workflow;
+1. register the bug as a GitHub issue labeled `bug`;
+2. synchronize the local bug mirrors in `doc/bugs-open.md` or `doc/bugs-closed.md`;
+3. register the work in `doc/task-map.md` and this task file;
 4. only then implement the repair work inside product code and UI surfaces.
 
 This rule exists so an engine defect cannot erase, delay, or hide the repair backlog for its own failure.

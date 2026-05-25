@@ -12,7 +12,9 @@ SpecForge is not a single app. The main development surfaces are:
 - `src/SpecForge.Runner.Cli/` for the browser workflow portal
 - `plugins/specforge-ai/` for the packaged local plugin bundle
 
-The source of truth for workflow state remains the repository under `.specs/`.
+The source of truth for SpecForge runtime behavior remains the repository under `.specs/`, but that is a product/runtime concern, not the task-tracking method for developing this repository itself.
+
+This repo must not be managed through its own `.specs/**` workflow artifacts. If SpecForge product development is handled through SpecForge workflow, the approved place for that is `specforge-ai-central`, not this repository.
 
 ## Methodology First
 
@@ -86,11 +88,13 @@ If the change affects the public MCP-facing behavior, also validate the packaged
 ## Working Rules
 
 - sync with remote before new edit blocks
-- change workflow state through SpecForge operations, not by manually editing `.specs/`, unless the task is explicit repair work
+- treat `.specs/**` here as engine/runtime data, not as the backlog or feature tracker for this repository
+- change workflow state through SpecForge operations, not by manually editing `.specs/`, unless the task is explicit repair work on the product/runtime behavior itself
 - keep docs aligned when workflow semantics change
 - validate the narrowest real subsystem that matches the change
-
-Repository process also expects completed functional work to end with a functional commit and a separate version bump commit.
+- close every completed functional change with a functional commit first, then a separate `dotnet versionbumper` commit
+- after `npm run compile`, `npm run compile:ts`, `npm run test:ts`, `dotnet build`, or equivalent validation milestones, the version bump is mandatory and must not be deferred
+- if a task is intentionally left uncommitted, say so explicitly and call out that the required commit/version-bump flow is still pending
 
 ## Files Worth Knowing
 
