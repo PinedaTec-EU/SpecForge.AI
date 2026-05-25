@@ -1245,9 +1245,13 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
       border-radius: 18px 0 0 18px;
     }
     .story-row--selected .story-card {
+      background:
+        linear-gradient(180deg, rgba(30, 44, 56, 0.985), rgba(15, 24, 33, 0.995)),
+        rgba(14, 20, 26, 0.99);
       box-shadow:
         inset 5px 0 0 var(--story-selection-edge-solid),
-        inset 14px 0 18px var(--story-selection-edge-glow);
+        inset 14px 0 18px var(--story-selection-edge-glow),
+        0 0 0 1px rgba(255, 255, 255, 0.04);
     }
     .story-actions {
       background:
@@ -1259,9 +1263,27 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
       z-index: 4;
     }
     .story-row--selected .story-actions {
+      background:
+        linear-gradient(180deg, rgba(24, 35, 45, 0.985), rgba(13, 20, 29, 0.995)),
+        rgba(14, 20, 26, 0.99);
       box-shadow:
         inset -5px 0 0 var(--story-selection-edge-solid),
-        inset -14px 0 18px var(--story-selection-edge-glow);
+        inset -14px 0 18px var(--story-selection-edge-glow),
+        0 0 0 1px rgba(255, 255, 255, 0.04);
+    }
+    .story-row--selected {
+      box-shadow:
+        0 18px 36px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.03);
+    }
+    .story-row--selected .story-card__id {
+      color: rgba(255, 255, 255, 0.94);
+    }
+    .story-row--selected strong {
+      color: #ffffff;
+    }
+    .story-row--selected .story-card__meta {
+      color: rgba(230, 241, 250, 0.84);
     }
     .story-row--status-active,
     .story-row--status-paused {
@@ -1804,10 +1826,50 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
       storySearch.addEventListener("input", applyStorySearch);
       applyStorySearch();
     }
+    function resolveSelectedStoryScrollContainer() {
+      const cliSidebarSurface = document.querySelector("[data-cli-sidebar-surface]");
+      if (cliSidebarSurface instanceof HTMLElement) {
+        return cliSidebarSurface;
+      }
+
+      return document.scrollingElement instanceof HTMLElement
+        ? document.scrollingElement
+        : document.documentElement;
+    }
+
+    function isStoryRowFullyVisible(row, scrollContainer) {
+      if (!(row instanceof HTMLElement) || !(scrollContainer instanceof HTMLElement)) {
+        return false;
+      }
+
+      if (scrollContainer === document.documentElement || scrollContainer === document.body || scrollContainer === document.scrollingElement) {
+        const top = row.getBoundingClientRect().top;
+        const bottom = row.getBoundingClientRect().bottom;
+        return top >= 0 && bottom <= window.innerHeight;
+      }
+
+      const rowTop = row.offsetTop;
+      const rowBottom = rowTop + row.offsetHeight;
+      const viewportTop = scrollContainer.scrollTop;
+      const viewportBottom = viewportTop + scrollContainer.clientHeight;
+      return rowTop >= viewportTop && rowBottom <= viewportBottom;
+    }
+
     function keepSelectedStoryVisible() {
       const selectedStoryRow = document.querySelector(".story-row--selected");
       if (selectedStoryRow instanceof HTMLElement) {
-        selectedStoryRow.scrollIntoView({ block: "start" });
+        const scrollContainer = resolveSelectedStoryScrollContainer();
+        const selectionContext = typeof window.__specforgeSidebarSelectionContext?.consume === "function"
+          ? window.__specforgeSidebarSelectionContext.consume(selectedStoryRow.dataset.usId || "")
+          : null;
+
+        if (selectionContext && scrollContainer instanceof HTMLElement && Number.isFinite(selectionContext.scrollTop)) {
+          scrollContainer.scrollTop = selectionContext.scrollTop;
+        }
+
+        if (!isStoryRowFullyVisible(selectedStoryRow, scrollContainer)) {
+          selectedStoryRow.scrollIntoView({ block: "nearest", inline: "nearest" });
+        }
       }
     }
     window.requestAnimationFrame(keepSelectedStoryVisible);
@@ -2037,7 +2099,7 @@ function buildStoryRowMarkup(summary, model) {
         dependencySearchText
     ].join(" ");
     return `
-    <div class="story-row story-row--shell story-row--status-${(0, htmlEscape_1.escapeHtmlAttr)(statusTone)}${isActiveWorkflow ? " story-row--selected" : ""}" data-story-search-text="${(0, htmlEscape_1.escapeHtmlAttr)(searchText)}">
+    <div class="story-row story-row--shell story-row--status-${(0, htmlEscape_1.escapeHtmlAttr)(statusTone)}${isActiveWorkflow ? " story-row--selected" : ""}" data-story-search-text="${(0, htmlEscape_1.escapeHtmlAttr)(searchText)}" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}">
       <button class="story-card${shouldRenderPhaseRail(effectiveStatus) ? ` story-card--active story-card--phase-${(0, htmlEscape_1.escapeHtmlAttr)(summary.currentPhase)} story-card--status-${(0, htmlEscape_1.escapeHtmlAttr)(phaseRailStatus(effectiveStatus))}` : ""}" type="button" data-command="openWorkflow" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}">
         ${shouldRenderPhaseRail(effectiveStatus)
         ? `

@@ -1060,6 +1060,7 @@ const sidebarShell = `
     const watchingUserStoryIdsStorageKey = "specforge.cli.sidebar.watchingUserStoryIds";
     const hiddenUserStoryIdsStorageKey = "specforge.cli.sidebar.hiddenUserStoryIds";
     const showHiddenStorageKey = "specforge.cli.sidebar.showHiddenUserStories";
+    const sidebarSelectionContextStorageKey = "specforge.cli.sidebar.selectionContext";
     const sidebarMinWidth = 280;
     const sidebarDefaultWidth = 340;
     const sidebarMaxWidth = 520;
@@ -1390,6 +1391,38 @@ const sidebarShell = `
       }
     };
     const readCurrentPortalUsId = () => normalizeUserStoryId(new URL(window.location.href).searchParams.get("usId")) || normalizeUserStoryId(renderedWorkflowUsId);
+    const writeSidebarSelectionContext = (value) => {
+      try {
+        safeStorage.setSessionItem(sidebarSelectionContextStorageKey, JSON.stringify(value || {}));
+      } catch {}
+    };
+    const readSidebarSelectionContext = () => {
+      try {
+        return JSON.parse(safeStorage.getSessionItem(sidebarSelectionContextStorageKey) || "null");
+      } catch {
+        return null;
+      }
+    };
+    const clearSidebarSelectionContext = () => {
+      safeStorage.removeSessionItem(sidebarSelectionContextStorageKey);
+    };
+    window.__specforgeSidebarSelectionContext = {
+      consume(expectedUsId) {
+        const context = readSidebarSelectionContext();
+        if (!context || typeof context !== "object") {
+          return null;
+        }
+
+        const normalizedExpectedUsId = normalizeUserStoryId(expectedUsId);
+        const normalizedContextUsId = normalizeUserStoryId(context.usId);
+        if (!normalizedExpectedUsId || normalizedExpectedUsId !== normalizedContextUsId) {
+          return null;
+        }
+
+        clearSidebarSelectionContext();
+        return context;
+      }
+    };
     const syncPortalUiState = (overrides) => {
       const nextState = {
         usId: readCurrentPortalUsId() || null,
@@ -1585,6 +1618,22 @@ const sidebarShell = `
         usId: usId || null,
         selectedPhaseId: null,
         artifactFocus: null
+      });
+    };
+    const persistSidebarSelectionContext = (targetUsId) => {
+      if (!(sidebarSurface instanceof HTMLElement)) {
+        return;
+      }
+
+      const normalizedUsId = normalizeUserStoryId(targetUsId);
+      if (!normalizedUsId) {
+        return;
+      }
+
+      writeSidebarSelectionContext({
+        usId: normalizedUsId,
+        scrollTop: sidebarSurface.scrollTop,
+        capturedAtUtc: new Date().toISOString()
       });
     };
     const syncPortalSelectionWithSidebarScope = () => {
@@ -2007,6 +2056,7 @@ const sidebarShell = `
       });
     };
     const navigateToUserStory = (usId, selectedPhaseId, artifactFocus) => {
+      persistSidebarSelectionContext(usId);
       const targetUrl = buildPortalRequestUrl({
         usId,
         selectedPhaseId: selectedPhaseId || null,
