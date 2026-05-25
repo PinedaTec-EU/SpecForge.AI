@@ -1,0 +1,422 @@
+- generic [active] [ref=e1]:
+  - complementary "SpecForge user stories" [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]: SpecForge.AI
+        - generic [ref=e6]: v.0.1.5.634
+      - button "Sidebar view options" [ref=e8] [cursor=pointer]: ☷
+      - button "Configuration" [ref=e9] [cursor=pointer]: ⚙
+      - button "Unpin sidebar" [pressed] [ref=e10] [cursor=pointer]: 📌
+    - generic [ref=e12]:
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - paragraph [ref=e16]: User Stories
+          - heading "Workflow backlog" [level=2] [ref=e17]
+          - paragraph [ref=e18]: 1 stories in scope · owner jmrpineda.
+        - generic [ref=e19]:
+          - button "Show dropped user stories (1)" [ref=e20] [cursor=pointer]:
+            - generic [ref=e21]: ⊘
+          - button "Create new user story" [ref=e22] [cursor=pointer]:
+            - generic [ref=e23]: +
+          - button "Prompt actions" [ref=e25] [cursor=pointer]:
+            - generic [ref=e26]: ☰
+      - generic [ref=e28]:
+        - generic [ref=e29]: Search user stories
+        - generic [ref=e30]:
+          - searchbox "Search user stories" [ref=e31]
+          - generic: 🔍
+      - generic [ref=e32]:
+        - generic [ref=e33]: configuration
+        - generic [ref=e34]:
+          - 'button "US-0001 #sf-central Define Central workspace connection settings capture · active · owner jmrpineda" [ref=e35] [cursor=pointer]':
+            - generic [ref=e37]: CAP
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e40]: US-0001
+                - generic [ref=e42]: "#sf-central"
+              - strong [ref=e43]: Define Central workspace connection settings
+              - generic [ref=e44]: capture · active · owner jmrpineda
+          - generic [ref=e45]:
+            - button "Star US-0001" [ref=e46] [cursor=pointer]:
+              - generic [ref=e47]: ☆
+            - button "Hide US-0001 from my sidebar" [ref=e48] [cursor=pointer]:
+              - img [ref=e50]
+            - button "User story actions for US-0001" [ref=e54] [cursor=pointer]:
+              - generic [ref=e55]: ☰
+  - separator "Resize sidebar" [ref=e56]
+  - generic [ref=e57]:
+    - generic [ref=e58]:
+      - generic [ref=e59]:
+        - generic [ref=e60]:
+          - paragraph [ref=e62]: SpecForge.AI Workflow Graph
+          - heading "US-0001 · Define Central workspace connection settings" [level=1] [ref=e63]
+        - generic [ref=e64]:
+          - button "Rewind workflow pointer" [disabled] [ref=e65]:
+            - img [ref=e66]
+          - button "Play workflow" [ref=e68] [cursor=pointer]:
+            - img [ref=e69]
+          - button "Pause workflow" [disabled] [ref=e71]:
+            - img [ref=e72]
+          - button "Stop workflow" [disabled] [ref=e74]:
+            - img [ref=e75]
+          - button "Open workflow files" [ref=e77] [cursor=pointer]:
+            - img [ref=e78]
+      - generic [ref=e81]:
+        - generic [ref=e82]:
+          - generic [ref=e83]: configuration
+          - generic [ref=e84]: active
+          - generic [ref=e85]: capture
+          - generic [ref=e86]: branch:not-created
+          - generic [ref=e87]: runner:idle
+        - generic [ref=e89]: "#sf-central"
+    - generic [ref=e92]:
+      - complementary [ref=e93]:
+        - generic [ref=e94]:
+          - heading "Workflow Constellation" [level=2] [ref=e96]
+          - generic [ref=e97]:
+            - button "Zoom out workflow graph" [ref=e98] [cursor=pointer]:
+              - img [ref=e99]
+            - button "Set workflow graph zoom to 100%" [ref=e101] [cursor=pointer]:
+              - img [ref=e102]
+            - button "Fit workflow graph to panel width" [ref=e104] [cursor=pointer]:
+              - img [ref=e105]
+            - button "Switch workflow graph layout to vertical" [ref=e107] [cursor=pointer]:
+              - img [ref=e108]
+            - button "Enable workflow graph layout editing" [ref=e110] [cursor=pointer]:
+              - img [ref=e111]
+            - button "Zoom in workflow graph" [ref=e113] [cursor=pointer]:
+              - img [ref=e114]
+            - button "Copy workflow snapshot to clipboard" [ref=e116] [cursor=pointer]:
+              - img [ref=e117]
+        - generic [ref=e121]:
+          - generic "Workflow graph" [ref=e122]:
+            - img
+            - img
+            - button "Current Viewing Model automated Capture Capture story intent" [ref=e123] [cursor=pointer]:
+              - generic:
+                - generic: Current
+              - generic:
+                - generic: Viewing
+              - generic [ref=e124]:
+                - generic "Model automated" [ref=e127]:
+                  - img [ref=e128]
+                - generic [ref=e135]:
+                  - img [ref=e137]
+                  - generic [ref=e139]:
+                    - heading "Capture" [level=3] [ref=e140]
+                    - generic [ref=e141]: Capture story intent
+            - button "User intervention enabled Pause before Refinement Refinement Resolve open questions" [ref=e142] [cursor=pointer]:
+              - generic [ref=e143]:
+                - generic [ref=e145]:
+                  - generic "User intervention enabled" [ref=e146]:
+                    - img [ref=e147]
+                  - button "Pause before Refinement" [ref=e150]:
+                    - img [ref=e151]
+                - generic [ref=e153]:
+                  - img [ref=e155]
+                  - generic [ref=e157]:
+                    - heading "Refinement" [level=3] [ref=e158]
+                    - generic [ref=e159]: Resolve open questions
+            - button "approval User intervention enabled Pause before Spec Spec Shape approved scope" [ref=e160] [cursor=pointer]:
+              - generic [ref=e161]:
+                - generic [ref=e162]:
+                  - generic [ref=e164]: approval
+                  - generic [ref=e165]:
+                    - generic "User intervention enabled" [ref=e166]:
+                      - img [ref=e167]
+                    - button "Pause before Spec" [ref=e170]:
+                      - img [ref=e171]
+                - generic [ref=e173]:
+                  - img [ref=e175]
+                  - generic [ref=e177]:
+                    - heading "Spec" [level=3] [ref=e178]
+                    - generic [ref=e179]: Shape approved scope
+            - button "Model automated Pause before Technical Design Technical Design Define technical approach" [ref=e180] [cursor=pointer]:
+              - generic [ref=e181]:
+                - generic [ref=e183]:
+                  - generic "Model automated" [ref=e184]:
+                    - img [ref=e185]
+                  - button "Pause before Technical Design" [ref=e192]:
+                    - img [ref=e193]
+                - generic [ref=e195]:
+                  - img [ref=e197]
+                  - generic [ref=e199]:
+                    - heading "Technical Design" [level=3] [ref=e200]
+                    - generic [ref=e201]: Define technical approach
+            - button "Model automated Pause before Implementation Implementation Build the solution" [ref=e202] [cursor=pointer]:
+              - generic [ref=e203]:
+                - generic [ref=e205]:
+                  - generic "Model automated" [ref=e206]:
+                    - img [ref=e207]
+                  - button "Pause before Implementation" [ref=e214]:
+                    - img [ref=e215]
+                - generic [ref=e217]:
+                  - img [ref=e219]
+                  - generic [ref=e221]:
+                    - heading "Implementation" [level=3] [ref=e222]
+                    - generic [ref=e223]: Build the solution
+            - button "Model automated Pause before Review Review Validate shipped changes" [ref=e224] [cursor=pointer]:
+              - generic [ref=e225]:
+                - generic [ref=e227]:
+                  - generic "Model automated" [ref=e228]:
+                    - img [ref=e229]
+                  - button "Pause before Review" [ref=e236]:
+                    - img [ref=e237]
+                - generic [ref=e239]:
+                  - img [ref=e241]
+                  - generic [ref=e243]:
+                    - heading "Review" [level=3] [ref=e244]
+                    - generic [ref=e245]: Validate shipped changes
+            - button "approval User intervention enabled Pause before Release Approval Release Approval Approve release readiness" [ref=e246] [cursor=pointer]:
+              - generic [ref=e247]:
+                - generic [ref=e248]:
+                  - generic [ref=e250]: approval
+                  - generic [ref=e251]:
+                    - generic "User intervention enabled" [ref=e252]:
+                      - img [ref=e253]
+                    - button "Pause before Release Approval" [ref=e256]:
+                      - img [ref=e257]
+                - generic [ref=e259]:
+                  - img [ref=e261]
+                  - generic [ref=e263]:
+                    - heading "Release Approval" [level=3] [ref=e264]
+                    - generic [ref=e265]: Approve release readiness
+            - button "Model automated Pause before PR Preparation PR Preparation Prepare branch handoff" [ref=e266] [cursor=pointer]:
+              - generic [ref=e267]:
+                - generic [ref=e269]:
+                  - generic "Model automated" [ref=e270]:
+                    - img [ref=e271]
+                  - button "Pause before PR Preparation" [ref=e278]:
+                    - img [ref=e279]
+                - generic [ref=e281]:
+                  - img [ref=e283]
+                  - generic [ref=e285]:
+                    - heading "PR Preparation" [level=3] [ref=e286]
+                    - generic [ref=e287]: Prepare branch handoff
+            - button "Completed workflow lock state Completed Workflow finished" [ref=e288] [cursor=pointer]:
+              - generic [ref=e289]:
+                - generic "Completed workflow lock state" [ref=e292]:
+                  - img [ref=e293]
+                - generic [ref=e295]:
+                  - img [ref=e297]
+                  - generic [ref=e299]:
+                    - heading "Completed" [level=3] [ref=e300]
+                    - generic [ref=e301]: Workflow finished
+          - complementary "Graph legend" [ref=e302]:
+            - generic [ref=e303]:
+              - generic [ref=e304]: Legend
+              - button "Dismiss graph legend" [ref=e305] [cursor=pointer]: ×
+            - generic [ref=e308]: Progress
+            - generic [ref=e311]: Pending / skip
+            - generic [ref=e314]: Completed
+            - generic [ref=e317]: Current
+            - generic [ref=e320]: Pending
+            - generic [ref=e323]: Final
+      - main [ref=e324]:
+        - generic [ref=e325]:
+          - button "Continue" [ref=e327] [cursor=pointer]
+          - group [ref=e328]:
+            - generic "Capture Capture story intent ready" [ref=e329] [cursor=pointer]:
+              - generic [ref=e330]:
+                - heading "Capture" [level=2] [ref=e331]
+                - generic:
+                  - generic:
+                    - img
+              - generic [ref=e332]:
+                - generic [ref=e333]: Capture story intent
+                - generic [ref=e334]: ready
+            - generic [ref=e336]:
+              - status "Phase duration" [ref=e337]:
+                - generic [ref=e345]:
+                  - generic [ref=e346]: Duration
+                  - generic [ref=e347]: n/a
+              - generic [ref=e348]:
+                - generic [ref=e349]: Touches
+                - generic [ref=e350]:
+                  - generic [ref=e351]:
+                    - generic [ref=e352]: Total
+                    - generic [ref=e353]: "0"
+                  - generic [ref=e354]:
+                    - generic [ref=e355]: Generated
+                    - generic [ref=e356]: "0"
+                  - generic [ref=e357]:
+                    - generic [ref=e358]: Operated
+                    - generic [ref=e359]: "0"
+                  - generic [ref=e360]:
+                    - generic [ref=e361]: Started
+                    - generic [ref=e362]: "0"
+                  - generic [ref=e363]:
+                    - generic [ref=e364]: Rewinds Here
+                    - generic [ref=e365]: "0"
+                  - generic [ref=e366]:
+                    - generic [ref=e367]: Regressions Here
+                    - generic [ref=e368]: "0"
+              - generic [ref=e369]:
+                - generic [ref=e370]: Tokens
+                - generic [ref=e371]:
+                  - generic [ref=e372]:
+                    - generic [ref=e373]: Input / Output
+                    - generic [ref=e374]: n/a
+                  - generic [ref=e375]:
+                    - generic [ref=e376]: Total
+                    - generic [ref=e377]: n/a
+                  - generic [ref=e378]:
+                    - generic [ref=e379]: Model
+                    - generic [ref=e380]: workflow
+                  - generic [ref=e381]:
+                    - generic [ref=e382]: Iterations
+                    - generic [ref=e383]: "1"
+              - generic [ref=e384]:
+                - generic [ref=e385]: Lifecycle
+                - generic [ref=e386]:
+                  - generic [ref=e387]:
+                    - generic [ref=e388]: Attempts
+                    - generic [ref=e389]: "1"
+                  - generic [ref=e390]:
+                    - generic [ref=e391]: Retries
+                    - generic [ref=e392]: "0"
+                  - generic [ref=e393]:
+                    - generic [ref=e394]: Lead Time
+                    - generic [ref=e395]: 20397m 58.3s
+                  - generic [ref=e396]:
+                    - generic [ref=e397]: Waiting User
+                    - generic [ref=e398]: 0s
+                  - generic [ref=e399]:
+                    - generic [ref=e400]: Blocked
+                    - generic [ref=e401]: 0s
+        - generic [ref=e402]:
+          - generic [ref=e404]:
+            - heading "Workflow Metrics" [level=3] [ref=e405]
+            - paragraph [ref=e406]: Workflow-wide runtime metrics derived from persisted timeline facts, not only the selected phase.
+          - generic [ref=e407]:
+            - generic [ref=e408]:
+              - generic [ref=e409]: Totals
+              - generic [ref=e410]:
+                - generic [ref=e411]:
+                  - generic [ref=e412]: Input / Output
+                  - generic [ref=e413]: 0 / 0
+                - generic [ref=e414]:
+                  - generic [ref=e415]: Total Tokens
+                  - generic [ref=e416]: "0"
+                - generic [ref=e417]:
+                  - generic [ref=e418]: Recorded Runs
+                  - generic [ref=e419]: "0"
+                - generic [ref=e420]:
+                  - generic [ref=e421]: Duration
+                  - generic [ref=e422]: n/a
+                - generic [ref=e423]:
+                  - generic [ref=e424]: Response Speed
+                  - generic [ref=e425]: n/a
+            - generic [ref=e426]:
+              - generic [ref=e427]: Timeline
+              - generic [ref=e428]:
+                - generic [ref=e429]:
+                  - generic [ref=e430]: Events
+                  - generic [ref=e431]: "2"
+                - generic [ref=e432]:
+                  - generic [ref=e433]: Iterations
+                  - generic [ref=e434]: "1"
+                - generic [ref=e435]:
+                  - generic [ref=e436]: Started
+                  - generic [ref=e437]: 2026-05-10T11:02:24.230Z
+                - generic [ref=e438]:
+                  - generic [ref=e439]: Last Event
+                  - generic [ref=e440]: 2026-05-23T12:45:23.822Z
+                - generic [ref=e441]:
+                  - generic [ref=e442]: Current Phase
+                  - generic [ref=e443]: Capture
+            - generic [ref=e444]:
+              - generic [ref=e445]: Lifecycle
+              - generic [ref=e446]:
+                - generic [ref=e447]:
+                  - generic [ref=e448]: Attempts
+                  - generic [ref=e449]: "1"
+                - generic [ref=e450]:
+                  - generic [ref=e451]: Retries
+                  - generic [ref=e452]: "0"
+                - generic [ref=e453]:
+                  - generic [ref=e454]: Lead Time
+                  - generic [ref=e455]: 20397m 58.3s
+                - generic [ref=e456]:
+                  - generic [ref=e457]: Waiting User
+                  - generic [ref=e458]: 0s
+                - generic [ref=e459]:
+                  - generic [ref=e460]: Blocked
+                  - generic [ref=e461]: 0s
+        - generic [ref=e462]:
+          - generic [ref=e464]:
+            - paragraph [ref=e465]: Harness Profile
+            - heading "Balanced" [level=3] [ref=e466]
+          - generic [ref=e467]:
+            - generic [ref=e468]:
+              - strong [ref=e469]: Selected
+              - code [ref=e471]: balanced
+            - generic [ref=e472]:
+              - strong [ref=e473]: Resolved
+              - code [ref=e475]: balanced
+            - generic [ref=e476]:
+              - strong [ref=e477]: Source
+              - code [ref=e479]: workflow-default
+            - generic [ref=e480]:
+              - strong [ref=e481]: Authority
+              - code [ref=e483]: workspace
+            - generic [ref=e484]:
+              - strong [ref=e485]: Locked
+              - code [ref=e487]: "false"
+            - generic [ref=e488]:
+              - strong [ref=e489]: Override Allowed
+              - code [ref=e491]: "true"
+          - paragraph [ref=e492]: Default delivery posture that keeps automation enabled while preserving phase-specific receipts, evidence, and controllable operator gates.
+          - generic [ref=e493]:
+            - generic [ref=e494]:
+              - text: "Governance lock mode:"
+              - code [ref=e495]: none
+            - generic [ref=e496]:
+              - text: "Locked phases:"
+              - code [ref=e497]: "0"
+          - generic [ref=e498]: defaultautomation-friendlyauditablegraph-aware
+        - generic [ref=e499]:
+          - heading "Capture Boundary" [level=3] [ref=e500]
+          - paragraph [ref=e501]: Capture is the workflow entry phase. It materializes the user story and runtime state but does not execute a phase model or prompt pipeline.
+          - generic [ref=e502]: workflow-entry non-model
+        - generic [ref=e503]:
+          - heading "User Story Source" [level=3] [ref=e504]
+          - generic [ref=e505]:
+            - generic [ref=e507]: Preview
+            - button "Open Artifact" [ref=e508] [cursor=pointer]
+          - paragraph [ref=e510]: Artifact content unavailable.
+        - generic [ref=e511]:
+          - generic [ref=e512]:
+            - generic [ref=e513]:
+              - heading "Phase Iterations" [level=3] [ref=e514]
+              - paragraph [ref=e515]: Collapsed by default. The latest iteration stays selected until you expand the full history.
+            - button "Expand phase iterations" [ref=e516] [cursor=pointer]:
+              - img [ref=e518]
+          - 'button "Iteration 1 · 2026-05-23T12:45:23.822Z owner_changed · jmrpineda · workflow Ownership changed from `unknown` to `jmrpineda`." [ref=e522] [cursor=pointer]':
+            - generic [ref=e524]:
+              - generic [ref=e525]: Iteration 1 · 2026-05-23T12:45:23.822Z
+              - generic [ref=e526]: owner_changed · jmrpineda · workflow
+              - generic [ref=e527]: "Ownership changed from `unknown` to `jmrpineda`."
+        - generic [ref=e528]:
+          - heading "Selected Iteration" [level=3] [ref=e529]
+          - generic [ref=e530]:
+            - generic [ref=e531]: iteration 1
+            - generic [ref=e532]: owner_changed
+            - generic [ref=e533]: 2026-05-23T12:45:23.822Z
+            - generic [ref=e534]: jmrpineda
+            - generic [ref=e535]: model workflow
+          - paragraph [ref=e536]: "Ownership changed from `unknown` to `jmrpineda`."
+          - generic [ref=e537]:
+            - generic [ref=e538]:
+              - heading "Input Artifact" [level=4] [ref=e539]
+              - paragraph [ref=e540]: No explicit input artifact recorded for this iteration.
+            - generic [ref=e541]:
+              - heading "Output Artifact" [level=4] [ref=e542]
+              - paragraph [ref=e543]: us.md
+              - button "Open Output" [ref=e545] [cursor=pointer]
+        - generic [ref=e546]:
+          - heading "Artifact" [level=3] [ref=e547]
+          - paragraph [ref=e548]: No artifact is persisted for this phase.
+        - generic [ref=e549]:
+          - heading "Phase Prompts" [level=3] [ref=e550]
+          - paragraph [ref=e551]: This phase does not expose prompt templates or persisted execution inspection yet.

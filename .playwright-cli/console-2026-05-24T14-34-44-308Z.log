@@ -1,0 +1,11 @@
+[     201ms] SyntaxError: redeclaration of const vscode
+    at  (http://localhost:5128/?usId=US-0001:7034:50)
+[   94725ms] SyntaxError: redeclaration of let sourceReferenceSuggestions
+    at  (http://localhost:5128/?usId=US-0001 line 4234 > injectedScript:1:1)
+    at mountInlineDocument (http://localhost:5128/?usId=US-0001:4234:14)
+    at replaceSidebarFrame (http://localhost:5128/?usId=US-0001:4529:26)
+    at async*bridgeSidebarScopeControls/< (http://localhost:5128/?usId=US-0001:4709:16)
+    at EventListener.handleEvent*bridgeSidebarScopeControls (http://localhost:5128/?usId=US-0001:4704:16)
+    at refreshSidebarBindings (http://localhost:5128/?usId=US-0001:4749:7)
+    at  (http://localhost:5128/?usId=US-0001:4800:5)
+    at  (http://localhost:5128/?usId=US-0001:5162:5)

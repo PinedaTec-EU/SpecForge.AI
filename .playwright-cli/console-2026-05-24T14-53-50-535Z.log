@@ -1,0 +1,18 @@
+[   14989ms] TypeError: can't access property "navigate", window.__specforgePortalLifecycle is undefined
+    at showCreateForm (http://localhost:5130/?usId=US-0001:1208:9)
+    at handleSidebarMessage (http://localhost:5130/?usId=US-0001:1473:16)
+    at  (http://localhost:5130/?usId=US-0001:1485:27)
+    at window.__specforgeCliSidebarHostDispatch (http://localhost:5130/?usId=US-0001:359:14)
+    at postMessage (http://localhost:5130/?usId=US-0001 line 354 > injectedScript:14:16)
+    at  (http://localhost:5130/?usId=US-0001 line 354 > injectedScript:207:16)
+    at EventListener.handleEvent* (http://localhost:5130/?usId=US-0001 line 354 > injectedScript:197:15)
+    at  (http://localhost:5130/?usId=US-0001 line 354 > injectedScript:497:3)
+    at mountInlineDocument (http://localhost:5130/?usId=US-0001:354:14)
+    at  (http://localhost:5130/?usId=US-0001:965:24)
+    at  (http://localhost:5130/?usId=US-0001:1496:5)
+[   14989ms] TypeError: can't access property "navigate", window.__specforgePortalLifecycle is undefined
+    at bridgeSidebarScopeControls/< (http://localhost:5130/?usId=US-0001:904:11)
+    at EventListener.handleEvent*bridgeSidebarScopeControls (http://localhost:5130/?usId=US-0001:899:16)
+    at refreshSidebarBindings (http://localhost:5130/?usId=US-0001:940:7)
+    at  (http://localhost:5130/?usId=US-0001:1033:5)
+    at  (http://localhost:5130/?usId=US-0001:1496:5)

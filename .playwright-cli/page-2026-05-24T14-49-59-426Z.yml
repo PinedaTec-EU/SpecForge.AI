@@ -1,0 +1,11 @@
+- generic [active] [ref=e1]:
+  - complementary "SpecForge user stories" [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]: SpecForge.AI
+        - generic [ref=e6]: v.0.1.5.629
+      - button "Sidebar view options" [ref=e8] [cursor=pointer]: ☷
+      - button "Configuration" [ref=e9] [cursor=pointer]: ⚙
+      - button "Unpin sidebar" [pressed] [ref=e10] [cursor=pointer]: 📌
+  - separator "Resize sidebar" [ref=e12]
+  - main [ref=e13]

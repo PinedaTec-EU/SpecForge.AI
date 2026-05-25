@@ -1,0 +1,47 @@
+- generic [active] [ref=e1]:
+  - complementary "SpecForge user stories" [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]: SpecForge.AI
+        - generic [ref=e6]: v.0.1.5.631
+      - button "Sidebar view options" [ref=e8] [cursor=pointer]: ☷
+      - button "Configuration" [ref=e9] [cursor=pointer]: ⚙
+      - button "Unpin sidebar" [pressed] [ref=e10] [cursor=pointer]: 📌
+    - generic [ref=e12]:
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - paragraph [ref=e16]: User Stories
+          - heading "Workflow backlog" [level=2] [ref=e17]
+          - paragraph [ref=e18]: 1 stories in scope · owner jmrpineda.
+        - generic [ref=e19]:
+          - button "Show dropped user stories (1)" [ref=e20] [cursor=pointer]:
+            - generic [ref=e21]: ⊘
+          - button "Create new user story" [ref=e22] [cursor=pointer]:
+            - generic [ref=e23]: +
+          - button "Prompt actions" [ref=e25] [cursor=pointer]:
+            - generic [ref=e26]: ☰
+      - generic [ref=e28]:
+        - generic [ref=e29]: Search user stories
+        - generic [ref=e30]:
+          - searchbox "Search user stories" [ref=e31]
+          - generic: 🔍
+      - generic [ref=e32]:
+        - generic [ref=e33]: configuration
+        - generic [ref=e34]:
+          - 'button "US-0001 #sf-central Define Central workspace connection settings capture · active · owner jmrpineda" [ref=e35] [cursor=pointer]':
+            - generic [ref=e37]: CAP
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e40]: US-0001
+                - generic [ref=e42]: "#sf-central"
+              - strong [ref=e43]: Define Central workspace connection settings
+              - generic [ref=e44]: capture · active · owner jmrpineda
+          - generic [ref=e45]:
+            - button "Star US-0001" [ref=e46] [cursor=pointer]:
+              - generic [ref=e47]: ☆
+            - button "Hide US-0001 from my sidebar" [ref=e48] [cursor=pointer]:
+              - img [ref=e50]
+            - button "User story actions for US-0001" [ref=e54] [cursor=pointer]:
+              - generic [ref=e55]: ☰
+  - separator "Resize sidebar" [ref=e56]
+  - main [ref=e57]
