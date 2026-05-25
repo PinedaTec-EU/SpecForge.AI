@@ -116,6 +116,8 @@ The fuller roadmap lives in [doc/roadmap.md](doc/roadmap.md) and the implementat
 - understanding runtime behavior and persistence: [doc/runtime-and-persistence.md](doc/runtime-and-persistence.md)
 - contributing to the codebase: [doc/developer-onboarding.md](doc/developer-onboarding.md)
 
+Active backlog tracking lives in GitHub Issues: use `enhancement` for features, `tech-debt` for technical debt, and `bug` for defects. The `doc/` tree is product, architecture, reference, and planning context, not the canonical execution backlog.
+
 ## Core Documents
 
 - [doc/product-vision.md](doc/product-vision.md)

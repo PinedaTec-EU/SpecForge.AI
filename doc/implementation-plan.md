@@ -1,5 +1,7 @@
 # SpecForge · Implementation Plan
 
+Active non-bug backlog tracking now lives in GitHub Issues. This document keeps implementation history, MVP framing, and roadmap context; it is not the canonical execution ledger.
+
 ## Proposed Sequence
 
 ### ✅ Step 1. Lock the canonical workflow
@@ -124,10 +126,11 @@ Deliverables:
 16. ✅ group the VS Code explorer by user-story category
 17. ✅ introduce a minimum TypeScript test project for the extension
 18. ✅ extend UX with graph view and richer phase detail
-19. [ ] complete a richer prompt editor/inspector from the extension
-20. [ ] enrich branch lifecycle with real Git/PR integration
-    Tracking block: [tasks/branch-lifecycle.md](tasks/branch-lifecycle.md)
-21. [ ] introduce SpecForge Central managed-repository catalog and repository selection
+19. Planned: richer prompt inspection and effective prompt visibility from the extension.
+    Canonical issue: [#42](https://github.com/PinedaTec-EU/SpecForge.AI/issues/42)
+20. Planned: enrich branch lifecycle with real Git/PR integration.
+    Planning context: [tasks/branch-lifecycle.md](tasks/branch-lifecycle.md)
+21. Planned: introduce SpecForge Central managed-repository catalog and repository selection.
 
 ## Risks To Watch
 
@@ -206,22 +209,22 @@ Does not block the MVP:
 
 - ✅ workflow graph view
 - ✅ richer phase detail UI with graph visualization, audit, metrics, lineage, and selected-phase artifacts
-- [ ] prompt diffing and visible effective prompt inspection/editing from the extension
-- [ ] provider-neutral PR/issues integration beyond the current GitHub-oriented PR publication path
-- [ ] switch Git branch automatically when the active user story changes in UI, MCP, or CLI; fall back to `main` when the user story has no recorded work branch yet
+- Planned: prompt diffing and visible effective prompt inspection/editing from the extension. Canonical issue: [#42](https://github.com/PinedaTec-EU/SpecForge.AI/issues/42)
+- Planned: provider-neutral PR/issues integration beyond the current GitHub-oriented PR publication path. Canonical issue: [#43](https://github.com/PinedaTec-EU/SpecForge.AI/issues/43)
+- Planned: switch Git branch automatically when the active user story changes in UI, MCP, or CLI, with `main` fallback before branch creation. Canonical issues: [#36](https://github.com/PinedaTec-EU/SpecForge.AI/issues/36) and [#37](https://github.com/PinedaTec-EU/SpecForge.AI/issues/37)
 - ✅ phase agent profiles with real repository permissions
-- [ ] customizable workflows and advanced agent strategies
+- Planned: customizable workflows and advanced agent strategies.
 - ✅ show completed user stories through an explicit UI switch
 - ✅ add search over user stories/workflows in the side view
-- [ ] link with ticketing tools (Jira, etc.)
+- Planned: broader ticketing integration such as Jira and related systems.
 
 High-value additions worth considering:
 
-- [ ] Definition-of-Ready dashboard for refinement: show which MVP dimensions are still missing, which questions block progress, and why the selected rigor level is not yet satisfied.
-- [ ] PR evidence pack: generate a compact summary from timeline, artifacts, review verdict, validation evidence, and changed files for PR descriptions or release notes.
-- [ ] Review findings workflow: turn failed review items into tracked remediation tasks with status, owner, and retry history instead of leaving them only in Markdown.
-- [ ] Plugin packaging/release command: one command to compile TypeScript, publish MCP binaries, sync plugin artifacts, validate tests, and prepare a versioned distributable.
-- [ ] Roadmap/changelog automation: derive candidate release notes and roadmap status from `done` commits, then ask for human approval before persisting docs.
+- Definition-of-Ready dashboard for refinement. Canonical issue: [#47](https://github.com/PinedaTec-EU/SpecForge.AI/issues/47)
+- PR evidence pack. Canonical issue: [#46](https://github.com/PinedaTec-EU/SpecForge.AI/issues/46)
+- Review findings workflow. Canonical issue: [#45](https://github.com/PinedaTec-EU/SpecForge.AI/issues/45)
+- Plugin packaging/release command. Canonical issue: [#44](https://github.com/PinedaTec-EU/SpecForge.AI/issues/44)
+- Roadmap/changelog automation remains a planning candidate and does not yet have a canonical issue.
 
 Recently completed subtask:
 
@@ -271,18 +274,18 @@ Recently completed subtasks:
 - ✅ create a consolidated changelog for the recent release range
 - ✅ add completed and blocked visibility toggles in the sidebar and CLI portal story lists
 - ✅ add in-sidebar user story search by title, description, category, and tags
-- [ ] migrate the workflow portal away from fragile iframe/global-state coupling and validate it exhaustively in the integrated browser before calling the surface stable
-- [ ] complete rich prompt inspection/editing from the extension with diff or visible effective prompt
+- Planned: continue portal hardening and exhaustive integrated-browser validation. Canonical issues: [#38](https://github.com/PinedaTec-EU/SpecForge.AI/issues/38), [#39](https://github.com/PinedaTec-EU/SpecForge.AI/issues/39), [#40](https://github.com/PinedaTec-EU/SpecForge.AI/issues/40), and [#41](https://github.com/PinedaTec-EU/SpecForge.AI/issues/41)
+- Planned: complete rich prompt inspection/editing from the extension with diff or visible effective prompt. Canonical issue: [#42](https://github.com/PinedaTec-EU/SpecForge.AI/issues/42)
 - ✅ add shared `createdBy` and `owner` metadata plus local per-user visibility controls so large repositories default to "my active stories" instead of the full backlog
 - ✅ enforce a self-hosting fallback rule so engine defects are tracked outside the SpecForge workflow engine before repair work depends on that same engine
 
 Pending subtasks before the MVP is considered complete:
 
-- [ ] enrich `branch.yaml` lifecycle with real Git/PR metadata
-- [ ] switch to the selected user story branch automatically, with `main` fallback before branch creation
-- [ ] modernize the browser workflow portal with cleaner state ownership, a no-selection contract, safer modal flows, explicit sidebar-shell command dispatch, and mandatory exhaustive integrated-browser validation
-- [ ] add SpecForge Central repository management: catalog, readiness, create/register flow, and target repository selection
-- [ ] broaden PR publication beyond the current GitHub CLI path and add issue-system integration or an export-first bridge where direct integration is still too early
+- Planned: enrich `branch.yaml` lifecycle with real Git/PR metadata.
+- Planned: switch to the selected user story branch automatically, with `main` fallback before branch creation. Canonical issues: [#36](https://github.com/PinedaTec-EU/SpecForge.AI/issues/36) and [#37](https://github.com/PinedaTec-EU/SpecForge.AI/issues/37)
+- Planned: continue browser workflow portal modernization and exhaustive integrated-browser validation. Canonical issues: [#38](https://github.com/PinedaTec-EU/SpecForge.AI/issues/38), [#39](https://github.com/PinedaTec-EU/SpecForge.AI/issues/39), [#40](https://github.com/PinedaTec-EU/SpecForge.AI/issues/40), and [#41](https://github.com/PinedaTec-EU/SpecForge.AI/issues/41)
+- Planned: add SpecForge Central repository management, catalog, readiness, and target repository selection.
+- Planned: broaden PR publication beyond the current GitHub CLI path and add issue-system integration or an export-first bridge where direct integration is still too early. Canonical issue: [#43](https://github.com/PinedaTec-EU/SpecForge.AI/issues/43)
 
 ## SpecForge Central Enterprise Roadmap
 
@@ -290,21 +293,14 @@ SpecForge Central is the enterprise control plane for teams that need governed S
 
 Enterprise roadmap:
 
-- [ ] Managed repository catalog: stable repository id, display name, owner/team, local path or remote URL, default branch, enabled state, grouping, and tags.
-- [ ] Repository readiness checks: `.specs` bootstrap, category catalog, prompt overrides, MCP/plugin availability, runtime version, provider routing, evidence policy, and missing configuration warnings.
-- [ ] Target repository selection: create, import, inspect, and continue user stories from Central while writing artifacts into the selected repository.
-- [ ] Portfolio workflow dashboard: show active, blocked, waiting-user, review-failed, release-pending, PR-preparation, completed, and dropped workflows across repositories.
-- [ ] Central policy distribution: publish approved prompt/rule/evidence-policy/category bundles and let repositories apply, defer, or report drift.
-- [ ] Central policy locks: mark specific policy fields as mandatory so local clients disable custom prompt overrides, model/provider routing changes, relaxed evidence policies, workflow customization, or unauthorized forced approvals.
-- [ ] Local runtime enforcement: MCP, VS Code, and the browser portal must reject or disable actions that violate locked Central policy and record the reason in audit output.
-- [ ] Policy drift detection: show where local repositories diverge from the active Central policy and whether the drift is approved.
-- [ ] Spec-governance work hub: provide Jira-like shared visibility without making epics, sprints, velocity, or story points the primary organizing model.
-- [ ] Decision queues: show waiting-user gates, review failures, release approvals, policy violations, regressions, and evidence gaps across repositories.
-- [ ] Enterprise evidence views: aggregate review evidence packs, release approvals, forced review approvals, regressions, resets, and reopened completed workflows.
-- [ ] Provider-neutral issue and PR integration status: show which repositories are linked to GitHub, GitLab, Azure DevOps, Jira, or export-only bridges.
-- [ ] Role-aware operations: separate platform owner, repository maintainer, reviewer, and contributor actions.
-- [ ] Audit and compliance export: export timeline summaries, approvals, regressions, evidence gaps, and policy drift for external review.
-- [ ] Local/offline compatibility: repositories must remain operable through the local MCP/plugin runtime when Central is unavailable, then report state back later.
+- Planned: managed repository catalog with stable repository identity, ownership, grouping, and branch defaults.
+- Planned: repository readiness checks for `.specs`, prompts, MCP/plugin availability, runtime version, routing, and evidence policy.
+- Planned: target repository selection for create, import, inspect, and continue flows from Central.
+- Planned: portfolio workflow dashboard across repositories and phases.
+- Planned: central policy distribution, locks, drift detection, and local runtime enforcement.
+- Planned: decision queues, evidence views, audit/compliance export, and role-aware operations.
+- Planned: provider-neutral issue and PR integration status across managed repositories.
+- Planned: local/offline compatibility when Central is unavailable.
 
 Persistence artifacts already defined or being defined:
 

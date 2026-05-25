@@ -31,7 +31,7 @@ When the defect affects SpecForge itself:
 
 1. register the bug as a GitHub issue labeled `bug`;
 2. synchronize the local bug mirrors in `doc/bugs-open.md` or `doc/bugs-closed.md`;
-3. register the work in `doc/task-map.md` and this task file;
+3. update the relevant planning documents only when architectural context or roadmap framing changed;
 4. only then implement the repair work inside product code and UI surfaces.
 
 This rule exists so an engine defect cannot erase, delay, or hide the repair backlog for its own failure.

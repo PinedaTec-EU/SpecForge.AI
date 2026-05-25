@@ -1,15 +1,10 @@
 # SpecForge · Portal Modernization Tasks
 
-Last reviewed: 2026-05-22.
+Last reviewed: 2026-05-25.
 
-This file tracks the migration from the current CLI-served workflow portal to a more stable browser product surface with lower coupling and stronger validation.
+This file keeps the portal-modernization context, target architecture, and completed milestones.
 
-## Status Model
-
-- `todo`: not started
-- `doing`: in progress
-- `blocked`: waiting on a decision or prerequisite
-- `done`: implemented and locally validated
+Canonical open work for this block now lives in GitHub Issues, not in this Markdown file.
 
 ## Block Goal
 
@@ -42,7 +37,7 @@ This is why small portal edits have repeatedly broken unrelated flows.
 - Shared interaction contracts between VS Code sidebar and portal are explicit and testable.
 - The portal can render a valid empty or fallback state without HTTP failure or silent UI dead ends.
 
-## Migration Plan
+## Completed Milestones
 
 - [x] `PORTAL-001` Status: `done`
   Write and freeze the portal state ownership contract.
@@ -80,42 +75,36 @@ This is why small portal edits have repeatedly broken unrelated flows.
   Notes: fallback to first visible is acceptable only where explicitly defined by the selection contract.
   Evidence: the portal now renders `No user story selected` from the main route instead of failing, with parent-shell recovery controls available in `tools/render-cli-workflow-html.js`.
 
-- [ ] `PORTAL-007` Status: `todo`
-  Reduce duplicated UI logic between VS Code sidebar and browser portal.
-  Output: shared rendering and shared command semantics are clearer, with less host-specific branching and fewer portal-only patches.
-  Notes: this may still use shared builders, but the ownership boundaries must become cleaner than they are now.
+## Canonical Open Issues
 
-- [ ] `PORTAL-008` Status: `todo`
-  Expand automated portal validation beyond string-presence tests.
-  Output: tests assert behavior categories such as scope changes, selection fallback, modal submit/cancel, persistence, and route normalization.
-  Notes: do not stop at snapshot-like checks that only prove generated HTML contains expected literals.
+- [#38](https://github.com/PinedaTec-EU/SpecForge.AI/issues/38) `SFT-038: Reduce duplicated portal UI logic`
+  Covers reduction of duplicated UI logic and clearer shared command semantics across the browser portal and VS Code host.
 
-- [ ] `PORTAL-009` Status: `doing`
-  Execute an exhaustive in-app browser validation pass for the migrated portal.
-  Output: Codex manually validates the portal through the integrated browser and records explicit pass/fail evidence for all critical flows.
-  Notes: this task is mandatory and cannot be closed by unit tests, renderer assertions, endpoint checks, or shell-only verification.
-  Current evidence:
-  1. `@Browser` validated the no-selection/empty-shell state and verified `Sidebar view options` remains available there.
-  2. `@Browser` validated that `Include other owners` from the parent shell resolves a visible story and updates the portal URL coherently.
-  3. `@Browser` exposed and helped confirm the empty-state regression later tracked as `SFB-011`.
-  Required flows:
-  1. Open the portal at `/`, with a full URL, with a partial URL, and with an invalid `usId`.
-  2. Verify selected-story inference or empty-state behavior matches the contract.
-  3. Verify `view options` toggles for completed, blocked, hidden, and other owners.
-  4. Verify watch/unwatch and hide/show behavior from the story card.
-  5. Verify context menu actions that remain exposed are actually wired.
-  6. Verify `Edit US info` opens, validates, saves, reloads, and persists values.
-  7. Verify `Assign to me` uses the logged Git user and persists the owner transfer.
-  8. Verify timeline evidence exists for owner transfer when ownership changes.
-  9. Verify reload, hard refresh, and direct-link reopen preserve coherent state.
-  10. Verify at least one scenario with another owner and at least one scenario with no owner.
-  11. Verify at least one negative-path validation case and one cancel path.
-  12. Verify no critical action depends on unsupported browser APIs.
+- [#39](https://github.com/PinedaTec-EU/SpecForge.AI/issues/39) `SFT-039: Expand portal behavior validation`
+  Covers stronger automated validation beyond string-presence assertions.
 
-- [ ] `PORTAL-010` Status: `todo`
-  Add a release gate for portal changes.
-  Output: portal-affecting tasks cannot be considered done without explicit browser validation notes and updated automated coverage for the touched behavior class.
-  Notes: this is process hardening, not just code.
+- [#40](https://github.com/PinedaTec-EU/SpecForge.AI/issues/40) `SFT-040: Exhaustive in-app portal validation`
+  Covers the mandatory integrated-browser validation pass for the migrated portal.
+
+- [#41](https://github.com/PinedaTec-EU/SpecForge.AI/issues/41) `SFT-041: Portal release validation gate`
+  Covers the process gate requiring browser proof plus automated coverage updates for portal-affecting changes.
+
+## Required Validation Scope For `SFT-040`
+
+The exhaustive browser pass tracked in [#40](https://github.com/PinedaTec-EU/SpecForge.AI/issues/40) should still prove these flows:
+
+1. Open the portal at `/`, with a full URL, with a partial URL, and with an invalid `usId`.
+2. Verify selected-story inference or empty-state behavior matches the contract.
+3. Verify `view options` toggles for completed, blocked, hidden, and other owners.
+4. Verify watch/unwatch and hide/show behavior from the story card.
+5. Verify context menu actions that remain exposed are actually wired.
+6. Verify `Edit US info` opens, validates, saves, reloads, and persists values.
+7. Verify `Assign to me` uses the logged Git user and persists the owner transfer.
+8. Verify timeline evidence exists for owner transfer when ownership changes.
+9. Verify reload, hard refresh, and direct-link reopen preserve coherent state.
+10. Verify at least one scenario with another owner and at least one scenario with no owner.
+11. Verify at least one negative-path validation case and one cancel path.
+12. Verify no critical action depends on unsupported browser APIs.
 
 ## Sequencing
 

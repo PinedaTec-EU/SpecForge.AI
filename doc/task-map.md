@@ -1,48 +1,36 @@
 # SpecForge · Task Map
 
-Last reviewed: 2026-05-20.
+Last reviewed: 2026-05-25.
 
-This is the central task entrypoint for repository work.
+This file is now a planning index, not the canonical backlog.
 
-Use this file to see:
+Active non-bug backlog tracking lives in GitHub Issues:
 
-- which work blocks exist;
-- where each block is tracked in detail;
-- what is active now;
-- what is already done versus still open.
+- features: `enhancement`
+- technical debt: `tech-debt`
+- bugs: `bug`
 
-## Status Model
+Use this document to understand how the work is grouped and where the planning context lives. Do not treat it as the live execution ledger.
 
-- `todo`: not started
-- `doing`: in progress
-- `blocked`: waiting on a decision or prerequisite
-- `done`: implemented and locally validated
+## Work Blocks
 
-## Working Rule
-
-- Do not open a new orphan task file when an existing block already owns that scope.
-- Add new tasks first to this map, then to the detailed file for the owning block.
-- If a block becomes too large, split it into its own `doc/tasks/<block>.md` file and link it here.
-
-## Task Tree
-
-| Block | Status | Detailed tracking | Scope |
+| Block | Planning context | Canonical GitHub issues | Scope |
 | --- | --- | --- | --- |
-| `HARNESS` | `doing` | [harness-phase-tasks.md](harness-phase-tasks.md), [harness-implementation-plan.md](harness-implementation-plan.md), [harness-engineering-checklist.md](harness-engineering-checklist.md), [semantic-code-graph-design.md](semantic-code-graph-design.md) | Harness governance, effective prompt/context inspection, policy visibility, evidence, metrics, profiles, and semantic code-graph design plus rollout |
-| `MVP` | `doing` | [implementation-plan.md](implementation-plan.md), [roadmap.md](roadmap.md), [tasks/ownership-visibility-and-self-hosting.md](tasks/ownership-visibility-and-self-hosting.md), [tasks/portal-modernization.md](tasks/portal-modernization.md) | Product MVP sequencing, extension/MCP/portal gaps, ownership and visibility scaling, portal modernization, medium-term product delivery |
-| `BRANCH` | `doing` | [tasks/branch-lifecycle.md](tasks/branch-lifecycle.md) | Branch lifecycle, branch activation, Git context switching, PR-oriented branch metadata |
+| `HARNESS` | [harness-implementation-plan.md](harness-implementation-plan.md), [harness-engineering-checklist.md](harness-engineering-checklist.md), [semantic-code-graph-design.md](semantic-code-graph-design.md) | [#42](https://github.com/PinedaTec-EU/SpecForge.AI/issues/42), [#48](https://github.com/PinedaTec-EU/SpecForge.AI/issues/48), [#49](https://github.com/PinedaTec-EU/SpecForge.AI/issues/49), [#50](https://github.com/PinedaTec-EU/SpecForge.AI/issues/50) | Harness governance, prompt/context inspection, evidence, metrics, policy visibility, and semantic graph rollout |
+| `MVP` | [implementation-plan.md](implementation-plan.md), [roadmap.md](roadmap.md), [tasks/portal-modernization.md](tasks/portal-modernization.md), [tasks/ownership-visibility-and-self-hosting.md](tasks/ownership-visibility-and-self-hosting.md) | [#38](https://github.com/PinedaTec-EU/SpecForge.AI/issues/38), [#39](https://github.com/PinedaTec-EU/SpecForge.AI/issues/39), [#40](https://github.com/PinedaTec-EU/SpecForge.AI/issues/40), [#41](https://github.com/PinedaTec-EU/SpecForge.AI/issues/41), [#42](https://github.com/PinedaTec-EU/SpecForge.AI/issues/42), [#43](https://github.com/PinedaTec-EU/SpecForge.AI/issues/43), [#44](https://github.com/PinedaTec-EU/SpecForge.AI/issues/44), [#45](https://github.com/PinedaTec-EU/SpecForge.AI/issues/45), [#46](https://github.com/PinedaTec-EU/SpecForge.AI/issues/46), [#47](https://github.com/PinedaTec-EU/SpecForge.AI/issues/47) | Product MVP sequencing, extension/MCP/portal gaps, review/export surfaces, and integration packaging |
+| `BRANCH` | [tasks/branch-lifecycle.md](tasks/branch-lifecycle.md) | [#36](https://github.com/PinedaTec-EU/SpecForge.AI/issues/36), [#37](https://github.com/PinedaTec-EU/SpecForge.AI/issues/37) | Branch lifecycle, branch activation, Git context switching, and operator visibility |
 
 ## Current Focus
 
-- `HARNESS`: finish semantic code-graph design first, then implement lifecycle, flags, MCP/CLI creation, and graph-guided context orchestration on top of explicit decisions.
-- `BRANCH`: add automatic Git branch switching when the active user story changes.
-- `MVP`: keep branch lifecycle, portal modernization, ownership/visibility scaling, and prompt inspection visible as the main near-term product gaps.
+- `HARNESS`: keep effective prompt/context inspection, structured evidence, metrics, and policy visibility aligned with the harness rollout.
+- `BRANCH`: finish automatic branch switching and consolidate the safe activation path before adding more branch-aware behaviors.
+- `MVP`: keep portal hardening, prompt inspection, integration, packaging, and review/export improvements visible as the main near-term product gaps.
 
 ## Intake Rule For New Work
 
 When a new task appears:
 
 1. decide which block owns it;
-2. add or update the block status here;
-3. record the concrete task in the linked detailed file;
-4. only create a new detailed file if the task does not fit any existing block.
+2. create or update the canonical GitHub issue first;
+3. update the relevant planning document only when architectural context or roadmap framing changed;
+4. only add a new planning document when the work needs durable context that GitHub issue text alone should not carry.

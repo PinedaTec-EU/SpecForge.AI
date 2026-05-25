@@ -1,10 +1,12 @@
 # SpecForge · Harness Implementation Plan
 
-Last reviewed: 2026-05-21.
+Last reviewed: 2026-05-25.
 
 This document tracks the implementation plan derived from the harness-engineering baseline in [harness-engineering-checklist.md](harness-engineering-checklist.md).
 
 Execution tasks live in [harness-phase-tasks.md](harness-phase-tasks.md).
+
+Active non-bug backlog tracking now lives in GitHub Issues. This document keeps the harness rollout framing, rationale, and design context; it is not the canonical execution ledger.
 
 Its purpose is operational:
 
@@ -21,16 +23,13 @@ Its purpose is operational:
 - Treat each wave as decision-gated: finish scope review before opening the next one.
 - Treat the semantic code-graph as a first-class harness accelerator, not as an optional side note, because it directly affects token cost, context selection quality, and auditability for `technical-design`, `implementation`, and `review`.
 
-## Progress Summary
+## Canonical Near-Term Issues
 
-- [ ] Wave 1: Effective prompt and context inspection
-- [ ] Wave 2: Structured execution evidence
-- [ ] Wave 3: Basic phase metrics and operator visibility
-- [ ] Wave 4: Policy visibility and explainability
-- [ ] Wave 5: Eval packs and reusable gate outputs
-- [ ] Wave 6: Execution envelopes and stronger permission enforcement
-- [ ] Wave 7: Reusable harness profiles
-- [ ] Wave 8: SpecForge Central harness governance
+- Wave 1: [#42](https://github.com/PinedaTec-EU/SpecForge.AI/issues/42) `SFF-042: Effective prompt and context inspection`
+- Wave 2: [#48](https://github.com/PinedaTec-EU/SpecForge.AI/issues/48) `SFT-048: Structured execution evidence substrate`
+- Wave 3: [#49](https://github.com/PinedaTec-EU/SpecForge.AI/issues/49) `SFF-049: Phase metrics and operator visibility`
+- Wave 4: [#50](https://github.com/PinedaTec-EU/SpecForge.AI/issues/50) `SFF-050: Policy visibility and explainability`
+- Waves 5-8 remain planning context here and have not been promoted to canonical GitHub issues yet.
 
 ## Wave Plan
 
@@ -126,10 +125,12 @@ Primary outcomes:
 
 Open tracking:
 
-- [ ] Define the minimum effective-prompt data shape
-- [ ] Define the minimum effective-context data shape
-- [ ] Decide where this is surfaced first: portal, VS Code, MCP, or multiple
-- [ ] Implement the first operator-facing view
+- Canonical issue: [#42](https://github.com/PinedaTec-EU/SpecForge.AI/issues/42)
+- Planning questions:
+  - define the minimum effective-prompt data shape
+  - define the minimum effective-context data shape
+  - decide where this is surfaced first: portal, VS Code, MCP, or multiple
+  - implement the first operator-facing view
 
 Current validation against the codebase:
 
@@ -263,10 +264,12 @@ Primary outcomes:
 
 Open tracking:
 
-- [ ] Define the execution evidence record contract
-- [ ] Decide storage model relative to `timeline.md`, `runtime.yaml`, and phase artifacts
-- [ ] Define minimum MCP and UI exposure
-- [ ] Implement first evidence capture path
+- Canonical issue: [#48](https://github.com/PinedaTec-EU/SpecForge.AI/issues/48)
+- Planning questions:
+  - define the execution evidence record contract
+  - decide storage model relative to `timeline.md`, `runtime.yaml`, and phase artifacts
+  - define minimum MCP and UI exposure
+  - implement the first evidence capture path
 
 ### Wave 3 · Basic Phase Metrics And Operator Visibility
 
@@ -290,10 +293,12 @@ Primary outcomes:
 
 Open tracking:
 
-- [ ] Lock the first metric set
-- [ ] Define derivation rules from persisted state and timeline
-- [ ] Decide which metrics are phase-local vs workflow-wide
-- [ ] Implement first surface rendering
+- Canonical issue: [#49](https://github.com/PinedaTec-EU/SpecForge.AI/issues/49)
+- Planning questions:
+  - lock the first metric set
+  - define derivation rules from persisted state and timeline
+  - decide which metrics are phase-local vs workflow-wide
+  - implement the first surface rendering
 
 ### Wave 4 · Policy Visibility And Explainability
 
@@ -317,10 +322,12 @@ Primary outcomes:
 
 Open tracking:
 
-- [ ] Define the minimum effective-policy view
-- [ ] List the first policy dimensions to surface
-- [ ] Align blocking reasons with policy explanations
-- [ ] Implement the first operator-facing policy summary
+- Canonical issue: [#50](https://github.com/PinedaTec-EU/SpecForge.AI/issues/50)
+- Planning questions:
+  - define the minimum effective-policy view
+  - list the first policy dimensions to surface
+  - align blocking reasons with policy explanations
+  - implement the first operator-facing policy summary
 
 ### Wave 5 · Eval Packs And Reusable Gate Outputs
 

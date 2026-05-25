@@ -1,23 +1,16 @@
 # SpecForge · Branch Lifecycle Tasks
 
-Last reviewed: 2026-05-19.
+Last reviewed: 2026-05-25.
 
-This file tracks branch lifecycle work as one coherent block.
+This file keeps the branch-lifecycle planning context and historical milestones.
 
-Use it for branch creation, branch activation, branch metadata, PR linkage, and user-story-driven Git context switching.
-
-## Status Model
-
-- `todo`: not started
-- `doing`: in progress
-- `blocked`: waiting on a decision or prerequisite
-- `done`: implemented and locally validated
+Canonical open work for this block now lives in GitHub Issues, not in this Markdown file.
 
 ## Block Goal
 
 SpecForge should keep the repository branch aligned with the active user story context instead of leaving branch state as a manual side effect.
 
-## Tasks
+## Completed Milestones
 
 - [x] `BR-001` Status: `done`
   Create and persist the work branch when `spec` approval establishes the branch contract.
@@ -27,23 +20,13 @@ SpecForge should keep the repository branch aligned with the active user story c
   Protect phase execution by activating the recorded work branch before workflow continuation.
   Output: workflow execution switches to the recorded work branch and stashes out-of-scope workspace changes when needed.
 
-- [ ] `BR-003` Status: `todo`
-  Activate the Git branch when the active user story changes from the UI.
-  Output: opening or selecting a user story in the VS Code workflow surfaces switches to that user story work branch.
-  Notes: if the user story does not yet have a recorded work branch, switch to `main`.
+## Canonical Open Issues
 
-- [ ] `BR-004` Status: `todo`
-  Activate the Git branch when the active user story changes through MCP or the CLI workflow portal.
-  Output: user-story-targeted MCP/CLI context changes switch to the recorded work branch.
-  Notes: if the user story does not yet have a recorded work branch, switch to `main`.
+- [#36](https://github.com/PinedaTec-EU/SpecForge.AI/issues/36) `SFF-036: Automatic user-story branch activation`
+  Covers branch activation when the active user story changes from VS Code, MCP, or the CLI workflow portal, with `main` fallback when no work branch exists yet.
 
-- [ ] `BR-005` Status: `todo`
-  Consolidate branch switching into one reusable safe activation path.
-  Output: shared branch activation logic supports both work-branch activation and fallback activation to `main`, with the same stash and safety behavior.
-
-- [ ] `BR-006` Status: `todo`
-  Extend branch lifecycle tracking with clearer operator visibility.
-  Output: logs or workflow-visible signals explain when SpecForge switched branch automatically and why.
+- [#37](https://github.com/PinedaTec-EU/SpecForge.AI/issues/37) `SFT-037: Shared branch activation path and visibility`
+  Covers consolidation of the safe activation path plus clearer operator visibility when SpecForge switches branch automatically.
 
 ## Links
 
