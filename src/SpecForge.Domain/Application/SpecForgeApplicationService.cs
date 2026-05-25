@@ -72,6 +72,7 @@ public sealed class SpecForgeApplicationService
         CancellationToken cancellationToken = default)
     {
         repositoryCategoryCatalog.EnsureCategoryIsAllowed(workspaceRoot, category);
+        var effectiveActor = WorkspaceActorResolver.ResolveForWorkspace(workspaceRoot);
         var normalizedTags = WorkflowRunner.NormalizeUserStoryTags(tags);
         var rootDirectory = await workflowRunner.CreateUserStoryAsync(
             workspaceRoot,
@@ -80,7 +81,7 @@ public sealed class SpecForgeApplicationService
             kind,
             category,
             sourceText,
-            actor,
+            effectiveActor,
             normalizedTags,
             captureSourceKind: "direct-text",
             captureSourceReference: null,
@@ -104,7 +105,7 @@ public sealed class SpecForgeApplicationService
             stories,
             goalId,
             strategy,
-            actor,
+            WorkspaceActorResolver.ResolveForWorkspace(workspaceRoot),
             cancellationToken);
 
     public async Task<CreateOrImportUserStoryResult> ImportUserStoryAsync(
@@ -120,6 +121,7 @@ public sealed class SpecForgeApplicationService
     {
         var sourceText = await File.ReadAllTextAsync(sourcePath, cancellationToken);
         repositoryCategoryCatalog.EnsureCategoryIsAllowed(workspaceRoot, category);
+        var effectiveActor = WorkspaceActorResolver.ResolveForWorkspace(workspaceRoot);
         var normalizedTags = WorkflowRunner.NormalizeUserStoryTags(tags);
         var rootDirectory = await workflowRunner.CreateUserStoryAsync(
             workspaceRoot,
@@ -128,7 +130,7 @@ public sealed class SpecForgeApplicationService
             kind,
             category,
             sourceText,
-            actor,
+            effectiveActor,
             normalizedTags,
             captureSourceKind: "imported-markdown",
             captureSourceReference: Path.GetFullPath(sourcePath).Replace('\\', '/'),

@@ -68,6 +68,7 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     [Fact]
     public async Task CreateUserStoryAsync_PersistsCustomTagsInSummaryAndWorkflow()
     {
+        await InitializeGitWorkspaceAsync(workspaceRoot);
         var applicationService = new SpecForgeApplicationService();
 
         await applicationService.CreateUserStoryAsync(
@@ -85,14 +86,66 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
 
         Assert.Equal(["mcp", "ux"], summary.Tags);
         Assert.Equal(["mcp", "ux"], workflow.Tags);
-        Assert.Equal("user", summary.CreatedBy);
-        Assert.Equal("user", summary.Owner);
+        Assert.Equal("specforge-tests", summary.CreatedBy);
+        Assert.Equal("specforge-tests", summary.Owner);
         Assert.Contains("- Tags: `mcp`, `ux`", usMarkdown);
+    }
+
+    [Theory]
+    [InlineData("user")]
+    [InlineData("cli-user")]
+    [InlineData("model-on-behalf-of-user")]
+    [InlineData("alice")]
+    public async Task CreateUserStoryAsync_AlwaysUsesWorkspaceGitUserForPersistedActor(string actor)
+    {
+        await InitializeGitWorkspaceAsync(workspaceRoot);
+        var applicationService = new SpecForgeApplicationService();
+
+        await applicationService.CreateUserStoryAsync(
+            workspaceRoot,
+            "US-0001",
+            "Story one",
+            "feature",
+            "workflow",
+            "Initial source",
+            actor: actor);
+
+        var summary = await applicationService.GetUserStorySummaryAsync(workspaceRoot, "US-0001");
+
+        Assert.Equal("specforge-tests", summary.CreatedBy);
+        Assert.Equal("specforge-tests", summary.Owner);
+    }
+
+    [Theory]
+    [InlineData("user")]
+    [InlineData("cli-user")]
+    [InlineData("alice")]
+    public async Task ImportUserStoryAsync_AlwaysUsesWorkspaceGitUserForPersistedActor(string actor)
+    {
+        await InitializeGitWorkspaceAsync(workspaceRoot);
+        var sourcePath = Path.Combine(workspaceRoot, "import.md");
+        await File.WriteAllTextAsync(sourcePath, "# Imported story");
+        var applicationService = new SpecForgeApplicationService();
+
+        await applicationService.ImportUserStoryAsync(
+            workspaceRoot,
+            "US-0001",
+            sourcePath,
+            "Imported story",
+            "feature",
+            "workflow",
+            actor: actor);
+
+        var summary = await applicationService.GetUserStorySummaryAsync(workspaceRoot, "US-0001");
+
+        Assert.Equal("specforge-tests", summary.CreatedBy);
+        Assert.Equal("specforge-tests", summary.Owner);
     }
 
     [Fact]
     public async Task UpdateUserStoryInfoAsync_RewritesMetadataAndPreservesBody()
     {
+        await InitializeGitWorkspaceAsync(workspaceRoot);
         var applicationService = new SpecForgeApplicationService();
         await applicationService.CreateUserStoryAsync(
             workspaceRoot,
@@ -118,21 +171,21 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
 
         Assert.Equal("US-0001", result.UsId);
         Assert.Equal("Updated story", result.Summary.Title.Replace("US-0001 · ", string.Empty, StringComparison.Ordinal));
-        Assert.Equal("user", result.Summary.CreatedBy);
+        Assert.Equal("specforge-tests", result.Summary.CreatedBy);
         Assert.Equal("alice", result.Summary.Owner);
         Assert.Equal("configuration", result.Summary.Category);
         Assert.Equal(["configuration", "sf-central"], result.Summary.Tags);
         Assert.Contains("# US-0001 · Updated story", usMarkdown);
         Assert.Contains("- Kind: `bug`", usMarkdown);
-        Assert.Contains("- Created By: `user`", usMarkdown);
+        Assert.Contains("- Created By: `specforge-tests`", usMarkdown);
         Assert.Contains("- Owner: `alice`", usMarkdown);
         Assert.Contains("- Category: `configuration`", usMarkdown);
         Assert.Contains("- Tags: `configuration`, `sf-central`", usMarkdown);
         Assert.Contains("Initial source", usMarkdown);
         Assert.Contains("`owner_changed`", timeline);
         Assert.Contains("- Actor: `bob`", timeline);
-        Assert.Contains("Ownership changed from `user` to `alice`.", timeline);
-        Assert.Contains("- Previous owner: `user`", timeline);
+        Assert.Contains("Ownership changed from `specforge-tests` to `alice`.", timeline);
+        Assert.Contains("- Previous owner: `specforge-tests`", timeline);
         Assert.Contains("- New owner: `alice`", timeline);
     }
 
@@ -1595,6 +1648,7 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     [Fact]
     public async Task GetUserStoryWorkflowAsync_ExposesCaptureExecutionRecord()
     {
+        await InitializeGitWorkspaceAsync(workspaceRoot);
         var applicationService = new SpecForgeApplicationService();
 
         await applicationService.CreateUserStoryAsync(
@@ -1610,7 +1664,7 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
         var capturePhase = Assert.Single(workflow.Phases, phase => phase.PhaseId == "capture");
 
         Assert.NotNull(capturePhase.CaptureRecord);
-        Assert.Equal("alice", capturePhase.CaptureRecord!.Actor);
+        Assert.Equal("specforge-tests", capturePhase.CaptureRecord!.Actor);
         Assert.Equal("direct-text", capturePhase.CaptureRecord.SourceKind);
         Assert.Null(capturePhase.CaptureRecord.SourceReference);
         Assert.Contains(capturePhase.CaptureRecord.MaterializedArtifacts, path => path.EndsWith("/us.md", StringComparison.Ordinal));
