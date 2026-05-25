@@ -344,7 +344,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
     const backendClient = getOrCreateBackendClient(workspaceRoot);
     const summaries = await backendClient.listUserStories();
     const usId = nextUserStoryIdFromSummaries(summaries);
-    const result = await backendClient.createUserStory(usId, title, kind, category, sourceText, getCurrentActor(), tags);
+    const result = await backendClient.createUserStory(usId, title, kind, category, sourceText, getCurrentActor(workspaceRoot), tags);
     await this.materializeCreateFilesAsync(result.rootDirectory);
     this.showCreateForm = false;
     this.createFiles = [];
@@ -453,7 +453,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
         owner: owner.trim(),
         category: category.label,
         tags: parseCustomTags(tags),
-        actor: getCurrentActor()
+        actor: getCurrentActor(workspaceRoot)
       });
       await this.onDidCreateUserStory();
       void vscode.window.showInformationMessage(`${usId} info updated.`);
@@ -489,7 +489,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
       closeWorkflowView(workspaceRoot, usId);
       await fs.promises.writeFile(
         path.join(targetPath, ".dropped"),
-        `Dropped at ${new Date().toISOString()} by ${getCurrentActor()}.\n`,
+        `Dropped at ${new Date().toISOString()} by ${getCurrentActor(workspaceRoot)}.\n`,
         "utf8"
       );
       const preferences = await readUserWorkspacePreferences(workspaceRoot);
@@ -614,7 +614,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
     }
 
     await this.runBusyActionAsync("Repairing user story lineage...", async () => {
-      const repair = await getOrCreateBackendClient(workspaceRoot).repairUserStoryLineage(usId, getCurrentActor());
+      const repair = await getOrCreateBackendClient(workspaceRoot).repairUserStoryLineage(usId, getCurrentActor(workspaceRoot));
       appendSpecForgeLog(
         `Lineage repair for '${usId}': status=${repair.status}, currentPhase=${repair.currentPhase}, archived=${repair.archivedPaths.length}, archive='${repair.archiveDirectoryPath}'.`
       );
@@ -666,7 +666,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
     const hidden = new Set(preferences.hiddenUserStoryIds);
     const normalizedUsId = usId.trim().toUpperCase();
     const normalizedOwner = (owner ?? "").trim().toLowerCase();
-    const normalizedActor = getCurrentActor().trim().toLowerCase();
+    const normalizedActor = getCurrentActor(workspaceRoot).trim().toLowerCase();
     const isOwnedByCurrentActor = normalizedOwner.length > 0 && normalizedOwner === normalizedActor;
     const isHidden = hidden.has(normalizedUsId);
     const isWatched = watching.has(normalizedUsId);
@@ -921,7 +921,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
       appendSpecForgeLog(`Sidebar prompt override warning for '${workspaceRoot}': ${promptsStatus.message ?? "prompt overrides not materialized"}. Checked: ${promptsStatus.checkedPaths.join(", ")}`);
     }
     const preferences = await readUserWorkspacePreferences(workspaceRoot);
-    const currentActor = getCurrentActor();
+    const currentActor = getCurrentActor(workspaceRoot);
     const filteredUserStories = filterSidebarUserStories(
       allVisibleUserStories,
       preferences,

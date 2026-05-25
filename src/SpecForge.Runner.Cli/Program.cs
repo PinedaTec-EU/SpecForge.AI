@@ -2,6 +2,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Diagnostics;
 using SpecForge.Domain.Application;
 using SpecForge.Domain.Persistence;
@@ -88,7 +89,7 @@ static async Task HandleCreateUserStoryAsync(SpecForgeApplicationService applica
     var kind = args[4];
     var category = args[5];
     var sourceText = args[6];
-    var result = await applicationService.CreateUserStoryAsync(workspaceRoot, usId, title, kind, category, sourceText, "cli-user");
+    var result = await applicationService.CreateUserStoryAsync(workspaceRoot, usId, title, kind, category, sourceText, ResolveCurrentGitOwner(workspaceRoot));
 
     WriteJson(new
     {
@@ -108,7 +109,7 @@ static async Task HandleImportUserStoryAsync(SpecForgeApplicationService applica
     var title = args[4];
     var kind = args[5];
     var category = args[6];
-    var result = await applicationService.ImportUserStoryAsync(workspaceRoot, usId, sourcePath, title, kind, category, "cli-user");
+    var result = await applicationService.ImportUserStoryAsync(workspaceRoot, usId, sourcePath, title, kind, category, ResolveCurrentGitOwner(workspaceRoot));
 
     WriteJson(new
     {
@@ -124,7 +125,7 @@ static async Task HandleContinuePhaseAsync(SpecForgeApplicationService applicati
 
     var workspaceRoot = args[1];
     var usId = args[2];
-    var result = await applicationService.GenerateNextPhaseAsync(workspaceRoot, usId, "cli-user");
+    var result = await applicationService.GenerateNextPhaseAsync(workspaceRoot, usId, ResolveCurrentGitOwner(workspaceRoot));
 
     WriteJson(new
     {
@@ -171,7 +172,7 @@ static async Task HandleApprovePhaseAsync(
         usId,
         normalizedBaseBranch,
         normalizedWorkBranch,
-        "cli-user");
+        ResolveCurrentGitOwner(workspaceRoot));
     WriteJson(result);
 }
 
@@ -424,16 +425,16 @@ static async Task HandleWorkflowPortalRequestAsync(
                 await WriteHtmlResponseAsync(context.Response, BuildConfigurationPortalHtml());
                 return;
             case ("GET", "/api/settings"):
-                await WriteJsonResponseAsync(context.Response, SpecForgePortalSettingsStore.LoadOrDefault(workspaceRoot));
+                await WriteJsonResponseAsync(context.Response, BuildConfigurationSettingsResponse(workspaceRoot));
                 return;
             case ("PUT", "/api/settings"):
             {
                 var settings = await ReadJsonRequestWithParserAsync(
                     context.Request,
-                    static payload => SpecForgePortalSettingsStore.Deserialize(payload),
+                    payload => SpecForgePortalSettingsStore.Deserialize(payload, workspaceRoot),
                     "Settings payload could not be parsed.");
                 SpecForgePortalSettingsStore.Save(workspaceRoot, settings);
-                await WriteJsonResponseAsync(context.Response, settings);
+                await WriteJsonResponseAsync(context.Response, BuildConfigurationSettingsResponse(workspaceRoot, settings));
                 return;
             }
             case ("GET", "/api/summary"):
@@ -480,7 +481,7 @@ static async Task HandleWorkflowPortalRequestAsync(
                     await applicationService.GenerateNextPhaseAsync(
                         workspaceRoot,
                         RequireSelectedWorkflowPortalUserStoryId(requestUsId),
-                        "cli-user"));
+                        ResolveCurrentGitOwner(workspaceRoot)));
                 return;
             case ("POST", "/api/approval-answer"):
             {
@@ -494,7 +495,7 @@ static async Task HandleWorkflowPortalRequestAsync(
                         RequireSelectedWorkflowPortalUserStoryId(requestUsId),
                         request.Question,
                         request.Answer,
-                        request.Actor ?? "cli-user"));
+                        request.Actor ?? ResolveCurrentGitOwner(workspaceRoot)));
                 return;
             }
             case ("POST", "/api/refinement-answers"):
@@ -508,7 +509,7 @@ static async Task HandleWorkflowPortalRequestAsync(
                         workspaceRoot,
                         RequireSelectedWorkflowPortalUserStoryId(requestUsId),
                         request.Answers,
-                        request.Actor ?? "cli-user"));
+                        request.Actor ?? ResolveCurrentGitOwner(workspaceRoot)));
                 return;
             }
             case ("POST", "/api/attach-files"):
@@ -568,7 +569,7 @@ static async Task HandleWorkflowPortalRequestAsync(
                         RequireSelectedWorkflowPortalUserStoryId(requestUsId),
                         request.BaseBranch,
                         request.WorkBranch,
-                        request.Actor ?? "cli-user"));
+                        request.Actor ?? ResolveCurrentGitOwner(workspaceRoot)));
                 return;
             }
             case ("POST", "/api/decomposition-approval"):
@@ -582,11 +583,11 @@ static async Task HandleWorkflowPortalRequestAsync(
                         ? await applicationService.ApproveDecompositionAsync(
                             workspaceRoot,
                             RequireSelectedWorkflowPortalUserStoryId(requestUsId),
-                            request.Actor ?? "cli-user")
+                            request.Actor ?? ResolveCurrentGitOwner(workspaceRoot))
                         : await applicationService.RejectDecompositionAsync(
                             workspaceRoot,
                             RequireSelectedWorkflowPortalUserStoryId(requestUsId),
-                            request.Actor ?? "cli-user"));
+                            request.Actor ?? ResolveCurrentGitOwner(workspaceRoot)));
                 return;
             }
             case ("POST", "/api/suggest-approval-answer"):
@@ -600,7 +601,7 @@ static async Task HandleWorkflowPortalRequestAsync(
                         workspaceRoot,
                         RequireSelectedWorkflowPortalUserStoryId(requestUsId),
                         request.Question,
-                        request.Actor ?? "user"));
+                        request.Actor ?? ResolveCurrentGitOwner(workspaceRoot)));
                 return;
             }
             default:
@@ -1067,7 +1068,7 @@ static async Task HandleRepairUserStoryLineageAsync(
 
     await WriteJsonResponseAsync(
         context.Response,
-        await applicationService.RepairUserStoryLineageAsync(workspaceRoot, request.UsId, request.Actor ?? "cli-user"));
+        await applicationService.RepairUserStoryLineageAsync(workspaceRoot, request.UsId, request.Actor ?? ResolveCurrentGitOwner(workspaceRoot)));
 }
 
 static async Task<object> AttachWorkflowFilesAsync(
@@ -1131,7 +1132,7 @@ static async Task HandleCreateUserStoryRequestAsync(
         request.Kind.Trim(),
         request.Category.Trim(),
         request.SourceText.Trim(),
-        request.Actor ?? "cli-user",
+        request.Actor ?? ResolveCurrentGitOwner(workspaceRoot),
         request.Tags ?? []);
 
     await MaterializeCreateUserStoryFilesAsync(result.RootDirectory, request.Files);
@@ -1465,6 +1466,30 @@ static string BuildWorkflowPortalRenderCacheSignature(
 
 static string ResolveCurrentGitOwner(string workspaceRoot) =>
     WorkspaceActorResolver.ResolveForWorkspace(workspaceRoot);
+
+static JsonNode BuildConfigurationSettingsResponse(string workspaceRoot, SpecForgePortalSettings? settings = null)
+{
+    settings ??= SpecForgePortalSettingsStore.LoadOrDefault(workspaceRoot);
+    var detectedGitUser = WorkspaceActorResolver.TryDetectGitUser(workspaceRoot);
+    var configuredUser = WorkspaceActorResolver.NormalizeConfiguredUser(settings.DefaultUser);
+    var identityError = string.IsNullOrWhiteSpace(configuredUser)
+        ? "SpecForge could not determine a workspace user automatically. Configure 'User by default' before using local user-dependent flows."
+        : null;
+    var gitUserMismatch = !string.IsNullOrWhiteSpace(configuredUser)
+        && !string.IsNullOrWhiteSpace(detectedGitUser)
+        && !string.Equals(configuredUser, detectedGitUser, StringComparison.OrdinalIgnoreCase);
+
+    var node = JsonSerializer.SerializeToNode(settings, SpecForgePortalSettingsStore.JsonOptions)?.AsObject()
+        ?? new JsonObject();
+    node["detectedGitUser"] = detectedGitUser;
+    node["identityConfigured"] = !string.IsNullOrWhiteSpace(configuredUser);
+    node["identityError"] = identityError;
+    node["gitUserMismatch"] = gitUserMismatch;
+    node["gitUserMismatchWarning"] = gitUserMismatch
+        ? $"Configured user '{configuredUser}' differs from detected git user '{detectedGitUser}'. Owner filtering and local workflow actions will use the configured user."
+        : null;
+    return node;
+}
 
 static async Task<string> RenderWorkflowHtmlWithNodeAsync(string payload)
 {
@@ -1821,6 +1846,10 @@ static string BuildConfigurationPortalHtml() =>
         .toggle input:checked + .toggle__switch::after { transform: translateX(20px); }
         .toggle input:focus-visible + .toggle__switch { outline: 2px solid #f6d365; outline-offset: 3px; }
         .status { min-height: 24px; margin-top: 14px; color: #f6d365; }
+        .notice-stack { display: grid; gap: 10px; margin-bottom: 16px; }
+        .notice { border-radius: 8px; padding: 12px 14px; border: 1px solid #43586f; background: #122131; color: #d7e5f2; line-height: 1.45; }
+        .notice--error { border-color: #8f2f38; background: #34171c; color: #ffd8dc; }
+        .notice--warning { border-color: #8f7230; background: #2e2514; color: #ffe7ad; }
         @media (max-width: 760px) { main { padding: 18px; } .grid, .toggles { grid-template-columns: 1fr; } }
       </style>
     </head>
@@ -1856,6 +1885,15 @@ static string BuildConfigurationPortalHtml() =>
             </section>
           </div>
           <div class="tab-panel" id="advanced" role="tabpanel" hidden>
+            <section class="panel">
+              <h2>Workspace Identity</h2>
+              <p class="section-copy">This configured user is the local identity source for owner filtering and local workflow actions. SpecForge bootstraps it from git when possible, but it remains a workspace setting once saved.</p>
+              <div id="identity-notices" class="notice-stack"></div>
+              <div class="grid">
+                <label><span class="field-label">User by default</span><span class="field-control"><input id="defaultUser"><button class="help-button" type="button" aria-label="User by default details" aria-expanded="false" data-help="Workspace-level user identity used by local flows such as owner filtering and local workflow actions. If git user detection is unavailable, set this field manually.">?</button></span></label>
+                <label><span class="field-label">Detected git user</span><span class="field-control"><input id="detectedGitUser" disabled><button class="help-button" type="button" aria-label="Detected git user details" aria-expanded="false" data-help="Best-effort git identity detected from the workspace. This value is informational and is used only to bootstrap or warn about mismatches.">?</button></span></label>
+              </div>
+            </section>
             <section class="panel">
               <h2>Workflow Behavior</h2>
               <div class="grid">
@@ -1923,6 +1961,7 @@ static string BuildConfigurationPortalHtml() =>
           "model.model": "Concrete model identifier for endpoint-based profiles. Native CLI providers can leave this empty to use their local default.",
           "model.reasoningEffort": "Optional reasoning effort override sent to providers that support it.",
           "model.repositoryAccess": "Repository access granted by this model profile when agents are derived directly from models.",
+          "defaultUser": "Workspace-level user identity used by local user-dependent flows. This value becomes the local source of truth once configured.",
           "agent.name": "Stable agent name used by phase routing and auto-refinement settings.",
           "agent.role": "Operational role injected into prompts, such as planner, implementer, reviewer, or release-preparer.",
           "agent.modelProfile": "Model profile this agent runs on.",
@@ -2043,7 +2082,7 @@ static string BuildConfigurationPortalHtml() =>
         }
 
         function renderBehavior() {
-          for (const id of ["refinementTolerance", "mvpRigor", "reviewTolerance", "reviewEvidencePolicy", "autoRefinementAnswersProfile", "reviewLearningSkillPath", "maxRefinementCycles", "maxImplementationReviewCycles", "decompositionThreshold", "decompositionTolerance", "decompositionMaxChildren"]) {
+          for (const id of ["defaultUser", "refinementTolerance", "mvpRigor", "reviewTolerance", "reviewEvidencePolicy", "autoRefinementAnswersProfile", "reviewLearningSkillPath", "maxRefinementCycles", "maxImplementationReviewCycles", "decompositionThreshold", "decompositionTolerance", "decompositionMaxChildren"]) {
             const element = document.getElementById(id);
             if (!element) continue;
             if (id === "autoRefinementAnswersProfile") {
@@ -2051,8 +2090,13 @@ static string BuildConfigurationPortalHtml() =>
             }
             element.value = state[id] ?? "";
           }
+          const detectedGitUser = document.getElementById("detectedGitUser");
+          if (detectedGitUser instanceof HTMLInputElement) {
+            detectedGitUser.value = state.detectedGitUser || "";
+          }
           document.getElementById("toggles").innerHTML = toggleFields.map(([field, label]) =>
             `<label class="toggle"><span class="toggle__label">${escapeText(label)}</span><span class="toggle__control"><input type="checkbox" data-toggle="${field}" ${state[field] ? "checked" : ""}><span class="toggle__switch" aria-hidden="true"></span>${helpButton(field, label)}</span></label>`).join("");
+          renderIdentityNotices();
         }
 
         function input(kind, index, field, label, value, type = "text") {
@@ -2086,7 +2130,7 @@ static string BuildConfigurationPortalHtml() =>
             if (kind === "agent" && state.agentProfiles[index]) state.agentProfiles[index][field] = element.value;
             if (kind === "assignment") state.phaseAgentAssignments[field] = element.value || null;
           });
-          for (const id of ["refinementTolerance", "mvpRigor", "reviewTolerance", "reviewEvidencePolicy", "autoRefinementAnswersProfile", "reviewLearningSkillPath"]) {
+          for (const id of ["defaultUser", "refinementTolerance", "mvpRigor", "reviewTolerance", "reviewEvidencePolicy", "autoRefinementAnswersProfile", "reviewLearningSkillPath"]) {
             const element = document.getElementById(id);
             if (element) state[id] = element.value || null;
           }
@@ -2164,7 +2208,37 @@ static string BuildConfigurationPortalHtml() =>
           sync();
           normalizeConfigurationReferences();
           const isDirty = serializeState(state) !== persistedStateSnapshot;
-          saveButton.disabled = savingConfiguration || !isDirty;
+          saveButton.disabled = savingConfiguration || !isDirty || !isIdentityConfigurationValid();
+          renderIdentityNotices();
+        }
+
+        function isIdentityConfigurationValid() {
+          return Boolean(String(state?.defaultUser || "").trim());
+        }
+
+        function renderIdentityNotices() {
+          const container = document.getElementById("identity-notices");
+          if (!(container instanceof HTMLElement) || !state) {
+            return;
+          }
+
+          const notices = [];
+          const configuredUser = String(state.defaultUser || "").trim();
+          const persistedUser = String(JSON.parse(persistedStateSnapshot || "null")?.defaultUser || "").trim();
+
+          if (state.identityError && configuredUser.length === 0) {
+            notices.push(`<div class="notice notice--error">${escapeText(state.identityError)}</div>`);
+          }
+
+          if (state.gitUserMismatchWarning && configuredUser.length > 0) {
+            notices.push(`<div class="notice notice--warning">${escapeText(state.gitUserMismatchWarning)}</div>`);
+          }
+
+          if (persistedUser.length > 0 && configuredUser.length > 0 && persistedUser !== configuredUser) {
+            notices.push(`<div class="notice notice--warning">Changing the configured workspace user does not rewrite existing user stories globally. Existing <code>Created By</code> and <code>Owner</code> values remain unchanged and may become inconsistent with the new identity.</div>`);
+          }
+
+          container.innerHTML = notices.join("");
         }
 
         function requestConfigurationClose() {
@@ -2274,6 +2348,15 @@ static string BuildConfigurationPortalHtml() =>
           }
           sync();
           normalizeConfigurationReferences();
+          const persistedUser = String(JSON.parse(persistedStateSnapshot || "null")?.defaultUser || "").trim();
+          const configuredUser = String(state.defaultUser || "").trim();
+          if (persistedUser.length > 0 && configuredUser.length > 0 && persistedUser !== configuredUser) {
+            const confirmed = window.confirm("Changing 'User by default' does not rewrite existing user stories globally and may create inconsistency with already persisted Created By / Owner values. Save anyway?");
+            if (!confirmed) {
+              updateSaveButtonState();
+              return;
+            }
+          }
           if (serializeState(state) === persistedStateSnapshot) {
             updateSaveButtonState();
             return;

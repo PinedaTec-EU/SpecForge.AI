@@ -6,6 +6,11 @@ public sealed class GoalIntakeTests : IDisposable
 {
     private readonly string workspaceRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
 
+    public GoalIntakeTests()
+    {
+        InitializeGitWorkspace();
+    }
+
     [Fact]
     public async Task CreateUserStoriesFromGoalAsync_AssignsIdsAndPersistsTraceableStories()
     {
@@ -94,6 +99,46 @@ public sealed class GoalIntakeTests : IDisposable
         if (Directory.Exists(workspaceRoot))
         {
             Directory.Delete(workspaceRoot, recursive: true);
+        }
+    }
+
+    private void InitializeGitWorkspace()
+    {
+        Directory.CreateDirectory(workspaceRoot);
+        RunGit("init");
+        RunGit("config", "user.email", "specforge-tests@example.com");
+        RunGit("config", "user.name", "SpecForge Tests");
+        RunGit("checkout", "-B", "main");
+        RunGit("commit", "--allow-empty", "-m", "seed");
+    }
+
+    private void RunGit(params string[] arguments)
+    {
+        using var process = new System.Diagnostics.Process
+        {
+            StartInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "git",
+                WorkingDirectory = workspaceRoot,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false
+            }
+        };
+
+        foreach (var argument in arguments)
+        {
+            process.StartInfo.ArgumentList.Add(argument);
+        }
+
+        process.Start();
+        var stderr = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        if (process.ExitCode != 0)
+        {
+            throw new Xunit.Sdk.XunitException(
+                $"Git command failed in '{workspaceRoot}': git {string.Join(' ', arguments)}{Environment.NewLine}{stderr}");
         }
     }
 }

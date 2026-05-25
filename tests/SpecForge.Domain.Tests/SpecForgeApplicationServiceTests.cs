@@ -116,6 +116,33 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
         Assert.Equal("specforge-tests", summary.Owner);
     }
 
+    [Fact]
+    public async Task CreateUserStoryAsync_ThrowsWhenWorkspaceUserCannotBeResolved()
+    {
+        var isolatedWorkspaceRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        try
+        {
+            var applicationService = new SpecForgeApplicationService();
+
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => applicationService.CreateUserStoryAsync(
+                isolatedWorkspaceRoot,
+                "US-0001",
+                "Story one",
+                "feature",
+                "workflow",
+                "Initial source"));
+
+            Assert.Contains("workspace user", exception.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            if (Directory.Exists(isolatedWorkspaceRoot))
+            {
+                Directory.Delete(isolatedWorkspaceRoot, recursive: true);
+            }
+        }
+    }
+
     [Theory]
     [InlineData("user")]
     [InlineData("cli-user")]
@@ -195,6 +222,7 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     [InlineData("spike")]
     public async Task UpdateUserStoryInfoAsync_AcceptsExpandedKinds(string kind)
     {
+        await InitializeGitWorkspaceAsync(workspaceRoot);
         var applicationService = new SpecForgeApplicationService();
         await applicationService.CreateUserStoryAsync(
             workspaceRoot,
@@ -218,6 +246,7 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     [Fact]
     public async Task GetCurrentPhaseAsync_WithIncompleteDependency_BlocksWorkflowStart()
     {
+        await InitializeGitWorkspaceAsync(workspaceRoot);
         var applicationService = new SpecForgeApplicationService();
         await applicationService.CreateUserStoriesFromGoalAsync(
             workspaceRoot,
@@ -2534,6 +2563,8 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
         await RunGitAsync(workingDirectory, "init");
         await RunGitAsync(workingDirectory, "config", "user.email", "specforge-tests@example.com");
         await RunGitAsync(workingDirectory, "config", "user.name", "SpecForge Tests");
+        await RunGitAsync(workingDirectory, "checkout", "-B", "main");
+        await RunGitAsync(workingDirectory, "commit", "--allow-empty", "-m", "seed");
     }
 
     private static async Task<string> RunGitAsync(string workingDirectory, params string[] arguments)

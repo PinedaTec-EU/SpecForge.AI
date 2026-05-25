@@ -188,7 +188,7 @@ export async function createUserStoryFromInput(): Promise<void> {
   }
 
   const usId = await nextUserStoryId(workspaceRoot);
-  const result = await getBackendClient(workspaceRoot).createUserStory(usId, title, kind, category, sourceText, getCurrentActor(), tags);
+  const result = await getBackendClient(workspaceRoot).createUserStory(usId, title, kind, category, sourceText, getCurrentActor(workspaceRoot), tags);
 
   await openTextDocument(result.mainArtifactPath);
 }
@@ -228,7 +228,7 @@ export async function importUserStoryFromMarkdown(): Promise<void> {
   }
   const tags = await promptUserStoryTags();
   const usId = await nextUserStoryId(workspaceRoot);
-  const result = await getBackendClient(workspaceRoot).importUserStory(usId, sourceUri.fsPath, title, kind, category, getCurrentActor(), tags);
+  const result = await getBackendClient(workspaceRoot).importUserStory(usId, sourceUri.fsPath, title, kind, category, getCurrentActor(workspaceRoot), tags);
 
   await openTextDocument(result.mainArtifactPath);
 }
@@ -329,7 +329,7 @@ export async function continuePhase(summary?: UserStorySummary): Promise<void> {
   }
 
   try {
-    const result = await getBackendClient(workspaceRoot).continuePhase(summary.usId, getCurrentActor());
+    const result = await getBackendClient(workspaceRoot).continuePhase(summary.usId, getCurrentActor(workspaceRoot));
 
     if (result.generatedArtifactPath) {
       await openTextDocument(result.generatedArtifactPath);
@@ -393,7 +393,7 @@ export async function approveCurrentPhase(summary?: UserStorySummary): Promise<v
   }
 
   try {
-    const updatedSummary = await getBackendClient(workspaceRoot).approveCurrentPhase(summary.usId, baseBranch, undefined, getCurrentActor());
+    const updatedSummary = await getBackendClient(workspaceRoot).approveCurrentPhase(summary.usId, baseBranch, undefined, getCurrentActor(workspaceRoot));
     void vscode.window.showInformationMessage(
       `${updatedSummary.usId} approved. Current phase remains ${updatedSummary.currentPhase} until you continue the workflow.`
     );
@@ -454,7 +454,7 @@ export async function requestRegression(summary?: UserStorySummary): Promise<voi
       summary.usId,
       targetPhase.label,
       reason,
-      getCurrentActor(),
+      getCurrentActor(workspaceRoot),
       destructiveRewindEnabled
     );
     void vscode.window.showInformationMessage(
@@ -488,7 +488,7 @@ export async function restartUserStoryFromSource(summary?: UserStorySummary): Pr
   }
 
   try {
-    const result = await getBackendClient(workspaceRoot).restartUserStoryFromSource(summary.usId, reason, getCurrentActor());
+    const result = await getBackendClient(workspaceRoot).restartUserStoryFromSource(summary.usId, reason, getCurrentActor(workspaceRoot));
 
     if (result.generatedArtifactPath) {
       await openTextDocument(result.generatedArtifactPath);

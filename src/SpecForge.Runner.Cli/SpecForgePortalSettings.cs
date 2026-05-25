@@ -6,6 +6,7 @@ internal sealed record SpecForgePortalSettings(
     IReadOnlyList<OpenAiCompatibleModelProfile> ModelProfiles,
     IReadOnlyList<OpenAiCompatibleAgentProfile> AgentProfiles,
     OpenAiCompatiblePhaseAgentAssignments? PhaseAgentAssignments,
+    string DefaultUser,
     string RefinementTolerance,
     string MvpRigor,
     string ReviewTolerance,
@@ -108,17 +109,31 @@ internal static class SpecForgePortalSettingsStore
             return null;
         }
 
-        return Deserialize(File.ReadAllText(path));
+        return Deserialize(File.ReadAllText(path), workspaceRoot);
     }
 
     public static SpecForgePortalSettings LoadOrDefault(string workspaceRoot) =>
         Load(workspaceRoot) ?? SaveDefault(workspaceRoot);
 
-    public static SpecForgePortalSettings Deserialize(string payload)
+    public static SpecForgePortalSettings Deserialize(string payload, string? workspaceRoot = null)
     {
         using var document = JsonDocument.Parse(payload);
         var settings = JsonSerializer.Deserialize<SpecForgePortalSettings>(payload, JsonOptions)
             ?? throw new InvalidOperationException("Configuration payload could not be parsed.");
+
+        if (!document.RootElement.TryGetProperty("defaultUser", out _))
+        {
+            settings = settings with
+            {
+                DefaultUser = string.IsNullOrWhiteSpace(workspaceRoot)
+                    ? string.Empty
+                    : WorkspaceActorResolver.TryDetectGitUser(workspaceRoot) ?? string.Empty
+            };
+        }
+        else
+        {
+            settings = settings with { DefaultUser = WorkspaceActorResolver.NormalizeConfiguredUser(settings.DefaultUser) };
+        }
 
         if (!document.RootElement.TryGetProperty("reviewLearningEnabled", out _))
         {
@@ -268,6 +283,7 @@ internal static class SpecForgePortalSettingsStore
             ModelProfiles: [],
             AgentProfiles: SpecForgePortalSettings.RecommendedBootstrapAgentProfiles,
             PhaseAgentAssignments: SpecForgePortalSettings.RecommendedBootstrapPhaseAgentAssignments,
+            DefaultUser: string.Empty,
             RefinementTolerance: "balanced",
             MvpRigor: "medium",
             ReviewTolerance: "balanced",
@@ -300,7 +316,10 @@ internal static class SpecForgePortalSettingsStore
 
     private static SpecForgePortalSettings SaveDefault(string workspaceRoot)
     {
-        var settings = CreateDefault();
+        var settings = CreateDefault() with
+        {
+            DefaultUser = WorkspaceActorResolver.TryDetectGitUser(workspaceRoot) ?? string.Empty
+        };
         Save(workspaceRoot, settings);
 
         return settings;

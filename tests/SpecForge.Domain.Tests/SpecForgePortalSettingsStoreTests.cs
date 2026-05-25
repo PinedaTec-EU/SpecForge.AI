@@ -36,6 +36,17 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
         Assert.True(settings.AllowPerUserStoryHarnessProfileOverrides);
         Assert.True(settings.ReviewLearningEnabled);
         Assert.False(settings.CompletedUsLockOnCompleted);
+        Assert.Equal(string.Empty, settings.DefaultUser);
+    }
+
+    [Fact]
+    public void LoadOrDefault_BootstrapsDefaultUserFromGitWhenAvailable()
+    {
+        InitializeGitWorkspace();
+
+        var settings = SpecForgePortalSettingsStore.LoadOrDefault(workspaceRoot);
+
+        Assert.Equal("specforge-tests", settings.DefaultUser);
     }
 
     [Fact]
@@ -76,6 +87,7 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
         Assert.Empty(settings.LockedHarnessPhaseIds);
         Assert.True(settings.AllowPerUserStoryHarnessProfileOverrides);
         Assert.True(settings.ReviewLearningEnabled);
+        Assert.Equal(string.Empty, settings.DefaultUser);
     }
 
     [Fact]
@@ -209,6 +221,7 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
         Assert.Equal(["review", "release-approval"], loaded.LockedHarnessPhaseIds);
         Assert.False(loaded.AllowPerUserStoryHarnessProfileOverrides);
         Assert.Equal("local", Assert.Single(loaded.ModelProfiles).Name);
+        Assert.Equal(string.Empty, loaded.DefaultUser);
     }
 
     public void Dispose()
@@ -216,6 +229,44 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
         if (Directory.Exists(workspaceRoot))
         {
             Directory.Delete(workspaceRoot, recursive: true);
+        }
+    }
+
+    private void InitializeGitWorkspace()
+    {
+        Directory.CreateDirectory(workspaceRoot);
+        RunGit("init");
+        RunGit("config", "user.email", "specforge-tests@example.com");
+        RunGit("config", "user.name", "SpecForge Tests");
+    }
+
+    private void RunGit(params string[] arguments)
+    {
+        using var process = new System.Diagnostics.Process
+        {
+            StartInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "git",
+                WorkingDirectory = workspaceRoot,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false
+            }
+        };
+
+        foreach (var argument in arguments)
+        {
+            process.StartInfo.ArgumentList.Add(argument);
+        }
+
+        process.Start();
+        var stderr = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        if (process.ExitCode != 0)
+        {
+            throw new Xunit.Sdk.XunitException(
+                $"Git command failed in '{workspaceRoot}': git {string.Join(' ', arguments)}{Environment.NewLine}{stderr}");
         }
     }
 }

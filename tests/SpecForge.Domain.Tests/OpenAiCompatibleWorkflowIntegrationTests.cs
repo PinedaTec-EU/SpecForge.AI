@@ -14,6 +14,12 @@ namespace SpecForge.Domain.Tests;
 public sealed class OpenAiCompatibleWorkflowIntegrationTests : IDisposable
 {
     private readonly string workspaceRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+    private readonly string remoteRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+
+    public OpenAiCompatibleWorkflowIntegrationTests()
+    {
+        InitializeGitWorkspace();
+    }
 
     [Fact]
     public async Task GenerateNextPhaseAsync_TransitionsFromCaptureToRefinementThenSpec_ThroughHttpModelStub()
@@ -700,6 +706,57 @@ public sealed class OpenAiCompatibleWorkflowIntegrationTests : IDisposable
         if (Directory.Exists(workspaceRoot))
         {
             Directory.Delete(workspaceRoot, recursive: true);
+        }
+
+        if (Directory.Exists(remoteRoot))
+        {
+            Directory.Delete(remoteRoot, recursive: true);
+        }
+    }
+
+    private void InitializeGitWorkspace()
+    {
+        Directory.CreateDirectory(workspaceRoot);
+        Directory.CreateDirectory(remoteRoot);
+        RunGit("init");
+        RunGit("config", "user.email", "specforge-tests@example.com");
+        RunGit("config", "user.name", "SpecForge Tests");
+        RunGit("checkout", "-B", "main");
+        RunGit("commit", "--allow-empty", "-m", "seed");
+        RunGit(remoteRoot, "init", "--bare");
+        RunGit("remote", "add", "origin", remoteRoot);
+        RunGit("push", "-u", "origin", "main");
+    }
+
+    private void RunGit(params string[] arguments) => RunGit(workspaceRoot, arguments);
+
+    private void RunGit(string workingDirectory, params string[] arguments)
+    {
+        using var process = new System.Diagnostics.Process
+        {
+            StartInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "git",
+                WorkingDirectory = workingDirectory,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false
+            }
+        };
+
+        foreach (var argument in arguments)
+        {
+            process.StartInfo.ArgumentList.Add(argument);
+        }
+
+        process.Start();
+        var stderr = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        if (process.ExitCode != 0)
+        {
+            throw new Xunit.Sdk.XunitException(
+                $"Git command failed in '{workingDirectory}': git {string.Join(' ', arguments)}{Environment.NewLine}{stderr}");
         }
     }
 

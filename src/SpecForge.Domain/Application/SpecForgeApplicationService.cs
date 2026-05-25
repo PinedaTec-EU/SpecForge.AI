@@ -72,7 +72,7 @@ public sealed class SpecForgeApplicationService
         CancellationToken cancellationToken = default)
     {
         repositoryCategoryCatalog.EnsureCategoryIsAllowed(workspaceRoot, category);
-        var effectiveActor = WorkspaceActorResolver.ResolveForWorkspace(workspaceRoot);
+        var effectiveActor = WorkspaceActorResolver.ResolveRequiredUserForWorkspace(workspaceRoot);
         var normalizedTags = WorkflowRunner.NormalizeUserStoryTags(tags);
         var rootDirectory = await workflowRunner.CreateUserStoryAsync(
             workspaceRoot,
@@ -105,7 +105,7 @@ public sealed class SpecForgeApplicationService
             stories,
             goalId,
             strategy,
-            WorkspaceActorResolver.ResolveForWorkspace(workspaceRoot),
+            WorkspaceActorResolver.ResolveRequiredUserForWorkspace(workspaceRoot),
             cancellationToken);
 
     public async Task<CreateOrImportUserStoryResult> ImportUserStoryAsync(
@@ -121,7 +121,7 @@ public sealed class SpecForgeApplicationService
     {
         var sourceText = await File.ReadAllTextAsync(sourcePath, cancellationToken);
         repositoryCategoryCatalog.EnsureCategoryIsAllowed(workspaceRoot, category);
-        var effectiveActor = WorkspaceActorResolver.ResolveForWorkspace(workspaceRoot);
+        var effectiveActor = WorkspaceActorResolver.ResolveRequiredUserForWorkspace(workspaceRoot);
         var normalizedTags = WorkflowRunner.NormalizeUserStoryTags(tags);
         var rootDirectory = await workflowRunner.CreateUserStoryAsync(
             workspaceRoot,

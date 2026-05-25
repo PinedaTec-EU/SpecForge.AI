@@ -218,7 +218,7 @@ class CreateUserStoryPanelController {
     const backendClient = getOrCreateBackendClient(workspaceRoot);
     const summaries = await backendClient.listUserStories();
     const usId = nextUserStoryIdFromSummaries(summaries);
-    const result = await backendClient.createUserStory(usId, title, kind, category, sourceText, getCurrentActor(), tags);
+    const result = await backendClient.createUserStory(usId, title, kind, category, sourceText, getCurrentActor(workspaceRoot), tags);
     await this.materializeCreateFilesAsync(result.rootDirectory);
     this.createFiles = [];
     this.createFileMode = "context";
@@ -429,7 +429,7 @@ class CreateUserStoryPanelController {
       showBlockedUserStories: false,
       showHiddenUserStories: false,
       searchIncludesOtherOwners: false,
-      currentActor: getCurrentActor(),
+      currentActor: getCurrentActor(workspaceRoot),
       watchingUserStoryIds: [],
       hiddenUserStoryIds: [],
       maxVisibleUserStories: null,
