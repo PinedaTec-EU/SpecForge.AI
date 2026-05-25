@@ -491,27 +491,10 @@ function buildCompactActions(model) {
     const showCreateAction = model.showCreateAction !== false;
     return `
     <div class="compact-actions">
-      ${buildDroppedStoriesActionButton(model.showDroppedUserStories, model.droppedUserStoryCount)}
       ${model.showDroppedUserStories || !showViewOptionsMenu ? "" : buildViewOptionsMenu(model)}
       ${model.showDroppedUserStories || !showCreateAction ? "" : buildCreateActionButton(model.promptsInitialized)}
       ${buildPromptMenu(model.promptsInitialized)}
     </div>
-  `;
-}
-function buildDroppedStoriesActionButton(showDroppedUserStories, droppedUserStoryCount) {
-    const title = showDroppedUserStories
-        ? "Show active user stories"
-        : droppedUserStoryCount > 0
-            ? `Show dropped user stories (${droppedUserStoryCount})`
-            : "Show dropped user stories";
-    return `
-    <button
-      class="icon-action${showDroppedUserStories ? " icon-action--active" : ""}"
-      data-command="toggleDroppedUserStories"
-      title="${(0, htmlEscape_1.escapeHtmlAttr)(title)}"
-      aria-label="${(0, htmlEscape_1.escapeHtmlAttr)(title)}">
-      <span aria-hidden="true">${showDroppedUserStories ? "↩" : "⊘"}</span>
-    </button>
   `;
 }
 function buildPromptsBootstrapMarkup(isFirstRun, promptsMessage) {
