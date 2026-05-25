@@ -98,11 +98,7 @@ class SidebarViewProvider {
         }
         switch (message.command) {
             case "showCreateForm":
-                this.showCreateForm = true;
-                this.createFileMode = "context";
-                this.createFiles = [];
-                this.createFormResetToken += 1;
-                await this.safeRenderAsync();
+                await vscode.commands.executeCommand("specForge.openCreateUserStoryPanel");
                 return;
             case "hideCreateForm":
                 this.showCreateForm = false;
@@ -701,6 +697,7 @@ class SidebarViewProvider {
             this.webviewView.webview.html = (0, sidebarViewContent_1.buildSidebarHtml)({
                 hasWorkspace: false,
                 showCreateForm: false,
+                createSurface: "main-window",
                 busyMessage: this.busyMessage,
                 promptsInitialized: false,
                 promptsMessage: null,
@@ -760,7 +757,8 @@ class SidebarViewProvider {
         const runtimeVersion = await (0, runtimeVersion_1.readRuntimeVersionAsync)();
         this.webviewView.webview.html = (0, sidebarViewContent_1.buildSidebarHtml)({
             hasWorkspace: true,
-            showCreateForm: this.showCreateForm,
+            showCreateForm: false,
+            createSurface: "main-window",
             busyMessage: this.busyMessage,
             promptsInitialized: promptsStatus.initialized,
             promptsMessage: promptsStatus.message,
@@ -800,6 +798,7 @@ class SidebarViewProvider {
             this.webviewView.webview.html = (0, sidebarViewContent_1.buildSidebarHtml)({
                 hasWorkspace: true,
                 showCreateForm: false,
+                createSurface: "main-window",
                 busyMessage: this.busyMessage,
                 promptsInitialized: false,
                 promptsMessage: null,

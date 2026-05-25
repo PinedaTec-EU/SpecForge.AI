@@ -97,7 +97,7 @@ class ExecutionSettingsPanelController {
                             watcherEnabled: message.watcherEnabled ?? true,
                             attentionNotificationsEnabled: message.attentionNotificationsEnabled ?? true,
                             contextSuggestionsEnabled: message.contextSuggestionsEnabled ?? true,
-                            workflowGraphLayoutMode: message.workflowGraphLayoutMode ?? "vertical",
+                            workflowGraphLayoutMode: message.workflowGraphLayoutMode ?? "horizontal",
                             workflowGraphInitialZoomMode: message.workflowGraphInitialZoomMode ?? "actual-size",
                             userStoryListViewMode: message.userStoryListViewMode ?? "category",
                             visualTimelineEnabled: message.visualTimelineEnabled ?? false,

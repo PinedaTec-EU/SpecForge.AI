@@ -329,6 +329,8 @@ static async Task HandleWorkflowPortalRequestAsync(
         var requestShowBlockedUserStories = ResolveWorkflowPortalQueryFlag(context.Request, "sidebarBlocked");
         var requestShowHiddenUserStories = ResolveWorkflowPortalQueryFlag(context.Request, "sidebarHiddenVisible");
         var requestIncludeOtherOwners = ResolveWorkflowPortalQueryFlag(context.Request, "sidebarOtherOwners");
+        var requestShowCreateForm = ResolveWorkflowPortalQueryFlag(context.Request, "create")
+            || ResolveWorkflowPortalQueryFlag(context.Request, "sidebarCreate");
         var requestSidebarWatchingUserStoryIds = ResolveWorkflowPortalUserStoryIdList(context.Request, "sidebarWatching");
         var requestSidebarHiddenUserStoryIds = ResolveWorkflowPortalUserStoryIdList(context.Request, "sidebarHidden");
         var requestUsId = await ResolveWorkflowPortalUserStoryIdAsync(
@@ -357,10 +359,36 @@ static async Task HandleWorkflowPortalRequestAsync(
                         requestShowCompletedUserStories,
                         requestShowBlockedUserStories,
                         requestShowHiddenUserStories,
+                        requestIncludeOtherOwners,
+                        requestShowCreateForm,
                         requestSidebarWatchingUserStoryIds,
                         requestSidebarHiddenUserStoryIds,
                         context.Request.Url?.GetLeftPart(UriPartial.Authority) ?? "http://localhost:5128",
                         renderCache));
+                return;
+            case ("GET", "/api/sidebar-html"):
+                await WriteHtmlResponseAsync(
+                    context.Response,
+                    await BuildWorkflowPortalSidebarHtmlAsync(
+                        applicationService,
+                        workspaceRoot,
+                        requestUsId,
+                        requestSidebarVisibility,
+                        requestShowCompletedUserStories,
+                        requestShowBlockedUserStories,
+                        requestShowHiddenUserStories,
+                        requestIncludeOtherOwners,
+                        requestSidebarWatchingUserStoryIds,
+                        requestSidebarHiddenUserStoryIds,
+                        context.Request.Url?.GetLeftPart(UriPartial.Authority) ?? "http://localhost:5128"));
+                return;
+            case ("POST", "/api/create-form-html"):
+                await WriteHtmlResponseAsync(
+                    context.Response,
+                    await BuildWorkflowPortalCreateFormHtmlAsync(
+                        context,
+                        workspaceRoot,
+                        requestUsId));
                 return;
             case ("GET", "/api/workflow"):
                 if (string.IsNullOrWhiteSpace(requestUsId))
@@ -430,6 +458,9 @@ static async Task HandleWorkflowPortalRequestAsync(
                 return;
             case ("POST", "/api/recover-user-story"):
                 await HandleDropOrRecoverUserStoryAsync(context, workspaceRoot, drop: false);
+                return;
+            case ("POST", "/api/create-user-story"):
+                await HandleCreateUserStoryRequestAsync(context, applicationService, workspaceRoot);
                 return;
             case ("POST", "/api/update-user-story-info"):
                 await HandleUpdateUserStoryInfoAsync(context, applicationService, workspaceRoot);
@@ -516,6 +547,15 @@ static async Task HandleWorkflowPortalRequestAsync(
                     await SaveWorkflowGraphLayoutAsync(workspaceRoot, request));
                 return;
             }
+            case ("POST", "/api/client-log"):
+            {
+                var request = await ReadJsonRequestAsync<PortalClientLogRequest>(
+                    context.Request,
+                    "Client log payload could not be parsed.");
+                LogWorkflowPortalClientEvent(request);
+                await WriteJsonResponseAsync(context.Response, new { ok = true });
+                return;
+            }
             case ("POST", "/api/approve"):
             {
                 var request = await ReadJsonRequestAsync<ApprovalSubmitRequest>(
@@ -585,6 +625,8 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
     bool showCompletedUserStories,
     bool showBlockedUserStories,
     bool showHiddenUserStories,
+    bool includeOtherOwners,
+    bool showCreateForm,
     IReadOnlyList<string> watchingUserStoryIds,
     IReadOnlyList<string> hiddenUserStoryIds,
     string workflowPortalOrigin,
@@ -621,6 +663,8 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
         showCompletedUserStories,
         showBlockedUserStories,
         showHiddenUserStories,
+        includeOtherOwners,
+        showCreateForm,
         watchingUserStoryIds,
         hiddenUserStoryIds,
         currentActor);
@@ -646,12 +690,15 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
             showCompletedUserStories,
             showBlockedUserStories,
             showHiddenUserStories,
+            includeOtherOwners,
+            showCreateForm,
             watchingUserStoryIds,
             hiddenUserStoryIds,
             droppedUserStoryCount,
             configurationPortalUrl = BuildConfigurationPortalUrl(workflowPortalOrigin),
             configurationProvidersUrl = BuildConfigurationPortalUrl(workflowPortalOrigin, "providers"),
             configurationAdvancedUrl = BuildConfigurationPortalUrl(workflowPortalOrigin, "advanced"),
+            categories = new RepositoryCategoryCatalog().GetCategories(workspaceRoot),
             currentActor,
             selectedUsId = usId,
             noSelectionReason = ResolveWorkflowPortalNoSelectionReason(usId, sidebarUserStories),
@@ -663,6 +710,82 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
     var html = await RenderWorkflowHtmlWithNodeAsync(payload);
     renderCache.Store(renderCacheSignature, cachePhaseId, selectedPhase, html);
     return html;
+}
+
+static async Task<string> BuildWorkflowPortalSidebarHtmlAsync(
+    SpecForgeApplicationService applicationService,
+    string workspaceRoot,
+    string? usId,
+    string? sidebarVisibility,
+    bool showCompletedUserStories,
+    bool showBlockedUserStories,
+    bool showHiddenUserStories,
+    bool includeOtherOwners,
+    IReadOnlyList<string> watchingUserStoryIds,
+    IReadOnlyList<string> hiddenUserStoryIds,
+    string workflowPortalOrigin)
+{
+    var normalizedSidebarVisibility = string.Equals(sidebarVisibility, "dropped", StringComparison.OrdinalIgnoreCase)
+        ? "dropped"
+        : "active";
+    var activeSidebarUserStories = await applicationService.ListUserStoriesAsync(workspaceRoot);
+    var droppedSidebarUserStories = await applicationService.ListUserStoriesAsync(workspaceRoot, "dropped");
+    var sidebarUserStories = normalizedSidebarVisibility == "dropped"
+        ? droppedSidebarUserStories
+        : activeSidebarUserStories;
+    var currentActor = ResolveCurrentGitOwner(workspaceRoot);
+    var payload = JsonSerializer.Serialize(
+        new
+        {
+            renderSidebarOnly = true,
+            userStories = activeSidebarUserStories,
+            sidebarUserStories,
+            activeSidebarUserStories,
+            droppedSidebarUserStories,
+            showDroppedUserStories = normalizedSidebarVisibility == "dropped",
+            showCompletedUserStories,
+            showBlockedUserStories,
+            showHiddenUserStories,
+            includeOtherOwners,
+            watchingUserStoryIds,
+            hiddenUserStoryIds,
+            droppedUserStoryCount = droppedSidebarUserStories.Count,
+            configurationPortalUrl = BuildConfigurationPortalUrl(workflowPortalOrigin),
+            configurationProvidersUrl = BuildConfigurationPortalUrl(workflowPortalOrigin, "providers"),
+            configurationAdvancedUrl = BuildConfigurationPortalUrl(workflowPortalOrigin, "advanced"),
+            currentActor,
+            selectedUsId = usId
+        },
+        SpecForgePortalSettingsStore.JsonOptions);
+    return await RenderWorkflowHtmlWithNodeAsync(payload);
+}
+
+static async Task<string> BuildWorkflowPortalCreateFormHtmlAsync(
+    HttpListenerContext context,
+    string workspaceRoot,
+    string? usId)
+{
+    var request = await ReadJsonRequestAsync<CreateUserStoryFormRenderRequest>(
+        context.Request,
+        "Create form render payload could not be parsed.");
+
+    var payload = JsonSerializer.Serialize(
+        new
+        {
+            renderCreateFormOnly = true,
+            createFileMode = string.Equals(request.CreateFileMode, "attachment", StringComparison.OrdinalIgnoreCase)
+                ? "attachment"
+                : "context",
+            createFiles = request.CreateFiles ?? [],
+            createFormResetToken = request.CreateFormResetToken,
+            categories = new RepositoryCategoryCatalog().GetCategories(workspaceRoot),
+            currentActor = ResolveCurrentGitOwner(workspaceRoot),
+            selectedUsId = usId,
+            runtimeVersion = GetRuntimeVersion()
+        },
+        SpecForgePortalSettingsStore.JsonOptions);
+
+    return await RenderWorkflowHtmlWithNodeAsync(payload);
 }
 
 static async Task<string?> ResolveWorkflowPortalUserStoryIdAsync(
@@ -983,6 +1106,132 @@ static async Task<object> AttachWorkflowFilesAsync(
     };
 }
 
+static async Task HandleCreateUserStoryRequestAsync(
+    HttpListenerContext context,
+    SpecForgeApplicationService applicationService,
+    string workspaceRoot)
+{
+    var request = await ReadJsonRequestAsync<CreateUserStoryRequest>(
+        context.Request,
+        "Create user story payload could not be parsed.");
+
+    if (string.IsNullOrWhiteSpace(request.Title)
+        || string.IsNullOrWhiteSpace(request.Kind)
+        || string.IsNullOrWhiteSpace(request.Category)
+        || string.IsNullOrWhiteSpace(request.SourceText))
+    {
+        throw new InvalidOperationException("Title, kind, category, and source are required.");
+    }
+
+    var usId = await ResolveNextPortalUserStoryIdAsync(applicationService, workspaceRoot);
+    var result = await applicationService.CreateUserStoryAsync(
+        workspaceRoot,
+        usId,
+        request.Title.Trim(),
+        request.Kind.Trim(),
+        request.Category.Trim(),
+        request.SourceText.Trim(),
+        request.Actor ?? "cli-user",
+        request.Tags ?? []);
+
+    await MaterializeCreateUserStoryFilesAsync(result.RootDirectory, request.Files);
+
+    await WriteJsonResponseAsync(
+        context.Response,
+        new
+        {
+            result.UsId,
+            result.RootDirectory,
+            result.MainArtifactPath
+        });
+}
+
+static async Task<string> ResolveNextPortalUserStoryIdAsync(
+    SpecForgeApplicationService applicationService,
+    string workspaceRoot)
+{
+    var allUserStories = (await applicationService.ListUserStoriesAsync(workspaceRoot))
+        .Concat(await applicationService.ListUserStoriesAsync(workspaceRoot, "dropped"));
+    var maxId = 0;
+
+    foreach (var summary in allUserStories)
+    {
+        if (!summary.UsId.StartsWith("US-", StringComparison.OrdinalIgnoreCase))
+        {
+            continue;
+        }
+
+        if (int.TryParse(summary.UsId[3..], out var numericId) && numericId > maxId)
+        {
+            maxId = numericId;
+        }
+    }
+
+    return $"US-{maxId + 1:0000}";
+}
+
+static async Task MaterializeCreateUserStoryFilesAsync(
+    string userStoryDirectoryPath,
+    IReadOnlyList<CreateUserStoryFileUploadItem>? files)
+{
+    if (files is null || files.Count == 0)
+    {
+        return;
+    }
+
+    foreach (var file in files)
+    {
+        var safeName = Path.GetFileName(file.Name?.Trim());
+        if (string.IsNullOrWhiteSpace(safeName) || string.IsNullOrWhiteSpace(file.Base64Content))
+        {
+            continue;
+        }
+
+        var targetDirectoryPath = Path.Combine(
+            userStoryDirectoryPath,
+            string.Equals(file.Kind, "context", StringComparison.OrdinalIgnoreCase) ? "context" : "attachments");
+        Directory.CreateDirectory(targetDirectoryPath);
+        var targetPath = GetNextPortalFilePath(targetDirectoryPath, safeName);
+        await File.WriteAllBytesAsync(targetPath, Convert.FromBase64String(file.Base64Content));
+    }
+}
+
+static void LogWorkflowPortalClientEvent(PortalClientLogRequest request)
+{
+    var action = string.IsNullOrWhiteSpace(request.Action) ? "unknown" : request.Action.Trim();
+    var reason = string.IsNullOrWhiteSpace(request.Reason) ? "unspecified" : request.Reason.Trim();
+    var url = string.IsNullOrWhiteSpace(request.Url) ? "(none)" : request.Url.Trim();
+    var targetUrl = string.IsNullOrWhiteSpace(request.TargetUrl) ? null : request.TargetUrl.Trim();
+    var selectedPhaseId = string.IsNullOrWhiteSpace(request.SelectedPhaseId) ? null : request.SelectedPhaseId.Trim();
+    var renderedWorkflowUsId = string.IsNullOrWhiteSpace(request.RenderedWorkflowUsId) ? null : request.RenderedWorkflowUsId.Trim();
+    var triggerCommand = string.IsNullOrWhiteSpace(request.TriggerCommand) ? null : request.TriggerCommand.Trim();
+    var signature = string.IsNullOrWhiteSpace(request.Signature) ? null : request.Signature.Trim();
+    var nextSignature = string.IsNullOrWhiteSpace(request.NextSignature) ? null : request.NextSignature.Trim();
+    var detail = string.IsNullOrWhiteSpace(request.Detail) ? null : request.Detail.Trim();
+    var timestampUtc = string.IsNullOrWhiteSpace(request.TimestampUtc)
+        ? DateTimeOffset.UtcNow.ToString("O")
+        : request.TimestampUtc.Trim();
+
+    var payload = JsonSerializer.Serialize(
+        new
+        {
+            action,
+            reason,
+            url,
+            targetUrl,
+            selectedPhaseId,
+            renderedWorkflowUsId,
+            triggerCommand,
+            signature,
+            nextSignature,
+            detail,
+            timestampUtc
+        },
+        SpecForgePortalSettingsStore.JsonOptions);
+
+    Console.WriteLine($"[portal.reload] {payload}");
+}
+
 static async Task<object> AddContextFilesAsync(
     string workspaceRoot,
     string usId,
@@ -1191,6 +1440,8 @@ static string BuildWorkflowPortalRenderCacheSignature(
     bool showCompletedUserStories,
     bool showBlockedUserStories,
     bool showHiddenUserStories,
+    bool includeOtherOwners,
+    bool showCreateForm,
     IReadOnlyList<string> watchingUserStoryIds,
     IReadOnlyList<string> hiddenUserStoryIds,
     string currentActor)
@@ -1202,6 +1453,8 @@ static string BuildWorkflowPortalRenderCacheSignature(
             showCompletedUserStories,
             showBlockedUserStories,
             showHiddenUserStories,
+            includeOtherOwners,
+            showCreateForm,
             watchingUserStoryIds,
             hiddenUserStoryIds,
             currentActor
@@ -1691,8 +1944,8 @@ static string BuildConfigurationPortalHtml() =>
             </section>
           </div>
           <div class="toolbar">
-            <button type="submit">Save Configuration</button>
-            <button type="button" class="secondary" id="reload">Reload</button>
+            <button type="submit" id="save" disabled>Save Configuration</button>
+            <button type="button" class="secondary" id="close">Close</button>
           </div>
           <div id="status" class="status" role="status"></div>
         </form>
@@ -1724,6 +1977,7 @@ static string BuildConfigurationPortalHtml() =>
           ["decompositionEnabled", "Complexity decomposition"]
         ];
         const configurationTabs = ["providers", "advanced", "central"];
+        const embeddedConfigurationState = window.__specforgeEmbeddedConfigurationState ?? null;
         const helpDescriptions = {
           "model.name": "Stable profile name used by agent routing and phase assignments.",
           "model.provider": "Provider kind for this model profile. Codex, Claude, and Copilot use native/local CLI identity; openai-compatible uses an HTTP endpoint.",
@@ -1761,13 +2015,18 @@ static string BuildConfigurationPortalHtml() =>
           "decompositionEnabled": "Evaluates generated specs for complexity and can propose or require child user stories before normal spec approval."
         };
         let state = null;
+        let persistedStateSnapshot = "";
+        let savingConfiguration = false;
 
         async function load() {
           const response = await fetch("api/settings");
           state = await response.json();
           applyDefaultSettings();
+          normalizeConfigurationReferences();
+          persistedStateSnapshot = serializeState(state);
           render();
           scrollToHashSection();
+          updateSaveButtonState();
           setStatus("Configuration loaded.");
         }
 
@@ -1777,6 +2036,7 @@ static string BuildConfigurationPortalHtml() =>
           renderAssignments();
           renderBehavior();
           renderTabState(resolveActiveTabFromHash());
+          updateSaveButtonState();
         }
 
         function scrollToHashSection() {
@@ -1784,6 +2044,12 @@ static string BuildConfigurationPortalHtml() =>
         }
 
         function resolveActiveTabFromHash() {
+          const embeddedTab = typeof embeddedConfigurationState?.activeTab === "string"
+            ? embeddedConfigurationState.activeTab
+            : "";
+          if (configurationTabs.includes(embeddedTab)) {
+            return embeddedTab;
+          }
           const hash = window.location.hash.slice(1);
           return configurationTabs.includes(hash) ? hash : "providers";
         }
@@ -1948,6 +2214,35 @@ static string BuildConfigurationPortalHtml() =>
             .join("");
         }
 
+        function serializeState(value) {
+          return JSON.stringify(value ?? null);
+        }
+
+        function updateSaveButtonState() {
+          const saveButton = document.getElementById("save");
+          if (!(saveButton instanceof HTMLButtonElement) || !state) {
+            return;
+          }
+
+          sync();
+          normalizeConfigurationReferences();
+          const isDirty = serializeState(state) !== persistedStateSnapshot;
+          saveButton.disabled = savingConfiguration || !isDirty;
+        }
+
+        function requestConfigurationClose() {
+          try {
+            if (typeof window.__specforgeCloseConfiguration === "function") {
+              window.__specforgeCloseConfiguration();
+              return;
+            }
+            window.parent?.postMessage({
+              source: "specforge-cli-configuration",
+              message: { command: "closeConfiguration" }
+            }, "*");
+          } catch {}
+        }
+
         document.addEventListener("click", event => {
           const target = event.target;
           if (!(target instanceof HTMLElement)) return;
@@ -1955,8 +2250,13 @@ static string BuildConfigurationPortalHtml() =>
             event.preventDefault();
             closeHelpPopover();
             sync();
-            window.location.hash = target.dataset.tabTarget;
-            renderTabState(target.dataset.tabTarget);
+            if (embeddedConfigurationState) {
+              embeddedConfigurationState.activeTab = target.dataset.tabTarget;
+              renderTabState(target.dataset.tabTarget);
+            } else {
+              window.location.hash = target.dataset.tabTarget;
+              renderTabState(target.dataset.tabTarget);
+            }
             return;
           }
 
@@ -1979,8 +2279,8 @@ static string BuildConfigurationPortalHtml() =>
             render();
             return;
           }
-          if (target.id === "reload") {
-            load();
+          if (target.id === "close") {
+            requestConfigurationClose();
             return;
           }
           if (target.dataset.removeModel) {
@@ -1996,9 +2296,11 @@ static string BuildConfigurationPortalHtml() =>
           }
         });
 
-        window.addEventListener("hashchange", () => {
-          renderTabState(resolveActiveTabFromHash());
-        });
+        if (!embeddedConfigurationState) {
+          window.addEventListener("hashchange", () => {
+            renderTabState(resolveActiveTabFromHash());
+          });
+        }
 
         document.addEventListener("keydown", event => {
           if (event.key === "Escape") {
@@ -2013,6 +2315,7 @@ static string BuildConfigurationPortalHtml() =>
             if (refreshNeeded) {
               updateDependentSelectOptions();
             }
+            updateSaveButtonState();
           }
         });
 
@@ -2023,20 +2326,35 @@ static string BuildConfigurationPortalHtml() =>
             if (refreshNeeded) {
               updateDependentSelectOptions();
             }
+            updateSaveButtonState();
           }
         });
 
         document.getElementById("settings-form").addEventListener("submit", async event => {
           event.preventDefault();
+          if (savingConfiguration) {
+            return;
+          }
           sync();
           normalizeConfigurationReferences();
+          if (serializeState(state) === persistedStateSnapshot) {
+            updateSaveButtonState();
+            return;
+          }
+          savingConfiguration = true;
+          updateSaveButtonState();
           const response = await fetch("api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(state) });
           if (!response.ok) {
+            savingConfiguration = false;
+            updateSaveButtonState();
             setStatus(await response.text());
             return;
           }
           state = await response.json();
           applyDefaultSettings();
+          normalizeConfigurationReferences();
+          persistedStateSnapshot = serializeState(state);
+          savingConfiguration = false;
           render();
           setStatus("Configuration saved.");
         });
@@ -2163,6 +2481,24 @@ internal sealed record RefinementAnswersSubmitRequest(IReadOnlyList<string> Answ
 
 internal sealed record WorkflowFileUploadItem(string Name, string Base64Content);
 
+internal sealed record CreateUserStoryFileUploadItem(string Name, string Kind, string Base64Content);
+
+internal sealed record CreateUserStoryFileDraftItem(string SourcePath, string Name, string Kind);
+
+internal sealed record CreateUserStoryRequest(
+    string Title,
+    string Kind,
+    string Category,
+    string SourceText,
+    IReadOnlyList<string>? Tags,
+    string? Actor,
+    IReadOnlyList<CreateUserStoryFileUploadItem>? Files);
+
+internal sealed record CreateUserStoryFormRenderRequest(
+    string? CreateFileMode,
+    IReadOnlyList<CreateUserStoryFileDraftItem>? CreateFiles,
+    int CreateFormResetToken);
+
 internal sealed record AttachWorkflowFilesRequest(string Kind, IReadOnlyList<WorkflowFileUploadItem> Files, string? Actor);
 
 internal sealed record AddContextFilesRequest(IReadOnlyList<string> Paths, string? Actor);
@@ -2174,6 +2510,19 @@ internal sealed record SaveWorkflowGraphLayoutRequest(
     Dictionary<string, WorkflowGraphLayoutPoint>? Positions,
     WorkflowGraphLayoutPoint? LegendPosition,
     WorkflowAggregateGraphLayoutRequest? Aggregate);
+
+internal sealed record PortalClientLogRequest(
+    string? Action,
+    string? Reason,
+    string? Url,
+    string? TargetUrl,
+    string? SelectedPhaseId,
+    string? RenderedWorkflowUsId,
+    string? TriggerCommand,
+    string? Signature,
+    string? NextSignature,
+    string? Detail,
+    string? TimestampUtc);
 
 internal sealed record WorkflowGraphLayoutPoint(int X, int Y);
 

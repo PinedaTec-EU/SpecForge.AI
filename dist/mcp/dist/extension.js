@@ -47,6 +47,7 @@ const runtimeVersion_1 = require("./runtimeVersion");
 const workflowPanel_1 = require("./workflowPanel");
 const workflowAuditView_1 = require("./workflowAuditView");
 const sidebarView_1 = require("./sidebarView");
+const createUserStoryPanel_1 = require("./createUserStoryPanel");
 const specsExplorer_1 = require("./specsExplorer");
 const userWorkspacePreferences_1 = require("./userWorkspacePreferences");
 const backendClientModel_1 = require("./backendClientModel");
@@ -59,15 +60,7 @@ function activate(context) {
     context.subscriptions.push((0, outputChannel_1.getSpecForgeOutputChannel)());
     void logActivationVersionAsync(context);
     (0, outputChannel_1.appendSpecForgeDebugLog)(`Extension activated in mode '${vscode.ExtensionMode[context.extensionMode]}'.`);
-    const manifestVersion = readManifestVersion(context);
-    const sidebarProvider = new sidebarView_1.SidebarViewProvider(context.extensionUri, async () => {
-        await refreshWorkspaceUiAsync("sidebar:onDidCreateUserStory");
-    });
-    const workflowAuditProvider = new workflowAuditView_1.WorkflowAuditViewProvider(context.extensionUri);
-    const refreshableProvider = { refresh: () => sidebarProvider.refresh() };
-    const mcpProvider = new SpecForgeMcpServerDefinitionProvider(context.extensionUri.fsPath, manifestVersion);
-    (0, extensionRuntime_1.activateExtension)(context, createVsCodeHost(), refreshableProvider, createExtensionActions(refreshableProvider, sidebarProvider, workflowAuditProvider, mcpProvider));
-    const refreshWorkspaceUiAsync = async (reason) => {
+    async function refreshWorkspaceUiAsync(reason) {
         if (reason.startsWith("watcher:") && (0, workflowPanel_1.hasActiveWorkflowPlayback)()) {
             (0, outputChannel_1.appendSpecForgeDebugLog)(`Skipping workspace UI refresh while workflow playback is active. reason='${reason}'.`);
             return;
@@ -76,7 +69,15 @@ function activate(context) {
         sidebarProvider.refresh();
         await (0, workflowPanel_1.refreshWorkflowViews)(reason);
         await notifyAttentionChangesAsync();
-    };
+    }
+    const manifestVersion = readManifestVersion(context);
+    const sidebarProvider = new sidebarView_1.SidebarViewProvider(context.extensionUri, async () => {
+        await refreshWorkspaceUiAsync("sidebar:onDidCreateUserStory");
+    });
+    const workflowAuditProvider = new workflowAuditView_1.WorkflowAuditViewProvider(context.extensionUri);
+    const refreshableProvider = { refresh: () => sidebarProvider.refresh() };
+    const mcpProvider = new SpecForgeMcpServerDefinitionProvider(context.extensionUri.fsPath, manifestVersion);
+    (0, extensionRuntime_1.activateExtension)(context, createVsCodeHost(), refreshableProvider, createExtensionActions(refreshableProvider, sidebarProvider, workflowAuditProvider, mcpProvider, refreshWorkspaceUiAsync));
     context.subscriptions.push(vscode.window.registerWebviewViewProvider("specForge.userStories", sidebarProvider), vscode.window.registerWebviewViewProvider("specForge.auditStream", workflowAuditProvider), vscode.lm.registerMcpServerDefinitionProvider("specForge.workspaceMcp", mcpProvider), vscode.commands.registerCommand("specForge.openExecutionSettings", async () => {
         const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
         await (0, executionSettingsPanel_1.openExecutionSettingsPanelAsync)(context.extensionUri, async () => {
@@ -206,9 +207,18 @@ function readManifestVersion(context) {
         ? rawVersion.trim()
         : "unknown";
 }
-function createExtensionActions(explorerProvider, sidebarProvider, workflowAuditProvider, mcpProvider) {
+function createExtensionActions(explorerProvider, sidebarProvider, workflowAuditProvider, mcpProvider, refreshWorkspaceUiAsync) {
     return {
-        createUserStoryFromInput: specsExplorer_1.createUserStoryFromInput,
+        createUserStoryFromInput: async () => {
+            await (0, createUserStoryPanel_1.openCreateUserStoryPanelAsync)(sidebarProvider.extensionUri, async () => {
+                await refreshWorkspaceUiAsync("createPanel:onDidCreateUserStory");
+            });
+        },
+        openCreateUserStoryPanel: async () => {
+            await (0, createUserStoryPanel_1.openCreateUserStoryPanelAsync)(sidebarProvider.extensionUri, async () => {
+                await refreshWorkspaceUiAsync("createPanel:onDidCreateUserStory");
+            });
+        },
         importUserStoryFromMarkdown: specsExplorer_1.importUserStoryFromMarkdown,
         initializeRepoPrompts: specsExplorer_1.initializeRepoPrompts,
         openPromptTemplates: specsExplorer_1.openPromptTemplates,

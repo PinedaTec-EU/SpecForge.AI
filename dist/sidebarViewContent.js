@@ -9,6 +9,13 @@ function buildSidebarHtml(model) {
     const isBusy = model.busyMessage !== null;
     const createFileMode = model.createFileMode ?? "context";
     const createFiles = model.createFiles ?? [];
+    const createSurface = model.createSurface ?? "sidebar";
+    const createSurfaceCopy = createSurface === "main-window"
+        ? "No faded text-buttons, no scattered prompts. Start here and the sidebar opens the full intake form in the main window."
+        : "No faded text-buttons, no scattered prompts. Start here and the sidebar opens the full intake form in place.";
+    const createFormHeading = createSurface === "main-window"
+        ? "Create in the main window"
+        : "Create from the sidebar";
     if (!model.hasWorkspace) {
         return wrapHtml(`
       ${busyIndicatorMarkup}
@@ -52,7 +59,7 @@ function buildSidebarHtml(model) {
             : "Create your first user story";
         const emptyCopy = hasStoriesOutsideCurrentScope
             ? `The current sidebar scope is hiding every story. Use view options to include other owners, or change your filters to bring stories back into view.`
-            : "No faded text-buttons, no scattered prompts. Start here and the sidebar opens the full intake form in place.";
+            : createSurfaceCopy;
         return wrapHtml(`
       ${busyIndicatorMarkup}
       ${buildSettingsWarningMarkup(model)}
@@ -90,7 +97,7 @@ function buildSidebarHtml(model) {
         <div class="section-header">
           <div>
             <p class="eyebrow">New User Story</p>
-            <h2>Create from the sidebar</h2>
+            <h2>${(0, htmlEscape_1.escapeHtml)(createFormHeading)}</h2>
           </div>
           <button class="ghost-action" data-command="hideCreateForm">Close</button>
         </div>
@@ -283,11 +290,9 @@ function buildSidebarHtml(model) {
       </section>
     `
         : "";
-    return wrapHtml(`
-    ${busyIndicatorMarkup}
-    ${buildSettingsWarningMarkup(model)}
-    ${promptsBootstrapMarkup}
-    ${formMarkup}
+    const storyListMarkup = model.showStoryList === false
+        ? ""
+        : `
     <section class="story-list">
       <div class="section-header">
         <div>
@@ -304,6 +309,13 @@ function buildSidebarHtml(model) {
       ${storiesMarkup || `<p class="copy story-list__empty">${emptyStoryListMessage(model, visibleUserStories.length)}</p>`}
       <p class="copy story-list__empty" data-story-search-empty hidden>No user stories match this search.</p>
     </section>
+  `;
+    return wrapHtml(`
+    ${busyIndicatorMarkup}
+    ${buildSettingsWarningMarkup(model)}
+    ${promptsBootstrapMarkup}
+    ${formMarkup}
+    ${storyListMarkup}
   `, isBusy, model.createFormResetToken ?? 0, model.typographyCssVars ?? "");
 }
 function emptyStoryListMessage(model, visibleUserStoryCount) {
@@ -476,11 +488,12 @@ function buildViewOptionsMenu(model) {
 }
 function buildCompactActions(model) {
     const showViewOptionsMenu = model.showViewOptionsMenu !== false;
+    const showCreateAction = model.showCreateAction !== false;
     return `
     <div class="compact-actions">
       ${buildDroppedStoriesActionButton(model.showDroppedUserStories, model.droppedUserStoryCount)}
       ${model.showDroppedUserStories || !showViewOptionsMenu ? "" : buildViewOptionsMenu(model)}
-      ${model.showDroppedUserStories ? "" : buildCreateActionButton(model.promptsInitialized)}
+      ${model.showDroppedUserStories || !showCreateAction ? "" : buildCreateActionButton(model.promptsInitialized)}
       ${buildPromptMenu(model.promptsInitialized)}
     </div>
   `;

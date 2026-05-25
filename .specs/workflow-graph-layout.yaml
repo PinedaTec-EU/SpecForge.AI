@@ -7,32 +7,32 @@ horizontal:
     x: 80
     y: 120
   refinement:
-    x: 390
-    y: 120
+    x: 192
+    y: 312
   spec:
-    x: 700
-    y: 120
+    x: 312
+    y: 504
   technical-design:
-    x: 1010
-    y: 120
+    x: 456
+    y: 696
   implementation:
-    x: 1010
-    y: 340
+    x: 744
+    y: 504
   review:
-    x: 1010
-    y: 560
+    x: 864
+    y: 312
   release-approval:
-    x: 1320
-    y: 560
+    x: 1032
+    y: 120
   pr-preparation:
-    x: 1630
-    y: 560
+    x: 1344
+    y: 264
   completed:
-    x: 1940
-    y: 560
+    x: 1704
+    y: 264
   legend:
-    x: 20
-    y: 720
+    x: 24
+    y: 480
   connections:
     capture->refinement:
       from: R3
@@ -64,55 +64,33 @@ horizontal:
       toPhaseId: review
       side: right
 
-aggregate:
-  positions:
-    capture:
-      x: 56
-      y: 140
-    refinement:
-      x: 336
-      y: 140
-    spec:
-      x: 336
-      y: 332
-    split:
-      x: 56
-      y: 524
-  spacing:
-    horizontalPadding: 56
-    topRowTop: 140
-    topRowGap: 56
-    rowGap: 192
-    childGap: 56
-    maxChildrenPerRow: 2
-
 vertical:
   capture:
     x: 80
     y: 60
   refinement:
-    x: 390
-    y: 60
+    x: 384
+    y: 144
   spec:
-    x: 390
-    y: 240
+    x: 384
+    y: 336
   technical-design:
-    x: 390
-    y: 420
+    x: 384
+    y: 528
   implementation:
-    x: 390
+    x: 96
     y: 600
   review:
-    x: 390
-    y: 780
+    x: 96
+    y: 816
   release-approval:
-    x: 390
-    y: 960
+    x: 384
+    y: 888
   pr-preparation:
-    x: 390
-    y: 1140
+    x: 264
+    y: 1104
   completed:
-    x: 390
+    x: 264
     y: 1320
   legend:
     x: 20
@@ -147,3 +125,27 @@ vertical:
       fromPhaseId: implementation
       toPhaseId: review
       side: right
+
+aggregate:
+  positions:
+    capture:
+      x: 56
+      y: 140
+    refinement:
+      x: 336
+      y: 140
+    spec:
+      x: 336
+      y: 332
+    split:
+      x: 56
+      y: 524
+  spacing:
+    horizontalPadding: 56
+    topRowTop: 140
+    topRowGap: 56
+    rowGap: 192
+    childGap: 56
+    maxChildrenPerRow: 2
+
+aggregateUserStories:

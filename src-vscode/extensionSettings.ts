@@ -187,7 +187,7 @@ export function readSpecForgeSettings(configuration: ConfigurationReader): SpecF
     reviewEvidencePolicy,
     technicalDesignSubagentsEnabled: configuration.get<boolean>("execution.technicalDesignSubagentsEnabled", false),
     reviewSubagentsEnabled: configuration.get<boolean>("execution.reviewSubagentsEnabled", false),
-    workflowGraphLayoutMode: configuration.get<"horizontal" | "vertical">("ui.workflowGraphLayoutMode", "vertical") === "horizontal" ? "horizontal" : "vertical",
+    workflowGraphLayoutMode: configuration.get<"horizontal" | "vertical">("ui.workflowGraphLayoutMode", "horizontal") === "horizontal" ? "horizontal" : "vertical",
     workflowGraphInitialZoomMode: configuration.get<"actual-size" | "fit-width">("ui.workflowGraphInitialZoomMode", "actual-size") === "fit-width" ? "fit-width" : "actual-size",
     userStoryListViewMode,
     visualTimelineEnabled: configuration.get<boolean>("ui.visualTimelineEnabled", false),

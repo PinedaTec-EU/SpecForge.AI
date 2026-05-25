@@ -7,7 +7,7 @@
       "modelProfile": "",
       "instructions": "Focus on requirements, workflow consistency, and repository-aware planning.",
       "repositoryAccess": "read",
-      "reasoningEffort": null
+      "reasoningEffort": ""
     },
     {
       "name": "implementer",
@@ -15,7 +15,7 @@
       "modelProfile": "",
       "instructions": "Implement approved technical designs with focused code changes and matching tests.",
       "repositoryAccess": "read-write",
-      "reasoningEffort": null
+      "reasoningEffort": ""
     },
     {
       "name": "reviewer",
@@ -23,7 +23,7 @@
       "modelProfile": "",
       "instructions": "Review implementation changes for correctness, regressions, missing tests, and release risk.",
       "repositoryAccess": "read",
-      "reasoningEffort": null
+      "reasoningEffort": ""
     },
     {
       "name": "release-preparer",
@@ -31,7 +31,7 @@
       "modelProfile": "",
       "instructions": "Prepare release and pull request artifacts from repository evidence.",
       "repositoryAccess": "read",
-      "reasoningEffort": null
+      "reasoningEffort": ""
     }
   ],
   "phaseAgentAssignments": {
@@ -58,6 +58,24 @@
   "maxImplementationReviewCycles": 5,
   "destructiveRewindEnabled": false,
   "pauseOnFailedReview": true,
+  "useSemanticGraphWhenAvailable": true,
+  "allowGraphBuildRefreshForTouchedUserStoryScope": false,
+  "defaultHarnessProfile": "balanced",
+  "phaseHarnessProfiles": {
+    "defaultProfile": null,
+    "captureProfile": null,
+    "refinementProfile": null,
+    "specProfile": null,
+    "technicalDesignProfile": null,
+    "implementationProfile": null,
+    "reviewProfile": null,
+    "releaseApprovalProfile": null,
+    "prPreparationProfile": null
+  },
+  "harnessProfileAuthority": "workspace",
+  "harnessProfileLockMode": "none",
+  "lockedHarnessPhaseIds": [],
+  "allowPerUserStoryHarnessProfileOverrides": true,
   "reviewLearningEnabled": true,
   "reviewLearningSkillPath": ".codex/skills/sdd-phase-agents/SKILL.md",
   "completedUsLockOnCompleted": false,

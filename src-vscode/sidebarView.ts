@@ -97,7 +97,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
   private createFormResetToken = 0;
 
   public constructor(
-    private readonly extensionUri: vscode.Uri,
+    public readonly extensionUri: vscode.Uri,
     private readonly onDidCreateUserStory: () => Promise<void>
   ) {}
 
@@ -135,11 +135,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 
     switch (message.command) {
       case "showCreateForm":
-        this.showCreateForm = true;
-        this.createFileMode = "context";
-        this.createFiles = [];
-        this.createFormResetToken += 1;
-        await this.safeRenderAsync();
+        await vscode.commands.executeCommand("specForge.openCreateUserStoryPanel");
         return;
       case "hideCreateForm":
         this.showCreateForm = false;
@@ -874,6 +870,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
       this.webviewView.webview.html = buildSidebarHtml({
         hasWorkspace: false,
         showCreateForm: false,
+        createSurface: "main-window",
         busyMessage: this.busyMessage,
         promptsInitialized: false,
         promptsMessage: null,
@@ -938,7 +935,8 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
     const runtimeVersion = await readRuntimeVersionAsync();
     this.webviewView.webview.html = buildSidebarHtml({
       hasWorkspace: true,
-      showCreateForm: this.showCreateForm,
+      showCreateForm: false,
+      createSurface: "main-window",
       busyMessage: this.busyMessage,
       promptsInitialized: promptsStatus.initialized,
       promptsMessage: promptsStatus.message,
@@ -979,6 +977,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
       this.webviewView.webview.html = buildSidebarHtml({
         hasWorkspace: true,
         showCreateForm: false,
+        createSurface: "main-window",
         busyMessage: this.busyMessage,
         promptsInitialized: false,
         promptsMessage: null,

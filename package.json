@@ -436,7 +436,7 @@
         },
         "specForge.ui.workflowGraphLayoutMode": {
           "type": "string",
-          "default": "vertical",
+          "default": "horizontal",
           "enum": [
             "vertical",
             "horizontal"

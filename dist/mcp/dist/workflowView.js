@@ -6180,6 +6180,14 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
               <button
                 class="graph-stage-action-button"
                 type="button"
+                data-graph-layout-mode-toggle
+                aria-label="Switch workflow graph layout to vertical"
+                title="Switch workflow graph layout to vertical">
+                ${(0, icons_1.graphLayoutModeIcon)("vertical")}
+              </button>
+              <button
+                class="graph-stage-action-button"
+                type="button"
                 data-graph-layout-edit-toggle
                 aria-label="Enable workflow graph layout editing"
                 title="Enable workflow graph layout editing">
@@ -6292,6 +6300,11 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
     const graphZoomOutButton = document.querySelector("[data-graph-zoom-out]");
     const graphAutoFitButton = document.querySelector("[data-graph-auto-fit]");
     const graphFitWidthButton = document.querySelector("[data-graph-fit-width]");
+    const graphLayoutModeToggleButton = document.querySelector("[data-graph-layout-mode-toggle]");
+    const graphLayoutModeIcons = ${JSON.stringify({
+        horizontal: (0, icons_1.graphLayoutModeIcon)("horizontal"),
+        vertical: (0, icons_1.graphLayoutModeIcon)("vertical")
+    })};
     const completedReopenTargetPhaseByReason = ${JSON.stringify({
         "merge-conflict": "implementation",
         defect: "implementation",
@@ -6334,6 +6347,10 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
     const graphZoomMax = 2.2;
     const graphZoomStep = 0.12;
     let graphLayoutEditMode = viewState.graphLayoutEditMode === true;
+    const configuredGraphLayoutMode = ${JSON.stringify(state.graphLayoutMode === "vertical" ? "vertical" : "horizontal")};
+    let activeGraphLayoutMode = viewState.graphLayoutMode === "vertical" || viewState.graphLayoutMode === "horizontal"
+      ? viewState.graphLayoutMode
+      : configuredGraphLayoutMode;
     const configuredGraphInitialZoomMode = ${JSON.stringify(state.graphInitialZoomMode === "fit-width" ? "fit-width" : "actual-size")};
     const restoredGraphZoomMode = viewState.graphInitialZoomMode === configuredGraphInitialZoomMode
       ? viewState.graphZoomMode
@@ -6554,9 +6571,7 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
     };
     const isCompactGraphViewport = () => window.matchMedia("(max-width: 760px)").matches;
     const isAggregateGraphView = () => phaseGraph instanceof HTMLElement && phaseGraph.classList.contains("phase-graph--aggregate");
-    const getActiveGraphLayoutMode = () => phaseGraph instanceof HTMLElement && phaseGraph.dataset.graphLayoutMode === "horizontal"
-      ? "horizontal"
-      : "vertical";
+    const getActiveGraphLayoutMode = () => activeGraphLayoutMode;
     const getCurrentPhaseNodeWidth = () => isCompactGraphViewport() ? ${mobilePhaseNodeWidth} : ${phaseNodeWidth};
     const getCurrentPhaseNodeHeight = () => ${phaseNodeHeight};
     const getGraphSnapStep = () => {
@@ -7020,6 +7035,24 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
         graphLayoutEditToggleButton.setAttribute("aria-label", editLayoutTooltip);
         graphLayoutEditToggleButton.setAttribute("title", editLayoutTooltip);
         graphLayoutEditToggleButton.classList.toggle("graph-stage-action-button--active", graphLayoutEditMode);
+      }
+    };
+    const syncGraphLayoutMode = () => {
+      if (phaseGraph instanceof HTMLElement) {
+        phaseGraph.dataset.graphLayoutMode = activeGraphLayoutMode;
+      }
+      if (graphStage instanceof HTMLElement) {
+        graphStage.dataset.graphLayoutMode = activeGraphLayoutMode;
+      }
+      if (graphLayoutModeToggleButton instanceof HTMLButtonElement) {
+        const nextGraphLayoutMode = activeGraphLayoutMode === "horizontal" ? "vertical" : "horizontal";
+        const layoutToggleTooltip = isAggregateGraphView()
+          ? "Aggregate workflow graphs use a fixed vertical layout"
+          : "Switch workflow graph layout to " + nextGraphLayoutMode;
+        graphLayoutModeToggleButton.innerHTML = graphLayoutModeIcons[nextGraphLayoutMode] ?? "";
+        graphLayoutModeToggleButton.disabled = isAggregateGraphView();
+        graphLayoutModeToggleButton.setAttribute("aria-label", layoutToggleTooltip);
+        graphLayoutModeToggleButton.setAttribute("title", layoutToggleTooltip);
       }
     };
     const autoFitGraph = () => {
@@ -7548,6 +7581,7 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
         void exportWorkflowSnapshot();
       });
     }
+    syncGraphLayoutMode();
     if (restoredGraphZoomMode) {
       restoreGraphZoomWithoutScroll();
     }
@@ -7602,6 +7636,7 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
           graphStageOffsetY: graphStageOffsetState.y,
           detailScrollTop: detailPanel instanceof HTMLElement ? detailPanel.scrollTop : 0,
           graphLayoutEditMode,
+          graphLayoutMode: activeGraphLayoutMode,
           graphInitialZoomMode: configuredGraphInitialZoomMode,
           graphZoomMode: graphZoomState.mode,
           graphZoomScale: graphZoomState.scale
@@ -7883,6 +7918,28 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
           workflowFilesOpen: Boolean(viewState.workflowFilesOpen),
           graphLayoutEditMode
         });
+      });
+    }
+    if (graphLayoutModeToggleButton instanceof HTMLButtonElement) {
+      graphLayoutModeToggleButton.addEventListener("click", () => {
+        if (isAggregateGraphView()) {
+          return;
+        }
+
+        activeGraphLayoutMode = activeGraphLayoutMode === "horizontal" ? "vertical" : "horizontal";
+        viewState.graphLayoutMode = activeGraphLayoutMode;
+        syncGraphLayoutMode();
+        updateDynamicGraphLinks();
+        if (graphZoomState.mode === "fit") {
+          autoFitGraph();
+          window.requestAnimationFrame(() => centerGraphInViewport());
+        } else if (graphZoomState.mode === "fit-width") {
+          fitGraphWidth();
+          window.requestAnimationFrame(() => centerFitWidthGraphFocus());
+        } else {
+          applyGraphZoom(graphZoomState.scale, "manual");
+        }
+        persistWorkflowScrollState();
       });
     }
     window.addEventListener("resize", () => {
@@ -9354,7 +9411,8 @@ function buildPhaseGraph(workflow, state, selectedPhaseId, playbackState, effect
     const completedPhaseIds = buildEffectiveCompletedPhaseIds(workflow, new Set(state.completedPhaseIds ?? []));
     const completedWorkflowLocked = workflow.status === "completed" && state.completedUsLockOnCompleted !== false;
     const refinementVisible = shouldShowRefinementPhase(workflow, executionPhaseId);
-    const visiblePhases = workflow.phases.filter((phase) => shouldShowPhase(phase.phaseId, refinementVisible, currentPhase.phaseId, executionPhaseId));
+    const graphPhases = ensureWorkflowGraphPhases(workflow);
+    const visiblePhases = graphPhases.filter((phase) => shouldShowPhase(phase.phaseId, refinementVisible, currentPhase.phaseId, executionPhaseId));
     const layoutPhases = visiblePhases.map((phase) => ({
         phaseId: phase.phaseId,
         expectsHumanIntervention: phase.expectsHumanIntervention
@@ -9772,6 +9830,42 @@ function buildPrimaryGraphEdges(visiblePhases, visiblePhaseMap, executingTargetP
 function shouldShowRefinementPhase(_workflow, _executionPhaseId) {
     return true;
 }
+function ensureWorkflowGraphPhases(workflow) {
+    if (workflow.phases.some((phase) => phase.phaseId === "completed")) {
+        return workflow.phases;
+    }
+    const maxOrder = workflow.phases.reduce((highest, phase) => Math.max(highest, phase.order), 0);
+    const syntheticCompletedPhase = {
+        phaseId: "completed",
+        title: "Completed",
+        order: maxOrder + 1,
+        requiresApproval: false,
+        expectsHumanIntervention: false,
+        isApproved: false,
+        isCurrent: workflow.status === "completed",
+        state: workflow.status === "completed" ? "current" : "pending",
+        artifactPath: null,
+        operationLogPath: null,
+        executePromptPath: null,
+        approvePromptPath: null,
+        executeSystemPromptPath: null,
+        approveSystemPromptPath: null,
+        executionBoundary: null,
+        captureRecord: null,
+        executionReadiness: null,
+        executionPolicy: null,
+        executionEnvelope: null,
+        harnessProfile: null,
+        specApprovalPolicy: null,
+        technicalDesignGateContract: null,
+        reviewPolicy: null,
+        releaseApprovalPolicy: null,
+        prPreparationPolicy: null,
+        latestExecutionInspection: null,
+        runtimeMetrics: null
+    };
+    return [...workflow.phases, syntheticCompletedPhase];
+}
 function linkClass(targetPhase, executingTargetPhaseId, currentPhaseId, completedPhaseIds) {
     if (executingTargetPhaseId === targetPhase.phaseId) {
         return "executing";
@@ -9785,6 +9879,9 @@ function linkClass(targetPhase, executingTargetPhaseId, currentPhaseId, complete
     return "pending";
 }
 function shouldShowPhase(phaseId, refinementVisible, currentPhaseId, executionPhaseId) {
+    if (phaseId === "completed") {
+        return true;
+    }
     return phaseId !== "refinement"
         || refinementVisible
         || currentPhaseId === "refinement"

@@ -8,6 +8,9 @@ function activateExtension(context, host, explorerProvider, actions) {
     }), host.registerCommand("specForge.createUserStory", async () => {
         await actions.createUserStoryFromInput();
         explorerProvider.refresh();
+    }), host.registerCommand("specForge.openCreateUserStoryPanel", async () => {
+        await actions.openCreateUserStoryPanel();
+        explorerProvider.refresh();
     }), host.registerCommand("specForge.importUserStory", async () => {
         await actions.importUserStoryFromMarkdown();
         explorerProvider.refresh();

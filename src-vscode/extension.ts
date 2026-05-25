@@ -16,12 +16,12 @@ import { readRuntimeVersionAsync } from "./runtimeVersion";
 import { hasActiveWorkflowPlayback, hasWorkflowViewOpen, notifyWorkflowFileChanged, openWorkflowView, refreshWorkflowViews } from "./workflowPanel";
 import { WorkflowAuditViewProvider } from "./workflowAuditView";
 import { SidebarViewProvider } from "./sidebarView";
+import { openCreateUserStoryPanelAsync } from "./createUserStoryPanel";
 import {
   approveCurrentPhase,
   applyPendingBackendClientReset,
   continuePhase,
   configureBackendHostRoot,
-  createUserStoryFromInput,
   disposeBackendClients,
   hasPendingBackendClientReset,
   requestBackendClientReset,
@@ -48,6 +48,18 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(getSpecForgeOutputChannel());
   void logActivationVersionAsync(context);
   appendSpecForgeDebugLog(`Extension activated in mode '${vscode.ExtensionMode[context.extensionMode]}'.`);
+  async function refreshWorkspaceUiAsync(reason: string): Promise<void> {
+    if (reason.startsWith("watcher:") && hasActiveWorkflowPlayback()) {
+      appendSpecForgeDebugLog(`Skipping workspace UI refresh while workflow playback is active. reason='${reason}'.`);
+      return;
+    }
+
+    appendSpecForgeDebugLog(`Refreshing workspace UI. reason='${reason}'.`);
+    sidebarProvider.refresh();
+    await refreshWorkflowViews(reason);
+    await notifyAttentionChangesAsync();
+  }
+
   const manifestVersion = readManifestVersion(context);
   const sidebarProvider = new SidebarViewProvider(context.extensionUri, async () => {
     await refreshWorkspaceUiAsync("sidebar:onDidCreateUserStory");
@@ -59,19 +71,8 @@ export function activate(context: vscode.ExtensionContext): void {
     context,
     createVsCodeHost(),
     refreshableProvider,
-    createExtensionActions(refreshableProvider, sidebarProvider, workflowAuditProvider, mcpProvider)
+    createExtensionActions(refreshableProvider, sidebarProvider, workflowAuditProvider, mcpProvider, refreshWorkspaceUiAsync)
   );
-  const refreshWorkspaceUiAsync = async (reason: string) => {
-    if (reason.startsWith("watcher:") && hasActiveWorkflowPlayback()) {
-      appendSpecForgeDebugLog(`Skipping workspace UI refresh while workflow playback is active. reason='${reason}'.`);
-      return;
-    }
-
-    appendSpecForgeDebugLog(`Refreshing workspace UI. reason='${reason}'.`);
-    sidebarProvider.refresh();
-    await refreshWorkflowViews(reason);
-    await notifyAttentionChangesAsync();
-  };
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider("specForge.userStories", sidebarProvider),
@@ -262,10 +263,20 @@ function createExtensionActions(
   explorerProvider: { refresh(): void },
   sidebarProvider: SidebarViewProvider,
   workflowAuditProvider: WorkflowAuditViewProvider,
-  mcpProvider: SpecForgeMcpServerDefinitionProvider
+  mcpProvider: SpecForgeMcpServerDefinitionProvider,
+  refreshWorkspaceUiAsync: (reason: string) => Promise<void>
 ): ExtensionActions {
   return {
-    createUserStoryFromInput,
+    createUserStoryFromInput: async () => {
+      await openCreateUserStoryPanelAsync(sidebarProvider.extensionUri, async () => {
+        await refreshWorkspaceUiAsync("createPanel:onDidCreateUserStory");
+      });
+    },
+    openCreateUserStoryPanel: async () => {
+      await openCreateUserStoryPanelAsync(sidebarProvider.extensionUri, async () => {
+        await refreshWorkspaceUiAsync("createPanel:onDidCreateUserStory");
+      });
+    },
     importUserStoryFromMarkdown,
     initializeRepoPrompts,
     openPromptTemplates,

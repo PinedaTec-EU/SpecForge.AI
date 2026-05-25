@@ -8,6 +8,7 @@ export interface DisposableLike {
 
 export interface ExtensionActions {
   createUserStoryFromInput(): Promise<void>;
+  openCreateUserStoryPanel(): Promise<void>;
   importUserStoryFromMarkdown(): Promise<void>;
   initializeRepoPrompts(overwrite?: boolean): Promise<void>;
   openPromptTemplates(): Promise<void>;
@@ -45,6 +46,10 @@ export function activateExtension(
     }),
     host.registerCommand("specForge.createUserStory", async () => {
       await actions.createUserStoryFromInput();
+      explorerProvider.refresh();
+    }),
+    host.registerCommand("specForge.openCreateUserStoryPanel", async () => {
+      await actions.openCreateUserStoryPanel();
       explorerProvider.refresh();
     }),
     host.registerCommand("specForge.importUserStory", async () => {
