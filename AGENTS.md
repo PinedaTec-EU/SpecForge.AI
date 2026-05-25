@@ -19,7 +19,7 @@ This repository consumes shared skills from `../ai-skills-shared`.
 - `./.codex/skills/sdd-phase-agents/SKILL.md`
 - This local skill applies only to the repository's SDD engineering workflow.
 - It does not replace or duplicate shared domain skills.
-- `/Users/jmr.pineda/.codex/skills/github-issue-authoring/SKILL.md`
+- `../ai-skills-shared/.shared-skills/skills/github-issue-authoring/SKILL.md`
 - This global skill applies whenever creating or updating GitHub issues.
 - In this repository, it must be used with the local repository acronym `SF`.
 - `./.codex/skills/specforge-frontend-runtime-guardrails/SKILL.md`
@@ -41,12 +41,12 @@ This repository consumes shared skills from `../ai-skills-shared`.
 - Open bug issues in this repository must carry a `Severity` property using `critical`, `high`, `medium`, or `low`.
 - Open non-bug backlog issues in this repository must carry a `Priority` property using `P0`, `P1`, `P2`, or `P3`.
 - When a local open-work cache is needed in this repository, use the generated unified backlog file `doc/github-backlog.md` via `node tools/sync-github-backlog.js`. Do not maintain that file by hand.
-- The repository-local script `tools/sync-github-backlog.js` must stay aligned with the shared template at `/Users/jmr.pineda/SynologyDrive/Projects/codex/rules/conventions/sync-github-backlog.js`.
+- The repository-local script `tools/sync-github-backlog.js` must stay aligned with the shared template at `../ai-skills-shared/rules/conventions/sync-github-backlog.js`.
 - Do not maintain separate local backlog mirrors by issue type or status such as `bugs-open.md`, `features-open.md`, `tech-debt-open.md`, `bug-registry.md`, or any `*-closed.md` files.
 - Local Markdown under `doc/` must remain roadmap, architecture, reference, planning context, or the generated `github-backlog.md` cache, not a parallel execution ledger.
 - Bug issue titles must stay short. Keep the detailed defect description in the issue body.
-- GitHub issue authoring in this repository must use the global skill `/Users/jmr.pineda/.codex/skills/github-issue-authoring/SKILL.md`.
-- The issue body structure must come from the matching global final template under `/Users/jmr.pineda/.codex/skills/github-issue-authoring/references/final-templates/`.
+- GitHub issue authoring in this repository must use the global skill `../ai-skills-shared/.shared-skills/skills/github-issue-authoring/SKILL.md`.
+- The issue body structure must come from the matching global final template under `../ai-skills-shared/.shared-skills/skills/github-issue-authoring/references/final-templates/`.
 - Do not maintain repository-local GitHub issue templates for this repository. The global templates are the only drafting source of truth.
 - Issue titles must stay short and start with the repository issue code in fixed-width numeric form: `AAX-000: <brief title>`.
 - In this repository, use `SF` as the repository acronym, so valid prefixes are `SFB`, `SFF`, `SFT`, `SFD`, and `SFI`.
