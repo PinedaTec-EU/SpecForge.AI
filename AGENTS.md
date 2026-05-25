@@ -37,8 +37,13 @@ This repository consumes shared skills from `../ai-skills-shared`.
 - The only approved place to develop SpecForge through SpecForge workflow artifacts is `specforge-ai-central`. When SpecForge product work is managed through the product itself, that management must live there, not in this repository.
 - In this repository, any `.specs/**` content is product runtime data, test/sample fixture material, or implementation evidence for the engine itself. It is not the canonical backlog, task tracker, or feature register for changes to this repository.
 - Embedded workflow portal surfaces must not use `iframe` boundaries for first-party UI such as the user-story sidebar, configuration modal, or other portal-owned interactive shells. Keep them in a single DOM with a single state owner to avoid cross-frame event bridging, close-state bugs, and browser-integration regressions.
-- Bug tracking in this repository must use GitHub issues labeled `bug` as the canonical bug identity. Keep `doc/bugs-open.md` and `doc/bugs-closed.md` synchronized with those GitHub issues via `node tools/sync-bug-docs.js`; do not maintain those mirror files by hand.
-- Open non-bug backlog work in this repository must use GitHub issues as the canonical tracker. Use `enhancement` for features and `tech-debt` for technical debt; keep local Markdown under `doc/` as roadmap, architecture, reference, or planning context instead of a duplicate execution ledger.
+- Backlog tracking in this repository must use GitHub Issues as the canonical tracker. Use `bug` for defects, `enhancement` for features, and `tech-debt` for technical debt.
+- Open bug issues in this repository must carry a `Severity` property using `critical`, `high`, `medium`, or `low`.
+- Open non-bug backlog issues in this repository must carry a `Priority` property using `P0`, `P1`, `P2`, or `P3`.
+- When a local open-work view is needed in this repository, use the generated unified backlog file `doc/backlog-open.md` via `node tools/sync-open-backlog.js`. Do not maintain that file by hand.
+- The repository-local script `tools/sync-open-backlog.js` must stay aligned with the shared template at `/Users/jmr.pineda/SynologyDrive/Projects/codex/rules/conventions/sync-open-backlog.js`.
+- Do not maintain separate local backlog mirrors by issue type or status such as `bugs-open.md`, `features-open.md`, `tech-debt-open.md`, `bug-registry.md`, or any `*-closed.md` files.
+- Local Markdown under `doc/` must remain roadmap, architecture, reference, planning context, or the generated unified open backlog view, not a parallel execution ledger.
 - Bug issue titles must stay short. Keep the detailed defect description in the issue body.
 - GitHub issue authoring in this repository must use the global skill `/Users/jmr.pineda/.codex/skills/github-issue-authoring/SKILL.md`.
 - The issue body structure must come from the matching global final template under `/Users/jmr.pineda/.codex/skills/github-issue-authoring/references/final-templates/`.

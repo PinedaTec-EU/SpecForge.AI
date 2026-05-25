@@ -126,8 +126,8 @@ Deliverables:
 16. ✅ group the VS Code explorer by user-story category
 17. ✅ introduce a minimum TypeScript test project for the extension
 18. ✅ extend UX with graph view and richer phase detail
-19. Planned: richer prompt inspection and effective prompt visibility from the extension.
-    Canonical issue: [#42](https://github.com/PinedaTec-EU/SpecForge.AI/issues/42)
+19. ✅ richer prompt inspection and effective prompt visibility from the extension.
+    Delivered in closed issue: [#42](https://github.com/PinedaTec-EU/SpecForge.AI/issues/42)
 20. Planned: enrich branch lifecycle with real Git/PR integration.
     Planning context: [tasks/branch-lifecycle.md](tasks/branch-lifecycle.md)
 21. Planned: introduce SpecForge Central managed-repository catalog and repository selection.
@@ -209,7 +209,7 @@ Does not block the MVP:
 
 - ✅ workflow graph view
 - ✅ richer phase detail UI with graph visualization, audit, metrics, lineage, and selected-phase artifacts
-- Planned: prompt diffing and visible effective prompt inspection/editing from the extension. Canonical issue: [#42](https://github.com/PinedaTec-EU/SpecForge.AI/issues/42)
+- ✅ visible effective prompt inspection from the extension delivered. Closed issue: [#42](https://github.com/PinedaTec-EU/SpecForge.AI/issues/42)
 - Planned: provider-neutral PR/issues integration beyond the current GitHub-oriented PR publication path. Canonical issue: [#43](https://github.com/PinedaTec-EU/SpecForge.AI/issues/43)
 - Planned: switch Git branch automatically when the active user story changes in UI, MCP, or CLI, with `main` fallback before branch creation. Canonical issues: [#36](https://github.com/PinedaTec-EU/SpecForge.AI/issues/36) and [#37](https://github.com/PinedaTec-EU/SpecForge.AI/issues/37)
 - ✅ phase agent profiles with real repository permissions
@@ -275,7 +275,7 @@ Recently completed subtasks:
 - ✅ add completed and blocked visibility toggles in the sidebar and CLI portal story lists
 - ✅ add in-sidebar user story search by title, description, category, and tags
 - Planned: continue portal hardening and exhaustive integrated-browser validation. Canonical issues: [#38](https://github.com/PinedaTec-EU/SpecForge.AI/issues/38), [#39](https://github.com/PinedaTec-EU/SpecForge.AI/issues/39), [#40](https://github.com/PinedaTec-EU/SpecForge.AI/issues/40), and [#41](https://github.com/PinedaTec-EU/SpecForge.AI/issues/41)
-- Planned: complete rich prompt inspection/editing from the extension with diff or visible effective prompt. Canonical issue: [#42](https://github.com/PinedaTec-EU/SpecForge.AI/issues/42)
+- ✅ rich visible prompt inspection from the extension delivered as the first cut. Closed issue: [#42](https://github.com/PinedaTec-EU/SpecForge.AI/issues/42)
 - ✅ add shared `createdBy` and `owner` metadata plus local per-user visibility controls so large repositories default to "my active stories" instead of the full backlog
 - ✅ enforce a self-hosting fallback rule so engine defects are tracked outside the SpecForge workflow engine before repair work depends on that same engine
 

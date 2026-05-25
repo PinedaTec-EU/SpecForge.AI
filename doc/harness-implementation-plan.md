@@ -4,9 +4,15 @@ Last reviewed: 2026-05-25.
 
 This document tracks the implementation plan derived from the harness-engineering baseline in [harness-engineering-checklist.md](harness-engineering-checklist.md).
 
-Execution tasks live in [harness-phase-tasks.md](harness-phase-tasks.md).
-
 Active non-bug backlog tracking now lives in GitHub Issues. This document keeps the harness rollout framing, rationale, and design context; it is not the canonical execution ledger.
+
+Canonical harness backlog hierarchy:
+
+- Master issue: [#51](https://github.com/PinedaTec-EU/SpecForge.AI/issues/51) `SFF-051: Harness backlog master issue`
+- Pending Wave 5: [#52](https://github.com/PinedaTec-EU/SpecForge.AI/issues/52) `SFF-052: Eval packs and reusable gate outputs`
+- Pending Wave 6: [#53](https://github.com/PinedaTec-EU/SpecForge.AI/issues/53) `SFF-053: Stronger execution envelopes and permissions`
+- Pending Wave 7: [#54](https://github.com/PinedaTec-EU/SpecForge.AI/issues/54) `SFF-054: Reusable harness profiles and bootstrap`
+- Pending Wave 8: [#55](https://github.com/PinedaTec-EU/SpecForge.AI/issues/55) `SFF-055: SpecForge Central harness governance`
 
 Its purpose is operational:
 
@@ -23,13 +29,17 @@ Its purpose is operational:
 - Treat each wave as decision-gated: finish scope review before opening the next one.
 - Treat the semantic code-graph as a first-class harness accelerator, not as an optional side note, because it directly affects token cost, context selection quality, and auditability for `technical-design`, `implementation`, and `review`.
 
-## Canonical Near-Term Issues
+## Canonical Issue Context
 
 - Wave 1: [#42](https://github.com/PinedaTec-EU/SpecForge.AI/issues/42) `SFF-042: Effective prompt and context inspection`
 - Wave 2: [#48](https://github.com/PinedaTec-EU/SpecForge.AI/issues/48) `SFT-048: Structured execution evidence substrate`
 - Wave 3: [#49](https://github.com/PinedaTec-EU/SpecForge.AI/issues/49) `SFF-049: Phase metrics and operator visibility`
 - Wave 4: [#50](https://github.com/PinedaTec-EU/SpecForge.AI/issues/50) `SFF-050: Policy visibility and explainability`
-- Waves 5-8 remain planning context here and have not been promoted to canonical GitHub issues yet.
+- Backlog master for pending harness work: [#51](https://github.com/PinedaTec-EU/SpecForge.AI/issues/51) `SFF-051: Harness backlog master issue`
+- Wave 5: [#52](https://github.com/PinedaTec-EU/SpecForge.AI/issues/52) `SFF-052: Eval packs and reusable gate outputs`
+- Wave 6: [#53](https://github.com/PinedaTec-EU/SpecForge.AI/issues/53) `SFF-053: Stronger execution envelopes and permissions`
+- Wave 7: [#54](https://github.com/PinedaTec-EU/SpecForge.AI/issues/54) `SFF-054: Reusable harness profiles and bootstrap`
+- Wave 8: [#55](https://github.com/PinedaTec-EU/SpecForge.AI/issues/55) `SFF-055: SpecForge Central harness governance`
 
 ## Wave Plan
 
@@ -104,7 +114,7 @@ Model strategy direction:
 
 ### Wave 1 · Effective Prompt And Context Inspection
 
-- Status: `planned`
+- Status: `delivered`
 - Priority: `highest`
 - Cost: `S-M`
 - Expected value: `high`
@@ -125,7 +135,7 @@ Primary outcomes:
 
 Open tracking:
 
-- Canonical issue: [#42](https://github.com/PinedaTec-EU/SpecForge.AI/issues/42)
+- Closed issue: [#42](https://github.com/PinedaTec-EU/SpecForge.AI/issues/42)
 - Planning questions:
   - define the minimum effective-prompt data shape
   - define the minimum effective-context data shape
@@ -244,7 +254,7 @@ Explicit non-goals for Wave 1:
 
 ### Wave 2 · Structured Execution Evidence
 
-- Status: `planned`
+- Status: `delivered`
 - Priority: `highest`
 - Cost: `M`
 - Expected value: `high`
@@ -264,7 +274,7 @@ Primary outcomes:
 
 Open tracking:
 
-- Canonical issue: [#48](https://github.com/PinedaTec-EU/SpecForge.AI/issues/48)
+- Closed issue: [#48](https://github.com/PinedaTec-EU/SpecForge.AI/issues/48)
 - Planning questions:
   - define the execution evidence record contract
   - decide storage model relative to `timeline.md`, `runtime.yaml`, and phase artifacts
@@ -273,7 +283,7 @@ Open tracking:
 
 ### Wave 3 · Basic Phase Metrics And Operator Visibility
 
-- Status: `planned`
+- Status: `delivered`
 - Priority: `high`
 - Cost: `S-M`
 - Expected value: `high`
@@ -293,7 +303,7 @@ Primary outcomes:
 
 Open tracking:
 
-- Canonical issue: [#49](https://github.com/PinedaTec-EU/SpecForge.AI/issues/49)
+- Closed issue: [#49](https://github.com/PinedaTec-EU/SpecForge.AI/issues/49)
 - Planning questions:
   - lock the first metric set
   - define derivation rules from persisted state and timeline
@@ -302,7 +312,7 @@ Open tracking:
 
 ### Wave 4 · Policy Visibility And Explainability
 
-- Status: `planned`
+- Status: `delivered`
 - Priority: `high`
 - Cost: `M`
 - Expected value: `high`
@@ -322,7 +332,7 @@ Primary outcomes:
 
 Open tracking:
 
-- Canonical issue: [#50](https://github.com/PinedaTec-EU/SpecForge.AI/issues/50)
+- Closed issue: [#50](https://github.com/PinedaTec-EU/SpecForge.AI/issues/50)
 - Planning questions:
   - define the minimum effective-policy view
   - list the first policy dimensions to surface

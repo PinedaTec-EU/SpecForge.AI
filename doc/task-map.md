@@ -10,19 +10,21 @@ Active non-bug backlog tracking lives in GitHub Issues:
 - technical debt: `tech-debt`
 - bugs: `bug`
 
+If you need a single local view of what is currently open, use [backlog-open.md](backlog-open.md).
+
 Use this document to understand how the work is grouped and where the planning context lives. Do not treat it as the live execution ledger.
 
 ## Work Blocks
 
 | Block | Planning context | Canonical GitHub issues | Scope |
 | --- | --- | --- | --- |
-| `HARNESS` | [harness-implementation-plan.md](harness-implementation-plan.md), [harness-engineering-checklist.md](harness-engineering-checklist.md), [semantic-code-graph-design.md](semantic-code-graph-design.md) | [#42](https://github.com/PinedaTec-EU/SpecForge.AI/issues/42), [#48](https://github.com/PinedaTec-EU/SpecForge.AI/issues/48), [#49](https://github.com/PinedaTec-EU/SpecForge.AI/issues/49), [#50](https://github.com/PinedaTec-EU/SpecForge.AI/issues/50) | Harness governance, prompt/context inspection, evidence, metrics, policy visibility, and semantic graph rollout |
-| `MVP` | [implementation-plan.md](implementation-plan.md), [roadmap.md](roadmap.md), [tasks/portal-modernization.md](tasks/portal-modernization.md), [tasks/ownership-visibility-and-self-hosting.md](tasks/ownership-visibility-and-self-hosting.md) | [#38](https://github.com/PinedaTec-EU/SpecForge.AI/issues/38), [#39](https://github.com/PinedaTec-EU/SpecForge.AI/issues/39), [#40](https://github.com/PinedaTec-EU/SpecForge.AI/issues/40), [#41](https://github.com/PinedaTec-EU/SpecForge.AI/issues/41), [#42](https://github.com/PinedaTec-EU/SpecForge.AI/issues/42), [#43](https://github.com/PinedaTec-EU/SpecForge.AI/issues/43), [#44](https://github.com/PinedaTec-EU/SpecForge.AI/issues/44), [#45](https://github.com/PinedaTec-EU/SpecForge.AI/issues/45), [#46](https://github.com/PinedaTec-EU/SpecForge.AI/issues/46), [#47](https://github.com/PinedaTec-EU/SpecForge.AI/issues/47) | Product MVP sequencing, extension/MCP/portal gaps, review/export surfaces, and integration packaging |
+| `HARNESS` | [harness-implementation-plan.md](harness-implementation-plan.md), [harness-engineering-checklist.md](harness-engineering-checklist.md), [semantic-code-graph-design.md](semantic-code-graph-design.md) | [#51](https://github.com/PinedaTec-EU/SpecForge.AI/issues/51), [#52](https://github.com/PinedaTec-EU/SpecForge.AI/issues/52), [#53](https://github.com/PinedaTec-EU/SpecForge.AI/issues/53), [#54](https://github.com/PinedaTec-EU/SpecForge.AI/issues/54), [#55](https://github.com/PinedaTec-EU/SpecForge.AI/issues/55) | Harness governance, eval packs, stronger execution boundaries, reusable profiles, Central governance, and semantic graph rollout |
+| `MVP` | [implementation-plan.md](implementation-plan.md), [roadmap.md](roadmap.md), [tasks/portal-modernization.md](tasks/portal-modernization.md), [tasks/ownership-visibility-and-self-hosting.md](tasks/ownership-visibility-and-self-hosting.md) | [#38](https://github.com/PinedaTec-EU/SpecForge.AI/issues/38), [#39](https://github.com/PinedaTec-EU/SpecForge.AI/issues/39), [#40](https://github.com/PinedaTec-EU/SpecForge.AI/issues/40), [#41](https://github.com/PinedaTec-EU/SpecForge.AI/issues/41), [#43](https://github.com/PinedaTec-EU/SpecForge.AI/issues/43), [#44](https://github.com/PinedaTec-EU/SpecForge.AI/issues/44), [#45](https://github.com/PinedaTec-EU/SpecForge.AI/issues/45), [#46](https://github.com/PinedaTec-EU/SpecForge.AI/issues/46), [#47](https://github.com/PinedaTec-EU/SpecForge.AI/issues/47) | Product MVP sequencing, extension/MCP/portal gaps, review/export surfaces, and integration packaging |
 | `BRANCH` | [tasks/branch-lifecycle.md](tasks/branch-lifecycle.md) | [#36](https://github.com/PinedaTec-EU/SpecForge.AI/issues/36), [#37](https://github.com/PinedaTec-EU/SpecForge.AI/issues/37) | Branch lifecycle, branch activation, Git context switching, and operator visibility |
 
 ## Current Focus
 
-- `HARNESS`: keep effective prompt/context inspection, structured evidence, metrics, and policy visibility aligned with the harness rollout.
+- `HARNESS`: keep eval packs, stronger execution boundaries, reusable profiles, Central governance, and semantic graph rollout aligned with the harness backlog.
 - `BRANCH`: finish automatic branch switching and consolidate the safe activation path before adding more branch-aware behaviors.
 - `MVP`: keep portal hardening, prompt inspection, integration, packaging, and review/export improvements visible as the main near-term product gaps.
 
