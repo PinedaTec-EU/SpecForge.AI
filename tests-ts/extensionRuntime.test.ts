@@ -49,6 +49,9 @@ function createHarness() {
     async createUserStoryFromInput() {
       actionCalls.push("createUserStoryFromInput");
     },
+    async openCreateUserStoryPanel() {
+      actionCalls.push("openCreateUserStoryPanel");
+    },
     async importUserStoryFromMarkdown() {
       actionCalls.push("importUserStoryFromMarkdown");
     },
@@ -115,6 +118,7 @@ test("activateExtension registers the tree provider and all expected commands", 
     "specForge.importUserStory",
     "specForge.initializeRepoPrompts",
     "specForge.openCliWorkflowPortal",
+    "specForge.openCreateUserStoryPanel",
     "specForge.openMainArtifact",
     "specForge.openPromptTemplates",
     "specForge.openWorkflowView",
@@ -124,7 +128,7 @@ test("activateExtension registers the tree provider and all expected commands", 
     "specForge.showOutput",
     "specForge.showUserStoryDetails"
   ]);
-  assert.equal(harness.context.subscriptions.length, 15);
+  assert.equal(harness.context.subscriptions.length, 16);
 });
 
 test("mutating commands refresh the explorer after the action completes", async () => {
@@ -132,6 +136,7 @@ test("mutating commands refresh the explorer after the action completes", async 
   activateExtension(harness.context, harness.host, harness.explorerProvider, harness.actions);
 
   await harness.registeredCommands.get("specForge.createUserStory")?.();
+  await harness.registeredCommands.get("specForge.openCreateUserStoryPanel")?.();
   await harness.registeredCommands.get("specForge.importUserStory")?.();
   await harness.registeredCommands.get("specForge.initializeRepoPrompts")?.();
   await harness.registeredCommands.get("specForge.approveCurrentPhase")?.("US-0001");
@@ -141,6 +146,7 @@ test("mutating commands refresh the explorer after the action completes", async 
 
   assert.deepEqual(harness.actionCalls, [
     "createUserStoryFromInput",
+    "openCreateUserStoryPanel",
     "importUserStoryFromMarkdown",
     "initializeRepoPrompts",
     "approveCurrentPhase:US-0001",
@@ -148,7 +154,7 @@ test("mutating commands refresh the explorer after the action completes", async 
     "restartUserStoryFromSource:US-0001",
     "continuePhase:US-0001"
   ]);
-  assert.equal(harness.getRefreshCount(), 7);
+  assert.equal(harness.getRefreshCount(), 8);
 });
 
 test("read-only commands do not refresh and forward the provided summary", async () => {

@@ -5253,7 +5253,7 @@ test("buildWorkflowHtml renders the reference graph layout with canonical refine
   assert.doesNotMatch(html, /data-edge="capture-&gt;spec"/);
   assert.doesNotMatch(html, /data-edge="spec-&gt;implementation"/);
   assert.doesNotMatch(html, /data-edge="review-&gt;implementation"/);
-  assert.doesNotMatch(html, /data-edge="pr-preparation-&gt;completed"/);
+  assert.match(html, /data-edge="pr-preparation-&gt;completed"/);
   assert.doesNotMatch(html, /data-edge="completed-&gt;/);
   assert.match(html, /viewBox="0 0 \d+ \d+"/);
   assert.match(html, /graph-links--desktop-horizontal/);

@@ -669,7 +669,7 @@ test("buildSidebarHtml scrolls the selected user story row as high as possible",
   assert.match(html, /story-row--selected/);
   assert.match(html, /function keepSelectedStoryVisible\(\)/);
   assert.match(html, /querySelector\("\.story-row--selected"\)/);
-  assert.match(html, /scrollIntoView\(\{ block: "start" \}\)/);
+  assert.match(html, /scrollIntoView\(\{ block: "nearest", inline: "nearest" \}\)/);
   assert.match(html, /requestAnimationFrame\(keepSelectedStoryVisible\)/);
 });
 
