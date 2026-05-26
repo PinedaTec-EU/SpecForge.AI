@@ -78,6 +78,19 @@ test("CLI workflow renderer routes sidebar story selection through the current p
   assert.match(script, /selectedUsId = String\(payload\.selectedUsId \|\| workflow\?\.usId \|\| ""\)\.trim\(\) \|\| null/);
 });
 
+test("CLI workflow renderer preloads the next portal document before replacing the current page", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+
+  assert.match(script, /async replaceDocumentWithUrl\(targetUrl, historyMode = "push"\)/);
+  assert.match(script, /const response = await fetch\(resolvedUrl, \{ cache: "no-store", credentials: "same-origin" \}\)/);
+  assert.match(script, /const nextHtml = await response\.text\(\)/);
+  assert.match(script, /window\.history\.replaceState\(window\.history\.state, "", resolvedUrl\)/);
+  assert.match(script, /window\.history\.pushState\(window\.history\.state, "", resolvedUrl\)/);
+  assert.match(script, /document\.open\(\);\s*document\.write\(nextHtml\);\s*document\.close\(\);/);
+  assert.match(script, /void this\.replaceDocumentWithUrl\(url\.toString\(\), "replace"\)\.catch\(\(\) => \{\s*window\.location\.href = url\.toString\(\);/);
+  assert.match(script, /void this\.replaceDocumentWithUrl\(url\.toString\(\), "push"\)\.catch\(\(\) => \{\s*window\.location\.href = url\.toString\(\);/);
+});
+
 test("CLI workflow renderer restores sidebar selection scroll before rebinding the mounted sidebar", async () => {
   const script = await fs.promises.readFile(scriptPath, "utf8");
 

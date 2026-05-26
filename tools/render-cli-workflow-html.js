@@ -272,6 +272,24 @@ const browserShim = `
     syncCanonicalUrl: syncCanonicalPortalUrl
   };
   window.__specforgePortalLifecycle = window.__specforgePortalLifecycle || {
+    async replaceDocumentWithUrl(targetUrl, historyMode = "push") {
+      const resolvedUrl = typeof targetUrl === "string" ? targetUrl : String(targetUrl || "");
+      const response = await fetch(resolvedUrl, { cache: "no-store", credentials: "same-origin" });
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      const nextHtml = await response.text();
+      if (historyMode === "replace") {
+        window.history.replaceState(window.history.state, "", resolvedUrl);
+      } else {
+        window.history.pushState(window.history.state, "", resolvedUrl);
+      }
+
+      document.open();
+      document.write(nextHtml);
+      document.close();
+    },
     report(action, reason, extra) {
       try {
         const state = readPortalState();
@@ -297,7 +315,9 @@ const browserShim = `
     reload(reason, extra) {
       const { url } = buildWorkflowRequestUrl();
       void this.report("reload", reason, { ...(extra || {}), targetUrl: url.toString() });
-      window.location.href = url.toString();
+      void this.replaceDocumentWithUrl(url.toString(), "replace").catch(() => {
+        window.location.href = url.toString();
+      });
     },
     navigate(targetUrl, reason, extra) {
       const resolvedTargetUrl = typeof targetUrl === "string" ? targetUrl : String(targetUrl || "");
@@ -339,11 +359,15 @@ const browserShim = `
         const { url, state } = buildWorkflowRequestUrl(patch);
         writePortalState(state);
         void this.report("navigate", reason, { ...(extra || {}), targetUrl: url.toString() });
-        window.location.href = url.toString();
+        void this.replaceDocumentWithUrl(url.toString(), "push").catch(() => {
+          window.location.href = url.toString();
+        });
         return;
       } catch {}
       void this.report("navigate", reason, { ...(extra || {}), targetUrl: resolvedTargetUrl });
-      window.location.href = resolvedTargetUrl;
+      void this.replaceDocumentWithUrl(resolvedTargetUrl, "push").catch(() => {
+        window.location.href = resolvedTargetUrl;
+      });
     }
   };
   window.__specForgeVsCodeApi = window.__specForgeVsCodeApi || {
