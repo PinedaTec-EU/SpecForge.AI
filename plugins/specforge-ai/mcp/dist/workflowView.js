@@ -7794,13 +7794,13 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
 
         event.preventDefault();
         event.stopPropagation();
+        postCommand(element);
         if (command === "openArtifact" || command === "openPrompt" || command === "openAttachment") {
           toggleWorkflowFiles(false);
         }
         if (command === "togglePhaseIterations") {
           toggleIterationRailLocally(element);
         }
-        postCommand(element);
       });
     };
     const bindPhaseSelectionElement = (element) => {
@@ -8323,10 +8323,14 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
       if (workflowShell instanceof HTMLElement) {
         workflowShell.classList.toggle("shell--interaction-locked", open);
       }
-      vscode.setState({
-        ...viewState,
-        workflowFilesOpen: open
-      });
+      try {
+        vscode.setState({
+          ...viewState,
+          workflowFilesOpen: open
+        });
+      } catch {
+        // Keep file actions working even if state persistence fails.
+      }
     };
 
     for (const element of document.querySelectorAll("[data-open-workflow-files]")) {
