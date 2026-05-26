@@ -1406,6 +1406,31 @@ const sidebarShell = `
     const clearSidebarSelectionContext = () => {
       safeStorage.removeSessionItem(sidebarSelectionContextStorageKey);
     };
+    const restoreSidebarSelectionContext = () => {
+      if (!(sidebarSurface instanceof HTMLElement)) {
+        return false;
+      }
+
+      const selectedStoryRow = sidebarSurface.querySelector(".story-row--selected");
+      if (!(selectedStoryRow instanceof HTMLElement)) {
+        return false;
+      }
+
+      const selectionContext = readSidebarSelectionContext();
+      if (!selectionContext || typeof selectionContext !== "object") {
+        return false;
+      }
+
+      const selectedUsId = normalizeUserStoryId(selectedStoryRow.dataset.usId);
+      const contextUsId = normalizeUserStoryId(selectionContext.usId);
+      if (!selectedUsId || selectedUsId !== contextUsId || !Number.isFinite(selectionContext.scrollTop)) {
+        return false;
+      }
+
+      sidebarSurface.scrollTop = selectionContext.scrollTop;
+      clearSidebarSelectionContext();
+      return true;
+    };
     window.__specforgeSidebarSelectionContext = {
       consume(expectedUsId) {
         const context = readSidebarSelectionContext();
@@ -1535,6 +1560,7 @@ const sidebarShell = `
         return false;
       }
       mountInlineDocument(sidebarSurface, nextHtml);
+      restoreSidebarSelectionContext();
       refreshSidebarBindings();
       return true;
     };
@@ -1866,6 +1892,7 @@ const sidebarShell = `
       return;
     }
     mountInlineDocument(sidebarSurface, initialSidebarHtml);
+    restoreSidebarSelectionContext();
     updateSidebarViewOptionsUi();
     queueSidebarSelectionSync();
     sidebarPin?.addEventListener("click", () => applyCollapsed(!document.body.classList.contains("specforge-cli-sidebar-collapsed")));

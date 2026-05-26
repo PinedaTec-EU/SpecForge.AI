@@ -78,6 +78,17 @@ test("CLI workflow renderer routes sidebar story selection through the current p
   assert.match(script, /selectedUsId = String\(payload\.selectedUsId \|\| workflow\?\.usId \|\| ""\)\.trim\(\) \|\| null/);
 });
 
+test("CLI workflow renderer restores sidebar selection scroll before rebinding the mounted sidebar", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+
+  assert.match(script, /const restoreSidebarSelectionContext = \(\) => \{/);
+  assert.match(script, /const selectedStoryRow = sidebarSurface\.querySelector\("\.story-row--selected"\)/);
+  assert.match(script, /sidebarSurface\.scrollTop = selectionContext\.scrollTop/);
+  assert.match(script, /clearSidebarSelectionContext\(\);/);
+  assert.match(script, /mountInlineDocument\(sidebarSurface, nextHtml\);\s*restoreSidebarSelectionContext\(\);\s*refreshSidebarBindings\(\);/);
+  assert.match(script, /mountInlineDocument\(sidebarSurface, initialSidebarHtml\);\s*restoreSidebarSelectionContext\(\);\s*updateSidebarViewOptionsUi\(\);/);
+});
+
 test("CLI workflow renderer supports a no-selection portal state", async () => {
   const script = await fs.promises.readFile(scriptPath, "utf8");
 
