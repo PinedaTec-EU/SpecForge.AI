@@ -3998,6 +3998,61 @@ test("buildWorkflowHtml locks background interaction while the workflow files mo
   assert.match(html, /workflowShell\.classList\.toggle\("shell--interaction-locked", open\)/);
 });
 
+test("buildWorkflowHtml dispatches file-open commands before closing the workflow files modal", () => {
+  const html = buildWorkflowHtml({
+    usId: "US-0015",
+    title: "Modal file open ordering",
+    category: "workflow",
+    status: "active",
+    currentPhase: "spec",
+    directoryPath: "/tmp/us.US-0015",
+    workBranch: null,
+    mainArtifactPath: "/tmp/us.md",
+    timelinePath: "/tmp/timeline.md",
+    rawTimeline: "raw timeline",
+    phases: [{
+      phaseId: "spec",
+      title: "Spec",
+      order: 0,
+      requiresApproval: true,
+      expectsHumanIntervention: true,
+      isApproved: false,
+      isCurrent: true,
+      state: "current",
+      artifactPath: "/tmp/01-spec.md",
+      executePromptPath: null,
+      approvePromptPath: null
+    }],
+    controls: {
+      canContinue: false,
+      canApprove: true,
+      requiresApproval: true,
+      blockingReason: "spec_pending_user_approval",
+      canRestartFromSource: true,
+      regressionTargets: []
+    },
+    refinement: null,
+    events: [],
+    attachmentsDirectoryPath: "/tmp/attachments",
+    attachments: []
+  }, {
+    selectedPhaseId: "spec",
+    selectedArtifactContent: "## Spec",
+    contextSuggestions: [],
+    settingsConfigured: true,
+    settingsMessage: null
+  }, "idle");
+
+  assert.match(
+    html,
+    /event\.preventDefault\(\);[\s\S]*event\.stopPropagation\(\);[\s\S]*postCommand\(element\);[\s\S]*if \(command === "openArtifact" \|\| command === "openPrompt" \|\| command === "openAttachment"\) \{[\s\S]*toggleWorkflowFiles\(false\);/
+  );
+  assert.match(
+    html,
+    /const toggleWorkflowFiles = \(open\) => \{[\s\S]*try \{[\s\S]*vscode\.setState\(\{[\s\S]*workflowFilesOpen: open[\s\S]*\}\);[\s\S]*\} catch \{/
+  );
+});
+
 test("buildWorkflowHtml highlights waiting-user and runner paused hero tokens as attention states", () => {
   const html = buildWorkflowHtml({
     usId: "US-0011",
