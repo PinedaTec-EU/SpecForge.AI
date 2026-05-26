@@ -108,6 +108,10 @@ class ExecutionSettingsPanelController {
                             autoReviewEnabled: message.autoReviewEnabled ?? false,
                             maxRefinementCycles: message.maxRefinementCycles ?? null,
                             maxImplementationReviewCycles: message.maxImplementationReviewCycles ?? null,
+                            phaseQualityGateThresholdPercent: message.phaseQualityGateThresholdPercent ?? null,
+                            refinementQualityGateMaxRetries: message.refinementQualityGateMaxRetries ?? null,
+                            reviewQualityGateMaxRetries: message.reviewQualityGateMaxRetries ?? null,
+                            keepBestPhaseArtifactOnQualityRegression: message.keepBestPhaseArtifactOnQualityRegression ?? true,
                             destructiveRewindEnabled: message.destructiveRewindEnabled ?? false,
                             pauseOnFailedReview: message.pauseOnFailedReview ?? false,
                             useSemanticGraphWhenAvailable: message.useSemanticGraphWhenAvailable ?? true,
@@ -163,6 +167,10 @@ class ExecutionSettingsPanelController {
             autoReviewEnabled: settings.autoReviewEnabled,
             maxRefinementCycles: settings.maxRefinementCycles,
             maxImplementationReviewCycles: settings.maxImplementationReviewCycles,
+            phaseQualityGateThresholdPercent: settings.phaseQualityGateThresholdPercent,
+            refinementQualityGateMaxRetries: settings.refinementQualityGateMaxRetries,
+            reviewQualityGateMaxRetries: settings.reviewQualityGateMaxRetries,
+            keepBestPhaseArtifactOnQualityRegression: settings.keepBestPhaseArtifactOnQualityRegression,
             destructiveRewindEnabled: settings.destructiveRewindEnabled,
             pauseOnFailedReview: settings.pauseOnFailedReview,
             useSemanticGraphWhenAvailable: settings.useSemanticGraphWhenAvailable,
@@ -833,6 +841,29 @@ function buildExecutionSettingsHtml(model) {
           <span class="phase-field__hint">Automatic review stops when this many implementation attempts have been recorded.</span>
         </label>
         <label class="phase-field">
+          <span>Phase quality threshold (%)</span>
+          <input type="number" min="0" max="100" step="1" data-phase-quality-gate-threshold-percent value="${(0, htmlEscape_1.escapeHtmlAttr)(String(model.phaseQualityGateThresholdPercent ?? 85))}" />
+          <span class="phase-field__hint">Minimum quality score required for refinement and review to pass the orchestration quality gate.</span>
+        </label>
+        <label class="phase-field">
+          <span>Refinement quality max retries</span>
+          <input type="number" min="1" step="1" data-refinement-quality-gate-max-retries value="${(0, htmlEscape_1.escapeHtmlAttr)(String(model.refinementQualityGateMaxRetries ?? 5))}" />
+          <span class="phase-field__hint">Maximum low-quality refinement retries before automatic progression stops and waits for the user.</span>
+        </label>
+        <label class="phase-field">
+          <span>Review quality max retries</span>
+          <input type="number" min="1" step="1" data-review-quality-gate-max-retries value="${(0, htmlEscape_1.escapeHtmlAttr)(String(model.reviewQualityGateMaxRetries ?? 3))}" />
+          <span class="phase-field__hint">Maximum low-quality review retries before automatic progression stops and waits for the user.</span>
+        </label>
+        <label class="phase-field">
+          <span>Keep previous best artifact</span>
+          <select data-keep-best-phase-artifact-on-quality-regression>
+            <option value="true"${model.keepBestPhaseArtifactOnQualityRegression ? " selected" : ""}>Enabled</option>
+            <option value="false"${model.keepBestPhaseArtifactOnQualityRegression ? "" : " selected"}>Disabled</option>
+          </select>
+          <span class="phase-field__hint">When quality drops below threshold, keep the best comparable previous artifact selected instead of the latest one when it is safer to do so.</span>
+        </label>
+        <label class="phase-field">
           <span>Pause on failed review</span>
           <select data-pause-on-failed-review>
             <option value="false"${model.pauseOnFailedReview ? "" : " selected"}>Disabled</option>
@@ -984,6 +1015,10 @@ function buildExecutionSettingsHtml(model) {
       autoReviewEnabled: ${JSON.stringify(model.autoReviewEnabled)},
       maxRefinementCycles: ${JSON.stringify(model.maxRefinementCycles ?? 5)},
       maxImplementationReviewCycles: ${JSON.stringify(model.maxImplementationReviewCycles ?? 5)},
+      phaseQualityGateThresholdPercent: ${JSON.stringify(model.phaseQualityGateThresholdPercent ?? 85)},
+      refinementQualityGateMaxRetries: ${JSON.stringify(model.refinementQualityGateMaxRetries ?? 5)},
+      reviewQualityGateMaxRetries: ${JSON.stringify(model.reviewQualityGateMaxRetries ?? 3)},
+      keepBestPhaseArtifactOnQualityRegression: ${JSON.stringify(model.keepBestPhaseArtifactOnQualityRegression)},
       destructiveRewindEnabled: ${JSON.stringify(model.destructiveRewindEnabled)},
       pauseOnFailedReview: ${JSON.stringify(model.pauseOnFailedReview)},
       useSemanticGraphWhenAvailable: ${JSON.stringify(model.useSemanticGraphWhenAvailable)},
@@ -1179,6 +1214,10 @@ function buildExecutionSettingsHtml(model) {
       const autoReviewEnabled = document.querySelector("[data-auto-review-enabled]");
       const maxRefinementCycles = document.querySelector("[data-max-refinement-cycles]");
       const maxImplementationReviewCycles = document.querySelector("[data-max-implementation-review-cycles]");
+      const phaseQualityGateThresholdPercent = document.querySelector("[data-phase-quality-gate-threshold-percent]");
+      const refinementQualityGateMaxRetries = document.querySelector("[data-refinement-quality-gate-max-retries]");
+      const reviewQualityGateMaxRetries = document.querySelector("[data-review-quality-gate-max-retries]");
+      const keepBestPhaseArtifactOnQualityRegression = document.querySelector("[data-keep-best-phase-artifact-on-quality-regression]");
       const destructiveRewindEnabled = document.querySelector("[data-destructive-rewind-enabled]");
       const pauseOnFailedReview = document.querySelector("[data-pause-on-failed-review]");
       const useSemanticGraphWhenAvailable = document.querySelector("[data-use-semantic-graph-when-available]");
@@ -1473,6 +1512,48 @@ function buildExecutionSettingsHtml(model) {
         };
         maxImplementationReviewCycles.addEventListener("input", syncMaxCycles);
         maxImplementationReviewCycles.addEventListener("change", syncMaxCycles);
+      }
+
+      if (phaseQualityGateThresholdPercent instanceof HTMLInputElement) {
+        phaseQualityGateThresholdPercent.value = String(state.phaseQualityGateThresholdPercent || 85);
+        const syncPhaseQualityGateThresholdPercent = () => {
+          const parsed = Number.parseInt(phaseQualityGateThresholdPercent.value, 10);
+          state.phaseQualityGateThresholdPercent = Number.isFinite(parsed)
+            ? Math.max(0, Math.min(100, parsed))
+            : 85;
+          phaseQualityGateThresholdPercent.value = String(state.phaseQualityGateThresholdPercent);
+        };
+        phaseQualityGateThresholdPercent.addEventListener("input", syncPhaseQualityGateThresholdPercent);
+        phaseQualityGateThresholdPercent.addEventListener("change", syncPhaseQualityGateThresholdPercent);
+      }
+
+      if (refinementQualityGateMaxRetries instanceof HTMLInputElement) {
+        refinementQualityGateMaxRetries.value = String(state.refinementQualityGateMaxRetries || 5);
+        const syncRefinementQualityGateMaxRetries = () => {
+          const parsed = Number.parseInt(refinementQualityGateMaxRetries.value, 10);
+          state.refinementQualityGateMaxRetries = Number.isFinite(parsed) && parsed > 0 ? parsed : 5;
+          refinementQualityGateMaxRetries.value = String(state.refinementQualityGateMaxRetries);
+        };
+        refinementQualityGateMaxRetries.addEventListener("input", syncRefinementQualityGateMaxRetries);
+        refinementQualityGateMaxRetries.addEventListener("change", syncRefinementQualityGateMaxRetries);
+      }
+
+      if (reviewQualityGateMaxRetries instanceof HTMLInputElement) {
+        reviewQualityGateMaxRetries.value = String(state.reviewQualityGateMaxRetries || 3);
+        const syncReviewQualityGateMaxRetries = () => {
+          const parsed = Number.parseInt(reviewQualityGateMaxRetries.value, 10);
+          state.reviewQualityGateMaxRetries = Number.isFinite(parsed) && parsed > 0 ? parsed : 3;
+          reviewQualityGateMaxRetries.value = String(state.reviewQualityGateMaxRetries);
+        };
+        reviewQualityGateMaxRetries.addEventListener("input", syncReviewQualityGateMaxRetries);
+        reviewQualityGateMaxRetries.addEventListener("change", syncReviewQualityGateMaxRetries);
+      }
+
+      if (keepBestPhaseArtifactOnQualityRegression instanceof HTMLSelectElement) {
+        keepBestPhaseArtifactOnQualityRegression.value = state.keepBestPhaseArtifactOnQualityRegression ? "true" : "false";
+        keepBestPhaseArtifactOnQualityRegression.addEventListener("change", () => {
+          state.keepBestPhaseArtifactOnQualityRegression = keepBestPhaseArtifactOnQualityRegression.value === "true";
+        });
       }
 
       if (destructiveRewindEnabled instanceof HTMLSelectElement) {
@@ -1939,6 +2020,10 @@ function buildExecutionSettingsHtml(model) {
         autoReviewEnabled: state.autoReviewEnabled,
         maxRefinementCycles: state.maxRefinementCycles,
         maxImplementationReviewCycles: state.maxImplementationReviewCycles,
+        phaseQualityGateThresholdPercent: state.phaseQualityGateThresholdPercent,
+        refinementQualityGateMaxRetries: state.refinementQualityGateMaxRetries,
+        reviewQualityGateMaxRetries: state.reviewQualityGateMaxRetries,
+        keepBestPhaseArtifactOnQualityRegression: state.keepBestPhaseArtifactOnQualityRegression,
         destructiveRewindEnabled: state.destructiveRewindEnabled,
         pauseOnFailedReview: state.pauseOnFailedReview,
         useSemanticGraphWhenAvailable: state.useSemanticGraphWhenAvailable,
@@ -1955,7 +2040,7 @@ function buildExecutionSettingsHtml(model) {
 </html>`;
 }
 async function saveExecutionSettingsAsync(request) {
-    const { modelProfiles, agentProfiles, phaseAgentAssignments, defaultHarnessProfile, phaseHarnessProfiles, harnessProfileAuthority, harnessProfileLockMode, lockedHarnessPhaseIds, allowPerUserStoryHarnessProfileOverrides, refinementTolerance, mvpRigor, reviewTolerance, reviewEvidencePolicy, technicalDesignSubagentsEnabled, reviewSubagentsEnabled, watcherEnabled, attentionNotificationsEnabled, contextSuggestionsEnabled, workflowGraphLayoutMode, workflowGraphInitialZoomMode, userStoryListViewMode, visualTimelineEnabled, requireExplicitApprovalBranchAcceptance, autoRefinementAnswersEnabled, autoRefinementAnswersProfile, autoPlayEnabled, autoReviewEnabled, maxRefinementCycles, maxImplementationReviewCycles, destructiveRewindEnabled, pauseOnFailedReview, useSemanticGraphWhenAvailable, allowGraphBuildRefreshForTouchedUserStoryScope, reviewLearningEnabled, reviewLearningSkillPath, completedUsLockOnCompleted } = request;
+    const { modelProfiles, agentProfiles, phaseAgentAssignments, defaultHarnessProfile, phaseHarnessProfiles, harnessProfileAuthority, harnessProfileLockMode, lockedHarnessPhaseIds, allowPerUserStoryHarnessProfileOverrides, refinementTolerance, mvpRigor, reviewTolerance, reviewEvidencePolicy, technicalDesignSubagentsEnabled, reviewSubagentsEnabled, watcherEnabled, attentionNotificationsEnabled, contextSuggestionsEnabled, workflowGraphLayoutMode, workflowGraphInitialZoomMode, userStoryListViewMode, visualTimelineEnabled, requireExplicitApprovalBranchAcceptance, autoRefinementAnswersEnabled, autoRefinementAnswersProfile, autoPlayEnabled, autoReviewEnabled, maxRefinementCycles, maxImplementationReviewCycles, phaseQualityGateThresholdPercent, refinementQualityGateMaxRetries, reviewQualityGateMaxRetries, keepBestPhaseArtifactOnQualityRegression, destructiveRewindEnabled, pauseOnFailedReview, useSemanticGraphWhenAvailable, allowGraphBuildRefreshForTouchedUserStoryScope, reviewLearningEnabled, reviewLearningSkillPath, completedUsLockOnCompleted } = request;
     const configuration = vscode.workspace.getConfiguration("specForge");
     const normalizedProfiles = modelProfiles
         .map((profile) => ({
@@ -2077,6 +2162,10 @@ async function saveExecutionSettingsAsync(request) {
     await configuration.update("features.autoReviewEnabled", autoReviewEnabled, vscode.ConfigurationTarget.Workspace);
     await configuration.update("features.maxRefinementCycles", normalizePositiveInteger(maxRefinementCycles) ?? 5, vscode.ConfigurationTarget.Workspace);
     await configuration.update("features.maxImplementationReviewCycles", normalizePositiveInteger(maxImplementationReviewCycles) ?? 5, vscode.ConfigurationTarget.Workspace);
+    await configuration.update("features.phaseQualityGateThresholdPercent", normalizePercentage(phaseQualityGateThresholdPercent) ?? 85, vscode.ConfigurationTarget.Workspace);
+    await configuration.update("features.refinementQualityGateMaxRetries", normalizePositiveInteger(refinementQualityGateMaxRetries) ?? 5, vscode.ConfigurationTarget.Workspace);
+    await configuration.update("features.reviewQualityGateMaxRetries", normalizePositiveInteger(reviewQualityGateMaxRetries) ?? 3, vscode.ConfigurationTarget.Workspace);
+    await configuration.update("features.keepBestPhaseArtifactOnQualityRegression", keepBestPhaseArtifactOnQualityRegression, vscode.ConfigurationTarget.Workspace);
     await configuration.update("features.destructiveRewindEnabled", destructiveRewindEnabled, vscode.ConfigurationTarget.Workspace);
     await configuration.update("features.pauseOnFailedReview", pauseOnFailedReview, vscode.ConfigurationTarget.Workspace);
     await configuration.update("features.useSemanticGraphWhenAvailable", useSemanticGraphWhenAvailable, vscode.ConfigurationTarget.Workspace);
@@ -2125,5 +2214,11 @@ function normalizePositiveInteger(value) {
     }
     const normalized = Math.trunc(value);
     return normalized > 0 ? normalized : null;
+}
+function normalizePercentage(value) {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+        return null;
+    }
+    return Math.max(0, Math.min(100, Math.round(value)));
 }
 //# sourceMappingURL=executionSettingsPanel.js.map

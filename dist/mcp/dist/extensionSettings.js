@@ -99,6 +99,10 @@ function readSpecForgeSettings(configuration) {
         autoReviewEnabled: configuration.get("features.autoReviewEnabled", false),
         maxRefinementCycles: normalizeOptionalPositiveInteger(configuration.get("features.maxRefinementCycles", 5)),
         maxImplementationReviewCycles: normalizeOptionalPositiveInteger(configuration.get("features.maxImplementationReviewCycles", 5)),
+        phaseQualityGateThresholdPercent: normalizeOptionalPercentage(configuration.get("features.phaseQualityGateThresholdPercent", 85)),
+        refinementQualityGateMaxRetries: normalizeOptionalPositiveInteger(configuration.get("features.refinementQualityGateMaxRetries", 5)),
+        reviewQualityGateMaxRetries: normalizeOptionalPositiveInteger(configuration.get("features.reviewQualityGateMaxRetries", 3)),
+        keepBestPhaseArtifactOnQualityRegression: configuration.get("features.keepBestPhaseArtifactOnQualityRegression", true),
         destructiveRewindEnabled: configuration.get("features.destructiveRewindEnabled", false),
         pauseOnFailedReview: configuration.get("features.pauseOnFailedReview", false),
         useSemanticGraphWhenAvailable: configuration.get("features.useSemanticGraphWhenAvailable", true),
@@ -145,6 +149,11 @@ function buildBackendEnvironment(settings) {
     env.SPECFORGE_COMPLETED_US_LOCK_ON_COMPLETED = settings.completedUsLockOnCompleted ? "true" : "false";
     env.SPECFORGE_MAX_REFINEMENT_CYCLES = String(settings.maxRefinementCycles ?? 5);
     env.SPECFORGE_MAX_IMPLEMENTATION_REVIEW_CYCLES = String(settings.maxImplementationReviewCycles ?? 5);
+    env.SPECFORGE_PHASE_QUALITY_GATE_THRESHOLD_PERCENT = String(settings.phaseQualityGateThresholdPercent ?? 85);
+    env.SPECFORGE_REFINEMENT_QUALITY_GATE_MAX_RETRIES = String(settings.refinementQualityGateMaxRetries ?? 5);
+    env.SPECFORGE_REVIEW_QUALITY_GATE_MAX_RETRIES = String(settings.reviewQualityGateMaxRetries ?? 3);
+    env.SPECFORGE_KEEP_BEST_PHASE_ARTIFACT_ON_QUALITY_REGRESSION =
+        settings.keepBestPhaseArtifactOnQualityRegression ? "true" : "false";
     if (settings.autoRefinementAnswersProfile) {
         env.SPECFORGE_AUTO_REFINEMENT_ANSWERS_PROFILE = settings.autoRefinementAnswersProfile;
     }
@@ -318,6 +327,22 @@ function normalizeOptionalPositiveInteger(value) {
     }
     return null;
 }
+function normalizeOptionalPercentage(value) {
+    if (typeof value === "number" && Number.isFinite(value)) {
+        return Math.max(0, Math.min(100, Math.round(value)));
+    }
+    if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (trimmed.length === 0) {
+            return null;
+        }
+        const parsed = Number.parseFloat(trimmed);
+        return Number.isFinite(parsed)
+            ? Math.max(0, Math.min(100, Math.round(parsed)))
+            : null;
+    }
+    return null;
+}
 function buildSettingsDiagnostics(settings) {
     const agentProfiles = resolveConfiguredOrDerivedAgentProfiles(settings);
     const models = settings.modelProfiles.map((profile) => `${profile.name || "<missing-name>"}{provider=${profile.provider || "<missing>"},baseUrl=${profile.baseUrl || "<missing>"},model=${profile.model || "<missing>"}${profile.reasoningEffort ? `,reasoningEffort=${profile.reasoningEffort}` : ""},apiKey=${profile.apiKey ? "set" : "empty"}}`);
@@ -347,6 +372,10 @@ function buildSettingsDiagnostics(settings) {
         `autoReviewEnabled=${settings.autoReviewEnabled}`,
         `maxRefinementCycles=${settings.maxRefinementCycles ?? "<unset>"}`,
         `maxImplementationReviewCycles=${settings.maxImplementationReviewCycles ?? "<unset>"}`,
+        `phaseQualityGateThresholdPercent=${settings.phaseQualityGateThresholdPercent ?? "<unset>"}`,
+        `refinementQualityGateMaxRetries=${settings.refinementQualityGateMaxRetries ?? "<unset>"}`,
+        `reviewQualityGateMaxRetries=${settings.reviewQualityGateMaxRetries ?? "<unset>"}`,
+        `keepBestPhaseArtifactOnQualityRegression=${settings.keepBestPhaseArtifactOnQualityRegression}`,
         `pauseOnFailedReview=${settings.pauseOnFailedReview}`,
         `reviewLearningEnabled=${settings.reviewLearningEnabled === false ? false : true}`,
         `reviewLearningSkillPath=${settings.reviewLearningSkillPath ?? "<unset>"}`,

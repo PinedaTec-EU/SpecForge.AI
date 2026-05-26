@@ -1738,6 +1738,8 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
                 <span class="iteration-rail__meta">
                   ${(0, htmlEscape_1.escapeHtml)(iteration.code)}
                   ${iteration.actor ? ` · ${(0, htmlEscape_1.escapeHtml)(iteration.actor)}` : ""}
+                  ${iteration.qualityAssessment ? ` · ${(0, htmlEscape_1.escapeHtml)(`quality ${iteration.qualityAssessment.gateScore}%`)}` : ""}
+                  ${iteration.qualityAssessment?.thresholdPercent != null ? `/${(0, htmlEscape_1.escapeHtml)(String(iteration.qualityAssessment.thresholdPercent))}%` : ""}
                   ${(0, executionLabels_1.formatExecutionLabel)(iteration.execution, {
             actor: iteration.actor,
             configuredModel: (0, executionLabels_1.findConfiguredModelForProfile)(state, iteration.execution?.profileName)
@@ -1764,6 +1766,10 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
           <span class="badge">iteration ${(0, htmlEscape_1.escapeHtml)(String(selectedIteration.attempt))}</span>
           <span class="badge">${(0, htmlEscape_1.escapeHtml)(selectedIteration.code)}</span>
           <span class="badge">${(0, htmlEscape_1.escapeHtml)(formatUtcTimestamp(selectedIteration.timestampUtc))}</span>
+          ${selectedIteration.qualityAssessment ? `<span class="badge">quality ${(0, htmlEscape_1.escapeHtml)(String(selectedIteration.qualityAssessment.qualityScore))}%</span>` : ""}
+          ${selectedIteration.qualityAssessment ? `<span class="badge">confidence ${(0, htmlEscape_1.escapeHtml)(String(selectedIteration.qualityAssessment.confidenceScore))}%</span>` : ""}
+          ${selectedIteration.qualityAssessment ? `<span class="badge">gate ${(0, htmlEscape_1.escapeHtml)(String(selectedIteration.qualityAssessment.gateScore))}%${selectedIteration.qualityAssessment.thresholdPercent != null ? ` / ${(0, htmlEscape_1.escapeHtml)(String(selectedIteration.qualityAssessment.thresholdPercent))}%` : ""}</span>` : ""}
+          ${selectedIteration.qualityAssessment?.decision ? `<span class="badge">${(0, htmlEscape_1.escapeHtml)(selectedIteration.qualityAssessment.decision)}</span>` : ""}
           ${selectedIteration.actor ? `<span class="badge">${(0, htmlEscape_1.escapeHtml)(selectedIteration.actor)}</span>` : ""}
           ${(0, executionLabels_1.formatExecutionLabel)(selectedIteration.execution, {
             actor: selectedIteration.actor,
@@ -1777,7 +1783,10 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
           ${selectedIteration.durationMs !== null ? `<span class="badge">${(0, htmlEscape_1.escapeHtml)((0, metricFormatters_1.formatDuration)(selectedIteration.durationMs))}</span>` : ""}
           ${selectedIteration.usage && selectedIteration.durationMs !== null ? `<span class="badge">${(0, htmlEscape_1.escapeHtml)((0, metricFormatters_1.formatTokensPerSecond)(selectedIteration.usage.outputTokens, selectedIteration.durationMs))}</span>` : ""}
         </div>
-        ${selectedIteration.summary ? `<p class="panel-copy">${(0, htmlEscape_1.escapeHtml)(selectedIteration.summary)}</p>` : ""}
+        ${(selectedIteration.qualityAssessment?.summary || selectedIteration.summary) ? `<p class="panel-copy">${(0, htmlEscape_1.escapeHtml)(selectedIteration.qualityAssessment?.summary ?? selectedIteration.summary ?? "")}</p>` : ""}
+        ${selectedIteration.qualityAssessment?.previousBestArtifactPath
+            ? `<p class="panel-copy">Previous best: <code>${(0, htmlEscape_1.escapeHtml)(selectedIteration.qualityAssessment.previousBestArtifactPath)}</code></p>`
+            : ""}
         ${selectedIteration.operationPrompt ? `<pre class="artifact-preview artifact-preview--raw-artifact">${(0, htmlEscape_1.escapeHtml)(selectedIteration.operationPrompt)}</pre>` : ""}
         ${buildUsedSkillsMarkup(selectedIteration.execution?.usedSkills)}
         <div class="iteration-lineage-grid">
