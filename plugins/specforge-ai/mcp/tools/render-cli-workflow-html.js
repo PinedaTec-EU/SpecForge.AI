@@ -86,6 +86,7 @@ const browserShim = `
   const specForgeCliCurrentActor = ${JSON.stringify(currentActor)};
   window.specForgeCliCurrentActor = specForgeCliCurrentActor;
   const specForgePortalStateStorageKey = "specforge.cli.portal.state";
+  const specForgePortalStarredUserStoryStorageKey = "specforge.cli.sidebar.starredUserStoryId";
   const specForgePortalTransientQueryKeys = [
     "selectedPhaseId",
     "artifactFocus",
@@ -127,6 +128,26 @@ const browserShim = `
     }
   };
   window.__specforgeSafeStorage = safeStorage;
+  const readStarredPortalUserStoryId = () => {
+    try {
+      return normalizePortalUserStoryId(localStorage.getItem(specForgePortalStarredUserStoryStorageKey));
+    } catch {
+      return normalizePortalUserStoryId(safeStorage.getLocalItem(specForgePortalStarredUserStoryStorageKey));
+    }
+  };
+  const buildPortalFileUrl = (targetPath) => {
+    const url = new URL("/api/file", window.location.href);
+    url.searchParams.set("path", String(targetPath || ""));
+    return url;
+  };
+  const locationUrl = new URL(window.location.href);
+  const requestUsIdFromLocation = normalizePortalUserStoryId(locationUrl.searchParams.get("usId"));
+  const shouldPreferStarredUserStoryOnRoot = !requestUsIdFromLocation
+    && locationUrl.pathname === "/"
+    && locationUrl.searchParams.toString().length === 0;
+  const preferredRootUsId = shouldPreferStarredUserStoryOnRoot
+    ? readStarredPortalUserStoryId()
+    : null;
   const normalizePortalState = (value) => {
     const state = value && typeof value === "object" ? value : {};
     return {
@@ -224,8 +245,9 @@ const browserShim = `
     const nextState = {
       ...currentState,
       usId: normalizePortalUserStoryId(url.searchParams.get("usId"))
-        || currentState.usId
+        || preferredRootUsId
         || normalizePortalUserStoryId(${JSON.stringify(workflow?.usId ?? null)})
+        || currentState.usId
         || null
     };
     if (url.searchParams.has("selectedPhaseId")) {
@@ -262,7 +284,7 @@ const browserShim = `
     syncCanonicalPortalUrl(hydrated.usId);
     return hydrated;
   };
-  hydratePortalStateFromLocation();
+  const hydratedPortalState = hydratePortalStateFromLocation();
   window.__specforgePortalState = {
     read: readPortalState,
     write: writePortalState,
@@ -271,6 +293,14 @@ const browserShim = `
     buildRequestUrl: buildWorkflowRequestUrl,
     syncCanonicalUrl: syncCanonicalPortalUrl
   };
+  if (preferredRootUsId && hydratedPortalState.usId === preferredRootUsId && normalizePortalUserStoryId(${JSON.stringify(workflow?.usId ?? null)}) !== preferredRootUsId) {
+    const preferredRootUrl = buildWorkflowRequestUrl({
+      usId: preferredRootUsId,
+      selectedPhaseId: null,
+      artifactFocus: null
+    }).url.toString();
+    window.location.replace(preferredRootUrl);
+  }
   window.__specforgePortalLifecycle = window.__specforgePortalLifecycle || {
     async replaceDocumentWithUrl(targetUrl, historyMode = "push") {
       const resolvedUrl = typeof targetUrl === "string" ? targetUrl : String(targetUrl || "");
@@ -666,6 +696,11 @@ const browserShim = `
       if (message?.command === "openWorkflowTab" && message.usId) {
         updatePortalState({ usId: message.usId, selectedPhaseId: null, artifactFocus: null });
         window.open(buildCanonicalPortalUrl(message.usId).toString(), "_blank", "noopener");
+        return;
+      }
+
+      if ((message?.command === "openArtifact" || message?.command === "openAttachment" || message?.command === "openPrompt") && message.path) {
+        window.open(buildPortalFileUrl(message.path).toString(), "_blank", "noopener");
         return;
       }
 
