@@ -68,6 +68,7 @@ export function buildUserStoryDetailsHtml(summary: UserStorySummary): string {
   <h1>${escapeHtml(summary.usId)}</h1>
   <div class="meta">
     <div><strong>Title:</strong> ${escapeHtml(summary.title)}</div>
+    <div><strong>Kind:</strong> <code>${escapeHtml(summary.kind)}</code></div>
     <div><strong>Category:</strong> <code>${escapeHtml(summary.category)}</code></div>
     ${summary.externalReferences?.[0]
       ? `<div><strong>External issue:</strong> <a href="${escapeHtml(summary.externalReferences[0].url)}">${escapeHtml(summary.externalReferences[0].label)}</a></div>`

@@ -4,6 +4,7 @@ public sealed record UserStorySummary(
     string UsId,
     string Title,
     string Description,
+    string Kind,
     string CreatedBy,
     string Owner,
     string Category,

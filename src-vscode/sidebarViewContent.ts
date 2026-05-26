@@ -2237,7 +2237,7 @@ function buildStoryRowMarkup(summary: UserStorySummary, model: SidebarViewModel)
               type="button"
               ${model.showDroppedUserStories
                 ? "disabled"
-                : `data-command="showEditUserStoryForm" data-us-id="${escapeHtmlAttr(summary.usId)}" data-title="${escapeHtmlAttr(editableUserStoryTitle(summary.usId, summary.title))}" data-owner="${escapeHtmlAttr(summary.owner)}" data-category="${escapeHtmlAttr(summary.category)}" data-tags="${escapeHtmlAttr((summary.tags ?? []).join(", "))}" data-external-reference-url="${escapeHtmlAttr(summary.externalReferences?.[0]?.url ?? "")}"`}
+                : `data-command="showEditUserStoryForm" data-us-id="${escapeHtmlAttr(summary.usId)}" data-title="${escapeHtmlAttr(editableUserStoryTitle(summary.usId, summary.title))}" data-kind="${escapeHtmlAttr(summary.kind)}" data-owner="${escapeHtmlAttr(summary.owner)}" data-category="${escapeHtmlAttr(summary.category)}" data-tags="${escapeHtmlAttr((summary.tags ?? []).join(", "))}" data-external-reference-url="${escapeHtmlAttr(summary.externalReferences?.[0]?.url ?? "")}"`}
               role="menuitem">
               <span class="action-menu__item-icon" aria-hidden="true">✎</span>
               <span>Edit US info</span>
