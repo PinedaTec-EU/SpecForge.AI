@@ -8,6 +8,7 @@ public sealed record UserStorySummary(
     string Owner,
     string Category,
     IReadOnlyCollection<string> Tags,
+    IReadOnlyCollection<UserStoryExternalReference> ExternalReferences,
     string DirectoryPath,
     string MainArtifactPath,
     string CurrentPhase,

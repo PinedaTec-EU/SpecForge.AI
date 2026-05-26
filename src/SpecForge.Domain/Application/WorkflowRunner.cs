@@ -192,6 +192,7 @@ public sealed class WorkflowRunner
         string sourceText,
         string actor = "user",
         IReadOnlyCollection<string>? tags = null,
+        IReadOnlyCollection<UserStoryExternalReference>? externalReferences = null,
         string captureSourceKind = "direct-text",
         string? captureSourceReference = null,
         CancellationToken cancellationToken = default)
@@ -213,6 +214,7 @@ public sealed class WorkflowRunner
 
         var workflowRun = new WorkflowRun(usId, ComputeSourceHash(sourceText), WorkflowDefinition.CanonicalV1, runtimeVersion);
         var normalizedActor = NormalizeActor(actor);
+        var normalizedExternalReferences = UserStoryMarkdown.NormalizeExternalReferences(externalReferences);
         var captureRecord = new CaptureExecutionRecord(
             Actor: normalizedActor,
             CreatedAtUtc: DateTimeOffset.UtcNow.ToString("O"),
@@ -227,7 +229,19 @@ public sealed class WorkflowRunner
                 paths.TimelineFilePath.Replace('\\', '/')
             ]);
 
-        await File.WriteAllTextAsync(paths.MainArtifactPath, BuildUserStoryMarkdown(usId, title, kind, normalizedActor, normalizedActor, category, sourceText, tags), cancellationToken);
+        await File.WriteAllTextAsync(
+            paths.MainArtifactPath,
+            BuildUserStoryMarkdown(
+                usId,
+                title,
+                kind,
+                normalizedActor,
+                normalizedActor,
+                category,
+                sourceText,
+                tags,
+                normalizedExternalReferences),
+            cancellationToken);
         await File.WriteAllTextAsync(paths.TimelineFilePath, BuildInitialTimeline(usId, title, normalizedActor, runtimeVersion), cancellationToken);
         await File.WriteAllTextAsync(
             paths.CaptureRecordPath,
@@ -427,7 +441,7 @@ public sealed class WorkflowRunner
                 metadata.Tags,
                 captureSourceKind: "decomposition-child",
                 captureSourceReference: workflowRun.UsId,
-                cancellationToken);
+                cancellationToken: cancellationToken);
             var childRun = await fileStore.LoadAsync(childRoot, cancellationToken);
             childRun.LinkToParent(workflowRun.UsId);
             await fileStore.SaveAsync(childRun, childRoot, cancellationToken);
@@ -4184,28 +4198,27 @@ public sealed class WorkflowRunner
         string owner,
         string category,
         string sourceText,
-        IReadOnlyCollection<string>? tags)
+        IReadOnlyCollection<string>? tags,
+        IReadOnlyCollection<UserStoryExternalReference>? externalReferences)
     {
         var normalizedTags = NormalizeUserStoryTags(tags);
+        var normalizedExternalReferences = UserStoryMarkdown.NormalizeExternalReferences(externalReferences);
         var lines = new List<string>
         {
             $"# {usId} · {title}",
-            string.Empty,
-            "## Metadata",
-            $"- Kind: `{kind}`",
-            $"- Created By: `{createdBy}`",
-            $"- Owner: `{owner}`",
-            $"- Category: `{category}`"
+            string.Empty
         };
-
-        if (normalizedTags.Count > 0)
-        {
-            lines.Add($"- Tags: {string.Join(", ", normalizedTags.Select(static tag => $"`{tag}`"))}");
-        }
+        lines.AddRange(
+            UserStoryMarkdown.BuildMetadataLines(
+                kind,
+                createdBy,
+                owner,
+                category,
+                normalizedTags,
+                normalizedExternalReferences));
 
         lines.AddRange(
             [
-                string.Empty,
                 "## Objective",
                 sourceText,
                 string.Empty,
@@ -4234,8 +4247,9 @@ public sealed class WorkflowRunner
         var owner = ReadUserStoryMetadataScalar(userStory, "- Owner:", createdBy);
         var category = ReadUserStoryCategory(userStory);
         var tags = ReadUserStoryTags(userStory);
+        var externalReferences = UserStoryMarkdown.ReadExternalReferences(userStory);
         ValidateUserStoryKind(kind);
-        return new UserStoryMetadata(normalizedTitle, kind, createdBy, owner, category, tags);
+        return new UserStoryMetadata(normalizedTitle, kind, createdBy, owner, category, tags, externalReferences);
     }
 
     private static string ComputeSourceHash(string sourceText)
@@ -4756,5 +4770,12 @@ public sealed class WorkflowRunner
         return ascii.Length <= 48 ? ascii : ascii[..48].Trim('-');
     }
 
-    internal sealed record UserStoryMetadata(string Title, string Kind, string CreatedBy, string Owner, string Category, IReadOnlyList<string> Tags);
+    internal sealed record UserStoryMetadata(
+        string Title,
+        string Kind,
+        string CreatedBy,
+        string Owner,
+        string Category,
+        IReadOnlyList<string> Tags,
+        IReadOnlyList<UserStoryExternalReference> ExternalReferences);
 }

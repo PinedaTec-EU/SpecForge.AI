@@ -69,11 +69,13 @@ public sealed class SpecForgeApplicationService
         string sourceText,
         string actor = "user",
         IReadOnlyCollection<string>? tags = null,
+        IReadOnlyCollection<UserStoryExternalReference>? externalReferences = null,
         CancellationToken cancellationToken = default)
     {
         repositoryCategoryCatalog.EnsureCategoryIsAllowed(workspaceRoot, category);
         var effectiveActor = WorkspaceActorResolver.ResolveRequiredUserForWorkspace(workspaceRoot);
         var normalizedTags = WorkflowRunner.NormalizeUserStoryTags(tags);
+        var normalizedExternalReferences = UserStoryMarkdown.NormalizeExternalReferences(externalReferences);
         var rootDirectory = await workflowRunner.CreateUserStoryAsync(
             workspaceRoot,
             usId,
@@ -83,6 +85,7 @@ public sealed class SpecForgeApplicationService
             sourceText,
             effectiveActor,
             normalizedTags,
+            normalizedExternalReferences,
             captureSourceKind: "direct-text",
             captureSourceReference: null,
             cancellationToken);
@@ -117,12 +120,14 @@ public sealed class SpecForgeApplicationService
         string category,
         string actor = "user",
         IReadOnlyCollection<string>? tags = null,
+        IReadOnlyCollection<UserStoryExternalReference>? externalReferences = null,
         CancellationToken cancellationToken = default)
     {
         var sourceText = await File.ReadAllTextAsync(sourcePath, cancellationToken);
         repositoryCategoryCatalog.EnsureCategoryIsAllowed(workspaceRoot, category);
         var effectiveActor = WorkspaceActorResolver.ResolveRequiredUserForWorkspace(workspaceRoot);
         var normalizedTags = WorkflowRunner.NormalizeUserStoryTags(tags);
+        var normalizedExternalReferences = UserStoryMarkdown.NormalizeExternalReferences(externalReferences);
         var rootDirectory = await workflowRunner.CreateUserStoryAsync(
             workspaceRoot,
             usId,
@@ -132,6 +137,7 @@ public sealed class SpecForgeApplicationService
             sourceText,
             effectiveActor,
             normalizedTags,
+            normalizedExternalReferences,
             captureSourceKind: "imported-markdown",
             captureSourceReference: Path.GetFullPath(sourcePath).Replace('\\', '/'),
             cancellationToken);
@@ -146,6 +152,7 @@ public sealed class SpecForgeApplicationService
         string? owner = null,
         string? category = null,
         IReadOnlyCollection<string>? tags = null,
+        IReadOnlyCollection<UserStoryExternalReference>? externalReferences = null,
         string? actor = null,
         CancellationToken cancellationToken = default)
     {
@@ -159,12 +166,24 @@ public sealed class SpecForgeApplicationService
         var nextTags = tags is null
             ? metadata.Tags
             : WorkflowRunner.NormalizeUserStoryTags(tags);
+        var nextExternalReferences = externalReferences is null
+            ? metadata.ExternalReferences
+            : UserStoryMarkdown.NormalizeExternalReferences(externalReferences);
 
         UserStoryMarkdown.ValidateUserStoryKind(nextKind);
         repositoryCategoryCatalog.EnsureCategoryIsAllowed(workspaceRoot, nextCategory);
 
         var content = await File.ReadAllTextAsync(paths.MainArtifactPath, cancellationToken);
-        var updated = UserStoryMarkdown.RewriteUserStoryInfo(content, workflowRun.UsId, nextTitle, nextKind, metadata.CreatedBy, nextOwner, nextCategory, nextTags);
+        var updated = UserStoryMarkdown.RewriteUserStoryInfo(
+            content,
+            workflowRun.UsId,
+            nextTitle,
+            nextKind,
+            metadata.CreatedBy,
+            nextOwner,
+            nextCategory,
+            nextTags,
+            nextExternalReferences);
         await File.WriteAllTextAsync(paths.MainArtifactPath, updated, cancellationToken);
         await AppendOwnerChangedTimelineEventAsync(
             paths.TimelineFilePath,
@@ -318,6 +337,7 @@ public sealed class SpecForgeApplicationService
             metadata.Kind,
             metadata.Category,
             metadata.Tags,
+            metadata.ExternalReferences,
             UserStoryDependencyService.ResolveOperationalStatus(workflowRun.Status, dependencies),
             WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase),
             paths.RootDirectory,
@@ -417,6 +437,7 @@ public sealed class SpecForgeApplicationService
             metadata.Owner,
             metadata.Category,
             metadata.Tags,
+            metadata.ExternalReferences,
             directory,
             mainArtifactPath,
             WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase),
@@ -1333,6 +1354,7 @@ public sealed class SpecForgeApplicationService
                     "unknown",
                     "unknown",
                     string.Empty,
+                    [],
                     [],
                     string.Empty,
                     string.Empty,

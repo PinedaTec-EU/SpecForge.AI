@@ -88,7 +88,7 @@ internal sealed class GoalUserStoryIntakeService
                 story.Tags,
                 captureSourceKind: "goal-intake",
                 captureSourceReference: normalizedGoalId,
-                cancellationToken);
+                cancellationToken: cancellationToken);
 
             created.Add(new GoalUserStoryCreationResult(
                 story.UsId,

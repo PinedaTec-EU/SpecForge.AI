@@ -162,7 +162,8 @@ static async Task<JsonNode> HandleToolCallAsync(
                 category: GetRequired(arguments, "category"),
                 sourceText: GetRequired(arguments, "sourceText"),
                 actor: GetOptional(arguments, "actor") ?? "user",
-                tags: GetOptionalStringArray(arguments, "tags")),
+                tags: GetOptionalStringArray(arguments, "tags"),
+                externalReferences: GetOptionalExternalReferences(arguments, "externalReferences")),
             "import_us_from_markdown" => await applicationService.ImportUserStoryAsync(
                 workspaceRoot: GetRequired(arguments, "workspaceRoot"),
                 usId: GetRequired(arguments, "usId"),
@@ -171,7 +172,8 @@ static async Task<JsonNode> HandleToolCallAsync(
                 kind: GetRequired(arguments, "kind"),
                 category: GetRequired(arguments, "category"),
                 actor: GetOptional(arguments, "actor") ?? "user",
-                tags: GetOptionalStringArray(arguments, "tags")),
+                tags: GetOptionalStringArray(arguments, "tags"),
+                externalReferences: GetOptionalExternalReferences(arguments, "externalReferences")),
             "initialize_repo_prompts" => await applicationService.InitializeRepoPromptsAsync(
                 workspaceRoot: GetRequired(arguments, "workspaceRoot"),
                 overwrite: GetOptionalBoolean(arguments, "overwrite")),
@@ -641,7 +643,8 @@ static async Task<object> HandleSpecForgeActionAsync(
             GetRequired(parameters, "category"),
             GetRequired(parameters, "sourceText"),
             GetOptional(parameters, "actor") ?? "user",
-            GetOptionalStringArray(parameters, "tags")),
+            GetOptionalStringArray(parameters, "tags"),
+            GetOptionalExternalReferences(parameters, "externalReferences")),
         "create_user_stories_from_goal" => await applicationService.CreateUserStoriesFromGoalAsync(
             workspaceRoot,
             GetRequired(parameters, "goalText"),
@@ -657,7 +660,8 @@ static async Task<object> HandleSpecForgeActionAsync(
             GetRequired(parameters, "kind"),
             GetRequired(parameters, "category"),
             GetOptional(parameters, "actor") ?? "user",
-            GetOptionalStringArray(parameters, "tags")),
+            GetOptionalStringArray(parameters, "tags"),
+            GetOptionalExternalReferences(parameters, "externalReferences")),
         "update_user_story_info" => await applicationService.UpdateUserStoryInfoAsync(
             workspaceRoot,
             GetRequired(arguments, "usId"),
@@ -666,6 +670,7 @@ static async Task<object> HandleSpecForgeActionAsync(
             GetOptional(parameters, "owner"),
             GetOptional(parameters, "category"),
             GetNullableStringArray(parameters, "tags"),
+            GetOptionalExternalReferences(parameters, "externalReferences"),
             GetOptional(parameters, "actor")),
         "advance_phase" => await applicationService.GenerateNextPhaseAsync(
             workspaceRoot,
@@ -916,6 +921,36 @@ static string[]? GetNullableStringArray(JsonObject arguments, string key)
     }
 
     return GetStringArray(arguments, key);
+}
+
+static IReadOnlyList<UserStoryExternalReference>? GetOptionalExternalReferences(JsonObject arguments, string key)
+{
+    if (arguments[key] is not JsonArray array)
+    {
+        return null;
+    }
+
+    var references = new List<UserStoryExternalReference>(array.Count);
+    foreach (var node in array)
+    {
+        if (node is not JsonObject item)
+        {
+            continue;
+        }
+
+        var url = item["url"]?.GetValue<string>()?.Trim();
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            continue;
+        }
+
+        references.Add(new UserStoryExternalReference(
+            Url: url,
+            Label: item["label"]?.GetValue<string>()?.Trim() ?? string.Empty,
+            Provider: item["provider"]?.GetValue<string>()?.Trim() ?? string.Empty));
+    }
+
+    return references;
 }
 
 static JsonObject BuildSuccessResponse(JsonNode? id, JsonNode result)

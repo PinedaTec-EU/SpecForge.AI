@@ -69,6 +69,7 @@ type SidebarMessage =
     readonly kind?: string;
     readonly category?: string;
     readonly tags?: string;
+    readonly externalReferenceUrl?: string;
     readonly intakeMode?: CreateIntakeMode;
     readonly sourceText?: string;
     readonly wizardDraft?: Partial<UserStoryWizardDraft>;
@@ -321,6 +322,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
     const kind = message.kind?.trim();
     const category = message.category?.trim();
     const tags = parseCustomTags(message.tags);
+    const externalReferenceUrl = message.externalReferenceUrl?.trim();
     const intakeMode: CreateIntakeMode = message.intakeMode === "wizard" ? "wizard" : "freeform";
     const sourceText = intakeMode === "wizard"
       ? buildWizardSourceText(message.wizardDraft).trim()
@@ -344,7 +346,16 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
     const backendClient = getOrCreateBackendClient(workspaceRoot);
     const summaries = await backendClient.listUserStories();
     const usId = nextUserStoryIdFromSummaries(summaries);
-    const result = await backendClient.createUserStory(usId, title, kind, category, sourceText, getCurrentActor(workspaceRoot), tags);
+    const result = await backendClient.createUserStory(
+      usId,
+      title,
+      kind,
+      category,
+      sourceText,
+      getCurrentActor(workspaceRoot),
+      tags,
+      externalReferenceUrl ? [{ url: externalReferenceUrl, label: "", provider: "" }] : undefined
+    );
     await this.materializeCreateFilesAsync(result.rootDirectory);
     this.showCreateForm = false;
     this.createFiles = [];
@@ -446,6 +457,31 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
       return;
     }
 
+    const externalReferenceUrl = await vscode.window.showInputBox({
+      title: `Edit ${usId}`,
+      prompt: "External issue URL",
+      value: summary.externalReferences?.[0]?.url ?? "",
+      ignoreFocusOut: true,
+      validateInput: (value) => {
+        const normalized = value.trim();
+        if (normalized.length === 0) {
+          return null;
+        }
+
+        try {
+          const candidate = new URL(normalized);
+          return candidate.protocol === "http:" || candidate.protocol === "https:"
+            ? null
+            : "Use an absolute HTTP or HTTPS URL.";
+        } catch {
+          return "Use an absolute HTTP or HTTPS URL.";
+        }
+      }
+    });
+    if (externalReferenceUrl === undefined) {
+      return;
+    }
+
     await this.runBusyActionAsync(`Updating ${usId} info...`, async () => {
       await backendClient.updateUserStoryInfo(usId, {
         title: title.trim(),
@@ -453,6 +489,9 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
         owner: owner.trim(),
         category: category.label,
         tags: parseCustomTags(tags),
+        externalReferences: externalReferenceUrl.trim().length > 0
+          ? [{ url: externalReferenceUrl.trim(), label: "", provider: "" }]
+          : [],
         actor: getCurrentActor(workspaceRoot)
       });
       await this.onDidCreateUserStory();

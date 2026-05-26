@@ -22,6 +22,7 @@ import type {
   SpecForgeBackendClient,
   SubmitApprovalAnswerResult,
   UpdateUserStoryInfoResult,
+  UserStoryExternalReference,
   UserStoryRuntimeStatus,
   UserStorySummary,
   UserStoryWorkflowDetails,
@@ -132,7 +133,7 @@ export class StdioMcpBackendClient implements SpecForgeBackendClient {
     });
   }
 
-  public async createUserStory(usId: string, title: string, kind: string, category: string, sourceText: string, actor?: string, tags?: readonly string[]): Promise<CreateOrImportUserStoryResult> {
+  public async createUserStory(usId: string, title: string, kind: string, category: string, sourceText: string, actor?: string, tags?: readonly string[], externalReferences?: readonly UserStoryExternalReference[]): Promise<CreateOrImportUserStoryResult> {
     return this.callTool<CreateOrImportUserStoryResult>("create_us_from_chat", {
       workspaceRoot: this.workspaceRoot,
       usId,
@@ -141,11 +142,12 @@ export class StdioMcpBackendClient implements SpecForgeBackendClient {
       category,
       sourceText,
       ...(tags && tags.length > 0 ? { tags } : {}),
+      ...(externalReferences ? { externalReferences } : {}),
       ...(actor && actor.trim().length > 0 ? { actor } : {})
     });
   }
 
-  public async importUserStory(usId: string, sourcePath: string, title: string, kind: string, category: string, actor?: string, tags?: readonly string[]): Promise<CreateOrImportUserStoryResult> {
+  public async importUserStory(usId: string, sourcePath: string, title: string, kind: string, category: string, actor?: string, tags?: readonly string[], externalReferences?: readonly UserStoryExternalReference[]): Promise<CreateOrImportUserStoryResult> {
     return this.callTool<CreateOrImportUserStoryResult>("import_us_from_markdown", {
       workspaceRoot: this.workspaceRoot,
       usId,
@@ -154,6 +156,7 @@ export class StdioMcpBackendClient implements SpecForgeBackendClient {
       kind,
       category,
       ...(tags && tags.length > 0 ? { tags } : {}),
+      ...(externalReferences ? { externalReferences } : {}),
       ...(actor && actor.trim().length > 0 ? { actor } : {})
     });
   }
@@ -166,6 +169,7 @@ export class StdioMcpBackendClient implements SpecForgeBackendClient {
       readonly owner?: string;
       readonly category?: string;
       readonly tags?: readonly string[];
+      readonly externalReferences?: readonly UserStoryExternalReference[];
       readonly actor?: string;
     }
   ): Promise<UpdateUserStoryInfoResult> {
@@ -177,6 +181,7 @@ export class StdioMcpBackendClient implements SpecForgeBackendClient {
       ...(values.owner !== undefined ? { owner: values.owner } : {}),
       ...(values.category !== undefined ? { category: values.category } : {}),
       ...(values.tags !== undefined ? { tags: values.tags } : {}),
+      ...(values.externalReferences !== undefined ? { externalReferences: values.externalReferences } : {}),
       ...(values.actor !== undefined ? { actor: values.actor } : {})
     });
   }

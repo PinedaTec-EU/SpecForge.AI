@@ -10,6 +10,7 @@ export interface UserStorySummary {
   readonly owner: string;
   readonly category: string;
   readonly tags?: readonly string[];
+  readonly externalReferences?: readonly UserStoryExternalReference[];
   readonly directoryPath: string;
   readonly mainArtifactPath: string;
   readonly currentPhase: string;
@@ -19,6 +20,12 @@ export interface UserStorySummary {
   readonly workflowKind?: string;
   readonly parentUsId?: string | null;
   readonly childUsIds?: readonly string[] | null;
+}
+
+export interface UserStoryExternalReference {
+  readonly url: string;
+  readonly label: string;
+  readonly provider: string;
 }
 
 export interface UserStoryDependencySummary {
@@ -1102,6 +1109,7 @@ export interface UserStoryWorkflowDetails {
   readonly kind?: string;
   readonly category: string;
   readonly tags?: readonly string[];
+  readonly externalReferences?: readonly UserStoryExternalReference[];
   readonly status: string;
   readonly currentPhase: string;
   readonly directoryPath: string;
@@ -1136,8 +1144,8 @@ export interface SpecForgeBackendClient {
   getUserStoryRuntimeStatus(usId: string): Promise<UserStoryRuntimeStatus>;
   analyzeUserStoryLineage(usId: string): Promise<WorkflowLineageAnalysisResult>;
   repairUserStoryLineage(usId: string, actor?: string): Promise<WorkflowLineageRepairResult>;
-  createUserStory(usId: string, title: string, kind: string, category: string, sourceText: string, actor?: string, tags?: readonly string[]): Promise<CreateOrImportUserStoryResult>;
-  importUserStory(usId: string, sourcePath: string, title: string, kind: string, category: string, actor?: string, tags?: readonly string[]): Promise<CreateOrImportUserStoryResult>;
+  createUserStory(usId: string, title: string, kind: string, category: string, sourceText: string, actor?: string, tags?: readonly string[], externalReferences?: readonly UserStoryExternalReference[]): Promise<CreateOrImportUserStoryResult>;
+  importUserStory(usId: string, sourcePath: string, title: string, kind: string, category: string, actor?: string, tags?: readonly string[], externalReferences?: readonly UserStoryExternalReference[]): Promise<CreateOrImportUserStoryResult>;
   updateUserStoryInfo(
     usId: string,
     values: {
@@ -1146,6 +1154,7 @@ export interface SpecForgeBackendClient {
       readonly owner?: string;
       readonly category?: string;
       readonly tags?: readonly string[];
+      readonly externalReferences?: readonly UserStoryExternalReference[];
       readonly actor?: string;
     }
   ): Promise<UpdateUserStoryInfoResult>;

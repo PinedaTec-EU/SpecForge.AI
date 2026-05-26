@@ -43,6 +43,7 @@ type CreatePanelMessage =
     readonly kind?: string;
     readonly category?: string;
     readonly tags?: string;
+    readonly externalReferenceUrl?: string;
     readonly intakeMode?: CreateIntakeMode;
     readonly sourceText?: string;
     readonly wizardDraft?: Partial<UserStoryWizardDraft>;
@@ -197,6 +198,7 @@ class CreateUserStoryPanelController {
     const kind = message.kind?.trim();
     const category = message.category?.trim();
     const tags = parseCustomTags(message.tags);
+    const externalReferenceUrl = message.externalReferenceUrl?.trim();
     const intakeMode: CreateIntakeMode = message.intakeMode === "wizard" ? "wizard" : "freeform";
     const sourceText = intakeMode === "wizard"
       ? buildWizardSourceText(message.wizardDraft).trim()
@@ -218,7 +220,16 @@ class CreateUserStoryPanelController {
     const backendClient = getOrCreateBackendClient(workspaceRoot);
     const summaries = await backendClient.listUserStories();
     const usId = nextUserStoryIdFromSummaries(summaries);
-    const result = await backendClient.createUserStory(usId, title, kind, category, sourceText, getCurrentActor(workspaceRoot), tags);
+    const result = await backendClient.createUserStory(
+      usId,
+      title,
+      kind,
+      category,
+      sourceText,
+      getCurrentActor(workspaceRoot),
+      tags,
+      externalReferenceUrl ? [{ url: externalReferenceUrl, label: "", provider: "" }] : undefined
+    );
     await this.materializeCreateFilesAsync(result.rootDirectory);
     this.createFiles = [];
     this.createFileMode = "context";

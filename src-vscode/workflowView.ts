@@ -6670,6 +6670,7 @@ export function buildWorkflowHtml(
           <h1>${escapeHtml(buildWorkflowHeroTitle(workflow))}</h1>
         </div>
         <div class="control-strip">
+          ${buildExternalReferenceActionMarkup(workflow)}
           ${pullRequestUrl
             ? `<button class="workflow-action-button workflow-action-button--document workflow-action-button--icon" type="button" data-command="openExternalUrl" data-url="${escapeHtmlAttribute(pullRequestUrl)}">${externalLinkIcon()}<span>${escapeHtml(pullRequestLabel)}</span></button>`
             : ""}
@@ -9807,6 +9808,15 @@ function buildWorkflowTagTokens(tags: readonly string[]): string {
     .join("");
 
   return tagTokens ? `<div class="hero-meta__tags">${tagTokens}</div>` : "";
+}
+
+function buildExternalReferenceActionMarkup(workflow: UserStoryWorkflowDetails): string {
+  const externalReference = workflow.externalReferences?.[0];
+  if (!externalReference?.url) {
+    return "";
+  }
+
+  return `<button class="workflow-action-button workflow-action-button--document workflow-action-button--icon" type="button" data-command="openExternalUrl" data-url="${escapeHtmlAttribute(externalReference.url)}">${externalLinkIcon()}<span>${escapeHtml(externalReference.label || "External issue")}</span></button>`;
 }
 
 function formatWorkflowTagLabel(tag: string): string {

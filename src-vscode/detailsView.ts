@@ -69,6 +69,9 @@ export function buildUserStoryDetailsHtml(summary: UserStorySummary): string {
   <div class="meta">
     <div><strong>Title:</strong> ${escapeHtml(summary.title)}</div>
     <div><strong>Category:</strong> <code>${escapeHtml(summary.category)}</code></div>
+    ${summary.externalReferences?.[0]
+      ? `<div><strong>External issue:</strong> <a href="${escapeHtml(summary.externalReferences[0].url)}">${escapeHtml(summary.externalReferences[0].label)}</a></div>`
+      : ""}
     <div><strong>Status:</strong> <code>${escapeHtml(summary.status)}</code></div>
     <div><strong>Current phase:</strong> <code>${escapeHtml(summary.currentPhase)}</code></div>
     <div><strong>Branch:</strong> <code>${escapeHtml(summary.workBranch ?? "not-created")}</code></div>

@@ -6,6 +6,7 @@ public sealed record UserStoryWorkflowDetails(
     string Kind,
     string Category,
     IReadOnlyCollection<string> Tags,
+    IReadOnlyCollection<UserStoryExternalReference> ExternalReferences,
     string Status,
     string CurrentPhase,
     string DirectoryPath,

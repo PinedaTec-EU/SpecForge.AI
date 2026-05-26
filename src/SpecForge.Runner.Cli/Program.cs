@@ -1034,6 +1034,7 @@ static async Task HandleUpdateUserStoryInfoAsync(
             request.Owner,
             request.Category,
             request.Tags,
+            request.ExternalReferences,
             request.Actor ?? ResolveCurrentGitOwner(workspaceRoot)));
 }
 
@@ -1133,7 +1134,8 @@ static async Task HandleCreateUserStoryRequestAsync(
         request.Category.Trim(),
         request.SourceText.Trim(),
         request.Actor ?? ResolveCurrentGitOwner(workspaceRoot),
-        request.Tags ?? []);
+        request.Tags ?? [],
+        request.ExternalReferences ?? []);
 
     await MaterializeCreateUserStoryFilesAsync(result.RootDirectory, request.Files);
 
@@ -2538,6 +2540,7 @@ internal sealed record CreateUserStoryRequest(
     string Category,
     string SourceText,
     IReadOnlyList<string>? Tags,
+    IReadOnlyList<UserStoryExternalReference>? ExternalReferences,
     string? Actor,
     IReadOnlyList<CreateUserStoryFileUploadItem>? Files);
 
@@ -2592,4 +2595,5 @@ internal sealed record UpdateUserStoryInfoRequest(
     string? Owner,
     string? Category,
     IReadOnlyList<string>? Tags,
+    IReadOnlyList<UserStoryExternalReference>? ExternalReferences,
     string? Actor);
