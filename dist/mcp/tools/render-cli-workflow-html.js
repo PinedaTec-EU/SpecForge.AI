@@ -2343,6 +2343,9 @@ const sidebarShell = `
           tags: Array.isArray(message.tags)
             ? message.tags
             : String(message.tags || "").split(",").map(item => item.trim()).filter(Boolean),
+          externalReferences: String(message.externalReferenceUrl || "").trim()
+            ? [{ url: String(message.externalReferenceUrl || "").trim(), label: "", provider: "" }]
+            : [],
           sourceText: String(message.sourceText || "").trim(),
           actor: currentActor,
           files: createFormFiles.map((file) => ({

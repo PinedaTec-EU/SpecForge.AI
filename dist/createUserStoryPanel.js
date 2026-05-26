@@ -171,6 +171,7 @@ class CreateUserStoryPanelController {
         const kind = message.kind?.trim();
         const category = message.category?.trim();
         const tags = parseCustomTags(message.tags);
+        const externalReferenceUrl = message.externalReferenceUrl?.trim();
         const intakeMode = message.intakeMode === "wizard" ? "wizard" : "freeform";
         const sourceText = intakeMode === "wizard"
             ? (0, userStoryIntake_1.buildWizardSourceText)(message.wizardDraft).trim()
@@ -189,7 +190,7 @@ class CreateUserStoryPanelController {
         const backendClient = (0, specsExplorer_1.getOrCreateBackendClient)(workspaceRoot);
         const summaries = await backendClient.listUserStories();
         const usId = (0, explorerModel_1.nextUserStoryIdFromSummaries)(summaries);
-        const result = await backendClient.createUserStory(usId, title, kind, category, sourceText, (0, userActor_1.getCurrentActor)(workspaceRoot), tags);
+        const result = await backendClient.createUserStory(usId, title, kind, category, sourceText, (0, userActor_1.getCurrentActor)(workspaceRoot), tags, externalReferenceUrl ? [{ url: externalReferenceUrl, label: "", provider: "" }] : undefined);
         await this.materializeCreateFilesAsync(result.rootDirectory);
         this.createFiles = [];
         this.createFileMode = "context";

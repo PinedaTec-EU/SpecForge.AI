@@ -120,7 +120,7 @@ class StdioMcpBackendClient {
             ...(actor && actor.trim().length > 0 ? { actor } : {})
         });
     }
-    async createUserStory(usId, title, kind, category, sourceText, actor, tags) {
+    async createUserStory(usId, title, kind, category, sourceText, actor, tags, externalReferences) {
         return this.callTool("create_us_from_chat", {
             workspaceRoot: this.workspaceRoot,
             usId,
@@ -129,10 +129,11 @@ class StdioMcpBackendClient {
             category,
             sourceText,
             ...(tags && tags.length > 0 ? { tags } : {}),
+            ...(externalReferences ? { externalReferences } : {}),
             ...(actor && actor.trim().length > 0 ? { actor } : {})
         });
     }
-    async importUserStory(usId, sourcePath, title, kind, category, actor, tags) {
+    async importUserStory(usId, sourcePath, title, kind, category, actor, tags, externalReferences) {
         return this.callTool("import_us_from_markdown", {
             workspaceRoot: this.workspaceRoot,
             usId,
@@ -141,6 +142,7 @@ class StdioMcpBackendClient {
             kind,
             category,
             ...(tags && tags.length > 0 ? { tags } : {}),
+            ...(externalReferences ? { externalReferences } : {}),
             ...(actor && actor.trim().length > 0 ? { actor } : {})
         });
     }
@@ -153,6 +155,7 @@ class StdioMcpBackendClient {
             ...(values.owner !== undefined ? { owner: values.owner } : {}),
             ...(values.category !== undefined ? { category: values.category } : {}),
             ...(values.tags !== undefined ? { tags: values.tags } : {}),
+            ...(values.externalReferences !== undefined ? { externalReferences: values.externalReferences } : {}),
             ...(values.actor !== undefined ? { actor: values.actor } : {})
         });
     }

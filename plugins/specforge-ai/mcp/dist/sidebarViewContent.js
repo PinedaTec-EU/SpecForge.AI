@@ -153,6 +153,10 @@ function buildSidebarHtml(model) {
             <span>Tags</span>
             <input name="tags" type="text" placeholder="mcp, ux, search" data-create-field="tags" />
           </label>
+          <label>
+            <span>External issue URL</span>
+            <input name="externalReferenceUrl" type="url" placeholder="https://github.com/org/repo/issues/123" data-create-field="externalReferenceUrl" />
+          </label>
           <section class="intake-panel intake-panel--active" data-intake-panel="freeform">
             <label>
               <span>Source</span>
@@ -1521,6 +1525,7 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
       kind: "feature",
       category: "",
       tags: "",
+      externalReferenceUrl: "",
       sourceText: "",
       wizard: {
         actor: "",
@@ -1664,6 +1669,7 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
       setInputValue("kind", createState.kind ?? "feature");
       setInputValue("category", createState.category ?? "");
       setInputValue("tags", createState.tags ?? "");
+      setInputValue("externalReferenceUrl", createState.externalReferenceUrl ?? "");
       setInputValue("sourceText", createState.sourceText ?? "");
 
       for (const [key, value] of Object.entries(createState.wizard)) {
@@ -1721,6 +1727,7 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
           title: element.dataset.title,
           category: element.dataset.category,
           tags: element.dataset.tags,
+          externalReferenceUrl: element.dataset.externalReferenceUrl,
           kind: element.dataset.kind,
           sourcePath: element.dataset.sourcePath
         });
@@ -1898,11 +1905,13 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
       const kindField = form.querySelector('[data-create-field="kind"]');
       const categoryField = form.querySelector('[data-create-field="category"]');
       const tagsField = form.querySelector('[data-create-field="tags"]');
+      const externalReferenceUrlField = form.querySelector('[data-create-field="externalReferenceUrl"]');
       const sourceField = form.querySelector('[data-create-field="sourceText"]');
       createState.title = createState.title ?? "";
       createState.kind = createState.kind || (kindField instanceof HTMLSelectElement ? kindField.value : "feature");
       createState.category = createState.category || (categoryField instanceof HTMLSelectElement ? categoryField.value : "");
       createState.tags = createState.tags || (tagsField instanceof HTMLInputElement ? tagsField.value : "");
+      createState.externalReferenceUrl = createState.externalReferenceUrl || (externalReferenceUrlField instanceof HTMLInputElement ? externalReferenceUrlField.value : "");
       createState.sourceText = createState.sourceText || (sourceField instanceof HTMLTextAreaElement ? sourceField.value : "");
       persistCreateState();
       for (const field of form.querySelectorAll("input, select, textarea, button")) {
@@ -2032,6 +2041,7 @@ function wrapHtml(content, busy, createFormResetToken, typographyCssVars) {
           kind: String(data.get("kind") ?? createState.kind ?? "feature"),
           category: String(data.get("category") ?? createState.category ?? ""),
           tags: String(data.get("tags") ?? createState.tags ?? ""),
+          externalReferenceUrl: String(data.get("externalReferenceUrl") ?? createState.externalReferenceUrl ?? ""),
           intakeMode,
           sourceText: intakeMode === "wizard"
             ? buildGuidedSourceText(createState)
@@ -2154,7 +2164,7 @@ function buildStoryRowMarkup(summary, model) {
               type="button"
               ${model.showDroppedUserStories
         ? "disabled"
-        : `data-command="showEditUserStoryForm" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}" data-title="${(0, htmlEscape_1.escapeHtmlAttr)(editableUserStoryTitle(summary.usId, summary.title))}" data-owner="${(0, htmlEscape_1.escapeHtmlAttr)(summary.owner)}" data-category="${(0, htmlEscape_1.escapeHtmlAttr)(summary.category)}" data-tags="${(0, htmlEscape_1.escapeHtmlAttr)((summary.tags ?? []).join(", "))}"`}
+        : `data-command="showEditUserStoryForm" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}" data-title="${(0, htmlEscape_1.escapeHtmlAttr)(editableUserStoryTitle(summary.usId, summary.title))}" data-owner="${(0, htmlEscape_1.escapeHtmlAttr)(summary.owner)}" data-category="${(0, htmlEscape_1.escapeHtmlAttr)(summary.category)}" data-tags="${(0, htmlEscape_1.escapeHtmlAttr)((summary.tags ?? []).join(", "))}" data-external-reference-url="${(0, htmlEscape_1.escapeHtmlAttr)(summary.externalReferences?.[0]?.url ?? "")}"`}
               role="menuitem">
               <span class="action-menu__item-icon" aria-hidden="true">✎</span>
               <span>Edit US info</span>

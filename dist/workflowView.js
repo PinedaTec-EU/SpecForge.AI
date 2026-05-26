@@ -6127,6 +6127,7 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
           <h1>${(0, htmlEscape_1.escapeHtml)(buildWorkflowHeroTitle(workflow))}</h1>
         </div>
         <div class="control-strip">
+          ${buildExternalReferenceActionMarkup(workflow)}
           ${pullRequestUrl
         ? `<button class="workflow-action-button workflow-action-button--document workflow-action-button--icon" type="button" data-command="openExternalUrl" data-url="${(0, htmlEscape_1.escapeHtmlAttr)(pullRequestUrl)}">${(0, icons_1.externalLinkIcon)()}<span>${(0, htmlEscape_1.escapeHtml)(pullRequestLabel)}</span></button>`
         : ""}
@@ -9260,6 +9261,13 @@ function buildWorkflowTagTokens(tags) {
         .map((tag) => `<span class="token token--tag">${(0, htmlEscape_1.escapeHtml)(formatWorkflowTagLabel(tag))}</span>`)
         .join("");
     return tagTokens ? `<div class="hero-meta__tags">${tagTokens}</div>` : "";
+}
+function buildExternalReferenceActionMarkup(workflow) {
+    const externalReference = workflow.externalReferences?.[0];
+    if (!externalReference?.url) {
+        return "";
+    }
+    return `<button class="workflow-action-button workflow-action-button--document workflow-action-button--icon" type="button" data-command="openExternalUrl" data-url="${(0, htmlEscape_1.escapeHtmlAttr)(externalReference.url)}">${(0, icons_1.externalLinkIcon)()}<span>${(0, htmlEscape_1.escapeHtml)(externalReference.label || "External issue")}</span></button>`;
 }
 function formatWorkflowTagLabel(tag) {
     return `#${tag}`;

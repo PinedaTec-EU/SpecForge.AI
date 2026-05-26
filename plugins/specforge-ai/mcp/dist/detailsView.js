@@ -68,6 +68,9 @@ function buildUserStoryDetailsHtml(summary) {
   <div class="meta">
     <div><strong>Title:</strong> ${(0, htmlEscape_1.escapeHtml)(summary.title)}</div>
     <div><strong>Category:</strong> <code>${(0, htmlEscape_1.escapeHtml)(summary.category)}</code></div>
+    ${summary.externalReferences?.[0]
+        ? `<div><strong>External issue:</strong> <a href="${(0, htmlEscape_1.escapeHtml)(summary.externalReferences[0].url)}">${(0, htmlEscape_1.escapeHtml)(summary.externalReferences[0].label)}</a></div>`
+        : ""}
     <div><strong>Status:</strong> <code>${(0, htmlEscape_1.escapeHtml)(summary.status)}</code></div>
     <div><strong>Current phase:</strong> <code>${(0, htmlEscape_1.escapeHtml)(summary.currentPhase)}</code></div>
     <div><strong>Branch:</strong> <code>${(0, htmlEscape_1.escapeHtml)(summary.workBranch ?? "not-created")}</code></div>
