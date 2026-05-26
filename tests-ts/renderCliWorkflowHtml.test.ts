@@ -78,6 +78,16 @@ test("CLI workflow renderer routes sidebar story selection through the current p
   assert.match(script, /selectedUsId = String\(payload\.selectedUsId \|\| workflow\?\.usId \|\| ""\)\.trim\(\) \|\| null/);
 });
 
+test("CLI workflow renderer opens external URLs from workflow actions", async () => {
+  const script = await fs.promises.readFile(scriptPath, "utf8");
+  const packagedScript = await fs.promises.readFile(packagedScriptPath, "utf8");
+
+  for (const content of [script, packagedScript]) {
+    assert.match(content, /message\?\.command === "openExternalUrl" && message\.url/);
+    assert.match(content, /window\.open\(String\(message\.url\), "_blank", "noopener"\)/);
+  }
+});
+
 test("CLI workflow renderer preloads the next portal document before replacing the current page", async () => {
   const script = await fs.promises.readFile(scriptPath, "utf8");
 
