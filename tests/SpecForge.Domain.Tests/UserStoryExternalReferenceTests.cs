@@ -71,6 +71,68 @@ public sealed class UserStoryExternalReferenceTests : IDisposable
         Assert.Contains("[Jira issue](https://jira.example.com/browse/SF-57)", usMarkdown);
     }
 
+    [Fact]
+    public async Task GetUserStorySummaryAsync_FallsBackToLegacyIssueUrlLine()
+    {
+        var runner = new WorkflowRunner();
+        var applicationService = new SpecForgeApplicationService();
+
+        await runner.CreateUserStoryAsync(
+            workspaceRoot,
+            "US-0002",
+            "Legacy linked story",
+            "feature",
+            "workflow",
+            """
+            Source GitHub issue: SF-88 (#88)
+            Issue URL: https://github.com/PinedaTec-EU/SpecForge.AI/issues/88
+            """);
+
+        var summary = await applicationService.GetUserStorySummaryAsync(workspaceRoot, "US-0002");
+
+        var reference = Assert.Single(summary.ExternalReferences);
+        Assert.Equal("https://github.com/PinedaTec-EU/SpecForge.AI/issues/88", reference.Url);
+        Assert.Equal("GitHub issue", reference.Label);
+        Assert.Equal("github", reference.Provider);
+    }
+
+    [Fact]
+    public async Task UpdateUserStoryInfoAsync_RewritesLegacyIssueUrlLine()
+    {
+        var runner = new WorkflowRunner();
+        var applicationService = new SpecForgeApplicationService();
+
+        await runner.CreateUserStoryAsync(
+            workspaceRoot,
+            "US-0003",
+            "Legacy linked story",
+            "feature",
+            "workflow",
+            """
+            Source GitHub issue: SF-88 (#88)
+            Issue URL: https://github.com/PinedaTec-EU/SpecForge.AI/issues/88
+            """);
+
+        await applicationService.UpdateUserStoryInfoAsync(
+            workspaceRoot,
+            "US-0003",
+            externalReferences:
+            [
+                new UserStoryExternalReference(
+                    Url: "https://github.com/PinedaTec-EU/SpecForge.AI/issues/99",
+                    Label: "",
+                    Provider: "")
+            ],
+            actor: "bob");
+
+        var usMarkdown = await File.ReadAllTextAsync(Path.Combine(workspaceRoot, ".specs", "us", "US-0003", "us.md"));
+
+        Assert.Contains("- External References:", usMarkdown);
+        Assert.Contains("[GitHub issue](https://github.com/PinedaTec-EU/SpecForge.AI/issues/99)", usMarkdown);
+        Assert.Contains("Issue URL: https://github.com/PinedaTec-EU/SpecForge.AI/issues/99", usMarkdown);
+        Assert.DoesNotContain("Issue URL: https://github.com/PinedaTec-EU/SpecForge.AI/issues/88", usMarkdown);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(workspaceRoot))

@@ -6,6 +6,7 @@ internal static class UserStoryMarkdown
 {
     public const string MetadataHeading = "## Metadata";
     private static readonly Regex MarkdownLinkRegex = new(@"^\[(?<label>[^\]]+)\]\((?<url>[^)]+)\)$", RegexOptions.Compiled);
+    private static readonly Regex LegacyIssueUrlRegex = new(@"^Issue URL:\s*(?<url>https?://\S+)\s*$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     public static string RequireTrimmed(string? value, string message)
     {
@@ -68,6 +69,7 @@ internal static class UserStoryMarkdown
         var metadataLines = BuildMetadataLines(kind, createdBy, owner, category, tags, externalReferences);
         lines.RemoveRange(metadataIndex, endIndex - metadataIndex);
         lines.InsertRange(metadataIndex, metadataLines);
+        RewriteLegacyIssueUrlLine(lines, externalReferences);
 
         return string.Join('\n', lines).TrimEnd() + Environment.NewLine;
     }
@@ -180,7 +182,16 @@ internal static class UserStoryMarkdown
             }
         }
 
-        return NormalizeExternalReferences(references);
+        var normalizedReferences = NormalizeExternalReferences(references);
+        if (normalizedReferences.Count > 0)
+        {
+            return normalizedReferences;
+        }
+
+        var legacyReference = ReadLegacyIssueUrlReference(lines);
+        return legacyReference is null
+            ? normalizedReferences
+            : NormalizeExternalReferences([legacyReference]);
     }
 
     public static string ReadTitle(string content, string fallback)
@@ -250,6 +261,51 @@ internal static class UserStoryMarkdown
         {
             var provider = InferExternalReferenceProvider(rawUri);
             return new UserStoryExternalReference(rawUri.AbsoluteUri, InferExternalReferenceLabel(provider), provider);
+        }
+
+        return null;
+    }
+
+    private static void RewriteLegacyIssueUrlLine(
+        IList<string> lines,
+        IReadOnlyCollection<UserStoryExternalReference> externalReferences)
+    {
+        var replacementUrl = externalReferences.FirstOrDefault()?.Url;
+        if (string.IsNullOrWhiteSpace(replacementUrl))
+        {
+            return;
+        }
+
+        for (var index = 0; index < lines.Count; index++)
+        {
+            if (!LegacyIssueUrlRegex.IsMatch(lines[index].Trim()))
+            {
+                continue;
+            }
+
+            lines[index] = $"Issue URL: {replacementUrl}";
+            return;
+        }
+    }
+
+    private static UserStoryExternalReference? ReadLegacyIssueUrlReference(IEnumerable<string> lines)
+    {
+        foreach (var rawLine in lines)
+        {
+            var match = LegacyIssueUrlRegex.Match(rawLine.Trim());
+            if (!match.Success)
+            {
+                continue;
+            }
+
+            var url = match.Groups["url"].Value.Trim();
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            {
+                return null;
+            }
+
+            var provider = InferExternalReferenceProvider(uri);
+            return new UserStoryExternalReference(uri.AbsoluteUri, InferExternalReferenceLabel(provider), provider);
         }
 
         return null;
