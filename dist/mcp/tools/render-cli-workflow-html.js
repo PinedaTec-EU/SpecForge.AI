@@ -704,6 +704,11 @@ const browserShim = `
         return;
       }
 
+      if (message?.command === "openExternalUrl" && message.url) {
+        window.open(String(message.url), "_blank", "noopener");
+        return;
+      }
+
       window.dispatchEvent(new CustomEvent("specforge-cli-command", { detail: message }));
     }
   };
