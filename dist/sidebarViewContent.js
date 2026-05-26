@@ -2164,7 +2164,7 @@ function buildStoryRowMarkup(summary, model) {
               type="button"
               ${model.showDroppedUserStories
         ? "disabled"
-        : `data-command="showEditUserStoryForm" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}" data-title="${(0, htmlEscape_1.escapeHtmlAttr)(editableUserStoryTitle(summary.usId, summary.title))}" data-owner="${(0, htmlEscape_1.escapeHtmlAttr)(summary.owner)}" data-category="${(0, htmlEscape_1.escapeHtmlAttr)(summary.category)}" data-tags="${(0, htmlEscape_1.escapeHtmlAttr)((summary.tags ?? []).join(", "))}" data-external-reference-url="${(0, htmlEscape_1.escapeHtmlAttr)(summary.externalReferences?.[0]?.url ?? "")}"`}
+        : `data-command="showEditUserStoryForm" data-us-id="${(0, htmlEscape_1.escapeHtmlAttr)(summary.usId)}" data-title="${(0, htmlEscape_1.escapeHtmlAttr)(editableUserStoryTitle(summary.usId, summary.title))}" data-kind="${(0, htmlEscape_1.escapeHtmlAttr)(summary.kind)}" data-owner="${(0, htmlEscape_1.escapeHtmlAttr)(summary.owner)}" data-category="${(0, htmlEscape_1.escapeHtmlAttr)(summary.category)}" data-tags="${(0, htmlEscape_1.escapeHtmlAttr)((summary.tags ?? []).join(", "))}" data-external-reference-url="${(0, htmlEscape_1.escapeHtmlAttr)(summary.externalReferences?.[0]?.url ?? "")}"`}
               role="menuitem">
               <span class="action-menu__item-icon" aria-hidden="true">✎</span>
               <span>Edit US info</span>

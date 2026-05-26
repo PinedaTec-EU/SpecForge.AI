@@ -67,6 +67,7 @@ function buildUserStoryDetailsHtml(summary) {
   <h1>${(0, htmlEscape_1.escapeHtml)(summary.usId)}</h1>
   <div class="meta">
     <div><strong>Title:</strong> ${(0, htmlEscape_1.escapeHtml)(summary.title)}</div>
+    <div><strong>Kind:</strong> <code>${(0, htmlEscape_1.escapeHtml)(summary.kind)}</code></div>
     <div><strong>Category:</strong> <code>${(0, htmlEscape_1.escapeHtml)(summary.category)}</code></div>
     ${summary.externalReferences?.[0]
         ? `<div><strong>External issue:</strong> <a href="${(0, htmlEscape_1.escapeHtml)(summary.externalReferences[0].url)}">${(0, htmlEscape_1.escapeHtml)(summary.externalReferences[0].label)}</a></div>`

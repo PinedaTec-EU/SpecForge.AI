@@ -1039,6 +1039,20 @@ const sidebarShell = `
         </div>
       </label>
       <label class="specforge-cli-edit-field">
+        <span>Kind</span>
+        <div class="specforge-cli-edit-field-row">
+          <select name="kind" required>
+            <option value="feature">feature</option>
+            <option value="bug">bug</option>
+            <option value="hotfix">hotfix</option>
+            <option value="chore">chore</option>
+            <option value="refactor">refactor</option>
+            <option value="spike">spike</option>
+          </select>
+          <span class="specforge-cli-edit-field-error" data-cli-edit-field-error-for="kind" hidden></span>
+        </div>
+      </label>
+      <label class="specforge-cli-edit-field">
         <span>Owner</span>
         <div class="specforge-cli-edit-field-row">
           <div class="specforge-cli-edit-owner-row">
@@ -1058,6 +1072,13 @@ const sidebarShell = `
       <label class="specforge-cli-edit-field">
         <span>Tags</span>
         <input name="tags" type="text" />
+      </label>
+      <label class="specforge-cli-edit-field">
+        <span>External issue URL</span>
+        <div class="specforge-cli-edit-field-row">
+          <input name="externalReferenceUrl" type="url" placeholder="https://github.com/org/repo/issues/123" />
+          <span class="specforge-cli-edit-field-error" data-cli-edit-field-error-for="externalReferenceUrl" hidden></span>
+        </div>
       </label>
       <p class="specforge-cli-edit-error" data-cli-edit-error hidden></p>
       <div class="specforge-cli-edit-actions">
@@ -1299,9 +1320,11 @@ const sidebarShell = `
     };
     const readEditFormState = () => ({
       title: String(editForm?.elements?.namedItem("title")?.value || "").trim(),
+      kind: String(editForm?.elements?.namedItem("kind")?.value || "").trim(),
       owner: String(editForm?.elements?.namedItem("owner")?.value || "").trim(),
       category: String(editForm?.elements?.namedItem("category")?.value || "").trim(),
-      tags: String(editForm?.elements?.namedItem("tags")?.value || "").trim()
+      tags: String(editForm?.elements?.namedItem("tags")?.value || "").trim(),
+      externalReferenceUrl: String(editForm?.elements?.namedItem("externalReferenceUrl")?.value || "").trim()
     });
     const validateEditForm = () => {
       const state = readEditFormState();
@@ -1310,6 +1333,10 @@ const sidebarShell = `
         errors.title = "Title is required.";
       } else if (state.title.length < 8) {
         errors.title = "Title must be at least 8 characters.";
+      }
+
+      if (!state.kind) {
+        errors.kind = "Kind is required.";
       }
 
       if (!state.owner) {
@@ -1324,27 +1351,44 @@ const sidebarShell = `
         errors.category = "Category must be at least 2 characters.";
       }
 
+      if (state.externalReferenceUrl) {
+        try {
+          const candidate = new URL(state.externalReferenceUrl);
+          if (candidate.protocol !== "http:" && candidate.protocol !== "https:") {
+            errors.externalReferenceUrl = "Use an absolute HTTP or HTTPS URL.";
+          }
+        } catch {
+          errors.externalReferenceUrl = "Use an absolute HTTP or HTTPS URL.";
+        }
+      }
+
       return { state, errors };
     };
     const updateEditFormValidity = () => {
       const { state, errors } = validateEditForm();
       const visibleTitleError = editSubmitAttempted || editTouchedFields.has("title") ? (errors.title || "") : "";
+      const visibleKindError = editSubmitAttempted || editTouchedFields.has("kind") ? (errors.kind || "") : "";
       const visibleOwnerError = editSubmitAttempted || editTouchedFields.has("owner") ? (errors.owner || "") : "";
       const visibleCategoryError = editSubmitAttempted || editTouchedFields.has("category") ? (errors.category || "") : "";
+      const visibleExternalReferenceUrlError = editSubmitAttempted || editTouchedFields.has("externalReferenceUrl") ? (errors.externalReferenceUrl || "") : "";
       setEditFieldError("title", visibleTitleError);
+      setEditFieldError("kind", visibleKindError);
       setEditFieldError("owner", visibleOwnerError);
       setEditFieldError("category", visibleCategoryError);
+      setEditFieldError("externalReferenceUrl", visibleExternalReferenceUrlError);
       const isDirty = editInitialState !== null
         && (state.title !== editInitialState.title
+          || state.kind !== editInitialState.kind
           || state.owner !== editInitialState.owner
           || state.category !== editInitialState.category
-          || state.tags !== editInitialState.tags);
+          || state.tags !== editInitialState.tags
+          || state.externalReferenceUrl !== editInitialState.externalReferenceUrl);
       const isBusy = editForm instanceof HTMLFormElement && editForm.dataset.busy === "true";
       if (editSubmit instanceof HTMLButtonElement) {
         editSubmit.disabled = isBusy || !isDirty || Object.keys(errors).length > 0;
         editSubmit.title = !isDirty
           ? "Change at least one field to save."
-          : (errors.title || errors.owner || errors.category || "");
+          : (errors.title || errors.kind || errors.owner || errors.category || errors.externalReferenceUrl || "");
       }
       return { state, errors, isDirty };
     };
@@ -1363,9 +1407,11 @@ const sidebarShell = `
       editForm.dataset.busy = "false";
       editForm.elements.namedItem("usId").value = String(message.usId || "");
       editForm.elements.namedItem("title").value = String(message.title || "");
+      editForm.elements.namedItem("kind").value = String(message.kind || "feature");
       editForm.elements.namedItem("owner").value = String(message.owner || currentActor);
       editForm.elements.namedItem("category").value = String(message.category || "");
       editForm.elements.namedItem("tags").value = String(message.tags || "");
+      editForm.elements.namedItem("externalReferenceUrl").value = String(message.externalReferenceUrl || "");
       editInitialState = readEditFormState();
       editTouchedFields = new Set();
       editSubmitAttempted = false;
@@ -2007,12 +2053,14 @@ const sidebarShell = `
       }
       const usId = String(editForm.elements.namedItem("usId")?.value || "").trim();
       const title = String(editForm.elements.namedItem("title")?.value || "").trim();
+      const kind = String(editForm.elements.namedItem("kind")?.value || "").trim();
       const owner = String(editForm.elements.namedItem("owner")?.value || "").trim();
       const category = String(editForm.elements.namedItem("category")?.value || "").trim();
       const tags = String(editForm.elements.namedItem("tags")?.value || "")
         .split(",")
         .map(item => item.trim().toLowerCase())
         .filter(Boolean);
+      const externalReferenceUrl = String(editForm.elements.namedItem("externalReferenceUrl")?.value || "").trim();
       const validation = updateEditFormValidity();
       if (!usId) {
         setEditError("User story id is required.");
@@ -2025,13 +2073,24 @@ const sidebarShell = `
       if (Object.keys(validation.errors).length > 0) {
         editSubmitAttempted = true;
         updateEditFormValidity();
-        setEditError(validation.errors.title || validation.errors.owner || validation.errors.category || "Please fix the highlighted fields.");
+        setEditError(validation.errors.title || validation.errors.kind || validation.errors.owner || validation.errors.category || validation.errors.externalReferenceUrl || "Please fix the highlighted fields.");
         return;
       }
       editForm.dataset.busy = "true";
       updateEditFormValidity();
       setEditError("");
-      requestJson("/api/update-user-story-info", { usId, title, owner, category, tags, actor: currentActor })
+      requestJson("/api/update-user-story-info", {
+        usId,
+        title,
+        kind,
+        owner,
+        category,
+        tags,
+        externalReferences: externalReferenceUrl
+          ? [{ url: externalReferenceUrl, label: "", provider: "" }]
+          : [],
+        actor: currentActor
+      })
         .then(() => {
           closeEditUserStoryForm();
           window.__specforgePortalLifecycle.reload("post-update-user-story-info", {
@@ -2045,7 +2104,7 @@ const sidebarShell = `
           setEditError(error instanceof Error ? error.message : String(error));
         });
     });
-    ["title", "owner", "category"].forEach((fieldName) => {
+    ["title", "kind", "owner", "category", "externalReferenceUrl"].forEach((fieldName) => {
       editForm?.elements?.namedItem(fieldName)?.addEventListener?.("input", () => {
         editTouchedFields.add(fieldName);
         if (fieldName === "owner") {
