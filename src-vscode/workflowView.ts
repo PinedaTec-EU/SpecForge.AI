@@ -8339,6 +8339,9 @@ export function buildWorkflowHtml(
 
         event.preventDefault();
         event.stopPropagation();
+        if (command === "openArtifact" || command === "openPrompt" || command === "openAttachment") {
+          toggleWorkflowFiles(false);
+        }
         if (command === "togglePhaseIterations") {
           toggleIterationRailLocally(element);
         }

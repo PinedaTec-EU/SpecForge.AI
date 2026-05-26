@@ -421,6 +421,11 @@ static async Task HandleWorkflowPortalRequestAsync(
                 }
                 await WriteJsonResponseAsync(context.Response, await applicationService.GetUserStoryRuntimeStatusAsync(workspaceRoot, requestUsId));
                 return;
+            case ("GET", "/api/file"):
+                await WriteHtmlResponseAsync(
+                    context.Response,
+                    await BuildWorkflowPortalFileHtmlAsync(workspaceRoot, context.Request.QueryString["path"]));
+                return;
             case ("GET", "/configuration"):
                 await WriteHtmlResponseAsync(context.Response, BuildConfigurationPortalHtml());
                 return;
@@ -789,6 +794,84 @@ static async Task<string> BuildWorkflowPortalCreateFormHtmlAsync(
     return await RenderWorkflowHtmlWithNodeAsync(payload);
 }
 
+static async Task<string> BuildWorkflowPortalFileHtmlAsync(
+    string workspaceRoot,
+    string? requestedPath)
+{
+    var resolvedPath = ResolveWorkflowPortalFilePath(workspaceRoot, requestedPath);
+    var content = await File.ReadAllTextAsync(resolvedPath);
+    var fileName = Path.GetFileName(resolvedPath);
+    var escapedFileName = WebUtility.HtmlEncode(fileName);
+    var escapedPath = WebUtility.HtmlEncode(resolvedPath);
+    var escapedContent = WebUtility.HtmlEncode(content);
+
+    return $$"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{escapedFileName}} · SpecForge.AI</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      background:
+        radial-gradient(circle at top, rgba(88, 214, 141, 0.14), transparent 42%),
+        linear-gradient(180deg, #081116 0%, #0d1b22 100%);
+      color: #e5fff5;
+    }
+    main {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .meta {
+      margin-bottom: 18px;
+      padding: 18px 20px;
+      border: 1px solid rgba(114, 241, 184, 0.18);
+      border-radius: 16px;
+      background: rgba(5, 15, 20, 0.82);
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.1rem;
+    }
+    p {
+      margin: 0;
+      color: rgba(229, 255, 245, 0.72);
+      word-break: break-all;
+    }
+    pre {
+      margin: 0;
+      padding: 20px;
+      overflow: auto;
+      border-radius: 18px;
+      border: 1px solid rgba(114, 241, 184, 0.14);
+      background: rgba(4, 12, 16, 0.92);
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="meta">
+      <h1>{{escapedFileName}}</h1>
+      <p>{{escapedPath}}</p>
+    </section>
+    <pre>{{escapedContent}}</pre>
+  </main>
+</body>
+</html>
+""";
+}
+
 static async Task<string?> ResolveWorkflowPortalUserStoryIdAsync(
     SpecForgeApplicationService applicationService,
     string workspaceRoot,
@@ -832,6 +915,31 @@ static async Task<string?> ResolveWorkflowPortalUserStoryIdAsync(
         includeOtherOwners,
         watchingUserStoryIds,
         hiddenUserStoryIds);
+}
+
+static string ResolveWorkflowPortalFilePath(string workspaceRoot, string? requestedPath)
+{
+    if (string.IsNullOrWhiteSpace(requestedPath))
+    {
+        throw new InvalidOperationException("A file path is required.");
+    }
+
+    var normalizedWorkspaceRoot = Path.GetFullPath(workspaceRoot)
+        .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+        + Path.DirectorySeparatorChar;
+    var resolvedPath = Path.GetFullPath(requestedPath);
+
+    if (!resolvedPath.StartsWith(normalizedWorkspaceRoot, StringComparison.Ordinal))
+    {
+        throw new InvalidOperationException("Refusing to open a file outside the workspace root.");
+    }
+
+    if (!File.Exists(resolvedPath))
+    {
+        throw new FileNotFoundException("The requested file was not found.", resolvedPath);
+    }
+
+    return resolvedPath;
 }
 
 static string? ResolveWorkflowPortalSidebarVisibility(HttpListenerRequest request)
