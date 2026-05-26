@@ -37,6 +37,7 @@ public static class WorkflowIterationDetailsBuilder
             var operationEntry = operationEntriesByResult.TryGetValue(outputArtifactPath.Replace('\\', '/'), out var matchedEntry)
                 ? matchedEntry
                 : null;
+            var qualityAssessment = PhaseExecutionReceiptStore.TryLoad(timelineEvent.Execution?.ReceiptPath)?.QualityAssessment;
             var phaseId = WorkflowPresentation.ParsePhaseSlug(normalizedPhaseId);
             var implicitInputArtifactPath = ResolveImplicitInputArtifactPath(paths, phaseId, latestArtifactsByPhase, normalizedPhaseId, timelineEvent.Code);
             var inputArtifactPath = operationEntry?.SourceArtifactPath ?? implicitInputArtifactPath;
@@ -59,6 +60,7 @@ public static class WorkflowIterationDetailsBuilder
                 contextArtifactPaths,
                 operationEntry is not null ? operationLogPath : null,
                 operationEntry?.Prompt,
+                qualityAssessment,
                 timelineEvent.Usage,
                 timelineEvent.DurationMs,
                 timelineEvent.Execution));

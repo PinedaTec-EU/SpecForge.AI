@@ -2262,6 +2262,8 @@ export function buildWorkflowHtml(
                 <span class="iteration-rail__meta">
                   ${escapeHtml(iteration.code)}
                   ${iteration.actor ? ` · ${escapeHtml(iteration.actor)}` : ""}
+                  ${iteration.qualityAssessment ? ` · ${escapeHtml(`quality ${iteration.qualityAssessment.gateScore}%`)}` : ""}
+                  ${iteration.qualityAssessment?.thresholdPercent != null ? `/${escapeHtml(String(iteration.qualityAssessment.thresholdPercent))}%` : ""}
                   ${formatExecutionLabel(iteration.execution, {
                     actor: iteration.actor,
                     configuredModel: findConfiguredModelForProfile(state, iteration.execution?.profileName)
@@ -2288,6 +2290,10 @@ export function buildWorkflowHtml(
           <span class="badge">iteration ${escapeHtml(String(selectedIteration.attempt))}</span>
           <span class="badge">${escapeHtml(selectedIteration.code)}</span>
           <span class="badge">${escapeHtml(formatUtcTimestamp(selectedIteration.timestampUtc))}</span>
+          ${selectedIteration.qualityAssessment ? `<span class="badge">quality ${escapeHtml(String(selectedIteration.qualityAssessment.qualityScore))}%</span>` : ""}
+          ${selectedIteration.qualityAssessment ? `<span class="badge">confidence ${escapeHtml(String(selectedIteration.qualityAssessment.confidenceScore))}%</span>` : ""}
+          ${selectedIteration.qualityAssessment ? `<span class="badge">gate ${escapeHtml(String(selectedIteration.qualityAssessment.gateScore))}%${selectedIteration.qualityAssessment.thresholdPercent != null ? ` / ${escapeHtml(String(selectedIteration.qualityAssessment.thresholdPercent))}%` : ""}</span>` : ""}
+          ${selectedIteration.qualityAssessment?.decision ? `<span class="badge">${escapeHtml(selectedIteration.qualityAssessment.decision)}</span>` : ""}
           ${selectedIteration.actor ? `<span class="badge">${escapeHtml(selectedIteration.actor)}</span>` : ""}
           ${formatExecutionLabel(selectedIteration.execution, {
             actor: selectedIteration.actor,
@@ -2301,7 +2307,10 @@ export function buildWorkflowHtml(
           ${selectedIteration.durationMs !== null ? `<span class="badge">${escapeHtml(formatDuration(selectedIteration.durationMs))}</span>` : ""}
           ${selectedIteration.usage && selectedIteration.durationMs !== null ? `<span class="badge">${escapeHtml(formatTokensPerSecond(selectedIteration.usage.outputTokens, selectedIteration.durationMs))}</span>` : ""}
         </div>
-        ${selectedIteration.summary ? `<p class="panel-copy">${escapeHtml(selectedIteration.summary)}</p>` : ""}
+        ${(selectedIteration.qualityAssessment?.summary || selectedIteration.summary) ? `<p class="panel-copy">${escapeHtml(selectedIteration.qualityAssessment?.summary ?? selectedIteration.summary ?? "")}</p>` : ""}
+        ${selectedIteration.qualityAssessment?.previousBestArtifactPath
+          ? `<p class="panel-copy">Previous best: <code>${escapeHtml(selectedIteration.qualityAssessment.previousBestArtifactPath)}</code></p>`
+          : ""}
         ${selectedIteration.operationPrompt ? `<pre class="artifact-preview artifact-preview--raw-artifact">${escapeHtml(selectedIteration.operationPrompt)}</pre>` : ""}
         ${buildUsedSkillsMarkup(selectedIteration.execution?.usedSkills)}
         <div class="iteration-lineage-grid">

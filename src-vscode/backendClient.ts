@@ -1061,9 +1061,24 @@ export interface PhaseIterationDetails {
   readonly contextArtifactPaths: readonly string[];
   readonly operationLogPath: string | null;
   readonly operationPrompt: string | null;
+  readonly qualityAssessment?: PhaseQualityAssessment | null;
   readonly usage: TokenUsage | null;
   readonly durationMs: number | null;
   readonly execution?: PhaseExecutionMetadata | null;
+}
+
+export interface PhaseQualityAssessment {
+  readonly phaseId: string;
+  readonly qualityScore: number;
+  readonly confidenceScore: number;
+  readonly gateScore: number;
+  readonly comparableInputFingerprint: string;
+  readonly decision: string;
+  readonly thresholdPercent?: number | null;
+  readonly meetsThreshold?: boolean | null;
+  readonly selectedArtifactPath?: string | null;
+  readonly previousBestArtifactPath?: string | null;
+  readonly summary?: string | null;
 }
 
 export interface UserStoryFileDetails {

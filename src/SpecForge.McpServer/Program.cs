@@ -21,6 +21,13 @@ var completedUsLockOnCompleted = string.Equals(
     StringComparison.OrdinalIgnoreCase);
 var maxRefinementCycles = ReadIntEnvironment("SPECFORGE_MAX_REFINEMENT_CYCLES", 5);
 var maxImplementationReviewCycles = ReadIntEnvironment("SPECFORGE_MAX_IMPLEMENTATION_REVIEW_CYCLES", 5);
+var phaseQualityGateThresholdPercent = Math.Clamp(ReadIntEnvironment("SPECFORGE_PHASE_QUALITY_GATE_THRESHOLD_PERCENT", 85), 0, 100);
+var refinementQualityGateMaxRetries = ReadIntEnvironment("SPECFORGE_REFINEMENT_QUALITY_GATE_MAX_RETRIES", 5);
+var reviewQualityGateMaxRetries = ReadIntEnvironment("SPECFORGE_REVIEW_QUALITY_GATE_MAX_RETRIES", 3);
+var keepBestPhaseArtifactOnQualityRegression = !string.Equals(
+    Environment.GetEnvironmentVariable("SPECFORGE_KEEP_BEST_PHASE_ARTIFACT_ON_QUALITY_REGRESSION")?.Trim(),
+    "false",
+    StringComparison.OrdinalIgnoreCase);
 var decompositionOptions = new UserStoryDecompositionOptions(
     Enabled: !string.Equals(Environment.GetEnvironmentVariable("SPECFORGE_DECOMPOSITION_ENABLED")?.Trim(), "false", StringComparison.OrdinalIgnoreCase),
     Threshold: ReadDoubleEnvironment("SPECFORGE_DECOMPOSITION_THRESHOLD", 0.60),
@@ -37,7 +44,11 @@ var workflowRunner = new WorkflowRunner(
     reviewEvidencePolicy,
     decompositionOptions,
     maxRefinementCycles,
-    maxImplementationReviewCycles);
+    maxImplementationReviewCycles,
+    phaseQualityGateThresholdPercent,
+    refinementQualityGateMaxRetries,
+    reviewQualityGateMaxRetries,
+    keepBestPhaseArtifactOnQualityRegression);
 var applicationService = new SpecForgeApplicationService(
     new UserStoryFileStore(),
     workflowRunner,

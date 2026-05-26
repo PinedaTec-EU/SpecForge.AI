@@ -230,8 +230,24 @@ public sealed class UserStoryFilePaths
         return Path.Combine(PhasesDirectoryPath, $"{fileName}{versionSuffix}.json");
     }
 
+    public string GetPhasePreferredArtifactPointerPath(PhaseId phaseId)
+    {
+        var fileName = GetPhaseArtifactFileStem(phaseId);
+        return Path.Combine(PhasesDirectoryPath, $"{fileName}.current.txt");
+    }
+
     public string? GetLatestExistingPhaseArtifactPath(PhaseId phaseId)
     {
+        var preferredPointerPath = GetPhasePreferredArtifactPointerPath(phaseId);
+        if (File.Exists(preferredPointerPath))
+        {
+            var preferredPath = File.ReadAllText(preferredPointerPath).Trim();
+            if (!string.IsNullOrWhiteSpace(preferredPath) && File.Exists(preferredPath))
+            {
+                return preferredPath;
+            }
+        }
+
         foreach (var fileStem in GetPhaseArtifactFileStems(phaseId))
         {
             string? latestPath = null;

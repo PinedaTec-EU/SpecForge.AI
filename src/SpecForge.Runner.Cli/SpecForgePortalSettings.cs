@@ -19,6 +19,10 @@ internal sealed record SpecForgePortalSettings(
     bool AutoReviewEnabled,
     int MaxRefinementCycles,
     int MaxImplementationReviewCycles,
+    int PhaseQualityGateThresholdPercent,
+    int RefinementQualityGateMaxRetries,
+    int ReviewQualityGateMaxRetries,
+    bool KeepBestPhaseArtifactOnQualityRegression,
     bool DestructiveRewindEnabled,
     bool PauseOnFailedReview,
     bool UseSemanticGraphWhenAvailable,
@@ -210,6 +214,30 @@ internal static class SpecForgePortalSettingsStore
             settings = settings with { MaxImplementationReviewCycles = 5 };
         }
 
+        if (!document.RootElement.TryGetProperty("phaseQualityGateThresholdPercent", out _))
+        {
+            settings = settings with { PhaseQualityGateThresholdPercent = 85 };
+        }
+        else
+        {
+            settings = settings with { PhaseQualityGateThresholdPercent = Math.Clamp(settings.PhaseQualityGateThresholdPercent, 0, 100) };
+        }
+
+        if (!document.RootElement.TryGetProperty("refinementQualityGateMaxRetries", out _) || settings.RefinementQualityGateMaxRetries <= 0)
+        {
+            settings = settings with { RefinementQualityGateMaxRetries = 5 };
+        }
+
+        if (!document.RootElement.TryGetProperty("reviewQualityGateMaxRetries", out _) || settings.ReviewQualityGateMaxRetries <= 0)
+        {
+            settings = settings with { ReviewQualityGateMaxRetries = 3 };
+        }
+
+        if (!document.RootElement.TryGetProperty("keepBestPhaseArtifactOnQualityRegression", out _))
+        {
+            settings = settings with { KeepBestPhaseArtifactOnQualityRegression = true };
+        }
+
         if (!document.RootElement.TryGetProperty("decompositionEnabled", out _))
         {
             settings = settings with { DecompositionEnabled = true };
@@ -296,6 +324,10 @@ internal static class SpecForgePortalSettingsStore
             AutoReviewEnabled: true,
             MaxRefinementCycles: 5,
             MaxImplementationReviewCycles: 5,
+            PhaseQualityGateThresholdPercent: 85,
+            RefinementQualityGateMaxRetries: 5,
+            ReviewQualityGateMaxRetries: 3,
+            KeepBestPhaseArtifactOnQualityRegression: true,
             DestructiveRewindEnabled: false,
             PauseOnFailedReview: true,
             UseSemanticGraphWhenAvailable: true,

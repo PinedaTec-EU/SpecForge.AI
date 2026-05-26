@@ -80,6 +80,18 @@ export interface PhaseIterationItem {
   readonly outputArtifactPath: string;
   readonly operationLogPath: string | null;
   readonly operationPrompt: string | null;
+  readonly qualityAssessment?: {
+    readonly phaseId: string;
+    readonly qualityScore: number;
+    readonly confidenceScore: number;
+    readonly gateScore: number;
+    readonly decision: string;
+    readonly thresholdPercent?: number | null;
+    readonly meetsThreshold?: boolean | null;
+    readonly selectedArtifactPath?: string | null;
+    readonly previousBestArtifactPath?: string | null;
+    readonly summary?: string | null;
+  } | null;
   readonly usage: { inputTokens: number; outputTokens: number; totalTokens: number } | null;
   readonly durationMs: number | null;
   readonly execution?: {

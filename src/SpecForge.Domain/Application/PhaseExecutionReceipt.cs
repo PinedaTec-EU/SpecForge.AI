@@ -28,6 +28,7 @@ public sealed record PhaseExecutionReceipt(
     ReleaseApprovalPhasePolicySnapshot? ReleaseApprovalPolicySnapshot = null,
     ImplementationStructuredEvidence? ImplementationStructuredEvidence = null,
     ReviewStructuredGateResult? ReviewStructuredGateResult = null,
+    PhaseQualityAssessment? QualityAssessment = null,
     ReleaseApprovalEvidencePack? ReleaseApprovalEvidencePack = null,
     PrPreparationStructuredEvidence? PrPreparationStructuredEvidence = null,
     TechnicalDesignContextPack? TechnicalDesignContextPack = null,
@@ -106,6 +107,17 @@ public static class PhaseExecutionReceiptStore
 
         await using var stream = File.OpenRead(receiptPath);
         return await JsonSerializer.DeserializeAsync<PhaseExecutionReceipt>(stream, SerializerOptions, cancellationToken);
+    }
+
+    public static PhaseExecutionReceipt? TryLoad(string? receiptPath)
+    {
+        if (string.IsNullOrWhiteSpace(receiptPath) || !File.Exists(receiptPath))
+        {
+            return null;
+        }
+
+        using var stream = File.OpenRead(receiptPath);
+        return JsonSerializer.Deserialize<PhaseExecutionReceipt>(stream, SerializerOptions);
     }
 
     public static string? ComputeSha256(string? content)

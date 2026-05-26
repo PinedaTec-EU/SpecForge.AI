@@ -38,9 +38,9 @@ public sealed class WorkflowRuntimeMetricsBuilderTests : IDisposable
         };
         var phaseIterations = new[]
         {
-            new PhaseIterationDetails("spec-1", 1, "spec", "2026-05-21T10:20:00.0000000+00:00", "phase_completed", "user", "Spec generated.", paths.GetPhaseArtifactPath(PhaseId.Spec, version: 1), null, [], null, null, new TokenUsage(10, 5, 15), 1200, null),
-            new PhaseIterationDetails("spec-2", 2, "spec", "2026-05-21T10:32:00.0000000+00:00", "artifact_operated", "user", "Spec regenerated.", paths.GetPhaseArtifactPath(PhaseId.Spec, version: 2), null, [], null, null, new TokenUsage(12, 8, 20), 1600, null),
-            new PhaseIterationDetails("review-1", 1, "review", "2026-05-21T10:40:00.0000000+00:00", "phase_completed", "system", "Review failed.", reviewArtifactPath, null, [], null, null, new TokenUsage(20, 10, 30), 2200, null)
+            new PhaseIterationDetails("spec-1", 1, "spec", "2026-05-21T10:20:00.0000000+00:00", "phase_completed", "user", "Spec generated.", paths.GetPhaseArtifactPath(PhaseId.Spec, version: 1), null, [], null, null, null, new TokenUsage(10, 5, 15), 1200, null),
+            new PhaseIterationDetails("spec-2", 2, "spec", "2026-05-21T10:32:00.0000000+00:00", "artifact_operated", "user", "Spec regenerated.", paths.GetPhaseArtifactPath(PhaseId.Spec, version: 2), null, [], null, null, null, new TokenUsage(12, 8, 20), 1600, null),
+            new PhaseIterationDetails("review-1", 1, "review", "2026-05-21T10:40:00.0000000+00:00", "phase_completed", "system", "Review failed.", reviewArtifactPath, null, [], null, null, null, new TokenUsage(20, 10, 30), 2200, null)
         };
 
         var metrics = await WorkflowRuntimeMetricsBuilder.BuildAsync(workflowRun, paths, timelineEvents, phaseIterations);

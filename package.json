@@ -522,6 +522,30 @@
           "default": 5,
           "description": "Maximum implementation attempts allowed in the implementation/review loop before automatic continuation stops."
         },
+        "specForge.features.phaseQualityGateThresholdPercent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 85,
+          "description": "Minimum quality score required for refinement and review to pass the orchestration quality gate."
+        },
+        "specForge.features.refinementQualityGateMaxRetries": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 5,
+          "description": "Maximum low-quality refinement retries before automatic progression stops and waits for user intervention."
+        },
+        "specForge.features.reviewQualityGateMaxRetries": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 3,
+          "description": "Maximum low-quality review retries before automatic progression stops and waits for user intervention."
+        },
+        "specForge.features.keepBestPhaseArtifactOnQualityRegression": {
+          "type": "boolean",
+          "default": true,
+          "description": "When enabled, a lower-quality refinement or review iteration can keep the best comparable previous artifact selected instead of the latest one."
+        },
         "specForge.features.destructiveRewindEnabled": {
           "type": "boolean",
           "default": false,

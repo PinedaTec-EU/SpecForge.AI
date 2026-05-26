@@ -32,6 +32,10 @@ export interface SpecForgeSettings {
   readonly autoReviewEnabled: boolean;
   readonly maxRefinementCycles: number | null;
   readonly maxImplementationReviewCycles: number | null;
+  readonly phaseQualityGateThresholdPercent: number | null;
+  readonly refinementQualityGateMaxRetries: number | null;
+  readonly reviewQualityGateMaxRetries: number | null;
+  readonly keepBestPhaseArtifactOnQualityRegression: boolean;
   readonly destructiveRewindEnabled: boolean;
   readonly pauseOnFailedReview: boolean;
   readonly useSemanticGraphWhenAvailable: boolean;
@@ -201,6 +205,10 @@ export function readSpecForgeSettings(configuration: ConfigurationReader): SpecF
     autoReviewEnabled: configuration.get<boolean>("features.autoReviewEnabled", false),
     maxRefinementCycles: normalizeOptionalPositiveInteger(configuration.get<unknown>("features.maxRefinementCycles", 5)),
     maxImplementationReviewCycles: normalizeOptionalPositiveInteger(configuration.get<unknown>("features.maxImplementationReviewCycles", 5)),
+    phaseQualityGateThresholdPercent: normalizeOptionalPercentage(configuration.get<unknown>("features.phaseQualityGateThresholdPercent", 85)),
+    refinementQualityGateMaxRetries: normalizeOptionalPositiveInteger(configuration.get<unknown>("features.refinementQualityGateMaxRetries", 5)),
+    reviewQualityGateMaxRetries: normalizeOptionalPositiveInteger(configuration.get<unknown>("features.reviewQualityGateMaxRetries", 3)),
+    keepBestPhaseArtifactOnQualityRegression: configuration.get<boolean>("features.keepBestPhaseArtifactOnQualityRegression", true),
     destructiveRewindEnabled: configuration.get<boolean>("features.destructiveRewindEnabled", false),
     pauseOnFailedReview: configuration.get<boolean>("features.pauseOnFailedReview", false),
     useSemanticGraphWhenAvailable: configuration.get<boolean>("features.useSemanticGraphWhenAvailable", true),
@@ -252,6 +260,11 @@ export function buildBackendEnvironment(settings: SpecForgeSettings): NodeJS.Pro
   env.SPECFORGE_COMPLETED_US_LOCK_ON_COMPLETED = settings.completedUsLockOnCompleted ? "true" : "false";
   env.SPECFORGE_MAX_REFINEMENT_CYCLES = String(settings.maxRefinementCycles ?? 5);
   env.SPECFORGE_MAX_IMPLEMENTATION_REVIEW_CYCLES = String(settings.maxImplementationReviewCycles ?? 5);
+  env.SPECFORGE_PHASE_QUALITY_GATE_THRESHOLD_PERCENT = String(settings.phaseQualityGateThresholdPercent ?? 85);
+  env.SPECFORGE_REFINEMENT_QUALITY_GATE_MAX_RETRIES = String(settings.refinementQualityGateMaxRetries ?? 5);
+  env.SPECFORGE_REVIEW_QUALITY_GATE_MAX_RETRIES = String(settings.reviewQualityGateMaxRetries ?? 3);
+  env.SPECFORGE_KEEP_BEST_PHASE_ARTIFACT_ON_QUALITY_REGRESSION =
+    settings.keepBestPhaseArtifactOnQualityRegression ? "true" : "false";
 
   if (settings.autoRefinementAnswersProfile) {
     env.SPECFORGE_AUTO_REFINEMENT_ANSWERS_PROFILE = settings.autoRefinementAnswersProfile;
@@ -475,6 +488,26 @@ function normalizeOptionalPositiveInteger(value: unknown): number | null {
   return null;
 }
 
+function normalizeOptionalPercentage(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.max(0, Math.min(100, Math.round(value)));
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.length === 0) {
+      return null;
+    }
+
+    const parsed = Number.parseFloat(trimmed);
+    return Number.isFinite(parsed)
+      ? Math.max(0, Math.min(100, Math.round(parsed)))
+      : null;
+  }
+
+  return null;
+}
+
 function buildSettingsDiagnostics(settings: SpecForgeSettings): string {
   const agentProfiles = resolveConfiguredOrDerivedAgentProfiles(settings);
   const models = settings.modelProfiles.map((profile) =>
@@ -507,6 +540,10 @@ function buildSettingsDiagnostics(settings: SpecForgeSettings): string {
     `autoReviewEnabled=${settings.autoReviewEnabled}`,
     `maxRefinementCycles=${settings.maxRefinementCycles ?? "<unset>"}`,
     `maxImplementationReviewCycles=${settings.maxImplementationReviewCycles ?? "<unset>"}`,
+    `phaseQualityGateThresholdPercent=${settings.phaseQualityGateThresholdPercent ?? "<unset>"}`,
+    `refinementQualityGateMaxRetries=${settings.refinementQualityGateMaxRetries ?? "<unset>"}`,
+    `reviewQualityGateMaxRetries=${settings.reviewQualityGateMaxRetries ?? "<unset>"}`,
+    `keepBestPhaseArtifactOnQualityRegression=${settings.keepBestPhaseArtifactOnQualityRegression}`,
     `pauseOnFailedReview=${settings.pauseOnFailedReview}`,
     `reviewLearningEnabled=${settings.reviewLearningEnabled === false ? false : true}`,
     `reviewLearningSkillPath=${settings.reviewLearningSkillPath ?? "<unset>"}`,

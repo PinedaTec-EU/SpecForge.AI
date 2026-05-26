@@ -142,6 +142,24 @@ public sealed class WorkflowRunnerTests : IDisposable
         Assert.DoesNotContain("- Status: `needs_refinement`", refinement);
     }
 
+    [Fact]
+    public async Task ContinuePhaseAsync_FromCapture_WithLowQualityReadyRefinement_DoesNotAdvanceToSpec()
+    {
+        var runner = new WorkflowRunner(new LowQualityReadyRefinementPhaseExecutionProvider());
+        await runner.CreateUserStoryAsync(workspaceRoot, "US-0001", "Test story", "feature", "workflow", "Initial source text");
+
+        var result = await runner.ContinuePhaseAsync(workspaceRoot, "US-0001");
+
+        Assert.Equal(PhaseId.Refinement, result.CurrentPhase);
+        Assert.Equal(UserStoryStatus.WaitingUser, result.Status);
+
+        var paths = UserStoryFilePaths.ResolveFromWorkspaceRoot(workspaceRoot, "US-0001");
+        var timeline = await File.ReadAllTextAsync(paths.TimelineFilePath);
+        Assert.Contains("`phase_quality_gate_failed`", timeline);
+        Assert.Equal(paths.GetPhaseArtifactPath(PhaseId.Refinement), paths.GetLatestExistingPhaseArtifactPath(PhaseId.Refinement));
+        Assert.Null(paths.GetLatestExistingPhaseArtifactPath(PhaseId.Spec));
+    }
+
     [Theory]
     [InlineData("chore", "Developer tooling cleanup", "chore/us-0001-developer-tooling-cleanup")]
     [InlineData("refactor", "Parser simplification", "refactor/us-0001-parser-simplification")]
@@ -1531,7 +1549,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     public async Task ContinuePhaseAsync_Implementation_PersistsPhaseScopedEvidence_AndReviewConsumesIt()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -1571,7 +1589,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     public async Task OperateCurrentPhaseArtifactAsync_AfterReviewRegression_PassesReviewArtifactAndCorrectionPromptToImplementation()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -1610,7 +1628,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     public async Task OperateCurrentPhaseArtifactAsync_AfterReviewRegression_CanExcludeReviewArtifactFromImplementationContext()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -1643,7 +1661,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     public async Task OperateCurrentPhaseArtifactAsync_WithoutReviewArtifactStillRequiresPrompt()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -1671,7 +1689,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     public async Task ApproveReviewAnywayAsync_AdvancesToReleaseApproval_AndAuditsDecision()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -1703,7 +1721,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     public async Task ContinuePhaseAsync_Review_FailsClosedWhenReviewOmitsValidationStrategyChecklist()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -1753,7 +1771,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     public async Task ContinuePhaseAsync_PersistsReviewStructuredGateResultInReceipt()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -1795,7 +1813,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     public async Task ContinuePhaseAsync_PersistsReviewPolicySnapshotInReceipt()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -1863,7 +1881,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     public async Task ContinuePhaseAsync_PersistsReleaseApprovalEvidencePackInReceipt()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -1903,7 +1921,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     public async Task ContinuePhaseAsync_PersistsReleaseApprovalPolicySnapshotInReceipt()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -1943,7 +1961,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     public async Task ApproveCurrentPhaseAsync_ReleaseApproval_RequiresStructuredEvidencePack()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -1984,7 +2002,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     public async Task ContinuePhaseAsync_ImplementationAndReview_CreateTraceablePhaseCommits()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -2025,7 +2043,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     public async Task ContinuePhaseAsync_Review_DefersOperationalValidationGap_WhenEvidencePolicyAllowsIt()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -2060,7 +2078,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     public async Task ContinuePhaseAsync_ReviewFailed_ReplaysCurrentReviewInsteadOfAdvancing()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -2095,7 +2113,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     public async Task ContinuePhaseAsync_AfterReviewRegressionToImplementation_RequiresTraceableReworkBeforeNextReview()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -2124,7 +2142,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     public async Task ContinuePhaseAsync_AfterReviewRegressionToImplementation_AllowsNextReviewAfterArtifactOperation()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -2166,7 +2184,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     public async Task ContinuePhaseAsync_ApprovedReview_BlocksReleaseApprovalWhenHeadChangedAfterReviewCommit()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -2200,7 +2218,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     public async Task ContinuePhaseAsync_Review_ThrowsWhenImplementationDidNotTouchRepositoryFiles()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -2235,7 +2253,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     public async Task ApproveCurrentPhaseAsync_CreatesUserStoryWorktreeWithoutLeavingControlWorkspace_WhenBaseBranchMatchesUpstream()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -2309,7 +2327,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     public async Task ApproveCurrentPhaseAsync_Throws_WhenBaseBranchIsBehindUpstream()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -2360,7 +2378,7 @@ public sealed class WorkflowRunnerTests : IDisposable
     public async Task ContinuePhaseAsync_WhenCalledFromControlWorkspace_ReusesUserStoryWorktreeBeforeExecution()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -2586,6 +2604,55 @@ public sealed class WorkflowRunnerTests : IDisposable
                                 string.Empty,
                                 "## Reason",
                                 "No critical business facts are missing.",
+                                string.Empty,
+                                "## Questions",
+                                "1. No refinement questions remain."
+                            ]) + Environment.NewLine,
+                        ExecutionKind: "test-double"));
+            }
+
+            return inner.ExecuteAsync(context, cancellationToken);
+        }
+    }
+
+    private sealed class LowQualityReadyRefinementPhaseExecutionProvider : IPhaseExecutionProvider
+    {
+        private readonly DeterministicPhaseExecutionProvider inner = new();
+
+        public PhaseExecutionReadiness GetPhaseExecutionReadiness(PhaseId phaseId) =>
+            inner.GetPhaseExecutionReadiness(phaseId);
+
+        public Task<AutoRefinementAnswersResult?> TryAutoAnswerRefinementAsync(
+            PhaseExecutionContext context,
+            RefinementSession session,
+            CancellationToken cancellationToken = default) =>
+            inner.TryAutoAnswerRefinementAsync(context, session, cancellationToken);
+
+        public Task<PhaseExecutionResult> ExecuteAsync(
+            PhaseExecutionContext context,
+            CancellationToken cancellationToken = default)
+        {
+            if (context.PhaseId == PhaseId.Refinement)
+            {
+                return Task.FromResult(
+                    new PhaseExecutionResult(
+                        string.Join(
+                            Environment.NewLine,
+                            [
+                                $"# Refinement · {context.UsId} · v01",
+                                string.Empty,
+                                "## State",
+                                "`ready_for_spec`",
+                                string.Empty,
+                                "## Decision",
+                                "Proceed to technical specification. The user story provides sufficient functional detail.",
+                                string.Empty,
+                                "## Reason",
+                                "The story is formally complete but still weak enough to be rejected by the quality gate.",
+                                string.Empty,
+                                "## Assessment",
+                                "- Quality score: 40%",
+                                "- Confidence score: 55%",
                                 string.Empty,
                                 "## Questions",
                                 "1. No refinement questions remain."

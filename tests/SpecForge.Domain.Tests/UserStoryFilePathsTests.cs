@@ -1,4 +1,5 @@
 using SpecForge.Domain.Persistence;
+using SpecForge.Domain.Workflow;
 
 namespace SpecForge.Domain.Tests;
 
@@ -37,6 +38,33 @@ public sealed class UserStoryFilePathsTests
         var artifactPath = paths.GetPhaseArtifactPath(SpecForge.Domain.Workflow.PhaseId.Spec);
 
         Assert.Equal("/repo/.specs/us/US-0001/phases/01-spec.md", artifactPath);
+    }
+
+    [Fact]
+    public void GetLatestExistingPhaseArtifactPath_PrefersSelectedArtifactPointerWhenPresent()
+    {
+        var workspaceRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        try
+        {
+            var paths = UserStoryFilePaths.FromWorkspaceRoot(workspaceRoot, "workflow", "US-0001");
+            Directory.CreateDirectory(paths.PhasesDirectoryPath);
+            var reviewV1 = paths.GetPhaseArtifactPath(PhaseId.Review);
+            var reviewV2 = paths.GetPhaseArtifactPath(PhaseId.Review, version: 2);
+            File.WriteAllText(reviewV1, "# Review v1");
+            File.WriteAllText(reviewV2, "# Review v2");
+            File.WriteAllText(paths.GetPhasePreferredArtifactPointerPath(PhaseId.Review), reviewV1);
+
+            var selectedArtifactPath = paths.GetLatestExistingPhaseArtifactPath(PhaseId.Review);
+
+            Assert.Equal(reviewV1, selectedArtifactPath);
+        }
+        finally
+        {
+            if (Directory.Exists(workspaceRoot))
+            {
+                Directory.Delete(workspaceRoot, recursive: true);
+            }
+        }
     }
 
     [Fact]

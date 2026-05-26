@@ -1728,6 +1728,10 @@ static SpecForgeApplicationService CreateApplicationServiceForWorkspace(string? 
         refinementTolerance: portalSettings?.RefinementTolerance ?? "balanced",
         maxRefinementCycles: portalSettings?.MaxRefinementCycles ?? 5,
         maxImplementationReviewCycles: portalSettings?.MaxImplementationReviewCycles ?? 5,
+        phaseQualityGateThresholdPercent: portalSettings?.PhaseQualityGateThresholdPercent ?? 85,
+        refinementQualityGateMaxRetries: portalSettings?.RefinementQualityGateMaxRetries ?? 5,
+        reviewQualityGateMaxRetries: portalSettings?.ReviewQualityGateMaxRetries ?? 3,
+        keepBestPhaseArtifactOnQualityRegression: portalSettings?.KeepBestPhaseArtifactOnQualityRegression ?? true,
         decompositionOptions: new UserStoryDecompositionOptions(
             Enabled: portalSettings?.DecompositionEnabled ?? true,
             Threshold: portalSettings?.DecompositionThreshold ?? 0.60,
@@ -1905,6 +1909,9 @@ static string BuildConfigurationPortalHtml() =>
                 <label><span class="field-label">Review learning skill path</span><span class="field-control"><input id="reviewLearningSkillPath"><button class="help-button" type="button" aria-label="Review learning skill path details" aria-expanded="false" data-help="Workspace-relative skill file where generalized lessons from failed reviews can be persisted.">?</button></span></label>
                 <label><span class="field-label">Max refinement cycles</span><span class="field-control"><input id="maxRefinementCycles" type="number" min="1"><button class="help-button" type="button" aria-label="Max refinement cycles details" aria-expanded="false" data-help="Maximum refinement iterations allowed before automatic continuation stops and the workflow waits for the user.">?</button></span></label>
                 <label><span class="field-label">Max implementation/review cycles</span><span class="field-control"><input id="maxImplementationReviewCycles" type="number" min="1"><button class="help-button" type="button" aria-label="Max implementation/review cycles details" aria-expanded="false" data-help="Maximum implementation attempts allowed in the implementation/review loop before automatic continuation stops.">?</button></span></label>
+                <label><span class="field-label">Phase quality threshold (%)</span><span class="field-control"><input id="phaseQualityGateThresholdPercent" type="number" min="0" max="100" step="1"><button class="help-button" type="button" aria-label="Phase quality threshold details" aria-expanded="false" data-help="Minimum quality score required for refinement and review to pass their quality gate. Values below this threshold keep the workflow in the current phase.">?</button></span></label>
+                <label><span class="field-label">Refinement quality max retries</span><span class="field-control"><input id="refinementQualityGateMaxRetries" type="number" min="1"><button class="help-button" type="button" aria-label="Refinement quality max retries details" aria-expanded="false" data-help="Maximum low-quality refinement retries the orchestrator should tolerate before it stops automatic progression and waits for the user.">?</button></span></label>
+                <label><span class="field-label">Review quality max retries</span><span class="field-control"><input id="reviewQualityGateMaxRetries" type="number" min="1"><button class="help-button" type="button" aria-label="Review quality max retries details" aria-expanded="false" data-help="Maximum low-quality review retries the orchestrator should tolerate before it stops automatic progression and waits for the user.">?</button></span></label>
                 <label><span class="field-label">Decomposition threshold</span><span class="field-control"><input id="decompositionThreshold" type="number" min="0" max="1" step="0.01"><button class="help-button" type="button" aria-label="Decomposition threshold details" aria-expanded="false" data-help="Complexity score at or above this value requires splitting the spec into child user stories. Default is 0.60.">?</button></span></label>
                 <label><span class="field-label">Decomposition tolerance</span><span class="field-control"><input id="decompositionTolerance" type="number" min="0" max="1" step="0.01"><button class="help-button" type="button" aria-label="Decomposition tolerance details" aria-expanded="false" data-help="Tolerance below the threshold where SpecForge suggests, but does not require, splitting. With 0.60 and 0.10, suggested starts at 0.50.">?</button></span></label>
                 <label><span class="field-label">Max decomposition children</span><span class="field-control"><input id="decompositionMaxChildren" type="number" min="1"><button class="help-button" type="button" aria-label="Max decomposition children details" aria-expanded="false" data-help="Maximum child user stories a decomposition proposal may create.">?</button></span></label>
@@ -1943,6 +1950,7 @@ static string BuildConfigurationPortalHtml() =>
           ["autoRefinementAnswersEnabled", "Auto-refinement answers"],
           ["autoPlayEnabled", "Auto-play workflow"],
           ["autoReviewEnabled", "Auto-review after implementation"],
+          ["keepBestPhaseArtifactOnQualityRegression", "Keep best artifact on quality drop"],
           ["destructiveRewindEnabled", "Destructive rewind"],
           ["pauseOnFailedReview", "Pause on failed review"],
           ["useSemanticGraphWhenAvailable", "Use semantic graph when available"],
@@ -1982,6 +1990,7 @@ static string BuildConfigurationPortalHtml() =>
           "autoRefinementAnswersEnabled": "Lets the selected model try to answer pending refinement questions once before handing control back to the user.",
           "autoPlayEnabled": "Automatically resumes workflow playback after manual actions when the next phase can continue.",
           "autoReviewEnabled": "Automatically continues from implementation into review after implementation artifacts are generated or updated.",
+          "keepBestPhaseArtifactOnQualityRegression": "If a refinement or review iteration drops below the quality threshold and a better comparable iteration already exists, keep that previous best artifact selected as the current phase artifact.",
           "destructiveRewindEnabled": "When enabled, rewinds and regressions delete later derived artifacts and branch metadata.",
           "pauseOnFailedReview": "Automatically pauses workflow playback when review fails so the developer can inspect the result.",
           "useSemanticGraphWhenAvailable": "Reuses semantic graph artifacts during workflow runtime when they already exist and are compatible.",
@@ -2082,7 +2091,7 @@ static string BuildConfigurationPortalHtml() =>
         }
 
         function renderBehavior() {
-          for (const id of ["defaultUser", "refinementTolerance", "mvpRigor", "reviewTolerance", "reviewEvidencePolicy", "autoRefinementAnswersProfile", "reviewLearningSkillPath", "maxRefinementCycles", "maxImplementationReviewCycles", "decompositionThreshold", "decompositionTolerance", "decompositionMaxChildren"]) {
+          for (const id of ["defaultUser", "refinementTolerance", "mvpRigor", "reviewTolerance", "reviewEvidencePolicy", "autoRefinementAnswersProfile", "reviewLearningSkillPath", "maxRefinementCycles", "maxImplementationReviewCycles", "phaseQualityGateThresholdPercent", "refinementQualityGateMaxRetries", "reviewQualityGateMaxRetries", "decompositionThreshold", "decompositionTolerance", "decompositionMaxChildren"]) {
             const element = document.getElementById(id);
             if (!element) continue;
             if (id === "autoRefinementAnswersProfile") {
@@ -2136,6 +2145,11 @@ static string BuildConfigurationPortalHtml() =>
           }
           state.maxRefinementCycles = Number(document.getElementById("maxRefinementCycles")?.value) || 5;
           state.maxImplementationReviewCycles = Number(document.getElementById("maxImplementationReviewCycles")?.value) || 5;
+          state.phaseQualityGateThresholdPercent = Number(document.getElementById("phaseQualityGateThresholdPercent")?.value);
+          if (!Number.isFinite(state.phaseQualityGateThresholdPercent)) state.phaseQualityGateThresholdPercent = 85;
+          state.phaseQualityGateThresholdPercent = Math.max(0, Math.min(100, Math.round(state.phaseQualityGateThresholdPercent)));
+          state.refinementQualityGateMaxRetries = Number(document.getElementById("refinementQualityGateMaxRetries")?.value) || 5;
+          state.reviewQualityGateMaxRetries = Number(document.getElementById("reviewQualityGateMaxRetries")?.value) || 3;
           state.decompositionThreshold = Number(document.getElementById("decompositionThreshold")?.value) || 0.60;
           state.decompositionTolerance = Number(document.getElementById("decompositionTolerance")?.value) || 0.10;
           state.decompositionMaxChildren = Number(document.getElementById("decompositionMaxChildren")?.value) || 5;
@@ -2390,6 +2404,19 @@ static string BuildConfigurationPortalHtml() =>
 
           if (typeof state.pauseOnFailedReview !== "boolean") {
             state.pauseOnFailedReview = true;
+          }
+          if (!Number.isFinite(state.phaseQualityGateThresholdPercent)) {
+            state.phaseQualityGateThresholdPercent = 85;
+          }
+          state.phaseQualityGateThresholdPercent = Math.max(0, Math.min(100, Math.round(state.phaseQualityGateThresholdPercent)));
+          if (!Number.isFinite(state.refinementQualityGateMaxRetries) || state.refinementQualityGateMaxRetries <= 0) {
+            state.refinementQualityGateMaxRetries = 5;
+          }
+          if (!Number.isFinite(state.reviewQualityGateMaxRetries) || state.reviewQualityGateMaxRetries <= 0) {
+            state.reviewQualityGateMaxRetries = 3;
+          }
+          if (typeof state.keepBestPhaseArtifactOnQualityRegression !== "boolean") {
+            state.keepBestPhaseArtifactOnQualityRegression = true;
           }
 
           if (typeof state.useSemanticGraphWhenAvailable !== "boolean") {

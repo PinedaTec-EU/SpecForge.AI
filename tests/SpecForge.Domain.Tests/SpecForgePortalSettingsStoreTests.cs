@@ -26,6 +26,10 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
         Assert.True(settings.AutoReviewEnabled);
         Assert.Equal(5, settings.MaxRefinementCycles);
         Assert.Equal(5, settings.MaxImplementationReviewCycles);
+        Assert.Equal(85, settings.PhaseQualityGateThresholdPercent);
+        Assert.Equal(5, settings.RefinementQualityGateMaxRetries);
+        Assert.Equal(3, settings.ReviewQualityGateMaxRetries);
+        Assert.True(settings.KeepBestPhaseArtifactOnQualityRegression);
         Assert.True(settings.PauseOnFailedReview);
         Assert.True(settings.UseSemanticGraphWhenAvailable);
         Assert.False(settings.AllowGraphBuildRefreshForTouchedUserStoryScope);
@@ -79,6 +83,10 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
         Assert.True(settings.AutoPlayEnabled);
         Assert.True(settings.AutoReviewEnabled);
         Assert.True(settings.PauseOnFailedReview);
+        Assert.Equal(85, settings.PhaseQualityGateThresholdPercent);
+        Assert.Equal(5, settings.RefinementQualityGateMaxRetries);
+        Assert.Equal(3, settings.ReviewQualityGateMaxRetries);
+        Assert.True(settings.KeepBestPhaseArtifactOnQualityRegression);
         Assert.True(settings.UseSemanticGraphWhenAvailable);
         Assert.False(settings.AllowGraphBuildRefreshForTouchedUserStoryScope);
         Assert.Equal("balanced", settings.DefaultHarnessProfile);

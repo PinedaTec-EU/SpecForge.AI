@@ -36,6 +36,10 @@ public sealed class WorkflowRunner
     private readonly UserStoryDecompositionOptions decompositionOptions;
     private readonly int maxRefinementCycles;
     private readonly int maxImplementationReviewCycles;
+    private readonly int phaseQualityGateThresholdPercent;
+    private readonly int refinementQualityGateMaxRetries;
+    private readonly int reviewQualityGateMaxRetries;
+    private readonly bool keepBestPhaseArtifactOnQualityRegression;
 
     public WorkflowRunner()
         : this(new UserStoryFileStore(), new DeterministicPhaseExecutionProvider(), new RepositoryCategoryCatalog(), new GitWorkBranchManager(), new GitHubPullRequestPublisher(), null, null)
@@ -57,6 +61,35 @@ public sealed class WorkflowRunner
     {
     }
 
+    public WorkflowRunner(
+        IPhaseExecutionProvider phaseExecutionProvider,
+        string refinementTolerance,
+        int maxRefinementCycles,
+        int maxImplementationReviewCycles,
+        UserStoryDecompositionOptions decompositionOptions,
+        int phaseQualityGateThresholdPercent,
+        int refinementQualityGateMaxRetries,
+        int reviewQualityGateMaxRetries,
+        bool keepBestPhaseArtifactOnQualityRegression)
+        : this(
+            new UserStoryFileStore(),
+            phaseExecutionProvider,
+            new RepositoryCategoryCatalog(),
+            new GitWorkBranchManager(),
+            new GitHubPullRequestPublisher(),
+            null,
+            null,
+            refinementTolerance,
+            decompositionOptions: decompositionOptions,
+            maxRefinementCycles: maxRefinementCycles,
+            maxImplementationReviewCycles: maxImplementationReviewCycles,
+            phaseQualityGateThresholdPercent: phaseQualityGateThresholdPercent,
+            refinementQualityGateMaxRetries: refinementQualityGateMaxRetries,
+            reviewQualityGateMaxRetries: reviewQualityGateMaxRetries,
+            keepBestPhaseArtifactOnQualityRegression: keepBestPhaseArtifactOnQualityRegression)
+    {
+    }
+
     public WorkflowRunner(IPhaseExecutionProvider phaseExecutionProvider, string? runtimeVersion, string refinementTolerance)
         : this(new UserStoryFileStore(), phaseExecutionProvider, new RepositoryCategoryCatalog(), new GitWorkBranchManager(), new GitHubPullRequestPublisher(), null, runtimeVersion, refinementTolerance)
     {
@@ -70,8 +103,12 @@ public sealed class WorkflowRunner
         string reviewEvidencePolicy = "balanced",
         UserStoryDecompositionOptions? decompositionOptions = null,
         int maxRefinementCycles = 5,
-        int maxImplementationReviewCycles = 5)
-        : this(new UserStoryFileStore(), phaseExecutionProvider, new RepositoryCategoryCatalog(), new GitWorkBranchManager(), new GitHubPullRequestPublisher(), null, runtimeVersion, refinementTolerance, completedUsLockOnCompleted, reviewEvidencePolicy, decompositionOptions, maxRefinementCycles, maxImplementationReviewCycles)
+        int maxImplementationReviewCycles = 5,
+        int phaseQualityGateThresholdPercent = 85,
+        int refinementQualityGateMaxRetries = 5,
+        int reviewQualityGateMaxRetries = 3,
+        bool keepBestPhaseArtifactOnQualityRegression = true)
+        : this(new UserStoryFileStore(), phaseExecutionProvider, new RepositoryCategoryCatalog(), new GitWorkBranchManager(), new GitHubPullRequestPublisher(), null, runtimeVersion, refinementTolerance, completedUsLockOnCompleted, reviewEvidencePolicy, decompositionOptions, maxRefinementCycles, maxImplementationReviewCycles, phaseQualityGateThresholdPercent, refinementQualityGateMaxRetries, reviewQualityGateMaxRetries, keepBestPhaseArtifactOnQualityRegression)
     {
     }
 
@@ -88,7 +125,11 @@ public sealed class WorkflowRunner
         string reviewEvidencePolicy = "balanced",
         UserStoryDecompositionOptions? decompositionOptions = null,
         int maxRefinementCycles = 5,
-        int maxImplementationReviewCycles = 5)
+        int maxImplementationReviewCycles = 5,
+        int phaseQualityGateThresholdPercent = 85,
+        int refinementQualityGateMaxRetries = 5,
+        int reviewQualityGateMaxRetries = 3,
+        bool keepBestPhaseArtifactOnQualityRegression = true)
     {
         this.fileStore = fileStore ?? throw new ArgumentNullException(nameof(fileStore));
         this.phaseExecutionProvider = phaseExecutionProvider ?? throw new ArgumentNullException(nameof(phaseExecutionProvider));
@@ -105,6 +146,10 @@ public sealed class WorkflowRunner
         this.decompositionOptions = (decompositionOptions ?? UserStoryDecompositionOptions.Default).Normalize();
         this.maxRefinementCycles = Math.Max(1, maxRefinementCycles);
         this.maxImplementationReviewCycles = Math.Max(1, maxImplementationReviewCycles);
+        this.phaseQualityGateThresholdPercent = Math.Clamp(phaseQualityGateThresholdPercent, 0, 100);
+        this.refinementQualityGateMaxRetries = Math.Max(1, refinementQualityGateMaxRetries);
+        this.reviewQualityGateMaxRetries = Math.Max(1, reviewQualityGateMaxRetries);
+        this.keepBestPhaseArtifactOnQualityRegression = keepBestPhaseArtifactOnQualityRegression;
     }
 
     public PhaseExecutionReadiness GetPhaseExecutionReadiness(PhaseId phaseId) =>
@@ -259,9 +304,9 @@ public sealed class WorkflowRunner
                     $"Created branch `{workflowRun.Branch.WorkBranchName}` from `{workflowRun.Branch.BaseBranch}` and materialized worktree `{branchCreation?.WorktreePath ?? "(unknown)"}`.",
                     cancellationToken);
 
-                if (!string.IsNullOrWhiteSpace(branchCreation.WorktreePath))
+                if (!string.IsNullOrWhiteSpace(branchCreation?.WorktreePath))
                 {
-                    SpecForgeWorkspaceLayout.MirrorUserStoryDirectory(workspaceRoot, branchCreation.WorktreePath, workflowRun.UsId);
+                    SpecForgeWorkspaceLayout.MirrorUserStoryDirectory(workspaceRoot, branchCreation!.WorktreePath, workflowRun.UsId);
                 }
             }
             else if (branchCreation?.IsGitWorkspace == false)
@@ -933,6 +978,25 @@ public sealed class WorkflowRunner
                 refinementResult.Execution);
         }
 
+        if (workflowRun.CurrentPhase == PhaseId.Review)
+        {
+            var reviewQualityGateState = GetCurrentPhaseQualityGateState(paths, PhaseId.Review);
+            if (reviewQualityGateState is { ShouldBlockAdvancement: true })
+            {
+                workflowRun.RestoreState(PhaseId.Review, UserStoryStatus.WaitingUser);
+                await fileStore.SaveAsync(workflowRun, paths.RootDirectory, cancellationToken);
+                diagnostics.MarkCompleted(
+                    $"phase={WorkflowPresentation.ToPhaseSlug(workflowRun.CurrentPhase)} status={WorkflowPresentation.ToStatusSlug(workflowRun.Status)} qualityGate=blocked");
+                return new ContinuePhaseResult(
+                    workflowRun.UsId,
+                    workflowRun.CurrentPhase,
+                    workflowRun.Status,
+                    GeneratedArtifactPath: reviewQualityGateState.SelectedArtifactPath,
+                    Usage: null,
+                    Execution: null);
+            }
+        }
+
         if (workflowRun.CurrentPhase == PhaseId.Review &&
             await ShouldReplayCurrentReviewAsync(paths, cancellationToken))
         {
@@ -1502,32 +1566,45 @@ public sealed class WorkflowRunner
             refinementGeneration.Usage,
             refinementGeneration.DurationMs,
             refinementGeneration.Execution);
+        var refinementQualityGate = await EvaluateGeneratedPhaseQualityAsync(
+            paths,
+            PhaseId.Refinement,
+            refinementGeneration,
+            actor,
+            cancellationToken);
+        if (refinementQualityGate.ShouldStopCurrentPhase)
+        {
+            workflowRun.RestoreState(PhaseId.Refinement, UserStoryStatus.WaitingUser);
+        }
 
-        if (!refinement.IsReady)
+        if (!refinement.IsReady || !refinementQualityGate.CanAdvance)
         {
             if (await PauseRefinementAutomationIfCycleLimitReachedAsync(paths, workflowRun, cancellationToken))
             {
                 return new CaptureTransitionResult(
-                    refinementGeneration.ArtifactPath,
+                    refinementQualityGate.SelectedArtifactPath ?? refinementGeneration.ArtifactPath,
                     refinementGeneration.Usage,
                     refinementGeneration.DurationMs,
                     refinementGeneration.Execution);
             }
 
-            var autoAnswerAttempt = await TryAutoAnswerRefinementAsync(
-                workspaceRoot,
-                paths,
-                workflowRun,
-                actor,
-                cancellationToken);
-            if (autoAnswerAttempt is not null)
+            if (!refinement.IsReady)
             {
-                return autoAnswerAttempt;
+                var autoAnswerAttempt = await TryAutoAnswerRefinementAsync(
+                    workspaceRoot,
+                    paths,
+                    workflowRun,
+                    actor,
+                    cancellationToken);
+                if (autoAnswerAttempt is not null)
+                {
+                    return autoAnswerAttempt;
+                }
             }
 
             workflowRun.RestoreState(PhaseId.Refinement, UserStoryStatus.WaitingUser);
             return new CaptureTransitionResult(
-                refinementGeneration.ArtifactPath,
+                refinementQualityGate.SelectedArtifactPath ?? refinementGeneration.ArtifactPath,
                 refinementGeneration.Usage,
                 refinementGeneration.DurationMs,
                 refinementGeneration.Execution);
@@ -1790,6 +1867,7 @@ public sealed class WorkflowRunner
         var executionMetadata = WithRuntimeVersion(result.Execution);
         ImplementationStructuredEvidence? implementationStructuredEvidenceSnapshot = null;
         ReviewStructuredGateResult? reviewStructuredGateResult = null;
+        PhaseQualityAssessment? qualityAssessment = null;
         ReleaseApprovalEvidencePack? releaseApprovalEvidencePack = null;
         PrPreparationStructuredEvidence? prPreparationStructuredEvidence = null;
         SpecForgeDiagnostics.Log(
@@ -1939,6 +2017,12 @@ public sealed class WorkflowRunner
                     PhaseExecutionReceiptStore.NormalizePath(path),
                     PhaseExecutionReceiptStore.TryComputeFileSha256(path)))
                 .ToArray());
+        qualityAssessment = TryBuildPhaseQualityAssessment(
+            workflowRun.CurrentPhase,
+            result.Content,
+            reviewStructuredGateResult,
+            inputManifest,
+            outputManifest);
         var evidenceRecord = PhaseExecutionEvidenceBuilder.Build(
             workflowRun.CurrentPhase,
             inputManifest,
@@ -1978,6 +2062,7 @@ public sealed class WorkflowRunner
             releaseApprovalPolicySnapshot,
             implementationStructuredEvidenceSnapshot,
             reviewStructuredGateResult,
+            qualityAssessment,
             releaseApprovalEvidencePack,
             prPreparationStructuredEvidence,
             technicalDesignContextPack,
@@ -2006,7 +2091,8 @@ public sealed class WorkflowRunner
             returnedExecutionMetadata,
             receiptPath,
             generatedFiles.Distinct(StringComparer.Ordinal).ToArray(),
-            repositoryEvidencePaths);
+            repositoryEvidencePaths,
+            qualityAssessment);
     }
 
     private RefinementPolicyDetails? TryBuildRefinementPolicySnapshot(PhaseId phaseId, string content)
@@ -2845,10 +2931,16 @@ public sealed class WorkflowRunner
         return match.Success ? match.Groups["sha"].Value : null;
     }
 
-    private static async Task<bool> ShouldReplayCurrentReviewAsync(
+    private async Task<bool> ShouldReplayCurrentReviewAsync(
         UserStoryFilePaths paths,
         CancellationToken cancellationToken)
     {
+        var qualityGateState = GetCurrentPhaseQualityGateState(paths, PhaseId.Review);
+        if (qualityGateState is { CanAdvance: false, ShouldBlockAdvancement: false })
+        {
+            return true;
+        }
+
         if (IsReviewReplayPending(paths))
         {
             return true;
@@ -3585,6 +3677,276 @@ public sealed class WorkflowRunner
         return true;
     }
 
+    private async Task<PhaseQualityGateState> EvaluateGeneratedPhaseQualityAsync(
+        UserStoryFilePaths paths,
+        PhaseId phaseId,
+        ArtifactGenerationResult generation,
+        string actor,
+        CancellationToken cancellationToken)
+    {
+        if (!IsPhaseQualityGateEnabled(phaseId) || generation.QualityAssessment is null)
+        {
+            SetPreferredPhaseArtifactPath(paths, phaseId, generation.ArtifactPath);
+            return new PhaseQualityGateState(true, false, false, generation.ArtifactPath);
+        }
+
+        var meetsThreshold = generation.QualityAssessment.GateScore >= phaseQualityGateThresholdPercent;
+        var bestComparable = keepBestPhaseArtifactOnQualityRegression
+            ? FindBestComparablePhaseArtifact(paths, phaseId, generation.QualityAssessment.ComparableInputFingerprint, generation.ReceiptPath)
+            : null;
+        var selectedArtifactPath = meetsThreshold || bestComparable is null || bestComparable.GateScore <= generation.QualityAssessment.GateScore
+            ? generation.ArtifactPath
+            : bestComparable.ArtifactPath;
+        var decision = meetsThreshold
+            ? "accepted"
+            : string.Equals(selectedArtifactPath, generation.ArtifactPath, StringComparison.Ordinal)
+                ? "retry_requested"
+                : "reverted_to_previous_best";
+
+        SetPreferredPhaseArtifactPath(paths, phaseId, selectedArtifactPath);
+        await UpdatePhaseQualityAssessmentAsync(
+            generation.ReceiptPath,
+            generation.QualityAssessment with
+            {
+                Decision = decision,
+                ThresholdPercent = phaseQualityGateThresholdPercent,
+                MeetsThreshold = meetsThreshold,
+                SelectedArtifactPath = PhaseExecutionReceiptStore.NormalizePath(selectedArtifactPath),
+                PreviousBestArtifactPath = bestComparable is null ? null : PhaseExecutionReceiptStore.NormalizePath(bestComparable.ArtifactPath),
+                Summary = meetsThreshold
+                    ? $"Phase quality gate passed with score {generation.QualityAssessment.GateScore}%."
+                    : string.Equals(selectedArtifactPath, generation.ArtifactPath, StringComparison.Ordinal)
+                        ? $"Phase quality gate failed with score {generation.QualityAssessment.GateScore}% below threshold {phaseQualityGateThresholdPercent}%."
+                        : $"Phase quality gate failed with score {generation.QualityAssessment.GateScore}% below threshold {phaseQualityGateThresholdPercent}%. Restored the previous best artifact instead."
+            },
+            cancellationToken);
+
+        if (meetsThreshold)
+        {
+            return new PhaseQualityGateState(true, false, false, selectedArtifactPath);
+        }
+
+        await AppendTimelineEventAsync(
+            paths.TimelineFilePath,
+            "phase_quality_gate_failed",
+            actor,
+            phaseId,
+            $"{WorkflowPresentation.ToPhaseSlug(phaseId)} quality score {generation.QualityAssessment.GateScore}% is below the configured threshold {phaseQualityGateThresholdPercent}%. {(string.Equals(selectedArtifactPath, generation.ArtifactPath, StringComparison.Ordinal) ? "The latest artifact remains selected." : $"The previous best artifact `{Path.GetFileName(selectedArtifactPath)}` stays selected.")}",
+            cancellationToken,
+            [generation.ArtifactPath, selectedArtifactPath]);
+
+        var maxRetries = GetPhaseQualityGateMaxRetries(phaseId);
+        var retriesExhausted = CountTimelineEventsSinceLastReset(
+            paths,
+            phaseId,
+            GetPhaseQualityGateResetPhases(phaseId),
+            "phase_quality_gate_failed") >= maxRetries;
+        if (retriesExhausted)
+        {
+            await AppendTimelineEventAsync(
+                paths.TimelineFilePath,
+                "phase_quality_gate_limit_reached",
+                "system",
+                phaseId,
+                $"Phase quality gate stopped automatic retries after {maxRetries} low-quality iteration(s). User intervention is required before the phase can advance.",
+                cancellationToken,
+                selectedArtifactPath);
+        }
+
+        return new PhaseQualityGateState(false, retriesExhausted, phaseId == PhaseId.Review && retriesExhausted, selectedArtifactPath);
+    }
+
+    private static void SetPreferredPhaseArtifactPath(UserStoryFilePaths paths, PhaseId phaseId, string artifactPath)
+    {
+        Directory.CreateDirectory(paths.PhasesDirectoryPath);
+        File.WriteAllText(paths.GetPhasePreferredArtifactPointerPath(phaseId), artifactPath.Replace('\\', '/'));
+    }
+
+    private async Task UpdatePhaseQualityAssessmentAsync(
+        string? receiptPath,
+        PhaseQualityAssessment assessment,
+        CancellationToken cancellationToken)
+    {
+        var receipt = await PhaseExecutionReceiptStore.TryLoadAsync(receiptPath, cancellationToken);
+        if (receipt is null)
+        {
+            return;
+        }
+
+        await PhaseExecutionReceiptStore.PersistAsync(
+            Path.GetDirectoryName(receiptPath!) ?? string.Empty,
+            receipt with { QualityAssessment = assessment },
+            cancellationToken);
+    }
+
+    private bool IsPhaseQualityGateEnabled(PhaseId phaseId) =>
+        phaseQualityGateThresholdPercent > 0 && phaseId is PhaseId.Refinement or PhaseId.Review;
+
+    private static IReadOnlyCollection<PhaseId> GetPhaseQualityGateResetPhases(PhaseId phaseId) =>
+        phaseId == PhaseId.Review ? [PhaseId.Implementation] : [];
+
+    private static int CountTimelineEventsSinceLastReset(
+        UserStoryFilePaths paths,
+        PhaseId phaseId,
+        IReadOnlyCollection<PhaseId> resetPhases,
+        string eventCode)
+    {
+        if (!File.Exists(paths.TimelineFilePath))
+        {
+            return 0;
+        }
+
+        var phaseSlug = WorkflowPresentation.ToPhaseSlug(phaseId);
+        var resetPhaseSlugs = resetPhases.Select(WorkflowPresentation.ToPhaseSlug).ToHashSet(StringComparer.Ordinal);
+        var events = TimelineMarkdownParser.ParseEvents(File.ReadAllText(paths.TimelineFilePath)).ToArray();
+        var resetIndex = Array.FindLastIndex(
+            events,
+            timelineEvent => timelineEvent.Code == "phase_completed" &&
+                             timelineEvent.Phase is not null &&
+                             resetPhaseSlugs.Contains(timelineEvent.Phase));
+
+        return events
+            .Skip(resetIndex + 1)
+            .Count(timelineEvent =>
+                timelineEvent.Code == eventCode &&
+                string.Equals(timelineEvent.Phase, phaseSlug, StringComparison.Ordinal));
+    }
+
+    private PhaseQualityGateState? GetCurrentPhaseQualityGateState(UserStoryFilePaths paths, PhaseId phaseId)
+    {
+        if (!IsPhaseQualityGateEnabled(phaseId))
+        {
+            return null;
+        }
+
+        var selectedArtifactPath = paths.GetLatestExistingPhaseArtifactPath(phaseId);
+        if (string.IsNullOrWhiteSpace(selectedArtifactPath))
+        {
+            return null;
+        }
+
+        var selectedReceipt = FindReceiptForSelectedArtifact(paths, phaseId, selectedArtifactPath);
+        var assessment = selectedReceipt?.QualityAssessment;
+        if (assessment is null)
+        {
+            return null;
+        }
+
+        var meetsThreshold = assessment.MeetsThreshold ?? assessment.GateScore >= phaseQualityGateThresholdPercent;
+        if (meetsThreshold)
+        {
+            return new PhaseQualityGateState(true, false, false, selectedArtifactPath);
+        }
+
+        var retriesExhausted = CountTimelineEventsSinceLastReset(
+            paths,
+            phaseId,
+            GetPhaseQualityGateResetPhases(phaseId),
+            "phase_quality_gate_failed") >= GetPhaseQualityGateMaxRetries(phaseId);
+        return new PhaseQualityGateState(false, retriesExhausted, retriesExhausted, selectedArtifactPath);
+    }
+
+    private int GetPhaseQualityGateMaxRetries(PhaseId phaseId) =>
+        phaseId == PhaseId.Refinement
+            ? refinementQualityGateMaxRetries
+            : reviewQualityGateMaxRetries;
+
+    private static PhaseExecutionReceipt? FindReceiptForSelectedArtifact(
+        UserStoryFilePaths paths,
+        PhaseId phaseId,
+        string selectedArtifactPath)
+    {
+        if (!Directory.Exists(paths.ExecutionReceiptsDirectoryPath))
+        {
+            return null;
+        }
+
+        var normalizedSelectedArtifactPath = PhaseExecutionReceiptStore.NormalizePath(selectedArtifactPath);
+        var phaseSlug = WorkflowPresentation.ToPhaseSlug(phaseId);
+        foreach (var receiptPath in Directory.GetFiles(paths.ExecutionReceiptsDirectoryPath, $"*-{phaseSlug}.json").OrderByDescending(static path => path, StringComparer.Ordinal))
+        {
+            var receipt = PhaseExecutionReceiptStore.TryLoad(receiptPath);
+            var selectedPath = receipt?.QualityAssessment?.SelectedArtifactPath ?? receipt?.OutputManifest.ResultArtifactPath;
+            if (string.Equals(selectedPath, normalizedSelectedArtifactPath, StringComparison.Ordinal))
+            {
+                return receipt;
+            }
+        }
+
+        return null;
+    }
+
+    private static PriorQualityArtifactCandidate? FindBestComparablePhaseArtifact(
+        UserStoryFilePaths paths,
+        PhaseId phaseId,
+        string comparableInputFingerprint,
+        string? excludedReceiptPath)
+    {
+        if (!Directory.Exists(paths.ExecutionReceiptsDirectoryPath))
+        {
+            return null;
+        }
+
+        var phaseSlug = WorkflowPresentation.ToPhaseSlug(phaseId);
+        return Directory
+            .GetFiles(paths.ExecutionReceiptsDirectoryPath, $"*-{phaseSlug}.json")
+            .Where(path => !string.Equals(path, excludedReceiptPath, StringComparison.Ordinal))
+            .Select(path => PhaseExecutionReceiptStore.TryLoad(path))
+            .Where(static receipt => receipt?.QualityAssessment is not null)
+            .Select(receipt => new
+            {
+                Receipt = receipt!,
+                Assessment = receipt!.QualityAssessment!,
+                ArtifactPath = receipt.QualityAssessment!.SelectedArtifactPath ?? receipt.OutputManifest.ResultArtifactPath
+            })
+            .Where(item =>
+                string.Equals(item.Assessment.ComparableInputFingerprint, comparableInputFingerprint, StringComparison.Ordinal) &&
+                !string.IsNullOrWhiteSpace(item.ArtifactPath) &&
+                File.Exists(item.ArtifactPath!))
+            .OrderByDescending(item => item.Assessment.GateScore)
+            .ThenByDescending(item => item.Assessment.QualityScore)
+            .ThenByDescending(item => item.Receipt.CompletedAtUtc, StringComparer.Ordinal)
+            .Select(item => new PriorQualityArtifactCandidate(item.ArtifactPath!, item.Assessment.GateScore))
+            .FirstOrDefault();
+    }
+
+    private static PhaseQualityAssessment? TryBuildPhaseQualityAssessment(
+        PhaseId phaseId,
+        string content,
+        ReviewStructuredGateResult? reviewStructuredGateResult,
+        PhaseExecutionInputManifest inputManifest,
+        PhaseExecutionOutputManifest outputManifest)
+    {
+        if (phaseId == PhaseId.Refinement)
+        {
+            var refinement = ParseRefinementArtifact(content);
+            return new PhaseQualityAssessment(
+                WorkflowPresentation.ToPhaseSlug(phaseId),
+                refinement.QualityScore,
+                refinement.ConfidenceScore,
+                refinement.QualityScore,
+                $"user-story:{inputManifest.UserStorySha256 ?? inputManifest.UserStoryPath}",
+                SelectedArtifactPath: outputManifest.ResultArtifactPath,
+                Summary: refinement.Summary);
+        }
+
+        if (phaseId == PhaseId.Review && reviewStructuredGateResult is not null)
+        {
+            var implementationInput = inputManifest.PreviousArtifacts
+                .FirstOrDefault(item => string.Equals(item.PhaseId, WorkflowPresentation.ToPhaseSlug(PhaseId.Implementation), StringComparison.Ordinal));
+            return new PhaseQualityAssessment(
+                WorkflowPresentation.ToPhaseSlug(phaseId),
+                reviewStructuredGateResult.QualityScore,
+                reviewStructuredGateResult.ConfidenceScore,
+                reviewStructuredGateResult.QualityScore,
+                $"implementation:{implementationInput?.Sha256 ?? implementationInput?.Path ?? inputManifest.UserStorySha256 ?? inputManifest.UserStoryPath}",
+                SelectedArtifactPath: outputManifest.ResultArtifactPath,
+                Summary: reviewStructuredGateResult.PrimaryReason);
+        }
+
+        return null;
+    }
+
     private static int CountArtifactProducingEventsSinceLastReset(
         UserStoryFilePaths paths,
         PhaseId phaseId,
@@ -3664,7 +4026,14 @@ public sealed class WorkflowRunner
         PhaseExecutionMetadata? Execution,
         string? ReceiptPath = null,
         IReadOnlyCollection<string>? GeneratedFiles = null,
-        IReadOnlyCollection<string>? RepositoryEvidencePaths = null);
+        IReadOnlyCollection<string>? RepositoryEvidencePaths = null,
+        PhaseQualityAssessment? QualityAssessment = null);
+    private sealed record PhaseQualityGateState(
+        bool CanAdvance,
+        bool ShouldStopCurrentPhase,
+        bool ShouldBlockAdvancement,
+        string? SelectedArtifactPath);
+    private sealed record PriorQualityArtifactCandidate(string ArtifactPath, int GateScore);
     private sealed record RefinementAssessment(
         bool IsReady,
         int QualityScore,

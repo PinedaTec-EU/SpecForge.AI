@@ -153,6 +153,7 @@ public sealed record PhaseIterationDetails(
     IReadOnlyCollection<string> ContextArtifactPaths,
     string? OperationLogPath,
     string? OperationPrompt,
+    PhaseQualityAssessment? QualityAssessment,
     TokenUsage? Usage,
     long? DurationMs,
     PhaseExecutionMetadata? Execution);
