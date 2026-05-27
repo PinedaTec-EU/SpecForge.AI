@@ -91,14 +91,21 @@ test("CLI workflow renderer opens external URLs from workflow actions", async ()
 test("CLI workflow renderer preloads the next portal document before replacing the current page", async () => {
   const script = await fs.promises.readFile(scriptPath, "utf8");
 
+  assert.match(script, /let portalTransitionSequence = 0;/);
+  assert.match(script, /let portalTransitionController = null;/);
+  assert.match(script, /portalTransitionController\?\.abort\?\.\(\);/);
+  assert.match(script, /new AbortController\(\)/);
+  assert.match(script, /signal: controller\.signal/);
+  assert.match(script, /if \(transitionId !== portalTransitionSequence\) \{\s*return false;\s*\}/);
   assert.match(script, /async replaceDocumentWithUrl\(targetUrl, historyMode = "push"\)/);
-  assert.match(script, /const response = await fetch\(resolvedUrl, \{ cache: "no-store", credentials: "same-origin" \}\)/);
+  assert.match(script, /const response = await fetch\(resolvedUrl, \{[\s\S]*cache: "no-store",[\s\S]*credentials: "same-origin",[\s\S]*\}\);/);
   assert.match(script, /const nextHtml = await response\.text\(\)/);
   assert.match(script, /window\.history\.replaceState\(window\.history\.state, "", resolvedUrl\)/);
   assert.match(script, /window\.history\.pushState\(window\.history\.state, "", resolvedUrl\)/);
   assert.match(script, /document\.open\(\);\s*document\.write\(nextHtml\);\s*document\.close\(\);/);
-  assert.match(script, /void this\.replaceDocumentWithUrl\(url\.toString\(\), "replace"\)\.catch\(\(\) => \{\s*window\.location\.href = url\.toString\(\);/);
-  assert.match(script, /void this\.replaceDocumentWithUrl\(url\.toString\(\), "push"\)\.catch\(\(\) => \{\s*window\.location\.href = url\.toString\(\);/);
+  assert.match(script, /isAbortedPortalTransition\(error\)/);
+  assert.match(script, /void this\.replaceDocumentWithUrl\(url\.toString\(\), "replace"\)\.catch\(\(error\) => \{\s*if \(isAbortedPortalTransition\(error\)\) \{\s*return;\s*\}\s*window\.location\.href = url\.toString\(\);/);
+  assert.match(script, /void this\.replaceDocumentWithUrl\(url\.toString\(\), "push"\)\.catch\(\(error\) => \{\s*if \(isAbortedPortalTransition\(error\)\) \{\s*return;\s*\}\s*window\.location\.href = url\.toString\(\);/);
 });
 
 test("CLI workflow renderer restores sidebar selection scroll before rebinding the mounted sidebar", async () => {
@@ -134,7 +141,7 @@ test("CLI workflow renderer routes sidebar edit action through metadata update p
     assert.match(content, /data-cli-edit-overlay/);
     assert.match(content, /const openEditUserStoryForm = \(message\) =>/);
     assert.match(content, /editForm\?\.addEventListener\("submit", event =>/);
-    assert.match(content, /requestJson\("\/api\/update-user-story-info", \{ usId, title, owner, category, tags, actor: currentActor \}\)/);
+    assert.match(content, /requestJson\("\/api\/update-user-story-info", \{\s*usId,\s*title,\s*kind,\s*owner,\s*category,\s*tags,\s*externalReferences: externalReferenceUrl\s*\?\s*\[\{ url: externalReferenceUrl, label: "", provider: "" \}\]\s*:\s*\[\],\s*actor: currentActor\s*\}\)/);
     assert.match(content, /setEditError\("Change at least one field before saving\."\)/);
     assert.doesNotMatch(content, /window\.prompt\(/);
     assert.match(content, /window\.__specforgePortalLifecycle\.reload\("post-update-user-story-info"/);
@@ -145,7 +152,7 @@ test("CLI workflow renderer routes sidebar edit action through metadata update p
     assert.match(content, /window\.specForgeCliCurrentActor = specForgeCliCurrentActor/);
   }
 
-  assert.match(packagedSidebar, /data-command="showEditUserStoryForm"[\s\S]*data-us-id="\$\{[\s\S]*summary\.usId[\s\S]*\}"[\s\S]*data-title="\$\{[\s\S]*editableUserStoryTitle\(summary\.usId, summary\.title\)[\s\S]*\}"[\s\S]*data-owner="\$\{[\s\S]*summary\.owner[\s\S]*\}"[\s\S]*data-category="\$\{[\s\S]*summary\.category[\s\S]*\}"[\s\S]*data-tags="\$\{[\s\S]*\(summary\.tags \?\? \[\]\)\.join\(", "\)[\s\S]*\}"/);
+  assert.match(packagedSidebar, /data-command="showEditUserStoryForm"[\s\S]*data-us-id="\$\{[\s\S]*summary\.usId[\s\S]*\}"[\s\S]*data-title="\$\{[\s\S]*editableUserStoryTitle\(summary\.usId, summary\.title\)[\s\S]*\}"[\s\S]*data-kind="\$\{[\s\S]*summary\.kind[\s\S]*\}"[\s\S]*data-owner="\$\{[\s\S]*summary\.owner[\s\S]*\}"[\s\S]*data-category="\$\{[\s\S]*summary\.category[\s\S]*\}"[\s\S]*data-tags="\$\{[\s\S]*\(summary\.tags \?\? \[\]\)\.join\(", "\)[\s\S]*\}"[\s\S]*data-external-reference-url="\$\{[\s\S]*summary\.externalReferences\?\.\[0\]\?\.url \?\? ""[\s\S]*\}"/);
   assert.doesNotMatch(packagedSidebar, /<button class="action-menu__item" type="button" role="menuitem" disabled>\s+<span class="action-menu__item-icon" aria-hidden="true">✎<\/span>\s+<span>Edit US info<\/span>/);
 });
 

@@ -304,24 +304,47 @@ const browserShim = `
     }).url.toString();
     window.location.replace(preferredRootUrl);
   }
+  let portalTransitionSequence = 0;
+  let portalTransitionController = null;
+  const isAbortedPortalTransition = (error) => error instanceof Error && error.name === "AbortError";
   window.__specforgePortalLifecycle = window.__specforgePortalLifecycle || {
     async replaceDocumentWithUrl(targetUrl, historyMode = "push") {
       const resolvedUrl = typeof targetUrl === "string" ? targetUrl : String(targetUrl || "");
-      const response = await fetch(resolvedUrl, { cache: "no-store", credentials: "same-origin" });
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
+      const transitionId = ++portalTransitionSequence;
+      portalTransitionController?.abort?.();
+      const controller = typeof AbortController === "function"
+        ? new AbortController()
+        : null;
+      portalTransitionController = controller;
+      try {
+        const response = await fetch(resolvedUrl, {
+          cache: "no-store",
+          credentials: "same-origin",
+          ...(controller ? { signal: controller.signal } : {})
+        });
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
 
-      const nextHtml = await response.text();
-      if (historyMode === "replace") {
-        window.history.replaceState(window.history.state, "", resolvedUrl);
-      } else {
-        window.history.pushState(window.history.state, "", resolvedUrl);
-      }
+        const nextHtml = await response.text();
+        if (transitionId !== portalTransitionSequence) {
+          return false;
+        }
+        if (historyMode === "replace") {
+          window.history.replaceState(window.history.state, "", resolvedUrl);
+        } else {
+          window.history.pushState(window.history.state, "", resolvedUrl);
+        }
 
-      document.open();
-      document.write(nextHtml);
-      document.close();
+        document.open();
+        document.write(nextHtml);
+        document.close();
+        return true;
+      } finally {
+        if (portalTransitionController === controller) {
+          portalTransitionController = null;
+        }
+      }
     },
     report(action, reason, extra) {
       try {
@@ -348,7 +371,10 @@ const browserShim = `
     reload(reason, extra) {
       const { url } = buildWorkflowRequestUrl();
       void this.report("reload", reason, { ...(extra || {}), targetUrl: url.toString() });
-      void this.replaceDocumentWithUrl(url.toString(), "replace").catch(() => {
+      void this.replaceDocumentWithUrl(url.toString(), "replace").catch((error) => {
+        if (isAbortedPortalTransition(error)) {
+          return;
+        }
         window.location.href = url.toString();
       });
     },
@@ -392,13 +418,19 @@ const browserShim = `
         const { url, state } = buildWorkflowRequestUrl(patch);
         writePortalState(state);
         void this.report("navigate", reason, { ...(extra || {}), targetUrl: url.toString() });
-        void this.replaceDocumentWithUrl(url.toString(), "push").catch(() => {
+        void this.replaceDocumentWithUrl(url.toString(), "push").catch((error) => {
+          if (isAbortedPortalTransition(error)) {
+            return;
+          }
           window.location.href = url.toString();
         });
         return;
       } catch {}
       void this.report("navigate", reason, { ...(extra || {}), targetUrl: resolvedTargetUrl });
-      void this.replaceDocumentWithUrl(resolvedTargetUrl, "push").catch(() => {
+      void this.replaceDocumentWithUrl(resolvedTargetUrl, "push").catch((error) => {
+        if (isAbortedPortalTransition(error)) {
+          return;
+        }
         window.location.href = resolvedTargetUrl;
       });
     }
