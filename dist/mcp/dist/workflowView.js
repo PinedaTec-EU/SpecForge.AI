@@ -6272,6 +6272,7 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
     ${timelineRewindDock}
   </div>
   <script nonce="${scriptNonce}">
+    (() => {
     const vscode = (() => {
       if (window.__specForgeVsCodeApi) {
         return window.__specForgeVsCodeApi;
@@ -9271,6 +9272,7 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
         // Best effort only.
       }
     }
+    })();
   </script>
 </body>
 </html>`;
