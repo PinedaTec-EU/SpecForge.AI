@@ -2011,6 +2011,8 @@ static string BuildConfigurationPortalHtml() =>
             <section class="panel">
               <h2>Workflow Behavior</h2>
               <div class="grid">
+                <label><span class="field-label">Workflow graph layout</span><span class="field-control"><select id="workflowGraphLayoutMode"><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option></select><button class="help-button" type="button" aria-label="Workflow graph layout details" aria-expanded="false" data-help="Default graph orientation for this user story when opening the workflow graph in the shared runtime.">?</button></span></label>
+                <label><span class="field-label">Workflow graph initial zoom</span><span class="field-control"><select id="workflowGraphInitialZoomMode"><option value="actual-size">100%</option><option value="fit-width">Fit to width</option></select><button class="help-button" type="button" aria-label="Workflow graph initial zoom details" aria-expanded="false" data-help="Default zoom mode used when opening a workflow graph before any manual zoom interaction.">?</button></span></label>
                 <label><span class="field-label">Refinement tolerance</span><span class="field-control"><select id="refinementTolerance"><option>strict</option><option>balanced</option><option>inferential</option></select><button class="help-button" type="button" aria-label="Refinement tolerance details" aria-expanded="false" data-help="Controls how much ambiguity refinement tolerates before spec can continue. Strict asks more questions; inferential allows the model to proceed with more assumptions.">?</button></span></label>
                 <label><span class="field-label">MVP rigor</span><span class="field-control"><select id="mvpRigor"><option>low</option><option>medium</option><option>high</option></select><button class="help-button" type="button" aria-label="MVP rigor details" aria-expanded="false" data-help="Controls how much product detail refinement requires before a user story can become a buildable MVP slice. Low is lean; high is exacting.">?</button></span></label>
                 <label><span class="field-label">Review tolerance</span><span class="field-control"><select id="reviewTolerance"><option>strict</option><option>balanced</option><option>inferential</option></select><button class="help-button" type="button" aria-label="Review tolerance details" aria-expanded="false" data-help="Controls how demanding review is before it passes or fails delivered work. Strict requires stronger evidence; inferential is more permissive.">?</button></span></label>
@@ -2080,6 +2082,8 @@ static string BuildConfigurationPortalHtml() =>
           "model.reasoningEffort": "Optional reasoning effort override sent to providers that support it.",
           "model.repositoryAccess": "Repository access granted by this model profile when agents are derived directly from models.",
           "defaultUser": "Workspace-level user identity used by local user-dependent flows. This value becomes the local source of truth once configured.",
+          "workflowGraphLayoutMode": "Default graph orientation for this user story when the shared workflow graph opens.",
+          "workflowGraphInitialZoomMode": "Default zoom mode applied when the workflow graph opens before any manual zoom action.",
           "agent.name": "Stable agent name used by phase routing and auto-refinement settings.",
           "agent.role": "Operational role injected into prompts, such as planner, implementer, reviewer, or release-preparer.",
           "agent.modelProfile": "Model profile this agent runs on.",
@@ -2201,7 +2205,7 @@ static string BuildConfigurationPortalHtml() =>
         }
 
         function renderBehavior() {
-          for (const id of ["defaultUser", "refinementTolerance", "mvpRigor", "reviewTolerance", "reviewEvidencePolicy", "autoRefinementAnswersProfile", "reviewLearningSkillPath", "maxRefinementCycles", "maxImplementationReviewCycles", "phaseQualityGateThresholdPercent", "refinementQualityGateMaxRetries", "reviewQualityGateMaxRetries", "decompositionThreshold", "decompositionTolerance", "decompositionMaxChildren"]) {
+          for (const id of ["defaultUser", "workflowGraphLayoutMode", "workflowGraphInitialZoomMode", "refinementTolerance", "mvpRigor", "reviewTolerance", "reviewEvidencePolicy", "autoRefinementAnswersProfile", "reviewLearningSkillPath", "maxRefinementCycles", "maxImplementationReviewCycles", "phaseQualityGateThresholdPercent", "refinementQualityGateMaxRetries", "reviewQualityGateMaxRetries", "decompositionThreshold", "decompositionTolerance", "decompositionMaxChildren"]) {
             const element = document.getElementById(id);
             if (!element) continue;
             if (id === "autoRefinementAnswersProfile") {
@@ -2249,7 +2253,7 @@ static string BuildConfigurationPortalHtml() =>
             if (kind === "agent" && state.agentProfiles[index]) state.agentProfiles[index][field] = element.value;
             if (kind === "assignment") state.phaseAgentAssignments[field] = element.value || null;
           });
-          for (const id of ["defaultUser", "refinementTolerance", "mvpRigor", "reviewTolerance", "reviewEvidencePolicy", "autoRefinementAnswersProfile", "reviewLearningSkillPath"]) {
+          for (const id of ["defaultUser", "workflowGraphLayoutMode", "workflowGraphInitialZoomMode", "refinementTolerance", "mvpRigor", "reviewTolerance", "reviewEvidencePolicy", "autoRefinementAnswersProfile", "reviewLearningSkillPath"]) {
             const element = document.getElementById(id);
             if (element) state[id] = element.value || null;
           }

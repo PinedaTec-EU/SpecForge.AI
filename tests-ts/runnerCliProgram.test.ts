@@ -114,6 +114,14 @@ test("CLI workflow portal payload includes sidebar stories and configuration URL
   assert.match(source, /<div class="tab-panel" id="advanced" role="tabpanel" hidden>/);
   assert.match(source, /<div class="tab-panel" id="central" role="tabpanel" hidden>/);
   assert.match(source, /const configurationTabs = \["providers", "advanced", "central"\]/);
+  assert.match(source, /Workflow graph layout/);
+  assert.match(source, /<select id="workflowGraphLayoutMode"><option value="vertical">Vertical<\/option><option value="horizontal">Horizontal<\/option><\/select>/);
+  assert.match(source, /Workflow graph initial zoom/);
+  assert.match(source, /<select id="workflowGraphInitialZoomMode"><option value="actual-size">100%<\/option><option value="fit-width">Fit to width<\/option><\/select>/);
+  assert.match(source, /"workflowGraphLayoutMode": "Default graph orientation for this user story when the shared workflow graph opens\."/);
+  assert.match(source, /"workflowGraphInitialZoomMode": "Default zoom mode applied when the workflow graph opens before any manual zoom action\."/);
+  assert.match(source, /const id of \["defaultUser", "workflowGraphLayoutMode", "workflowGraphInitialZoomMode", "refinementTolerance"/);
+  assert.match(source, /const id of \["defaultUser", "workflowGraphLayoutMode", "workflowGraphInitialZoomMode", "refinementTolerance", "mvpRigor", "reviewTolerance", "reviewEvidencePolicy", "autoRefinementAnswersProfile", "reviewLearningSkillPath"\]/);
   assert.match(source, /ResolveWorkflowPortalUserStoryIdAsync\(\s*applicationService,\s*workspaceRoot,\s*context\.Request,\s*requestSidebarVisibility,/);
   assert.match(source, /ResolveVisibleWorkflowPortalUserStoryIdAsync\(/);
   assert.match(source, /IsWorkflowPortalStoryVisible\(/);

@@ -27,6 +27,8 @@ internal sealed record SpecForgePortalSettings(
     bool PauseOnFailedReview,
     bool UseSemanticGraphWhenAvailable,
     bool AllowGraphBuildRefreshForTouchedUserStoryScope,
+    string WorkflowGraphLayoutMode,
+    string WorkflowGraphInitialZoomMode,
     string DefaultHarnessProfile,
     HarnessPhaseProfileAssignments? PhaseHarnessProfiles,
     string HarnessProfileAuthority,
@@ -162,6 +164,38 @@ internal static class SpecForgePortalSettingsStore
         if (!document.RootElement.TryGetProperty("allowGraphBuildRefreshForTouchedUserStoryScope", out _))
         {
             settings = settings with { AllowGraphBuildRefreshForTouchedUserStoryScope = false };
+        }
+
+        if (!document.RootElement.TryGetProperty("workflowGraphLayoutMode", out _)
+            || !string.Equals(settings.WorkflowGraphLayoutMode, "horizontal", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(settings.WorkflowGraphLayoutMode, "vertical", StringComparison.OrdinalIgnoreCase))
+        {
+            settings = settings with { WorkflowGraphLayoutMode = "vertical" };
+        }
+        else
+        {
+            settings = settings with
+            {
+                WorkflowGraphLayoutMode = string.Equals(settings.WorkflowGraphLayoutMode, "horizontal", StringComparison.OrdinalIgnoreCase)
+                    ? "horizontal"
+                    : "vertical"
+            };
+        }
+
+        if (!document.RootElement.TryGetProperty("workflowGraphInitialZoomMode", out _)
+            || !string.Equals(settings.WorkflowGraphInitialZoomMode, "actual-size", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(settings.WorkflowGraphInitialZoomMode, "fit-width", StringComparison.OrdinalIgnoreCase))
+        {
+            settings = settings with { WorkflowGraphInitialZoomMode = "actual-size" };
+        }
+        else
+        {
+            settings = settings with
+            {
+                WorkflowGraphInitialZoomMode = string.Equals(settings.WorkflowGraphInitialZoomMode, "fit-width", StringComparison.OrdinalIgnoreCase)
+                    ? "fit-width"
+                    : "actual-size"
+            };
         }
 
         if (!document.RootElement.TryGetProperty("reviewSubagentsEnabled", out _))
@@ -332,6 +366,8 @@ internal static class SpecForgePortalSettingsStore
             PauseOnFailedReview: true,
             UseSemanticGraphWhenAvailable: true,
             AllowGraphBuildRefreshForTouchedUserStoryScope: false,
+            WorkflowGraphLayoutMode: "vertical",
+            WorkflowGraphInitialZoomMode: "actual-size",
             DefaultHarnessProfile: HarnessProfileCatalog.BalancedProfileKey,
             PhaseHarnessProfiles: HarnessProfileRuntimeSettings.Default.PhaseProfiles,
             HarnessProfileAuthority: "workspace",
