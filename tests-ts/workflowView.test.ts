@@ -230,6 +230,91 @@ test("buildWorkflowHtml renders phase detail for the selected phase", () => {
   assert.doesNotMatch(html, /Audit Stream/);
 });
 
+test("buildWorkflowHtml renders harness profile details as inline property rows", () => {
+  const html = buildWorkflowHtml({
+    usId: "US-0042",
+    title: "Harness profile rendering",
+    category: "workflow",
+    status: "waiting-user",
+    currentPhase: "refinement",
+    directoryPath: "/tmp/us.US-0042",
+    workBranch: "feature/us-0042-harness-profile",
+    mainArtifactPath: "/tmp/us.md",
+    timelinePath: "/tmp/timeline.md",
+    rawTimeline: "raw timeline",
+    phases: [
+      {
+        phaseId: "refinement",
+        title: "Refinement",
+        order: 1,
+        requiresApproval: false,
+        expectsHumanIntervention: true,
+        isApproved: false,
+        isCurrent: true,
+        state: "current",
+        artifactPath: "/tmp/00-refinement.md",
+        executePromptPath: "/tmp/refinement.execute.md",
+        approvePromptPath: null,
+        executeSystemPromptPath: null,
+        approveSystemPromptPath: null,
+        harnessProfile: {
+          phaseId: "refinement",
+          selectedProfile: "balanced",
+          resolvedProfile: "balanced",
+          resolutionSource: "workflow-default",
+          isLocked: false,
+          overrideAllowedNow: true,
+          authority: "workspace",
+          lockMode: "none",
+          lockReason: null,
+          title: "Balanced",
+          summary: "Default delivery posture that keeps automation enabled while preserving phase-specific receipts, evidence, and controllable operator gates.",
+          traits: ["default", "automation-friendly", "auditable", "graph-aware"],
+          inheritsFrom: null
+        }
+      }
+    ],
+    controls: {
+      canContinue: true,
+      canApprove: false,
+      requiresApproval: false,
+      blockingReason: null,
+      canRestartFromSource: true,
+      regressionTargets: [],
+      rewindTargets: []
+    },
+    refinement: null,
+    events: [],
+    harnessProfileGovernance: {
+      authority: "workspace",
+      lockMode: "none",
+      allowPerUserStoryOverrides: true,
+      lockedPhaseIds: []
+    },
+    contextFilesDirectoryPath: "/tmp/context",
+    contextFiles: [],
+    attachmentsDirectoryPath: "/tmp/attachments",
+    attachments: []
+  }, {
+    selectedPhaseId: "refinement",
+    selectedArtifactContent: "# Refinement",
+    selectedOperationContent: null,
+    contextSuggestions: [],
+    settingsConfigured: true,
+    settingsMessage: null
+  }, "idle");
+
+  assert.match(html, /<p class="detail-property-list__row"><strong>Selected<\/strong>: <code>balanced<\/code><\/p>/);
+  assert.match(html, /<p class="detail-property-list__row"><strong>Resolved<\/strong>: <code>balanced<\/code><\/p>/);
+  assert.match(html, /<p class="detail-property-list__row"><strong>Source<\/strong>: <code>workflow-default<\/code><\/p>/);
+  assert.match(html, /<p class="detail-property-list__row"><strong>Authority<\/strong>: <code>workspace<\/code><\/p>/);
+  assert.match(html, /<p class="detail-property-list__row"><strong>Locked<\/strong>: <code>false<\/code><\/p>/);
+  assert.match(html, /<p class="detail-property-list__row"><strong>Override Allowed<\/strong>: <code>true<\/code><\/p>/);
+  assert.match(html, /<p class="detail-property-list__row"><strong>Governance lock mode<\/strong>: <code>none<\/code><\/p>/);
+  assert.match(html, /<p class="detail-property-list__row"><strong>Locked phases<\/strong>: <code>0<\/code><\/p>/);
+  assert.match(html, /detail-property-list--compact/);
+});
+
 test("buildWorkflowHtml exposes a focusable user story source section when capture is selected", () => {
   const html = buildWorkflowHtml({
     usId: "US-0001",

@@ -782,28 +782,34 @@ function renderHarnessProfileSection(
           <h3>${escapeHtml(harnessProfile.title)}</h3>
         </div>
       </div>
-      <div class="stat-grid">
-        <div><strong>Selected</strong><div><code>${escapeHtml(harnessProfile.selectedProfile)}</code></div></div>
-        <div><strong>Resolved</strong><div><code>${escapeHtml(harnessProfile.resolvedProfile)}</code></div></div>
-        <div><strong>Source</strong><div><code>${escapeHtml(harnessProfile.resolutionSource)}</code></div></div>
-        <div><strong>Authority</strong><div><code>${escapeHtml(harnessProfile.authority)}</code></div></div>
-        <div><strong>Locked</strong><div><code>${harnessProfile.isLocked ? "true" : "false"}</code></div></div>
-        <div><strong>Override Allowed</strong><div><code>${harnessProfile.overrideAllowedNow ? "true" : "false"}</code></div></div>
+      <div class="detail-property-list">
+        ${renderDetailPropertyRow("Selected", `<code>${escapeHtml(harnessProfile.selectedProfile)}</code>`)}
+        ${renderDetailPropertyRow("Resolved", `<code>${escapeHtml(harnessProfile.resolvedProfile)}</code>`)}
+        ${renderDetailPropertyRow("Source", `<code>${escapeHtml(harnessProfile.resolutionSource)}</code>`)}
+        ${renderDetailPropertyRow("Authority", `<code>${escapeHtml(harnessProfile.authority)}</code>`)}
+        ${renderDetailPropertyRow("Locked", `<code>${harnessProfile.isLocked ? "true" : "false"}</code>`)}
+        ${renderDetailPropertyRow("Override Allowed", `<code>${harnessProfile.overrideAllowedNow ? "true" : "false"}</code>`)}
       </div>
       <p class="panel-copy">${escapeHtml(harnessProfile.summary)}</p>
-      <div class="metadata-strip">
-        <span>Governance lock mode: <code>${escapeHtml(governance?.lockMode ?? harnessProfile.lockMode)}</code></span>
-        <span>Locked phases: <code>${escapeHtml(String(lockedPhaseCount))}</code></span>
-        ${harnessProfile.inheritsFrom ? `<span>Inherits from: <code>${escapeHtml(harnessProfile.inheritsFrom)}</code></span>` : ""}
+      <div class="detail-property-list detail-property-list--compact">
+        ${renderDetailPropertyRow("Governance lock mode", `<code>${escapeHtml(governance?.lockMode ?? harnessProfile.lockMode)}</code>`)}
+        ${renderDetailPropertyRow("Locked phases", `<code>${escapeHtml(String(lockedPhaseCount))}</code>`)}
+        ${harnessProfile.inheritsFrom
+          ? renderDetailPropertyRow("Inherits from", `<code>${escapeHtml(harnessProfile.inheritsFrom)}</code>`)
+          : ""}
       </div>
       ${harnessProfile.lockReason
-        ? `<p class="panel-copy">Lock reason: <code>${escapeHtml(harnessProfile.lockReason)}</code></p>`
+        ? `<p class="panel-copy detail-property-list__row detail-property-list__row--inline"><strong>Lock reason</strong>: <code>${escapeHtml(harnessProfile.lockReason)}</code></p>`
         : ""}
       <div class="tag-cloud">
         ${harnessProfile.traits.map((trait) => `<span class="tag-chip">${escapeHtml(trait)}</span>`).join("")}
       </div>
     </section>
   `;
+}
+
+function renderDetailPropertyRow(label: string, valueHtml: string): string {
+  return `<p class="detail-property-list__row"><strong>${escapeHtml(label)}</strong>: ${valueHtml}</p>`;
 }
 
 const genericExecutionMessages = [
@@ -4973,6 +4979,34 @@ export function buildWorkflowHtml(
       background: rgba(255, 255, 255, 0.025);
       min-width: 0;
       overflow: hidden;
+    }
+    .detail-property-list {
+      display: grid;
+      gap: 8px;
+      margin: 0 0 18px;
+      position: relative;
+      z-index: 2;
+    }
+    .detail-property-list--compact {
+      gap: 6px;
+      margin-bottom: 0;
+    }
+    .detail-property-list__row {
+      margin: 0;
+      line-height: 1.55;
+      color: rgba(236, 244, 255, 0.9);
+    }
+    .detail-property-list__row strong {
+      color: rgba(248, 251, 255, 0.98);
+      font-weight: 700;
+    }
+    .detail-property-list__row code {
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    .detail-property-list__row--inline {
+      margin-top: 14px;
+      margin-bottom: 0;
     }
     .detail-card--collapsible {
       padding: 0;
