@@ -130,6 +130,16 @@ test("CLI workflow portal payload includes sidebar stories and configuration URL
   assert.match(source, /if \(string\.IsNullOrWhiteSpace\(requestUsId\)\)[\s\S]*?"No selected user story\."/);
 });
 
+test("CLI workflow portal redirects to configuration when linked execution settings are invalid", async () => {
+  const source = await fs.promises.readFile(programPath, "utf8");
+
+  assert.match(source, /case \("GET", "\/"\):[\s\S]*?TryBuildWorkflowPortalConfigurationRedirect\(/);
+  assert.match(source, /ValidateLinkedExecutionConfiguration\(\)/);
+  assert.match(source, /BuildConfigurationPortalUrl\(workflowPortalOrigin, "providers"\)/);
+  assert.match(source, /context\.Response\.StatusCode = 302/);
+  assert.match(source, /context\.Response\.RedirectLocation = redirectLocation/);
+});
+
 test("CLI workflow portal infers a visible user story when possible and allows a no-selection state otherwise", async () => {
   const source = await fs.promises.readFile(programPath, "utf8");
 

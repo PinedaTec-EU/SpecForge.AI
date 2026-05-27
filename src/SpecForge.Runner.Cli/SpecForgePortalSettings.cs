@@ -95,6 +95,194 @@ internal sealed record SpecForgePortalSettings(
                     ReasoningEffort: profile.ReasoningEffort))
                 .ToList()
                 : RecommendedBootstrapAgentProfiles;
+
+    public PortalExecutionConfigurationValidation ValidateLinkedExecutionConfiguration()
+    {
+        if (ModelProfiles.Count == 0 && AgentProfiles.Count == 0)
+        {
+            return PortalExecutionConfigurationValidation.Valid();
+        }
+
+        var normalizedModelProfiles = ModelProfiles
+            .Select(static profile => profile with
+            {
+                Name = profile.Name.Trim(),
+                Provider = profile.Provider.Trim(),
+                BaseUrl = profile.BaseUrl.Trim(),
+                ApiKey = profile.ApiKey.Trim(),
+                Model = profile.Model.Trim()
+            })
+            .ToList();
+        var normalizedAgentProfiles = ResolveAgentProfiles()
+            .Select(static agent => agent with
+            {
+                Name = agent.Name.Trim(),
+                ModelProfile = agent.ModelProfile.Trim(),
+                RepositoryAccess = agent.RepositoryAccess.Trim()
+            })
+            .ToList();
+        var modelProfilesByName = normalizedModelProfiles
+            .GroupBy(static profile => profile.Name, StringComparer.Ordinal)
+            .ToDictionary(static group => group.Key, static group => group.ToList(), StringComparer.Ordinal);
+        var agentProfilesByName = normalizedAgentProfiles
+            .GroupBy(static agent => agent.Name, StringComparer.Ordinal)
+            .ToDictionary(static group => group.Key, static group => group.ToList(), StringComparer.Ordinal);
+
+        var defaultAgentName = NormalizeOptionalAssignment(PhaseAgentAssignments?.DefaultAgent)
+            ?? (normalizedAgentProfiles.Count == 1 ? NormalizeOptionalAssignment(normalizedAgentProfiles[0].Name) : null);
+        if (normalizedAgentProfiles.Count > 1
+            && defaultAgentName is null
+            && !HasExplicitAgentsForAllModelDrivenPhases(PhaseAgentAssignments))
+        {
+            return PortalExecutionConfigurationValidation.Invalid(
+                "A default fallback agent is required when multiple linked agents are configured.");
+        }
+
+        var referencedAgentNames = new HashSet<string>(StringComparer.Ordinal);
+        AddReferencedAgent(referencedAgentNames, defaultAgentName);
+        AddReferencedAgent(referencedAgentNames, ResolveAssignedAgent(PhaseAgentAssignments?.RefinementAgent, defaultAgentName));
+        AddReferencedAgent(referencedAgentNames, ResolveAssignedAgent(PhaseAgentAssignments?.SpecAgent, defaultAgentName));
+        AddReferencedAgent(referencedAgentNames, ResolveAssignedAgent(PhaseAgentAssignments?.TechnicalDesignAgent, defaultAgentName));
+        AddReferencedAgent(referencedAgentNames, ResolveAssignedAgent(PhaseAgentAssignments?.ImplementationAgent, defaultAgentName));
+        AddReferencedAgent(referencedAgentNames, ResolveAssignedAgent(PhaseAgentAssignments?.ReviewAgent, defaultAgentName));
+        AddReferencedAgent(referencedAgentNames, ResolveAssignedAgent(PhaseAgentAssignments?.ReleaseApprovalAgent, defaultAgentName));
+        AddReferencedAgent(referencedAgentNames, ResolveAssignedAgent(PhaseAgentAssignments?.PrPreparationAgent, defaultAgentName));
+
+        if (AutoRefinementAnswersEnabled)
+        {
+            var autoRefinementAgent = NormalizeOptionalAssignment(AutoRefinementAnswersProfile);
+            if (autoRefinementAgent is null)
+            {
+                return PortalExecutionConfigurationValidation.Invalid(
+                    "Model-driven refinement answers require a configured linked agent.");
+            }
+
+            AddReferencedAgent(referencedAgentNames, autoRefinementAgent);
+        }
+
+        foreach (var agentName in referencedAgentNames)
+        {
+            if (!agentProfilesByName.TryGetValue(agentName, out var agentMatches) || agentMatches.Count == 0)
+            {
+                return PortalExecutionConfigurationValidation.Invalid(
+                    $"Linked agent '{agentName}' was not configured.");
+            }
+
+            if (agentMatches.Count > 1)
+            {
+                return PortalExecutionConfigurationValidation.Invalid(
+                    $"Linked agent '{agentName}' is ambiguous because it is configured more than once.");
+            }
+
+            var agent = agentMatches[0];
+            if (string.IsNullOrWhiteSpace(agent.ModelProfile))
+            {
+                return PortalExecutionConfigurationValidation.Invalid(
+                    $"Linked agent '{agent.Name}' is missing its model profile.");
+            }
+
+            if (!modelProfilesByName.TryGetValue(agent.ModelProfile, out var modelMatches) || modelMatches.Count == 0)
+            {
+                return PortalExecutionConfigurationValidation.Invalid(
+                    $"Linked model profile '{agent.ModelProfile}' for agent '{agent.Name}' was not configured.");
+            }
+
+            if (modelMatches.Count > 1)
+            {
+                return PortalExecutionConfigurationValidation.Invalid(
+                    $"Linked model profile '{agent.ModelProfile}' is ambiguous because it is configured more than once.");
+            }
+
+            var model = modelMatches[0];
+            var provider = NormalizeProviderKind(model.Provider);
+            if (!IsSupportedProviderKind(provider))
+            {
+                return PortalExecutionConfigurationValidation.Invalid(
+                    $"Linked model profile '{model.Name}' uses unsupported provider '{model.Provider}'.");
+            }
+
+            if (!IsNativeCliProvider(provider) && string.IsNullOrWhiteSpace(model.BaseUrl))
+            {
+                return PortalExecutionConfigurationValidation.Invalid(
+                    $"Linked model profile '{model.Name}' is missing its base URL.");
+            }
+
+            if (!IsNativeCliProvider(provider) && string.IsNullOrWhiteSpace(model.Model))
+            {
+                return PortalExecutionConfigurationValidation.Invalid(
+                    $"Linked model profile '{model.Name}' is missing its model.");
+            }
+
+            if (!IsNativeCliProvider(provider)
+                && RequiresApiKey(model.BaseUrl)
+                && string.IsNullOrWhiteSpace(model.ApiKey))
+            {
+                return PortalExecutionConfigurationValidation.Invalid(
+                    $"Linked model profile '{model.Name}' needs an API key for its remote base URL.");
+            }
+        }
+
+        return PortalExecutionConfigurationValidation.Valid();
+    }
+
+    private static bool HasExplicitAgentsForAllModelDrivenPhases(OpenAiCompatiblePhaseAgentAssignments? assignments) =>
+        !string.IsNullOrWhiteSpace(assignments?.RefinementAgent)
+        && !string.IsNullOrWhiteSpace(assignments?.SpecAgent)
+        && !string.IsNullOrWhiteSpace(assignments?.TechnicalDesignAgent)
+        && !string.IsNullOrWhiteSpace(assignments?.ImplementationAgent)
+        && !string.IsNullOrWhiteSpace(assignments?.ReviewAgent)
+        && !string.IsNullOrWhiteSpace(assignments?.ReleaseApprovalAgent)
+        && !string.IsNullOrWhiteSpace(assignments?.PrPreparationAgent);
+
+    private static string? NormalizeOptionalAssignment(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string? ResolveAssignedAgent(string? explicitAssignment, string? defaultAgentName) =>
+        NormalizeOptionalAssignment(explicitAssignment) ?? defaultAgentName;
+
+    private static void AddReferencedAgent(ISet<string> referencedAgentNames, string? agentName)
+    {
+        if (!string.IsNullOrWhiteSpace(agentName))
+        {
+            referencedAgentNames.Add(agentName);
+        }
+    }
+
+    private static string NormalizeProviderKind(string? provider) =>
+        string.IsNullOrWhiteSpace(provider) ? "openai-compatible" : provider.Trim().ToLowerInvariant();
+
+    private static bool IsSupportedProviderKind(string provider) =>
+        provider is "openai-compatible" or "codex" or "copilot" or "claude";
+
+    private static bool IsNativeCliProvider(string provider) =>
+        provider is "codex" or "copilot" or "claude";
+
+    private static bool RequiresApiKey(string? baseUrl)
+    {
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        if (uri.IsLoopback)
+        {
+            return false;
+        }
+
+        var host = uri.Host.Trim();
+        return !host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+               && !host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)
+               && !host.Equals("::1", StringComparison.OrdinalIgnoreCase);
+    }
+}
+
+internal sealed record PortalExecutionConfigurationValidation(
+    bool IsValid,
+    string? Message)
+{
+    public static PortalExecutionConfigurationValidation Valid() => new(true, null);
+
+    public static PortalExecutionConfigurationValidation Invalid(string message) => new(false, message);
 }
 
 internal static class SpecForgePortalSettingsStore
@@ -405,4 +593,5 @@ internal static class SpecForgePortalSettingsStore
         || !string.IsNullOrWhiteSpace(assignments?.ReviewAgent)
         || !string.IsNullOrWhiteSpace(assignments?.ReleaseApprovalAgent)
         || !string.IsNullOrWhiteSpace(assignments?.PrPreparationAgent);
+
 }

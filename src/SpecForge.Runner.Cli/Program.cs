@@ -349,6 +349,16 @@ static async Task HandleWorkflowPortalRequestAsync(
         switch ((context.Request.HttpMethod, path))
         {
             case ("GET", "/"):
+                if (TryBuildWorkflowPortalConfigurationRedirect(
+                        workspaceRoot,
+                        context.Request.Url?.GetLeftPart(UriPartial.Authority) ?? "http://localhost:5128",
+                        out var redirectLocation))
+                {
+                    context.Response.StatusCode = 302;
+                    context.Response.RedirectLocation = redirectLocation;
+                    context.Response.Close();
+                    return;
+                }
                 await WriteHtmlResponseAsync(
                     context.Response,
                     await BuildWorkflowPortalHtmlAsync(
@@ -1590,6 +1600,7 @@ static string ResolveCurrentGitOwner(string workspaceRoot) =>
 static JsonNode BuildConfigurationSettingsResponse(string workspaceRoot, SpecForgePortalSettings? settings = null)
 {
     settings ??= SpecForgePortalSettingsStore.LoadOrDefault(workspaceRoot);
+    var executionValidation = settings.ValidateLinkedExecutionConfiguration();
     var detectedGitUser = WorkspaceActorResolver.TryDetectGitUser(workspaceRoot);
     var configuredUser = WorkspaceActorResolver.NormalizeConfiguredUser(settings.DefaultUser);
     var identityError = string.IsNullOrWhiteSpace(configuredUser)
@@ -1608,7 +1619,25 @@ static JsonNode BuildConfigurationSettingsResponse(string workspaceRoot, SpecFor
     node["gitUserMismatchWarning"] = gitUserMismatch
         ? $"Configured user '{configuredUser}' differs from detected git user '{detectedGitUser}'. Owner filtering and local workflow actions will use the configured user."
         : null;
+    node["workflowExecutionConfigured"] = executionValidation.IsValid;
+    node["workflowExecutionError"] = executionValidation.Message;
     return node;
+}
+
+static bool TryBuildWorkflowPortalConfigurationRedirect(
+    string workspaceRoot,
+    string workflowPortalOrigin,
+    out string redirectLocation)
+{
+    var executionValidation = SpecForgePortalSettingsStore.LoadOrDefault(workspaceRoot).ValidateLinkedExecutionConfiguration();
+    if (executionValidation.IsValid)
+    {
+        redirectLocation = string.Empty;
+        return false;
+    }
+
+    redirectLocation = BuildConfigurationPortalUrl(workflowPortalOrigin, "providers");
+    return true;
 }
 
 static async Task<string> RenderWorkflowHtmlWithNodeAsync(string payload)

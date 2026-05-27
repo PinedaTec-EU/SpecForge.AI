@@ -244,6 +244,195 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
         Assert.Equal(string.Empty, loaded.DefaultUser);
     }
 
+    [Fact]
+    public void ValidateLinkedExecutionConfiguration_AllowsUnusedIncompleteModels()
+    {
+        var settings = SpecForgePortalSettingsStore.Deserialize(
+            """
+            {
+              "modelProfiles": [
+                {
+                  "name": "planner-model",
+                  "provider": "openai-compatible",
+                  "baseUrl": "http://localhost:11434/v1",
+                  "apiKey": "",
+                  "model": "llama3.1",
+                  "repositoryAccess": "read"
+                },
+                {
+                  "name": "unused-broken",
+                  "provider": "openai-compatible",
+                  "baseUrl": "",
+                  "apiKey": "",
+                  "model": "",
+                  "repositoryAccess": "read"
+                }
+              ],
+              "agentProfiles": [
+                {
+                  "name": "planner",
+                  "role": "planner",
+                  "modelProfile": "planner-model",
+                  "instructions": "",
+                  "repositoryAccess": "read"
+                },
+                {
+                  "name": "unused-agent",
+                  "role": "unused",
+                  "modelProfile": "unused-broken",
+                  "instructions": "",
+                  "repositoryAccess": "read"
+                }
+              ],
+              "phaseAgentAssignments": {
+                "defaultAgent": "planner"
+              },
+              "refinementTolerance": "balanced",
+              "mvpRigor": "medium",
+              "reviewTolerance": "balanced",
+              "reviewEvidencePolicy": "balanced",
+              "technicalDesignSubagentsEnabled": false,
+              "reviewSubagentsEnabled": true,
+              "autoRefinementAnswersEnabled": false,
+              "autoRefinementAnswersProfile": null,
+              "autoPlayEnabled": true,
+              "autoReviewEnabled": true,
+              "maxRefinementCycles": 5,
+              "maxImplementationReviewCycles": 5,
+              "destructiveRewindEnabled": false,
+              "pauseOnFailedReview": true,
+              "useSemanticGraphWhenAvailable": true,
+              "allowGraphBuildRefreshForTouchedUserStoryScope": false,
+              "workflowGraphLayoutMode": "vertical",
+              "workflowGraphInitialZoomMode": "fit-width",
+              "reviewLearningEnabled": true,
+              "reviewLearningSkillPath": ".codex/skills/sdd-phase-agents/SKILL.md",
+              "completedUsLockOnCompleted": false
+            }
+            """);
+
+        var validation = settings.ValidateLinkedExecutionConfiguration();
+
+        Assert.True(validation.IsValid);
+        Assert.Null(validation.Message);
+    }
+
+    [Fact]
+    public void ValidateLinkedExecutionConfiguration_BlocksReferencedIncompleteModels()
+    {
+        var settings = SpecForgePortalSettingsStore.Deserialize(
+            """
+            {
+              "modelProfiles": [
+                {
+                  "name": "planner-model",
+                  "provider": "openai-compatible",
+                  "baseUrl": "",
+                  "apiKey": "",
+                  "model": "gpt-5.4",
+                  "repositoryAccess": "read"
+                }
+              ],
+              "agentProfiles": [
+                {
+                  "name": "planner",
+                  "role": "planner",
+                  "modelProfile": "planner-model",
+                  "instructions": "",
+                  "repositoryAccess": "read"
+                }
+              ],
+              "phaseAgentAssignments": {
+                "defaultAgent": "planner"
+              },
+              "refinementTolerance": "balanced",
+              "mvpRigor": "medium",
+              "reviewTolerance": "balanced",
+              "reviewEvidencePolicy": "balanced",
+              "technicalDesignSubagentsEnabled": false,
+              "reviewSubagentsEnabled": true,
+              "autoRefinementAnswersEnabled": false,
+              "autoRefinementAnswersProfile": null,
+              "autoPlayEnabled": true,
+              "autoReviewEnabled": true,
+              "maxRefinementCycles": 5,
+              "maxImplementationReviewCycles": 5,
+              "destructiveRewindEnabled": false,
+              "pauseOnFailedReview": true,
+              "useSemanticGraphWhenAvailable": true,
+              "allowGraphBuildRefreshForTouchedUserStoryScope": false,
+              "workflowGraphLayoutMode": "vertical",
+              "workflowGraphInitialZoomMode": "fit-width",
+              "reviewLearningEnabled": true,
+              "reviewLearningSkillPath": ".codex/skills/sdd-phase-agents/SKILL.md",
+              "completedUsLockOnCompleted": false
+            }
+            """);
+
+        var validation = settings.ValidateLinkedExecutionConfiguration();
+
+        Assert.False(validation.IsValid);
+        Assert.Equal("Linked model profile 'planner-model' is missing its base URL.", validation.Message);
+    }
+
+    [Fact]
+    public void ValidateLinkedExecutionConfiguration_BlocksAutoRefinementWithoutLinkedAgent()
+    {
+        var settings = SpecForgePortalSettingsStore.Deserialize(
+            """
+            {
+              "modelProfiles": [
+                {
+                  "name": "planner-model",
+                  "provider": "codex",
+                  "baseUrl": "",
+                  "apiKey": "",
+                  "model": "",
+                  "repositoryAccess": "read"
+                }
+              ],
+              "agentProfiles": [
+                {
+                  "name": "planner",
+                  "role": "planner",
+                  "modelProfile": "planner-model",
+                  "instructions": "",
+                  "repositoryAccess": "read"
+                }
+              ],
+              "phaseAgentAssignments": {
+                "defaultAgent": "planner"
+              },
+              "refinementTolerance": "balanced",
+              "mvpRigor": "medium",
+              "reviewTolerance": "balanced",
+              "reviewEvidencePolicy": "balanced",
+              "technicalDesignSubagentsEnabled": false,
+              "reviewSubagentsEnabled": true,
+              "autoRefinementAnswersEnabled": true,
+              "autoRefinementAnswersProfile": null,
+              "autoPlayEnabled": true,
+              "autoReviewEnabled": true,
+              "maxRefinementCycles": 5,
+              "maxImplementationReviewCycles": 5,
+              "destructiveRewindEnabled": false,
+              "pauseOnFailedReview": true,
+              "useSemanticGraphWhenAvailable": true,
+              "allowGraphBuildRefreshForTouchedUserStoryScope": false,
+              "workflowGraphLayoutMode": "vertical",
+              "workflowGraphInitialZoomMode": "fit-width",
+              "reviewLearningEnabled": true,
+              "reviewLearningSkillPath": ".codex/skills/sdd-phase-agents/SKILL.md",
+              "completedUsLockOnCompleted": false
+            }
+            """);
+
+        var validation = settings.ValidateLinkedExecutionConfiguration();
+
+        Assert.False(validation.IsValid);
+        Assert.Equal("Model-driven refinement answers require a configured linked agent.", validation.Message);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(workspaceRoot))
