@@ -11,7 +11,7 @@ test("suggestContextFiles mixes heuristic matches with repo neighbors", async ()
   try {
     await fs.mkdir(path.join(workspaceRoot, "src/SpecForge.Domain/Application"), { recursive: true });
     await fs.mkdir(path.join(workspaceRoot, "tests/SpecForge.Domain.Tests/Application"), { recursive: true });
-    await fs.mkdir(path.join(workspaceRoot, "doc"), { recursive: true });
+    await fs.mkdir(path.join(workspaceRoot, "doc/reference"), { recursive: true });
     await fs.mkdir(path.join(workspaceRoot, ".specs"), { recursive: true });
 
     await fs.writeFile(path.join(workspaceRoot, "src/SpecForge.Domain/Application/WorkflowRunner.cs"), "// source");

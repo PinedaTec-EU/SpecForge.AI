@@ -15,8 +15,8 @@ test("CLI phase commands route through the application service", async () => {
   assert.match(source, /case "import-us":[\s\S]*?CreateApplicationService\(args\)/);
   assert.match(source, /case "continue-phase":[\s\S]*?CreateApplicationService\(args\)/);
   assert.match(source, /case "approve-phase":[\s\S]*?CreateApplicationService\(args\)/);
-  assert.match(source, /GenerateNextPhaseAsync\(workspaceRoot, usId, "cli-user"\)/);
-  assert.match(source, /ApprovePhaseAsync\([\s\S]*?"cli-user"\)/);
+  assert.match(source, /GenerateNextPhaseAsync\(workspaceRoot, usId, ResolveCurrentGitOwner\(workspaceRoot\)\)/);
+  assert.match(source, /ApprovePhaseAsync\([\s\S]*?ResolveCurrentGitOwner\(workspaceRoot\)\)/);
   assert.doesNotMatch(source, /HandleContinuePhaseAsync\(WorkflowRunner/);
   assert.doesNotMatch(source, /HandleApprovePhaseAsync\(\s*WorkflowRunner/);
 });
@@ -25,8 +25,8 @@ test("CLI workflow portal exposes refinement answer submission endpoint", async 
   const source = await fs.promises.readFile(programPath, "utf8");
 
   assert.match(source, /case \("POST", "\/api\/refinement-answers"\):/);
-  assert.match(source, /JsonSerializer\.Deserialize<RefinementAnswersSubmitRequest>/);
-  assert.match(source, /SubmitRefinementAnswersAsync\([\s\S]*?request\.Answers[\s\S]*?request\.Actor \?\? "cli-user"/);
+  assert.match(source, /ReadJsonRequestAsync<RefinementAnswersSubmitRequest>/);
+  assert.match(source, /SubmitRefinementAnswersAsync\([\s\S]*?request\.Answers[\s\S]*?request\.Actor \?\? ResolveCurrentGitOwner\(workspaceRoot\)/);
   assert.match(source, /internal sealed record RefinementAnswersSubmitRequest\(IReadOnlyList<string> Answers, string\? Actor\);/);
 });
 
@@ -153,7 +153,7 @@ test("CLI workflow portal exposes reset and lineage endpoints for sidebar action
   assert.match(source, /JsonSerializer\.Deserialize<UserStoryActionRequest>/);
   assert.match(source, /ResetUserStoryToCaptureAsync\(workspaceRoot, request\.UsId\)/);
   assert.match(source, /AnalyzeUserStoryLineageAsync\(workspaceRoot, request\.UsId\)/);
-  assert.match(source, /RepairUserStoryLineageAsync\(workspaceRoot, request\.UsId, request\.Actor \?\? "cli-user"\)/);
+  assert.match(source, /RepairUserStoryLineageAsync\(workspaceRoot, request\.UsId, request\.Actor \?\? ResolveCurrentGitOwner\(workspaceRoot\)\)/);
   assert.match(source, /internal sealed record UserStoryActionRequest\(string UsId, string\? Actor\);/);
 });
 
@@ -170,8 +170,8 @@ test("CLI workflow portal resolves current actor from git user.name before email
   const source = await fs.promises.readFile(programPath, "utf8");
 
   assert.match(source, /static string ResolveCurrentGitOwner\(string workspaceRoot\)/);
-  assert.match(source, /var userName = TryRunGitConfig\(workspaceRoot, "user\.name"\);[\s\S]*?return candidate;/);
-  assert.match(source, /var email = TryRunGitConfig\(workspaceRoot, "user\.email"\);[\s\S]*?email\.Split\('@', 2\)\[0\]/);
+  assert.match(source, /WorkspaceActorResolver\.ResolveForWorkspace\(workspaceRoot\)/);
+  assert.match(source, /WorkspaceActorResolver\.TryDetectGitUser\(workspaceRoot\)/);
 });
 
 test("CLI writes JSON with web serializer options for record responses", async () => {

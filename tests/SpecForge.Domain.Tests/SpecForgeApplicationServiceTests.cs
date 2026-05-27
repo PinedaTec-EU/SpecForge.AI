@@ -29,7 +29,7 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     public async Task ListUserStoriesAsync_FromUserStoryWorktree_StillReadsControlWorkspaceCatalog()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -1430,7 +1430,7 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     public async Task GetUserStoryWorkflowAsync_ExposesReleaseApprovalPolicyVisibility()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");
@@ -1478,7 +1478,7 @@ public sealed class SpecForgeApplicationServiceTests : IDisposable
     public async Task GetUserStoryWorkflowAsync_ExposesReceiptLinkedReleaseApprovalPolicySnapshot()
     {
         await InitializeGitWorkspaceAsync(workspaceRoot);
-        await RunGitAsync(workspaceRoot, "checkout", "-b", "main");
+        await RunGitAsync(workspaceRoot, "checkout", "-B", "main");
         await File.WriteAllTextAsync(Path.Combine(workspaceRoot, "README.md"), "seed");
         await RunGitAsync(workspaceRoot, "add", "README.md");
         await RunGitAsync(workspaceRoot, "commit", "-m", "seed");

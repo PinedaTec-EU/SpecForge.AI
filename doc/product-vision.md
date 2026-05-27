@@ -49,6 +49,8 @@ Central must also act as a policy control plane. A platform owner can publish ma
 
 SpecForge Central is intended as a private, controlled enterprise offering. It is not a public/open rollout target. Commercial use should be treated as a paid product engagement. A future self-hosted option may exist, but only with deliberately limited and governed capabilities.
 
+The intended product split is explicit: SpecForge.AI remains a useful public repository-local runtime, while SpecForge Central adds organization-grade governance and shared infrastructure. Central should monetize governed shared capabilities such as enterprise retrieval, connector-backed access, policy distribution, and audit rather than basic local workflow or basic repository intelligence. See [specforge-and-central.md](specforge-and-central.md).
+
 The Central work surface should be familiar enough for teams that use issue trackers, but it should not become a Scrum clone. The central objects are governed user stories, specs, evidence, workflow gates, blockers, policy state, repositories, and audit decisions.
 
 ## Principles

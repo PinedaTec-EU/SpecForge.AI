@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/PinedaTec-EU/SpecForge.AI">
-    <img loading="lazy" alt="SpecForge.AI" src="./doc/images/banner.png" width="85%"/>
+    <img loading="lazy" alt="SpecForge.AI" src="./doc/images/specforge-linkedin-workflow.png" width="85%"/>
   </a>
 </p>
 
@@ -48,6 +48,8 @@ Today the product ships as:
 - a local MCP server over `stdio`
 - a self-contained browser workflow portal
 - a packaged Codex/MCP plugin bundle for repository-local use
+
+The product boundary between the public local runtime and the private Central side project is documented in [doc/specforge-and-central.md](doc/specforge-and-central.md).
 
 ## Why Teams Pick It
 
@@ -106,12 +108,14 @@ Near-term priorities:
 Strategic product direction:
 
 - SpecForge Central as a private enterprise control plane for managed repositories, readiness checks, policy distribution, workflow visibility, drift detection, and audit
+- governed shared retrieval, enterprise connectors, and organization-grade tool gateway capabilities through SpecForge Central without weakening the standalone local runtime
 
 The fuller roadmap lives in [doc/roadmap.md](doc/roadmap.md) and the implementation history in [doc/implementation-plan.md](doc/implementation-plan.md).
 
 ## Start Here
 
 - evaluating the product: [doc/getting-started.md](doc/getting-started.md)
+- consuming the local debug runtime from side projects: [doc/consumer-debug-runtime.md](doc/consumer-debug-runtime.md)
 - configuring model and agent routing: [doc/model-configuration.md](doc/model-configuration.md)
 - understanding runtime behavior and persistence: [doc/runtime-and-persistence.md](doc/runtime-and-persistence.md)
 - contributing to the codebase: [doc/developer-onboarding.md](doc/developer-onboarding.md)

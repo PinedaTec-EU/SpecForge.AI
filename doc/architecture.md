@@ -57,12 +57,14 @@ Responsibilities:
 - register, edit, disable, and remove repository references
 - show repository readiness and workflow status across the portfolio
 - route create, import, inspect, and continue actions to the selected repository
+- act as the primary managed gateway for shared execution tools that require cross-repository policy, centrally managed secrets, shared retrieval infrastructure, or portfolio-wide audit
 
 Non-responsibilities:
 
 - storing repository-local workflow artifacts as the primary truth
 - deleting repositories or `.specs/` data when a catalog entry is removed
 - executing a single user story across several repositories in phase 1
+- becoming the mandatory path for trivial current-repository reads or basic local repository intelligence
 
 ### 5. Repository As Source Of Truth
 
@@ -76,6 +78,8 @@ Responsibilities:
 ## Main Design Rule
 
 The extension, MCP clients, self-contained workflow portal, and central portal orchestrate interaction. The MCP/domain boundary decides lifecycle. SpecForge Central selects and monitors repositories. Each repository preserves traceability for its own workflows.
+
+For the broader product boundary, treat SpecForge.AI as the local governed runtime and SpecForge Central as the managed control plane and governed gateway for shared organizational intelligence. See [specforge-and-central.md](specforge-and-central.md) and [execution-tool-packaging.md](execution-tool-packaging.md).
 
 For the browser workflow portal specifically, page-level state ownership must stay explicit. Global portal state belongs to the parent shell, repository truth belongs to the backend/domain, and host-specific UI behavior must not leak browser-only routing or iframe assumptions into the VS Code extension. The frozen contract is documented in [portal-state-contract.md](portal-state-contract.md).
 

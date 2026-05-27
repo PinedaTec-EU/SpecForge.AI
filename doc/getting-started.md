@@ -80,6 +80,17 @@ Minimal MCP config example:
 }
 ```
 
+## Consumer Repo In Debug
+
+Use this when a sibling side project should consume the current local `SpecForge.AI` runtime instead of copying a standalone plugin snapshot.
+
+1. In `SpecForge.AI`, run `npm run compile`.
+2. In `SpecForge.AI`, run `./tools/sync-local-plugin-marketplace.sh`.
+3. In the consumer repository, point direct MCP clients to `./.agents/plugins/specforge-ai/mcp/SpecForge.McpServer`.
+4. Reload the consumer client after each runtime refresh when needed.
+
+The detailed contract for this flow lives in [consumer-debug-runtime.md](consumer-debug-runtime.md).
+
 ## Product Surfaces
 
 In practice, SpecForge currently ships across four surfaces:
