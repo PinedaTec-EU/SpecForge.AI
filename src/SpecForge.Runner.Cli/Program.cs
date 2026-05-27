@@ -674,7 +674,9 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
         showCreateForm,
         watchingUserStoryIds,
         hiddenUserStoryIds,
-        currentActor);
+        currentActor,
+        portalSettings.WorkflowGraphLayoutMode,
+        portalSettings.WorkflowGraphInitialZoomMode);
     var cachePhaseId = resolvedSelectedPhaseId ?? "__none__";
     if (renderCache.TryGet(renderCacheSignature, cachePhaseId, selectedPhase, out var cachedHtml))
     {
@@ -1559,7 +1561,9 @@ static string BuildWorkflowPortalRenderCacheSignature(
     bool showCreateForm,
     IReadOnlyList<string> watchingUserStoryIds,
     IReadOnlyList<string> hiddenUserStoryIds,
-    string currentActor)
+    string currentActor,
+    string workflowGraphLayoutMode,
+    string workflowGraphInitialZoomMode)
 {
     var viewState = JsonSerializer.Serialize(
         new
@@ -1572,7 +1576,9 @@ static string BuildWorkflowPortalRenderCacheSignature(
             showCreateForm,
             watchingUserStoryIds,
             hiddenUserStoryIds,
-            currentActor
+            currentActor,
+            workflowGraphLayoutMode,
+            workflowGraphInitialZoomMode
         },
         SpecForgePortalSettingsStore.JsonOptions);
     return $"{workflowSignature}:{viewState}";
