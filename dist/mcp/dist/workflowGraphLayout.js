@@ -41,6 +41,8 @@ exports.writeWorkflowGraphLayoutConfigAsync = writeWorkflowGraphLayoutConfigAsyn
 exports.updateWorkflowGraphLayoutPositionsAsync = updateWorkflowGraphLayoutPositionsAsync;
 exports.updateWorkflowGraphLegendPositionAsync = updateWorkflowGraphLegendPositionAsync;
 exports.updateAggregateWorkflowGraphLayoutAsync = updateAggregateWorkflowGraphLayoutAsync;
+exports.updateWorkflowGraphLayoutModeOverrideAsync = updateWorkflowGraphLayoutModeOverrideAsync;
+exports.resolveWorkflowGraphLayoutMode = resolveWorkflowGraphLayoutMode;
 const fs = __importStar(require("node:fs"));
 const path = __importStar(require("node:path"));
 const workflowGraphPhaseIds = [
@@ -163,6 +165,9 @@ function cloneAggregateWorkflowGraphLayoutConfig(config) {
         spacing: { ...config.spacing }
     };
 }
+function cloneUserStoryLayoutModes(userStoryLayoutModes) {
+    return Object.fromEntries(Object.entries(userStoryLayoutModes).filter(([, value]) => value === "horizontal" || value === "vertical"));
+}
 async function ensureWorkflowGraphLayoutConfigExistsAsync(workspaceRoot) {
     const filePath = getWorkflowGraphLayoutPath(workspaceRoot);
     try {
@@ -187,7 +192,8 @@ async function ensureWorkflowGraphLayoutConfigExistsAsync(workspaceRoot) {
             vertical: exports.defaultVerticalWorkflowGraphLoops
         },
         aggregate: cloneDefaultAggregateWorkflowGraphLayout(),
-        aggregateUserStories: {}
+        aggregateUserStories: {},
+        userStoryLayoutModes: {}
     }), "utf8");
     appendWorkflowGraphLayoutLog(`Created workflow graph layout bootstrap at '${filePath}'.`);
 }
@@ -216,7 +222,8 @@ async function readWorkflowGraphLayoutConfigAsync(workspaceRoot) {
                 vertical: { ...exports.defaultVerticalWorkflowGraphLoops }
             },
             aggregate: cloneDefaultAggregateWorkflowGraphLayout(),
-            aggregateUserStories: {}
+            aggregateUserStories: {},
+            userStoryLayoutModes: {}
         };
     }
 }
@@ -243,7 +250,10 @@ async function updateWorkflowGraphLayoutPositionsAsync(workspaceRoot, mode, posi
         loops: {
             horizontal: { ...current.loops.horizontal },
             vertical: { ...current.loops.vertical }
-        }
+        },
+        aggregate: cloneAggregateWorkflowGraphLayoutConfig(current.aggregate),
+        aggregateUserStories: Object.fromEntries(Object.entries(current.aggregateUserStories).map(([key, value]) => [key, cloneAggregateWorkflowGraphLayoutConfig(value)])),
+        userStoryLayoutModes: cloneUserStoryLayoutModes(current.userStoryLayoutModes)
     };
     const target = mode === "horizontal" ? next.horizontal : next.vertical;
     for (const phaseId of workflowGraphPhaseIds) {
@@ -288,7 +298,10 @@ async function updateWorkflowGraphLegendPositionAsync(workspaceRoot, mode, posit
         loops: {
             horizontal: { ...current.loops.horizontal },
             vertical: { ...current.loops.vertical }
-        }
+        },
+        aggregate: cloneAggregateWorkflowGraphLayoutConfig(current.aggregate),
+        aggregateUserStories: Object.fromEntries(Object.entries(current.aggregateUserStories).map(([key, value]) => [key, cloneAggregateWorkflowGraphLayoutConfig(value)])),
+        userStoryLayoutModes: cloneUserStoryLayoutModes(current.userStoryLayoutModes)
     };
     await writeWorkflowGraphLayoutConfigAsync(workspaceRoot, next);
     return next;
@@ -321,10 +334,57 @@ async function updateAggregateWorkflowGraphLayoutAsync(workspaceRoot, aggregate,
             vertical: { ...current.loops.vertical }
         },
         aggregate: nextAggregate,
-        aggregateUserStories: nextAggregateUserStories
+        aggregateUserStories: nextAggregateUserStories,
+        userStoryLayoutModes: cloneUserStoryLayoutModes(current.userStoryLayoutModes)
     };
     await writeWorkflowGraphLayoutConfigAsync(workspaceRoot, next);
     return next;
+}
+async function updateWorkflowGraphLayoutModeOverrideAsync(workspaceRoot, userStoryId, mode) {
+    const normalizedUserStoryId = userStoryId.trim();
+    if (!normalizedUserStoryId) {
+        return readWorkflowGraphLayoutConfigAsync(workspaceRoot);
+    }
+    const current = await readWorkflowGraphLayoutConfigAsync(workspaceRoot);
+    const nextUserStoryLayoutModes = cloneUserStoryLayoutModes(current.userStoryLayoutModes);
+    if (mode === "horizontal" || mode === "vertical") {
+        nextUserStoryLayoutModes[normalizedUserStoryId] = mode;
+    }
+    else {
+        delete nextUserStoryLayoutModes[normalizedUserStoryId];
+    }
+    const next = {
+        ...current,
+        horizontal: { ...current.horizontal },
+        vertical: { ...current.vertical },
+        legend: {
+            horizontal: { ...current.legend.horizontal },
+            vertical: { ...current.legend.vertical }
+        },
+        connections: {
+            horizontal: { ...current.connections.horizontal },
+            vertical: { ...current.connections.vertical }
+        },
+        loops: {
+            horizontal: { ...current.loops.horizontal },
+            vertical: { ...current.loops.vertical }
+        },
+        aggregate: cloneAggregateWorkflowGraphLayoutConfig(current.aggregate),
+        aggregateUserStories: Object.fromEntries(Object.entries(current.aggregateUserStories).map(([key, value]) => [key, cloneAggregateWorkflowGraphLayoutConfig(value)])),
+        userStoryLayoutModes: nextUserStoryLayoutModes
+    };
+    await writeWorkflowGraphLayoutConfigAsync(workspaceRoot, next);
+    return next;
+}
+function resolveWorkflowGraphLayoutMode(config, userStoryId, fallbackMode = "vertical") {
+    const normalizedUserStoryId = userStoryId?.trim();
+    if (normalizedUserStoryId) {
+        const override = config?.userStoryLayoutModes?.[normalizedUserStoryId];
+        if (override === "horizontal" || override === "vertical") {
+            return override;
+        }
+    }
+    return fallbackMode === "horizontal" ? "horizontal" : "vertical";
 }
 function parseWorkflowGraphLayoutConfig(raw) {
     const horizontal = { ...exports.defaultHorizontalWorkflowGraphPositions };
@@ -343,6 +403,7 @@ function parseWorkflowGraphLayoutConfig(raw) {
     };
     const aggregate = cloneDefaultAggregateWorkflowGraphLayout();
     const aggregateUserStories = {};
+    const userStoryLayoutModes = {};
     let currentMode = null;
     let currentSection = "positions";
     let currentPhaseId = null;
@@ -351,6 +412,7 @@ function parseWorkflowGraphLayoutConfig(raw) {
     let currentLegendTarget = null;
     let inAggregate = false;
     let inAggregateUserStories = false;
+    let inUserStoryLayoutModes = false;
     let aggregateSection = null;
     let currentAggregateAnchorId = null;
     let currentAggregateUserStoryId = null;
@@ -407,10 +469,11 @@ function parseWorkflowGraphLayoutConfig(raw) {
             continue;
         }
         const modeMatch = /^(horizontal|vertical):\s*$/.exec(trimmed);
-        if (modeMatch) {
+        if (modeMatch && !inUserStoryLayoutModes) {
             commitPending();
             inAggregate = false;
             inAggregateUserStories = false;
+            inUserStoryLayoutModes = false;
             aggregateSection = null;
             currentAggregateAnchorId = null;
             currentAggregateUserStoryId = null;
@@ -433,6 +496,7 @@ function parseWorkflowGraphLayoutConfig(raw) {
             commitPending();
             inAggregate = true;
             inAggregateUserStories = false;
+            inUserStoryLayoutModes = false;
             aggregateSection = null;
             currentAggregateAnchorId = null;
             currentAggregateUserStoryId = null;
@@ -454,6 +518,7 @@ function parseWorkflowGraphLayoutConfig(raw) {
             commitPending();
             inAggregate = false;
             inAggregateUserStories = true;
+            inUserStoryLayoutModes = false;
             aggregateSection = null;
             currentAggregateAnchorId = null;
             currentAggregateUserStoryId = null;
@@ -469,6 +534,35 @@ function parseWorkflowGraphLayoutConfig(raw) {
             pendingLoopFromPhaseId = null;
             pendingLoopToPhaseId = null;
             pendingLoopSide = null;
+            continue;
+        }
+        if (trimmed === "userStoryLayoutModes:") {
+            commitPending();
+            inAggregate = false;
+            inAggregateUserStories = false;
+            inUserStoryLayoutModes = true;
+            aggregateSection = null;
+            currentAggregateAnchorId = null;
+            currentAggregateUserStoryId = null;
+            currentMode = null;
+            currentPhaseId = null;
+            currentEdgeId = null;
+            currentLoopId = null;
+            currentLegendTarget = null;
+            pendingX = null;
+            pendingY = null;
+            pendingFromAnchor = null;
+            pendingToAnchor = null;
+            pendingLoopFromPhaseId = null;
+            pendingLoopToPhaseId = null;
+            pendingLoopSide = null;
+            continue;
+        }
+        if (inUserStoryLayoutModes) {
+            const userStoryLayoutModeMatch = /^([A-Za-z0-9._-]+):\s*(horizontal|vertical)\s*$/.exec(trimmed);
+            if (userStoryLayoutModeMatch) {
+                userStoryLayoutModes[userStoryLayoutModeMatch[1]] = userStoryLayoutModeMatch[2];
+            }
             continue;
         }
         if (inAggregateUserStories) {
@@ -653,7 +747,7 @@ function parseWorkflowGraphLayoutConfig(raw) {
         }
     }
     commitPending();
-    return { horizontal, vertical, legend, connections, loops, aggregate, aggregateUserStories };
+    return { horizontal, vertical, legend, connections, loops, aggregate, aggregateUserStories, userStoryLayoutModes };
 }
 function serializeWorkflowGraphLayoutConfig(config) {
     const serializeMode = (mode) => {
@@ -694,6 +788,9 @@ function serializeWorkflowGraphLayoutConfig(config) {
         serializeMode("horizontal"),
         "",
         serializeMode("vertical"),
+        "",
+        "userStoryLayoutModes:",
+        ...Object.keys(config.userStoryLayoutModes).sort().map((userStoryId) => `  ${userStoryId}: ${config.userStoryLayoutModes[userStoryId] === "horizontal" ? "horizontal" : "vertical"}`),
         "",
         "aggregate:",
         "  positions:",

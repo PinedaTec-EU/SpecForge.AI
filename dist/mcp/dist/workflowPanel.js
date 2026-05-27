@@ -266,6 +266,7 @@ class WorkflowPanelController {
                 await this.renderCachedWorkflowAsync("command:selectIteration");
                 return;
             case "saveWorkflowGraphLayout":
+                let requiresRefresh = false;
                 if (message.layoutKind === "aggregate" && message.aggregate) {
                     const positions = message.aggregate.positions;
                     const spacing = message.aggregate.spacing;
@@ -288,16 +289,25 @@ class WorkflowPanelController {
                     if (message.layoutMode && message.legendPosition) {
                         await (0, workflowGraphLayout_1.updateWorkflowGraphLegendPositionAsync)(this.workspaceRoot, message.layoutMode, message.legendPosition);
                     }
-                    await this.refreshAsync("command:saveWorkflowGraphLayout:aggregate");
+                    requiresRefresh = true;
                 }
                 else if (message.layoutMode) {
+                    if (message.userStoryId?.trim()) {
+                        await (0, workflowGraphLayout_1.updateWorkflowGraphLayoutModeOverrideAsync)(this.workspaceRoot, message.userStoryId, message.layoutMode);
+                    }
                     if (message.positions) {
                         await (0, workflowGraphLayout_1.updateWorkflowGraphLayoutPositionsAsync)(this.workspaceRoot, message.layoutMode, message.positions);
+                        requiresRefresh = true;
                     }
                     if (message.legendPosition) {
                         await (0, workflowGraphLayout_1.updateWorkflowGraphLegendPositionAsync)(this.workspaceRoot, message.layoutMode, message.legendPosition);
+                        requiresRefresh = true;
                     }
-                    await this.refreshAsync("command:saveWorkflowGraphLayout:workflow");
+                }
+                if (requiresRefresh) {
+                    await this.refreshAsync(message.layoutKind === "aggregate"
+                        ? "command:saveWorkflowGraphLayout:aggregate"
+                        : "command:saveWorkflowGraphLayout:workflow");
                 }
                 return;
             case "togglePhaseIterations":

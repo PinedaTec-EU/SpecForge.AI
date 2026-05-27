@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const {
   readWorkflowGraphLayoutConfigAsync,
   updateAggregateWorkflowGraphLayoutAsync,
+  updateWorkflowGraphLayoutModeOverrideAsync,
   updateWorkflowGraphLayoutPositionsAsync,
   updateWorkflowGraphLegendPositionAsync
 } = require("./workflow-graph-layout-portable");
@@ -25,6 +26,10 @@ async function main() {
     );
   } else if (payload.positions && typeof payload.positions === "object") {
     await updateWorkflowGraphLayoutPositionsAsync(workspaceRoot, layoutMode, payload.positions);
+  }
+
+  if (payload.layoutKind !== "aggregate" && typeof payload.userStoryId === "string" && payload.userStoryId.trim()) {
+    await updateWorkflowGraphLayoutModeOverrideAsync(workspaceRoot, payload.userStoryId, layoutMode);
   }
 
   if (payload.legendPosition && typeof payload.legendPosition === "object") {

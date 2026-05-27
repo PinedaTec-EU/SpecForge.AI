@@ -54,7 +54,7 @@ async function main() {
     visualTimelineEnabled: false,
     debugMode: false,
     requireExplicitApprovalBranchAcceptance: false,
-    graphLayoutMode: "horizontal",
+    graphLayoutMode: "vertical",
     graphInitialZoomMode: "fit-width",
     workflowGraphLayout
   };
