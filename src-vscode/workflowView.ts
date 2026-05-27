@@ -6820,6 +6820,7 @@ export function buildWorkflowHtml(
     ${timelineRewindDock}
   </div>
   <script nonce="${scriptNonce}">
+    (() => {
     const vscode = (() => {
       if (window.__specForgeVsCodeApi) {
         return window.__specForgeVsCodeApi;
@@ -9821,6 +9822,7 @@ export function buildWorkflowHtml(
         // Best effort only.
       }
     }
+    })();
   </script>
 </body>
 </html>`;

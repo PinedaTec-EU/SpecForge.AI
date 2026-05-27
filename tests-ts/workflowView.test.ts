@@ -221,10 +221,12 @@ test("buildWorkflowHtml renders phase detail for the selected phase", () => {
   assert.match(html, /specforge-ai:auto-scroll-phase:/);
   assert.match(html, /centerFocusedPhaseInGraph/);
   assert.match(html, /window\.__specForgeVsCodeApi/);
+  assert.match(html, /<script nonce="[^"]+">\s+\(\(\) => \{/);
   assert.match(html, /const acquiredApi = acquireVsCodeApi\(\);/);
   assert.match(html, /const selectedPhaseNode = document\.querySelector\("\.phase-node\.selected"\);/);
   assert.match(html, /phaseNode\.offsetTop/);
   assert.match(html, /graphPanel\.scrollTop = Math\.max\(0, targetTop\)/);
+  assert.match(html, /\}\)\(\);\s+<\/script>/);
   assert.doesNotMatch(html, /Audit Stream/);
 });
 

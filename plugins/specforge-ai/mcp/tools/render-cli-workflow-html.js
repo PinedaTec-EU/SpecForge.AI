@@ -86,6 +86,7 @@ const createApiShim = `
 
 const browserShim = `
 <script>
+  (() => {
   const specForgeCliCurrentActor = ${JSON.stringify(currentActor)};
   window.specForgeCliCurrentActor = specForgeCliCurrentActor;
   const specForgePortalStateStorageKey = "specforge.cli.portal.state";
@@ -757,6 +758,7 @@ const browserShim = `
       safeStorage.setSessionItem("specforge.workflow.userViewport", "true");
     }
   }, { capture: true, passive: true });
+  })();
 </script>`;
 
 const refreshShim = `

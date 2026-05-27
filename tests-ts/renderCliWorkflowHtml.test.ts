@@ -137,6 +137,7 @@ test("CLI workflow renderer routes sidebar edit action through metadata update p
     "utf8");
 
   for (const content of [script, packagedScript]) {
+    assert.match(content, /const browserShim = `\n<script>\n  \(\(\) => \{/);
     assert.match(content, /showEditUserStoryForm\(message\) \{/);
     assert.match(content, /data-cli-edit-overlay/);
     assert.match(content, /const openEditUserStoryForm = \(message\) =>/);
@@ -150,6 +151,7 @@ test("CLI workflow renderer routes sidebar edit action through metadata update p
     assert.match(content, /editAssignToMe\.disabled = normalizedCurrentActor\.length === 0 \|\| normalizedOwner === normalizedCurrentActor/);
     assert.match(content, /const specForgeCliCurrentActor = /);
     assert.match(content, /window\.specForgeCliCurrentActor = specForgeCliCurrentActor/);
+    assert.match(content, /\}\)\(\);\n<\/script>`;/);
   }
 
   assert.match(packagedSidebar, /data-command="showEditUserStoryForm"[\s\S]*data-us-id="\$\{[\s\S]*summary\.usId[\s\S]*\}"[\s\S]*data-title="\$\{[\s\S]*editableUserStoryTitle\(summary\.usId, summary\.title\)[\s\S]*\}"[\s\S]*data-kind="\$\{[\s\S]*summary\.kind[\s\S]*\}"[\s\S]*data-owner="\$\{[\s\S]*summary\.owner[\s\S]*\}"[\s\S]*data-category="\$\{[\s\S]*summary\.category[\s\S]*\}"[\s\S]*data-tags="\$\{[\s\S]*\(summary\.tags \?\? \[\]\)\.join\(", "\)[\s\S]*\}"[\s\S]*data-external-reference-url="\$\{[\s\S]*summary\.externalReferences\?\.\[0\]\?\.url \?\? ""[\s\S]*\}"/);
