@@ -427,7 +427,8 @@ export async function updateAggregateWorkflowGraphLayoutAsync(
 export async function updateWorkflowGraphLayoutModeOverrideAsync(
   workspaceRoot: string,
   userStoryId: string,
-  mode: WorkflowGraphLayoutMode | null
+  mode: WorkflowGraphLayoutMode | null,
+  fallbackMode?: WorkflowGraphLayoutMode | null
 ): Promise<WorkflowGraphLayoutConfig> {
   const normalizedUserStoryId = userStoryId.trim();
   if (!normalizedUserStoryId) {
@@ -436,8 +437,13 @@ export async function updateWorkflowGraphLayoutModeOverrideAsync(
 
   const current = await readWorkflowGraphLayoutConfigAsync(workspaceRoot);
   const nextUserStoryLayoutModes = cloneUserStoryLayoutModes(current.userStoryLayoutModes);
+  const normalizedFallbackMode = fallbackMode === "horizontal" ? "horizontal" : "vertical";
   if (mode === "horizontal" || mode === "vertical") {
-    nextUserStoryLayoutModes[normalizedUserStoryId] = mode;
+    if (mode === normalizedFallbackMode) {
+      delete nextUserStoryLayoutModes[normalizedUserStoryId];
+    } else {
+      nextUserStoryLayoutModes[normalizedUserStoryId] = mode;
+    }
   } else {
     delete nextUserStoryLayoutModes[normalizedUserStoryId];
   }

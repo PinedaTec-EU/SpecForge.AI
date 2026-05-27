@@ -84,6 +84,15 @@ test("aggregate workflow layouts persist per user story with global fallback pre
     assert.match(raw, /US-0015:/);
     assert.match(raw, /capture:\n\s+x: 101\n\s+y: 202/);
     assert.match(raw, /vertical:[\s\S]*?legend:\n\s+x: 222\n\s+y: 333/);
+
+    await updateWorkflowGraphLayoutModeOverrideAsync(workspaceRoot, "US-0015", "vertical", "vertical");
+
+    const resetConfig = await readWorkflowGraphLayoutConfigAsync(workspaceRoot);
+    assert.equal(resetConfig.userStoryLayoutModes["US-0015"], undefined);
+
+    const resetRaw = await fs.readFile(getWorkflowGraphLayoutPath(workspaceRoot), "utf8");
+    assert.doesNotMatch(resetRaw, /US-0015: horizontal/);
+    assert.doesNotMatch(resetRaw, /US-0015: vertical/);
   } finally {
     Module._load = originalLoad;
   }

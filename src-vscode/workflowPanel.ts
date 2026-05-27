@@ -74,6 +74,7 @@ type WorkflowPanelCommand =
     readonly layoutKind?: "workflow" | "aggregate";
     readonly userStoryId?: string;
     readonly layoutMode?: "horizontal" | "vertical";
+    readonly defaultLayoutMode?: "horizontal" | "vertical";
     readonly positions?: Readonly<Record<string, { readonly x: number; readonly y: number }>>;
     readonly legendPosition?: { readonly x: number; readonly y: number };
     readonly aggregate?: {
@@ -380,7 +381,12 @@ class WorkflowPanelController {
           requiresRefresh = true;
         } else if (message.layoutMode) {
           if (message.userStoryId?.trim()) {
-            await updateWorkflowGraphLayoutModeOverrideAsync(this.workspaceRoot, message.userStoryId, message.layoutMode);
+            await updateWorkflowGraphLayoutModeOverrideAsync(
+              this.workspaceRoot,
+              message.userStoryId,
+              message.layoutMode,
+              message.defaultLayoutMode
+            );
           }
           if (message.positions) {
             await updateWorkflowGraphLayoutPositionsAsync(this.workspaceRoot, message.layoutMode, message.positions);
@@ -1645,6 +1651,7 @@ class WorkflowPanelController {
       approvalWorkBranchProposal: this.buildSpecApprovalWorkBranchProposal(workflow),
       requireExplicitApprovalBranchAcceptance: settings.requireExplicitApprovalBranchAcceptance,
       graphLayoutMode: settings.workflowGraphLayoutMode,
+      graphLayoutDefaultMode: settings.workflowGraphLayoutMode,
       graphInitialZoomMode: settings.workflowGraphInitialZoomMode,
       workflowGraphLayout
     };

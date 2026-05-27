@@ -657,6 +657,7 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
         selectedPhase = ResolveSelectedWorkflowPhase(workflow, resolvedSelectedPhaseId);
     }
     var droppedUserStoryCount = droppedSidebarUserStories.Count;
+    var portalSettings = SpecForgePortalSettingsStore.LoadOrDefault(workspaceRoot);
     var workflowGraphLayoutSignature = await ReadWorkflowGraphLayoutSignatureAsync(workspaceRoot);
     var signature = BuildWorkflowSignature(
         workflow,
@@ -708,6 +709,8 @@ static async Task<string> BuildWorkflowPortalHtmlAsync(
             currentActor,
             selectedUsId = usId,
             noSelectionReason = ResolveWorkflowPortalNoSelectionReason(usId, sidebarUserStories),
+            workflowGraphLayoutMode = portalSettings.WorkflowGraphLayoutMode,
+            workflowGraphInitialZoomMode = portalSettings.WorkflowGraphInitialZoomMode,
             workspaceRoot,
             signature
         },
@@ -1399,6 +1402,7 @@ static async Task<object> SaveWorkflowGraphLayoutAsync(
             request.LayoutKind,
             request.UserStoryId,
             request.LayoutMode,
+            request.DefaultLayoutMode,
             request.Positions,
             request.LegendPosition,
             request.Aggregate
@@ -2011,7 +2015,7 @@ static string BuildConfigurationPortalHtml() =>
             <section class="panel">
               <h2>Workflow Behavior</h2>
               <div class="grid">
-                <label><span class="field-label">Workflow graph layout</span><span class="field-control"><select id="workflowGraphLayoutMode"><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option></select><button class="help-button" type="button" aria-label="Workflow graph layout details" aria-expanded="false" data-help="Default graph orientation for this user story when opening the workflow graph in the shared runtime.">?</button></span></label>
+                <label><span class="field-label">Workflow graph layout</span><span class="field-control"><select id="workflowGraphLayoutMode"><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option></select><button class="help-button" type="button" aria-label="Workflow graph layout details" aria-expanded="false" data-help="Default graph orientation used when a user story does not have its own saved layout override. Matching per-story choices fall back to this setting instead of being stored separately.">?</button></span></label>
                 <label><span class="field-label">Workflow graph initial zoom</span><span class="field-control"><select id="workflowGraphInitialZoomMode"><option value="actual-size">100%</option><option value="fit-width">Fit to width</option></select><button class="help-button" type="button" aria-label="Workflow graph initial zoom details" aria-expanded="false" data-help="Default zoom mode used when opening a workflow graph before any manual zoom interaction.">?</button></span></label>
                 <label><span class="field-label">Refinement tolerance</span><span class="field-control"><select id="refinementTolerance"><option>strict</option><option>balanced</option><option>inferential</option></select><button class="help-button" type="button" aria-label="Refinement tolerance details" aria-expanded="false" data-help="Controls how much ambiguity refinement tolerates before spec can continue. Strict asks more questions; inferential allows the model to proceed with more assumptions.">?</button></span></label>
                 <label><span class="field-label">MVP rigor</span><span class="field-control"><select id="mvpRigor"><option>low</option><option>medium</option><option>high</option></select><button class="help-button" type="button" aria-label="MVP rigor details" aria-expanded="false" data-help="Controls how much product detail refinement requires before a user story can become a buildable MVP slice. Low is lean; high is exacting.">?</button></span></label>
@@ -2082,7 +2086,7 @@ static string BuildConfigurationPortalHtml() =>
           "model.reasoningEffort": "Optional reasoning effort override sent to providers that support it.",
           "model.repositoryAccess": "Repository access granted by this model profile when agents are derived directly from models.",
           "defaultUser": "Workspace-level user identity used by local user-dependent flows. This value becomes the local source of truth once configured.",
-          "workflowGraphLayoutMode": "Default graph orientation for this user story when the shared workflow graph opens.",
+          "workflowGraphLayoutMode": "Default graph orientation used when a user story does not have its own saved layout override. Matching per-story choices fall back to this setting instead of being stored separately.",
           "workflowGraphInitialZoomMode": "Default zoom mode applied when the workflow graph opens before any manual zoom action.",
           "agent.name": "Stable agent name used by phase routing and auto-refinement settings.",
           "agent.role": "Operational role injected into prompts, such as planner, implementer, reviewer, or release-preparer.",
@@ -2669,6 +2673,7 @@ internal sealed record SaveWorkflowGraphLayoutRequest(
     string? LayoutKind,
     string? UserStoryId,
     string? LayoutMode,
+    string? DefaultLayoutMode,
     Dictionary<string, WorkflowGraphLayoutPoint>? Positions,
     WorkflowGraphLayoutPoint? LegendPosition,
     WorkflowAggregateGraphLayoutRequest? Aggregate);

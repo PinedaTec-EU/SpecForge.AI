@@ -1843,11 +1843,16 @@ export function buildWorkflowHtml(
     ? displayedCurrentPhaseId ?? state.selectedPhaseId
     : playbackState === "paused" && state.selectedPhaseId === workflow.currentPhase
       ? displayedCurrentPhaseId ?? state.selectedPhaseId
-    : state.selectedPhaseId;
+      : state.selectedPhaseId;
+  const configuredGraphLayoutMode = state.graphLayoutDefaultMode === "horizontal"
+    ? "horizontal"
+    : state.graphLayoutMode === "horizontal"
+      ? "horizontal"
+      : "vertical";
   const graphLayoutMode = resolveWorkflowGraphLayoutMode(
     state.workflowGraphLayout,
     workflow.usId,
-    state.graphLayoutMode === "horizontal" ? "horizontal" : "vertical"
+    configuredGraphLayoutMode
   );
   const isAggregateWorkflow = workflow.workflowKind === "aggregate";
   const selectedPhase = workflow.phases.find((phase) => phase.phaseId === selectedPhaseId) ?? workflow.phases[0];
@@ -6907,8 +6912,8 @@ export function buildWorkflowHtml(
     const graphZoomMax = 2.2;
     const graphZoomStep = 0.12;
     let graphLayoutEditMode = viewState.graphLayoutEditMode === true;
-    const configuredGraphLayoutMode = ${JSON.stringify(graphLayoutMode)};
-    let activeGraphLayoutMode = configuredGraphLayoutMode;
+    const configuredGraphLayoutMode = ${JSON.stringify(configuredGraphLayoutMode)};
+    let activeGraphLayoutMode = ${JSON.stringify(graphLayoutMode)};
     const configuredGraphInitialZoomMode = ${JSON.stringify(state.graphInitialZoomMode === "fit-width" ? "fit-width" : "actual-size")};
     const restoredGraphZoomMode = viewState.graphInitialZoomMode === configuredGraphInitialZoomMode
       ? viewState.graphZoomMode
@@ -7390,6 +7395,7 @@ export function buildWorkflowHtml(
           command: "saveWorkflowGraphLayout",
           layoutKind: "aggregate",
           userStoryId: workflowUserStoryId,
+          defaultLayoutMode: configuredGraphLayoutMode,
           layoutMode: getActiveGraphLayoutMode(),
           legendPosition: legendPosition
             ? {
@@ -7421,6 +7427,7 @@ export function buildWorkflowHtml(
       vscode.postMessage({
         command: "saveWorkflowGraphLayout",
         userStoryId: workflowUserStoryId,
+        defaultLayoutMode: configuredGraphLayoutMode,
         layoutMode: getActiveGraphLayoutMode(),
         legendPosition: legendPosition
           ? {
@@ -8494,6 +8501,7 @@ export function buildWorkflowHtml(
         vscode.postMessage({
           command: "saveWorkflowGraphLayout",
           userStoryId: workflowUserStoryId,
+          defaultLayoutMode: configuredGraphLayoutMode,
           layoutMode: activeGraphLayoutMode
         });
         updateDynamicGraphLinks();
@@ -10018,10 +10026,15 @@ function buildPhaseGraph(
     phaseId: phase.phaseId,
     expectsHumanIntervention: phase.expectsHumanIntervention
   }));
+  const configuredGraphLayoutMode = state.graphLayoutDefaultMode === "horizontal"
+    ? "horizontal"
+    : state.graphLayoutMode === "horizontal"
+      ? "horizontal"
+      : "vertical";
   const graphLayoutMode = resolveWorkflowGraphLayoutMode(
     state.workflowGraphLayout,
     workflow.usId,
-    state.graphLayoutMode === "horizontal" ? "horizontal" : "vertical"
+    configuredGraphLayoutMode
   );
   const desktopHorizontalLegendPosition = buildGraphLegendPosition(
     state.workflowGraphLayout?.legend?.horizontal?.x ?? defaultWorkflowGraphLegendPositions.horizontal.x,
