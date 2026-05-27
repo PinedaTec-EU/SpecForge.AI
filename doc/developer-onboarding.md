@@ -92,8 +92,9 @@ If the change affects the public MCP-facing behavior, also validate the packaged
 - change workflow state through SpecForge operations, not by manually editing `.specs/`, unless the task is explicit repair work on the product/runtime behavior itself
 - keep docs aligned when workflow semantics change
 - validate the narrowest real subsystem that matches the change
-- close every completed functional change with a functional commit first, then a separate `dotnet versionbumper` commit
+- close every completed functional change with a functional commit first, then a separate `dotnet tool restore && dotnet tool run versionbumper` commit
 - after `npm run compile`, `npm run compile:ts`, `npm run test:ts`, `dotnet build`, or equivalent validation milestones, the version bump is mandatory and must not be deferred
+- after the bump, verify that the runtime-visible version changed in `version.nfo`, `version_definition.json`, and `plugins/specforge-ai/.codex-plugin/plugin.json`
 - if a task is intentionally left uncommitted, say so explicitly and call out that the required commit/version-bump flow is still pending
 
 ## Files Worth Knowing

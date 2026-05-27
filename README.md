@@ -51,6 +51,19 @@ Today the product ships as:
 
 The product boundary between the public local runtime and the private Central side project is documented in [doc/specforge-and-central.md](doc/specforge-and-central.md).
 
+## Enterprise Anchor
+
+`SpecForge.AI` is the repository-local runtime.
+
+`SpecForge Central` is the enterprise anchor point.
+
+That split matters:
+
+- `SpecForge.AI` keeps workflow execution, repository truth, and local repository intelligence close to the codebase
+- `SpecForge Central` adds the organization-grade layer: managed repositories, policy distribution, readiness and compliance visibility, audit, decision queues, and governed shared intelligence such as enterprise retrieval and connector-backed access
+
+The product is therefore not only "an agent workflow inside one repo". It is a local-first runtime with a deliberate path to enterprise governance through Central.
+
 ## Why Teams Pick It
 
 SpecForge is strongest when a team wants more than "an agent that writes code from a prompt".

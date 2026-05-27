@@ -15,7 +15,8 @@ This repository requires every completed functional change to close with traceab
 
 - Before committing, run the relevant validation for the touched area.
 - Stage only files that belong to the delivered change.
-- Commit with a message that includes `done` and clearly maps to the delivered outcome.
+- Commit with a message that includes `done`, clearly maps to the delivered outcome, and includes the GitHub issue short reference in the commit subject as `#<number>`.
+- Do not assume the issue code in the task title such as `SFF-034` is enough. The subject must contain the native GitHub reference too, for example `done #123 implement <outcome>`.
 - Do not include version bump files in the functional commit.
 
 ## Version Bump Commit
@@ -25,15 +26,19 @@ After the functional commit succeeds:
 1. Run the repository version bump tool from the repo root:
 
 ```bash
-dotnet versionbumper
+dotnet tool restore
+dotnet tool run versionbumper
 ```
 
-2. Review the changed version files.
+2. Review the changed version files and verify that the runtime-visible version moved in the repository artifacts that actually drive runtime and packaging:
+   - `version.nfo`
+   - `version_definition.json`
+   - `plugins/specforge-ai/.codex-plugin/plugin.json`
 3. Stage only files changed by the version bump.
-4. Commit them separately with a message that includes `done`, for example:
+4. Commit them separately with a message that includes `done` and the same GitHub issue short reference in the subject, for example:
 
 ```bash
-git commit -m "done bump version after <outcome>"
+git commit -m "done #123 bump version after <outcome>"
 ```
 
 ## Local Plugin Marketplace Sync
@@ -58,18 +63,21 @@ tools/sync-local-plugin-marketplace.sh
 
 3. Verify that at least one consumer repo resolves `.agents/plugins/specforge-ai` to the central plugin and that the MCP still lists the expected tools when MCP behavior changed.
 4. Stage only generated package artifacts and plugin marketplace changes that belong to this task.
-5. If package artifacts or repository files changed, commit them separately with a message that includes `done`, for example:
+5. If package artifacts or repository files changed, commit them separately with a message that includes `done` and the same GitHub issue short reference in the subject, for example:
 
 ```bash
-git commit -m "done refresh plugin marketplace after <outcome>"
+git commit -m "done #123 refresh plugin marketplace after <outcome>"
 ```
 
 ## Guardrails
 
 - Do not run the version bump before the functional commit.
 - Do not stop after only the functional commit when the task delivered a functional change.
+- Do not create any commit in this flow if the GitHub issue number is still unknown.
+- Do not leave the issue reference only in the body, PR title, branch name, or task description. It must be in every commit subject created for the task.
 - Do not mix functional code/docs changes with version bump changes.
 - Do not mix functional code/docs changes, version bump changes, and generated marketplace/package sync changes in the same commit.
 - If the functional task is intentionally not committed, do not run the version bump.
-- If `dotnet versionbumper` fails, stop and report the failure instead of hand-editing version files.
+- If `dotnet tool run versionbumper` fails, stop and report the failure instead of hand-editing version files.
+- If the tool succeeds but `version.nfo`, `version_definition.json`, or the packaged plugin manifest version do not reflect the new runtime version, stop and report the mismatch instead of pretending the bump is complete.
 - If `tools/sync-local-plugin-marketplace.sh` fails, stop and report the failure instead of manually copying plugin files.
