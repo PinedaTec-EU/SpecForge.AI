@@ -445,7 +445,7 @@
         },
         "specForge.ui.workflowGraphInitialZoomMode": {
           "type": "string",
-          "default": "actual-size",
+          "default": "fit-width",
           "enum": [
             "actual-size",
             "fit-width"

@@ -192,7 +192,7 @@ export function readSpecForgeSettings(configuration: ConfigurationReader): SpecF
     technicalDesignSubagentsEnabled: configuration.get<boolean>("execution.technicalDesignSubagentsEnabled", false),
     reviewSubagentsEnabled: configuration.get<boolean>("execution.reviewSubagentsEnabled", false),
     workflowGraphLayoutMode: configuration.get<"horizontal" | "vertical">("ui.workflowGraphLayoutMode", "vertical") === "horizontal" ? "horizontal" : "vertical",
-    workflowGraphInitialZoomMode: configuration.get<"actual-size" | "fit-width">("ui.workflowGraphInitialZoomMode", "actual-size") === "fit-width" ? "fit-width" : "actual-size",
+    workflowGraphInitialZoomMode: configuration.get<"actual-size" | "fit-width">("ui.workflowGraphInitialZoomMode", "fit-width") === "actual-size" ? "actual-size" : "fit-width",
     userStoryListViewMode,
     visualTimelineEnabled: configuration.get<boolean>("ui.visualTimelineEnabled", false),
     watcherEnabled: configuration.get<boolean>("ui.enableWatcher", true),

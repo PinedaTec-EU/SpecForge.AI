@@ -34,7 +34,7 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
         Assert.True(settings.UseSemanticGraphWhenAvailable);
         Assert.False(settings.AllowGraphBuildRefreshForTouchedUserStoryScope);
         Assert.Equal("vertical", settings.WorkflowGraphLayoutMode);
-        Assert.Equal("actual-size", settings.WorkflowGraphInitialZoomMode);
+        Assert.Equal("fit-width", settings.WorkflowGraphInitialZoomMode);
         Assert.Equal("balanced", settings.DefaultHarnessProfile);
         Assert.Equal("workspace", settings.HarnessProfileAuthority);
         Assert.Equal("none", settings.HarnessProfileLockMode);
@@ -92,7 +92,7 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
         Assert.True(settings.UseSemanticGraphWhenAvailable);
         Assert.False(settings.AllowGraphBuildRefreshForTouchedUserStoryScope);
         Assert.Equal("vertical", settings.WorkflowGraphLayoutMode);
-        Assert.Equal("actual-size", settings.WorkflowGraphInitialZoomMode);
+        Assert.Equal("fit-width", settings.WorkflowGraphInitialZoomMode);
         Assert.Equal("balanced", settings.DefaultHarnessProfile);
         Assert.Equal("workspace", settings.HarnessProfileAuthority);
         Assert.Equal("none", settings.HarnessProfileLockMode);
@@ -181,7 +181,7 @@ public sealed class SpecForgePortalSettingsStoreTests : IDisposable
               "useSemanticGraphWhenAvailable": true,
               "allowGraphBuildRefreshForTouchedUserStoryScope": false,
               "workflowGraphLayoutMode": "vertical",
-              "workflowGraphInitialZoomMode": "actual-size",
+              "workflowGraphInitialZoomMode": "fit-width",
               "reviewLearningEnabled": true,
               "reviewLearningSkillPath": ".codex/skills/sdd-phase-agents/SKILL.md",
               "completedUsLockOnCompleted": false

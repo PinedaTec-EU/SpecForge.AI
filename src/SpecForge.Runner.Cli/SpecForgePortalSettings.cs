@@ -186,7 +186,7 @@ internal static class SpecForgePortalSettingsStore
             || !string.Equals(settings.WorkflowGraphInitialZoomMode, "actual-size", StringComparison.OrdinalIgnoreCase)
             && !string.Equals(settings.WorkflowGraphInitialZoomMode, "fit-width", StringComparison.OrdinalIgnoreCase))
         {
-            settings = settings with { WorkflowGraphInitialZoomMode = "actual-size" };
+            settings = settings with { WorkflowGraphInitialZoomMode = "fit-width" };
         }
         else
         {
@@ -367,7 +367,7 @@ internal static class SpecForgePortalSettingsStore
             UseSemanticGraphWhenAvailable: true,
             AllowGraphBuildRefreshForTouchedUserStoryScope: false,
             WorkflowGraphLayoutMode: "vertical",
-            WorkflowGraphInitialZoomMode: "actual-size",
+            WorkflowGraphInitialZoomMode: "fit-width",
             DefaultHarnessProfile: HarnessProfileCatalog.BalancedProfileKey,
             PhaseHarnessProfiles: HarnessProfileRuntimeSettings.Default.PhaseProfiles,
             HarnessProfileAuthority: "workspace",
