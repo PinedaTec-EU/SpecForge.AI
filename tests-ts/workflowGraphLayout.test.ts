@@ -29,6 +29,7 @@ test("aggregate workflow layouts persist per user story with global fallback pre
     getWorkflowGraphLayoutPath,
     readWorkflowGraphLayoutConfigAsync,
     updateAggregateWorkflowGraphLayoutAsync,
+    updateWorkflowGraphLayoutModeOverrideAsync,
     updateWorkflowGraphLegendPositionAsync
   } = require("../src-vscode/workflowGraphLayout") as typeof import("../src-vscode/workflowGraphLayout");
 
@@ -66,15 +67,19 @@ test("aggregate workflow layouts persist per user story with global fallback pre
         maxChildrenPerRow: 4
       }
     }, "US-0015");
+    await updateWorkflowGraphLayoutModeOverrideAsync(workspaceRoot, "US-0015", "horizontal");
     await updateWorkflowGraphLegendPositionAsync(workspaceRoot, "vertical", { x: 222, y: 333 });
 
     const config = await readWorkflowGraphLayoutConfigAsync(workspaceRoot);
     assert.deepEqual(config.aggregate.positions.capture, { x: 10, y: 20 });
     assert.deepEqual(config.aggregateUserStories["US-0015"]?.positions.capture, { x: 101, y: 202 });
     assert.equal(config.aggregateUserStories["US-0015"]?.spacing.maxChildrenPerRow, 4);
+    assert.equal(config.userStoryLayoutModes["US-0015"], "horizontal");
     assert.deepEqual(config.legend.vertical, { x: 222, y: 333 });
 
     const raw = await fs.readFile(getWorkflowGraphLayoutPath(workspaceRoot), "utf8");
+    assert.match(raw, /userStoryLayoutModes:/);
+    assert.match(raw, /US-0015: horizontal/);
     assert.match(raw, /aggregateUserStories:/);
     assert.match(raw, /US-0015:/);
     assert.match(raw, /capture:\n\s+x: 101\n\s+y: 202/);

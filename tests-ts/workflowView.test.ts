@@ -1,6 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildWorkflowAuditHtml, buildWorkflowHtml } from "../src-vscode/workflowView";
+import {
+  defaultAggregateWorkflowGraphLayout,
+  defaultHorizontalWorkflowGraphConnections,
+  defaultHorizontalWorkflowGraphLoops,
+  defaultHorizontalWorkflowGraphPositions,
+  defaultVerticalWorkflowGraphConnections,
+  defaultVerticalWorkflowGraphLoops,
+  defaultVerticalWorkflowGraphPositions,
+  defaultWorkflowGraphLegendPositions
+} from "../src-vscode/workflowGraphLayout";
 
 test("buildWorkflowHtml renders phase detail for the selected phase", () => {
   const html = buildWorkflowHtml({
@@ -5317,6 +5327,101 @@ test("buildWorkflowHtml renders the reference graph layout with canonical refine
   assert.match(html, /graph-links--mobile-vertical/);
   assert.match(html, /data-graph-layout-mode="vertical" style="[^"]*--graph-legend-top-desktop-vertical: 250px/);
   assert.doesNotMatch(html, /--graph-legend-top-desktop-vertical: 1402px/);
+});
+
+test("buildWorkflowHtml honors per-story workflow graph layout overrides over the global default", () => {
+  const html = buildWorkflowHtml({
+    usId: "US-0027",
+    title: "Workflow layout override",
+    category: "workflow",
+    status: "active",
+    currentPhase: "spec",
+    directoryPath: "/tmp/us.US-0027",
+    workBranch: null,
+    mainArtifactPath: "/tmp/us.md",
+    timelinePath: "/tmp/timeline.md",
+    rawTimeline: "raw timeline",
+    phases: [
+      {
+        phaseId: "capture",
+        title: "Capture",
+        order: 0,
+        requiresApproval: false,
+        expectsHumanIntervention: false,
+        isApproved: true,
+        isCurrent: false,
+        state: "completed",
+        artifactPath: null,
+        executePromptPath: null,
+        approvePromptPath: null
+      },
+      {
+        phaseId: "refinement",
+        title: "Refinement",
+        order: 1,
+        requiresApproval: false,
+        expectsHumanIntervention: true,
+        isApproved: true,
+        isCurrent: false,
+        state: "completed",
+        artifactPath: null,
+        executePromptPath: null,
+        approvePromptPath: null
+      },
+      {
+        phaseId: "spec",
+        title: "Spec",
+        order: 2,
+        requiresApproval: true,
+        expectsHumanIntervention: true,
+        isApproved: false,
+        isCurrent: true,
+        state: "current",
+        artifactPath: null,
+        executePromptPath: null,
+        approvePromptPath: null
+      }
+    ],
+    controls: {
+      canContinue: true,
+      canApprove: false,
+      requiresApproval: true,
+      blockingReason: null,
+      canRestartFromSource: false,
+      regressionTargets: []
+    },
+    refinement: null,
+    events: [],
+    attachmentsDirectoryPath: "/tmp/attachments",
+    attachments: []
+  }, {
+    selectedPhaseId: "spec",
+    selectedArtifactContent: null,
+    contextSuggestions: [],
+    settingsConfigured: true,
+    settingsMessage: null,
+    graphLayoutMode: "vertical",
+    workflowGraphLayout: {
+      horizontal: defaultHorizontalWorkflowGraphPositions,
+      vertical: defaultVerticalWorkflowGraphPositions,
+      legend: defaultWorkflowGraphLegendPositions,
+      connections: {
+        horizontal: defaultHorizontalWorkflowGraphConnections,
+        vertical: defaultVerticalWorkflowGraphConnections
+      },
+      loops: {
+        horizontal: defaultHorizontalWorkflowGraphLoops,
+        vertical: defaultVerticalWorkflowGraphLoops
+      },
+      aggregate: defaultAggregateWorkflowGraphLayout,
+      aggregateUserStories: {},
+      userStoryLayoutModes: {
+        "US-0027": "horizontal"
+      }
+    }
+  }, "idle");
+
+  assert.match(html, /data-graph-layout-mode="horizontal"/);
 });
 
 test("buildWorkflowHtml renders completed phase reopen controls and lock state", () => {

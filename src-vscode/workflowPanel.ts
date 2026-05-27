@@ -25,7 +25,13 @@ import type { WorkflowViewState } from "./workflow-view/models";
 import { getEditorTypographyCssVars } from "./webviewTypography";
 import { addContextFilesFromPathsAsync as addContextFilesToWorkflowAsync, attachWorkflowFilesAsync, setWorkflowFileKindAsync as setWorkflowFileKindForWorkflowAsync } from "./workflowPanelFiles";
 import { readUserWorkspacePreferences, setPausedWorkflowPhaseIds } from "./userWorkspacePreferences";
-import { readWorkflowGraphLayoutConfigAsync, updateAggregateWorkflowGraphLayoutAsync, updateWorkflowGraphLayoutPositionsAsync, updateWorkflowGraphLegendPositionAsync } from "./workflowGraphLayout";
+import {
+  readWorkflowGraphLayoutConfigAsync,
+  updateAggregateWorkflowGraphLayoutAsync,
+  updateWorkflowGraphLayoutModeOverrideAsync,
+  updateWorkflowGraphLayoutPositionsAsync,
+  updateWorkflowGraphLegendPositionAsync
+} from "./workflowGraphLayout";
 import { asErrorMessage } from "./utils";
 
 type WorkflowPanelCommand =
@@ -348,6 +354,7 @@ class WorkflowPanelController {
         await this.renderCachedWorkflowAsync("command:selectIteration");
         return;
       case "saveWorkflowGraphLayout":
+        let requiresRefresh = false;
         if (message.layoutKind === "aggregate" && message.aggregate) {
           const positions = message.aggregate.positions;
           const spacing = message.aggregate.spacing;
@@ -370,15 +377,24 @@ class WorkflowPanelController {
           if (message.layoutMode && message.legendPosition) {
             await updateWorkflowGraphLegendPositionAsync(this.workspaceRoot, message.layoutMode, message.legendPosition);
           }
-          await this.refreshAsync("command:saveWorkflowGraphLayout:aggregate");
+          requiresRefresh = true;
         } else if (message.layoutMode) {
+          if (message.userStoryId?.trim()) {
+            await updateWorkflowGraphLayoutModeOverrideAsync(this.workspaceRoot, message.userStoryId, message.layoutMode);
+          }
           if (message.positions) {
             await updateWorkflowGraphLayoutPositionsAsync(this.workspaceRoot, message.layoutMode, message.positions);
+            requiresRefresh = true;
           }
           if (message.legendPosition) {
             await updateWorkflowGraphLegendPositionAsync(this.workspaceRoot, message.layoutMode, message.legendPosition);
+            requiresRefresh = true;
           }
-          await this.refreshAsync("command:saveWorkflowGraphLayout:workflow");
+        }
+        if (requiresRefresh) {
+          await this.refreshAsync(message.layoutKind === "aggregate"
+            ? "command:saveWorkflowGraphLayout:aggregate"
+            : "command:saveWorkflowGraphLayout:workflow");
         }
         return;
       case "togglePhaseIterations":

@@ -51,6 +51,7 @@ export interface AggregateWorkflowGraphLayoutConfig {
 }
 
 export type AggregateWorkflowGraphLayoutByUserStory = Readonly<Record<string, AggregateWorkflowGraphLayoutConfig>>;
+export type WorkflowGraphLayoutModeByUserStory = Readonly<Record<string, WorkflowGraphLayoutMode>>;
 
 export interface WorkflowGraphLayoutConfig {
   readonly horizontal: Record<string, WorkflowGraphPhasePosition>;
@@ -69,6 +70,7 @@ export interface WorkflowGraphLayoutConfig {
   };
   readonly aggregate: AggregateWorkflowGraphLayoutConfig;
   readonly aggregateUserStories: AggregateWorkflowGraphLayoutByUserStory;
+  readonly userStoryLayoutModes: WorkflowGraphLayoutModeByUserStory;
 }
 
 const workflowGraphPhaseIds: readonly WorkflowGraphPhaseId[] = [
@@ -209,6 +211,14 @@ function cloneAggregateWorkflowGraphLayoutConfig(config: AggregateWorkflowGraphL
   };
 }
 
+function cloneUserStoryLayoutModes(
+  userStoryLayoutModes: WorkflowGraphLayoutModeByUserStory
+): Record<string, WorkflowGraphLayoutMode> {
+  return Object.fromEntries(
+    Object.entries(userStoryLayoutModes).filter(([, value]) => value === "horizontal" || value === "vertical")
+  ) as Record<string, WorkflowGraphLayoutMode>;
+}
+
 export async function ensureWorkflowGraphLayoutConfigExistsAsync(workspaceRoot: string): Promise<void> {
   const filePath = getWorkflowGraphLayoutPath(workspaceRoot);
   try {
@@ -233,7 +243,8 @@ export async function ensureWorkflowGraphLayoutConfigExistsAsync(workspaceRoot: 
       vertical: defaultVerticalWorkflowGraphLoops
     },
     aggregate: cloneDefaultAggregateWorkflowGraphLayout(),
-    aggregateUserStories: {}
+    aggregateUserStories: {},
+    userStoryLayoutModes: {}
   }), "utf8");
   appendWorkflowGraphLayoutLog(`Created workflow graph layout bootstrap at '${filePath}'.`);
 }
@@ -265,7 +276,8 @@ export async function readWorkflowGraphLayoutConfigAsync(workspaceRoot: string):
         vertical: { ...defaultVerticalWorkflowGraphLoops }
       },
       aggregate: cloneDefaultAggregateWorkflowGraphLayout(),
-      aggregateUserStories: {}
+      aggregateUserStories: {},
+      userStoryLayoutModes: {}
     };
   }
 }
@@ -301,7 +313,12 @@ export async function updateWorkflowGraphLayoutPositionsAsync(
     loops: {
       horizontal: { ...current.loops.horizontal },
       vertical: { ...current.loops.vertical }
-    }
+    },
+    aggregate: cloneAggregateWorkflowGraphLayoutConfig(current.aggregate),
+    aggregateUserStories: Object.fromEntries(
+      Object.entries(current.aggregateUserStories).map(([key, value]) => [key, cloneAggregateWorkflowGraphLayoutConfig(value)])
+    ) as Record<string, AggregateWorkflowGraphLayoutConfig>,
+    userStoryLayoutModes: cloneUserStoryLayoutModes(current.userStoryLayoutModes)
   };
 
   const target = mode === "horizontal" ? next.horizontal : next.vertical;
@@ -354,7 +371,12 @@ export async function updateWorkflowGraphLegendPositionAsync(
     loops: {
       horizontal: { ...current.loops.horizontal },
       vertical: { ...current.loops.vertical }
-    }
+    },
+    aggregate: cloneAggregateWorkflowGraphLayoutConfig(current.aggregate),
+    aggregateUserStories: Object.fromEntries(
+      Object.entries(current.aggregateUserStories).map(([key, value]) => [key, cloneAggregateWorkflowGraphLayoutConfig(value)])
+    ) as Record<string, AggregateWorkflowGraphLayoutConfig>,
+    userStoryLayoutModes: cloneUserStoryLayoutModes(current.userStoryLayoutModes)
   };
 
   await writeWorkflowGraphLayoutConfigAsync(workspaceRoot, next);
@@ -394,11 +416,73 @@ export async function updateAggregateWorkflowGraphLayoutAsync(
       vertical: { ...current.loops.vertical }
     },
     aggregate: nextAggregate,
-    aggregateUserStories: nextAggregateUserStories
+    aggregateUserStories: nextAggregateUserStories,
+    userStoryLayoutModes: cloneUserStoryLayoutModes(current.userStoryLayoutModes)
   };
 
   await writeWorkflowGraphLayoutConfigAsync(workspaceRoot, next);
   return next;
+}
+
+export async function updateWorkflowGraphLayoutModeOverrideAsync(
+  workspaceRoot: string,
+  userStoryId: string,
+  mode: WorkflowGraphLayoutMode | null
+): Promise<WorkflowGraphLayoutConfig> {
+  const normalizedUserStoryId = userStoryId.trim();
+  if (!normalizedUserStoryId) {
+    return readWorkflowGraphLayoutConfigAsync(workspaceRoot);
+  }
+
+  const current = await readWorkflowGraphLayoutConfigAsync(workspaceRoot);
+  const nextUserStoryLayoutModes = cloneUserStoryLayoutModes(current.userStoryLayoutModes);
+  if (mode === "horizontal" || mode === "vertical") {
+    nextUserStoryLayoutModes[normalizedUserStoryId] = mode;
+  } else {
+    delete nextUserStoryLayoutModes[normalizedUserStoryId];
+  }
+
+  const next: WorkflowGraphLayoutConfig = {
+    ...current,
+    horizontal: { ...current.horizontal },
+    vertical: { ...current.vertical },
+    legend: {
+      horizontal: { ...current.legend.horizontal },
+      vertical: { ...current.legend.vertical }
+    },
+    connections: {
+      horizontal: { ...current.connections.horizontal },
+      vertical: { ...current.connections.vertical }
+    },
+    loops: {
+      horizontal: { ...current.loops.horizontal },
+      vertical: { ...current.loops.vertical }
+    },
+    aggregate: cloneAggregateWorkflowGraphLayoutConfig(current.aggregate),
+    aggregateUserStories: Object.fromEntries(
+      Object.entries(current.aggregateUserStories).map(([key, value]) => [key, cloneAggregateWorkflowGraphLayoutConfig(value)])
+    ) as Record<string, AggregateWorkflowGraphLayoutConfig>,
+    userStoryLayoutModes: nextUserStoryLayoutModes
+  };
+
+  await writeWorkflowGraphLayoutConfigAsync(workspaceRoot, next);
+  return next;
+}
+
+export function resolveWorkflowGraphLayoutMode(
+  config: WorkflowGraphLayoutConfig | null | undefined,
+  userStoryId: string | null | undefined,
+  fallbackMode: WorkflowGraphLayoutMode = "vertical"
+): WorkflowGraphLayoutMode {
+  const normalizedUserStoryId = userStoryId?.trim();
+  if (normalizedUserStoryId) {
+    const override = config?.userStoryLayoutModes?.[normalizedUserStoryId];
+    if (override === "horizontal" || override === "vertical") {
+      return override;
+    }
+  }
+
+  return fallbackMode === "horizontal" ? "horizontal" : "vertical";
 }
 
 function parseWorkflowGraphLayoutConfig(raw: string): WorkflowGraphLayoutConfig {
@@ -418,6 +502,7 @@ function parseWorkflowGraphLayoutConfig(raw: string): WorkflowGraphLayoutConfig 
   };
   const aggregate = cloneDefaultAggregateWorkflowGraphLayout();
   const aggregateUserStories: Record<string, AggregateWorkflowGraphLayoutConfig> = {};
+  const userStoryLayoutModes: Record<string, WorkflowGraphLayoutMode> = {};
   let currentMode: WorkflowGraphLayoutMode | null = null;
   let currentSection: "positions" | "connections" | "loops" = "positions";
   let currentPhaseId: WorkflowGraphPhaseId | null = null;
@@ -426,6 +511,7 @@ function parseWorkflowGraphLayoutConfig(raw: string): WorkflowGraphLayoutConfig 
   let currentLegendTarget: WorkflowGraphLayoutMode | null = null;
   let inAggregate = false;
   let inAggregateUserStories = false;
+  let inUserStoryLayoutModes = false;
   let aggregateSection: "positions" | "spacing" | null = null;
   let currentAggregateAnchorId: AggregateWorkflowGraphAnchorId | null = null;
   let currentAggregateUserStoryId: string | null = null;
@@ -492,10 +578,11 @@ function parseWorkflowGraphLayoutConfig(raw: string): WorkflowGraphLayoutConfig 
     }
 
     const modeMatch = /^(horizontal|vertical):\s*$/.exec(trimmed);
-    if (modeMatch) {
+    if (modeMatch && !inUserStoryLayoutModes) {
       commitPending();
       inAggregate = false;
       inAggregateUserStories = false;
+      inUserStoryLayoutModes = false;
       aggregateSection = null;
       currentAggregateAnchorId = null;
       currentAggregateUserStoryId = null;
@@ -519,6 +606,7 @@ function parseWorkflowGraphLayoutConfig(raw: string): WorkflowGraphLayoutConfig 
       commitPending();
       inAggregate = true;
       inAggregateUserStories = false;
+      inUserStoryLayoutModes = false;
       aggregateSection = null;
       currentAggregateAnchorId = null;
       currentAggregateUserStoryId = null;
@@ -541,6 +629,7 @@ function parseWorkflowGraphLayoutConfig(raw: string): WorkflowGraphLayoutConfig 
       commitPending();
       inAggregate = false;
       inAggregateUserStories = true;
+      inUserStoryLayoutModes = false;
       aggregateSection = null;
       currentAggregateAnchorId = null;
       currentAggregateUserStoryId = null;
@@ -556,6 +645,37 @@ function parseWorkflowGraphLayoutConfig(raw: string): WorkflowGraphLayoutConfig 
       pendingLoopFromPhaseId = null;
       pendingLoopToPhaseId = null;
       pendingLoopSide = null;
+      continue;
+    }
+
+    if (trimmed === "userStoryLayoutModes:") {
+      commitPending();
+      inAggregate = false;
+      inAggregateUserStories = false;
+      inUserStoryLayoutModes = true;
+      aggregateSection = null;
+      currentAggregateAnchorId = null;
+      currentAggregateUserStoryId = null;
+      currentMode = null;
+      currentPhaseId = null;
+      currentEdgeId = null;
+      currentLoopId = null;
+      currentLegendTarget = null;
+      pendingX = null;
+      pendingY = null;
+      pendingFromAnchor = null;
+      pendingToAnchor = null;
+      pendingLoopFromPhaseId = null;
+      pendingLoopToPhaseId = null;
+      pendingLoopSide = null;
+      continue;
+    }
+
+    if (inUserStoryLayoutModes) {
+      const userStoryLayoutModeMatch = /^([A-Za-z0-9._-]+):\s*(horizontal|vertical)\s*$/.exec(trimmed);
+      if (userStoryLayoutModeMatch) {
+        userStoryLayoutModes[userStoryLayoutModeMatch[1]] = userStoryLayoutModeMatch[2] as WorkflowGraphLayoutMode;
+      }
       continue;
     }
 
@@ -759,7 +879,7 @@ function parseWorkflowGraphLayoutConfig(raw: string): WorkflowGraphLayoutConfig 
   }
 
   commitPending();
-  return { horizontal, vertical, legend, connections, loops, aggregate, aggregateUserStories };
+  return { horizontal, vertical, legend, connections, loops, aggregate, aggregateUserStories, userStoryLayoutModes };
 }
 
 function serializeWorkflowGraphLayoutConfig(config: WorkflowGraphLayoutConfig): string {
@@ -802,6 +922,11 @@ function serializeWorkflowGraphLayoutConfig(config: WorkflowGraphLayoutConfig): 
     serializeMode("horizontal"),
     "",
     serializeMode("vertical"),
+    "",
+    "userStoryLayoutModes:",
+    ...Object.keys(config.userStoryLayoutModes).sort().map((userStoryId) =>
+      `  ${userStoryId}: ${config.userStoryLayoutModes[userStoryId] === "horizontal" ? "horizontal" : "vertical"}`
+    ),
     "",
     "aggregate:",
     "  positions:",
