@@ -29,7 +29,12 @@ async function main() {
   }
 
   if (payload.layoutKind !== "aggregate" && typeof payload.userStoryId === "string" && payload.userStoryId.trim()) {
-    await updateWorkflowGraphLayoutModeOverrideAsync(workspaceRoot, payload.userStoryId, layoutMode);
+    await updateWorkflowGraphLayoutModeOverrideAsync(
+      workspaceRoot,
+      payload.userStoryId,
+      layoutMode,
+      payload.defaultLayoutMode
+    );
   }
 
   if (payload.legendPosition && typeof payload.legendPosition === "object") {

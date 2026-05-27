@@ -924,7 +924,7 @@ function buildExecutionSettingsHtml(model) {
             <option value="vertical"${model.workflowGraphLayoutMode === "vertical" ? " selected" : ""}>Vertical</option>
             <option value="horizontal"${model.workflowGraphLayoutMode === "horizontal" ? " selected" : ""}>Horizontal</option>
           </select>
-          <span class="phase-field__hint">Default graph orientation for this user in this workspace.</span>
+          <span class="phase-field__hint">Fallback graph orientation used when a user story does not have its own saved layout override.</span>
         </label>
         <label class="phase-field">
           <span>Workflow graph initial zoom</span>

@@ -293,7 +293,7 @@ class WorkflowPanelController {
                 }
                 else if (message.layoutMode) {
                     if (message.userStoryId?.trim()) {
-                        await (0, workflowGraphLayout_1.updateWorkflowGraphLayoutModeOverrideAsync)(this.workspaceRoot, message.userStoryId, message.layoutMode);
+                        await (0, workflowGraphLayout_1.updateWorkflowGraphLayoutModeOverrideAsync)(this.workspaceRoot, message.userStoryId, message.layoutMode, message.defaultLayoutMode);
                     }
                     if (message.positions) {
                         await (0, workflowGraphLayout_1.updateWorkflowGraphLayoutPositionsAsync)(this.workspaceRoot, message.layoutMode, message.positions);
@@ -1250,6 +1250,7 @@ class WorkflowPanelController {
             approvalWorkBranchProposal: this.buildSpecApprovalWorkBranchProposal(workflow),
             requireExplicitApprovalBranchAcceptance: settings.requireExplicitApprovalBranchAcceptance,
             graphLayoutMode: settings.workflowGraphLayoutMode,
+            graphLayoutDefaultMode: settings.workflowGraphLayoutMode,
             graphInitialZoomMode: settings.workflowGraphInitialZoomMode,
             workflowGraphLayout
         };

@@ -1370,7 +1370,12 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
         : playbackState === "paused" && state.selectedPhaseId === workflow.currentPhase
             ? displayedCurrentPhaseId ?? state.selectedPhaseId
             : state.selectedPhaseId;
-    const graphLayoutMode = (0, workflowGraphLayout_1.resolveWorkflowGraphLayoutMode)(state.workflowGraphLayout, workflow.usId, state.graphLayoutMode === "horizontal" ? "horizontal" : "vertical");
+    const configuredGraphLayoutMode = state.graphLayoutDefaultMode === "horizontal"
+        ? "horizontal"
+        : state.graphLayoutMode === "horizontal"
+            ? "horizontal"
+            : "vertical";
+    const graphLayoutMode = (0, workflowGraphLayout_1.resolveWorkflowGraphLayoutMode)(state.workflowGraphLayout, workflow.usId, configuredGraphLayoutMode);
     const isAggregateWorkflow = workflow.workflowKind === "aggregate";
     const selectedPhase = workflow.phases.find((phase) => phase.phaseId === selectedPhaseId) ?? workflow.phases[0];
     const selectedPhaseIsCurrent = selectedPhase.phaseId === displayedCurrentPhaseId;
@@ -6357,8 +6362,8 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
     const graphZoomMax = 2.2;
     const graphZoomStep = 0.12;
     let graphLayoutEditMode = viewState.graphLayoutEditMode === true;
-    const configuredGraphLayoutMode = ${JSON.stringify(graphLayoutMode)};
-    let activeGraphLayoutMode = configuredGraphLayoutMode;
+    const configuredGraphLayoutMode = ${JSON.stringify(configuredGraphLayoutMode)};
+    let activeGraphLayoutMode = ${JSON.stringify(graphLayoutMode)};
     const configuredGraphInitialZoomMode = ${JSON.stringify(state.graphInitialZoomMode === "fit-width" ? "fit-width" : "actual-size")};
     const restoredGraphZoomMode = viewState.graphInitialZoomMode === configuredGraphInitialZoomMode
       ? viewState.graphZoomMode
@@ -6840,6 +6845,7 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
           command: "saveWorkflowGraphLayout",
           layoutKind: "aggregate",
           userStoryId: workflowUserStoryId,
+          defaultLayoutMode: configuredGraphLayoutMode,
           layoutMode: getActiveGraphLayoutMode(),
           legendPosition: legendPosition
             ? {
@@ -6871,6 +6877,7 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
       vscode.postMessage({
         command: "saveWorkflowGraphLayout",
         userStoryId: workflowUserStoryId,
+        defaultLayoutMode: configuredGraphLayoutMode,
         layoutMode: getActiveGraphLayoutMode(),
         legendPosition: legendPosition
           ? {
@@ -7944,6 +7951,7 @@ function buildWorkflowHtml(workflow, state, playbackState, typographyCssVars = "
         vscode.postMessage({
           command: "saveWorkflowGraphLayout",
           userStoryId: workflowUserStoryId,
+          defaultLayoutMode: configuredGraphLayoutMode,
           layoutMode: activeGraphLayoutMode
         });
         updateDynamicGraphLinks();
@@ -9445,7 +9453,12 @@ function buildPhaseGraph(workflow, state, selectedPhaseId, playbackState, effect
         phaseId: phase.phaseId,
         expectsHumanIntervention: phase.expectsHumanIntervention
     }));
-    const graphLayoutMode = (0, workflowGraphLayout_1.resolveWorkflowGraphLayoutMode)(state.workflowGraphLayout, workflow.usId, state.graphLayoutMode === "horizontal" ? "horizontal" : "vertical");
+    const configuredGraphLayoutMode = state.graphLayoutDefaultMode === "horizontal"
+        ? "horizontal"
+        : state.graphLayoutMode === "horizontal"
+            ? "horizontal"
+            : "vertical";
+    const graphLayoutMode = (0, workflowGraphLayout_1.resolveWorkflowGraphLayoutMode)(state.workflowGraphLayout, workflow.usId, configuredGraphLayoutMode);
     const desktopHorizontalLegendPosition = (0, graphLayout_1.buildGraphLegendPosition)(state.workflowGraphLayout?.legend?.horizontal?.x ?? workflowGraphLayout_1.defaultWorkflowGraphLegendPositions.horizontal.x, state.workflowGraphLayout?.legend?.horizontal?.y ?? workflowGraphLayout_1.defaultWorkflowGraphLegendPositions.horizontal.y, false);
     const desktopVerticalLegendPosition = (0, graphLayout_1.buildGraphLegendPosition)(state.workflowGraphLayout?.legend?.vertical?.x ?? workflowGraphLayout_1.defaultWorkflowGraphLegendPositions.vertical.x, state.workflowGraphLayout?.legend?.vertical?.y ?? workflowGraphLayout_1.defaultWorkflowGraphLegendPositions.vertical.y, false);
     const mobileHorizontalLegendPosition = (0, graphLayout_1.buildGraphLegendPosition)(state.workflowGraphLayout?.legend?.horizontal?.x ?? workflowGraphLayout_1.defaultWorkflowGraphLegendPositions.horizontal.x, state.workflowGraphLayout?.legend?.horizontal?.y ?? workflowGraphLayout_1.defaultWorkflowGraphLegendPositions.horizontal.y, true);

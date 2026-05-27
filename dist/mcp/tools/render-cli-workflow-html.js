@@ -39,6 +39,8 @@ async function main() {
   const workflowGraphLayout = typeof payload.workspaceRoot === "string" && payload.workspaceRoot.length > 0
     ? await readWorkflowGraphLayoutConfigAsync(payload.workspaceRoot)
     : null;
+  const workflowGraphLayoutMode = payload.workflowGraphLayoutMode === "horizontal" ? "horizontal" : "vertical";
+  const workflowGraphInitialZoomMode = payload.workflowGraphInitialZoomMode === "actual-size" ? "actual-size" : "fit-width";
   const state = {
     selectedPhaseId: payload.selectedPhaseId ?? workflow?.currentPhase ?? null,
     selectedArtifactContent: payload.selectedArtifactContent ?? null,
@@ -54,8 +56,9 @@ async function main() {
     visualTimelineEnabled: false,
     debugMode: false,
     requireExplicitApprovalBranchAcceptance: false,
-    graphLayoutMode: "vertical",
-    graphInitialZoomMode: "fit-width",
+    graphLayoutMode: workflowGraphLayoutMode,
+    graphLayoutDefaultMode: workflowGraphLayoutMode,
+    graphInitialZoomMode: workflowGraphInitialZoomMode,
     workflowGraphLayout
   };
   const createFormResetToken = Number.isFinite(payload.createFormResetToken) ? payload.createFormResetToken : 1;

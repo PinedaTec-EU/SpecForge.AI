@@ -295,7 +295,7 @@ async function updateAggregateWorkflowGraphLayoutAsync(workspaceRoot, aggregate,
   return next;
 }
 
-async function updateWorkflowGraphLayoutModeOverrideAsync(workspaceRoot, userStoryId, mode) {
+async function updateWorkflowGraphLayoutModeOverrideAsync(workspaceRoot, userStoryId, mode, fallbackMode) {
   const normalizedUserStoryId = typeof userStoryId === "string" ? userStoryId.trim() : "";
   if (!normalizedUserStoryId) {
     return readWorkflowGraphLayoutConfigAsync(workspaceRoot);
@@ -303,8 +303,13 @@ async function updateWorkflowGraphLayoutModeOverrideAsync(workspaceRoot, userSto
 
   const current = await readWorkflowGraphLayoutConfigAsync(workspaceRoot);
   const nextUserStoryLayoutModes = cloneUserStoryLayoutModes(current.userStoryLayoutModes);
+  const normalizedFallbackMode = fallbackMode === "horizontal" ? "horizontal" : "vertical";
   if (mode === "horizontal" || mode === "vertical") {
-    nextUserStoryLayoutModes[normalizedUserStoryId] = mode;
+    if (mode === normalizedFallbackMode) {
+      delete nextUserStoryLayoutModes[normalizedUserStoryId];
+    } else {
+      nextUserStoryLayoutModes[normalizedUserStoryId] = mode;
+    }
   } else {
     delete nextUserStoryLayoutModes[normalizedUserStoryId];
   }
