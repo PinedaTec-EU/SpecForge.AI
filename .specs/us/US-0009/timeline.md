@@ -18,3 +18,13 @@
   - provider: `specforge`
   - model: `workflow`
   - runtime-version: `0.1.4.442+41d3b28c20af82611ca0e1b3034c05b4fac9db25`
+
+### 2026-05-27T08:56:12.5650460+00:00 · `owner_changed`
+
+- Actor: `jmrpineda`
+- Phase: `capture`
+- Summary: Ownership changed from `unknown` to `jmrpineda`.
+- Previous owner: `unknown`
+- New owner: `jmrpineda`
+- Artifacts:
+  - `/Users/jmr.pineda/Projects/GitHub/PinedaTec.eu/SpecForge.AI/.specs/us/US-0009/us.md`

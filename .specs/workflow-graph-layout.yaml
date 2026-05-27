@@ -126,6 +126,8 @@ vertical:
       toPhaseId: review
       side: right
 
+userStoryLayoutModes:
+
 aggregate:
   positions:
     capture:

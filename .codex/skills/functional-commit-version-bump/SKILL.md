@@ -30,12 +30,13 @@ dotnet tool restore
 dotnet tool run versionbumper
 ```
 
-2. Review the changed version files and verify that the runtime-visible version moved in the repository artifacts that actually drive runtime and packaging:
+2. Review the changed version files and verify that the version bump moved in the repository artifacts owned directly by `versionbumper`:
    - `version.nfo`
    - `version_definition.json`
-   - `plugins/specforge-ai/.codex-plugin/plugin.json`
-3. Stage only files changed by the version bump.
-4. Commit them separately with a message that includes `done` and the same GitHub issue short reference in the subject, for example:
+   - versioned project metadata such as `src/SpecForge.Domain/SpecForge.Domain.csproj`
+3. Treat `plugins/specforge-ai/.codex-plugin/plugin.json` as an explicit exception: it may remain unchanged after `dotnet tool run versionbumper` because that manifest is aligned later by the plugin marketplace sync.
+4. Stage only files changed by the version bump.
+5. Commit them separately with a message that includes `done` and the same GitHub issue short reference in the subject, for example:
 
 ```bash
 git commit -m "done #123 bump version after <outcome>"
@@ -62,8 +63,9 @@ tools/sync-local-plugin-marketplace.sh
 ```
 
 3. Verify that at least one consumer repo resolves `.agents/plugins/specforge-ai` to the central plugin and that the MCP still lists the expected tools when MCP behavior changed.
-4. Stage only generated package artifacts and plugin marketplace changes that belong to this task.
-5. If package artifacts or repository files changed, commit them separately with a message that includes `done` and the same GitHub issue short reference in the subject, for example:
+4. Verify that the sync aligned `plugins/specforge-ai/.codex-plugin/plugin.json` to the new runtime version when that manifest ships with the plugin.
+5. Stage only generated package artifacts and plugin marketplace changes that belong to this task.
+6. If package artifacts or repository files changed, commit them separately with a message that includes `done` and the same GitHub issue short reference in the subject, for example:
 
 ```bash
 git commit -m "done #123 refresh plugin marketplace after <outcome>"
@@ -79,5 +81,6 @@ git commit -m "done #123 refresh plugin marketplace after <outcome>"
 - Do not mix functional code/docs changes, version bump changes, and generated marketplace/package sync changes in the same commit.
 - If the functional task is intentionally not committed, do not run the version bump.
 - If `dotnet tool run versionbumper` fails, stop and report the failure instead of hand-editing version files.
-- If the tool succeeds but `version.nfo`, `version_definition.json`, or the packaged plugin manifest version do not reflect the new runtime version, stop and report the mismatch instead of pretending the bump is complete.
+- If the tool succeeds but `version.nfo` or `version_definition.json` do not reflect the new runtime version, stop and report the mismatch instead of pretending the bump is complete.
+- If the later plugin sync does not align `plugins/specforge-ai/.codex-plugin/plugin.json` to the new runtime version, stop and report the mismatch instead of pretending the overall versioning flow is complete.
 - If `tools/sync-local-plugin-marketplace.sh` fails, stop and report the failure instead of manually copying plugin files.
