@@ -1909,6 +1909,11 @@ static IPhaseExecutionProvider CreatePhaseExecutionProvider(string? workspaceRoo
     var portalSettings = string.IsNullOrWhiteSpace(workspaceRoot)
         ? null
         : SpecForgePortalSettingsStore.Load(workspaceRoot);
+    if (portalSettings is not null
+        && !portalSettings.ValidateLinkedExecutionConfiguration().IsValid)
+    {
+        return new DeterministicPhaseExecutionProvider();
+    }
 
     return OpenAiCompatiblePhaseExecutionProviderFactory.Create(key =>
     {

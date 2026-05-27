@@ -685,6 +685,133 @@ public sealed class OpenAiCompatibleWorkflowIntegrationTests : IDisposable
             request => Assert.Equal("stub-default", OpenAiCompatibleRequestJson.ReadModel(request.Body)));
     }
 
+    [Fact]
+    public async Task ServeWorkflow_RedirectsToConfiguration_WhenLinkedExecutionConfigurationIsInvalid()
+    {
+        await CreatePortalSmokeUserStoryAsync();
+
+        var settings = SpecForgePortalSettingsStore.LoadOrDefault(workspaceRoot) with
+        {
+            ModelProfiles =
+            [
+                new OpenAiCompatibleModelProfile(
+                    Name: "planner-model",
+                    Provider: "openai-compatible",
+                    BaseUrl: string.Empty,
+                    ApiKey: string.Empty,
+                    Model: "gpt-5.4",
+                    RepositoryAccess: "read")
+            ],
+            AgentProfiles =
+            [
+                new OpenAiCompatibleAgentProfile(
+                    Name: "planner",
+                    Role: "planner",
+                    ModelProfile: "planner-model",
+                    Instructions: string.Empty,
+                    RepositoryAccess: "read")
+            ],
+            PhaseAgentAssignments = new OpenAiCompatiblePhaseAgentAssignments(DefaultAgent: "planner")
+        };
+        SpecForgePortalSettingsStore.Save(workspaceRoot, settings);
+
+        using var portal = await StartWorkflowPortalAsync(workspaceRoot);
+        using var client = CreateHttpClientWithoutRedirects();
+
+        using var response = await client.GetAsync(portal.BaseUri);
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal($"{portal.BaseUri}configuration#providers", response.Headers.Location?.ToString());
+    }
+
+    [Fact]
+    public async Task ServeWorkflow_RendersWorkflowPortal_WhenLinkedExecutionConfigurationIsValid()
+    {
+        await CreatePortalSmokeUserStoryAsync();
+
+        var settings = SpecForgePortalSettingsStore.LoadOrDefault(workspaceRoot) with
+        {
+            ModelProfiles =
+            [
+                new OpenAiCompatibleModelProfile(
+                    Name: "planner-model",
+                    Provider: "codex",
+                    BaseUrl: string.Empty,
+                    ApiKey: string.Empty,
+                    Model: string.Empty,
+                    RepositoryAccess: "read"),
+                new OpenAiCompatibleModelProfile(
+                    Name: "spec-model",
+                    Provider: "claude",
+                    BaseUrl: string.Empty,
+                    ApiKey: string.Empty,
+                    Model: string.Empty,
+                    RepositoryAccess: "read"),
+                new OpenAiCompatibleModelProfile(
+                    Name: "implementer-model",
+                    Provider: "copilot",
+                    BaseUrl: string.Empty,
+                    ApiKey: string.Empty,
+                    Model: string.Empty,
+                    RepositoryAccess: "read-write"),
+                new OpenAiCompatibleModelProfile(
+                    Name: "reviewer-model",
+                    Provider: "openai-compatible",
+                    BaseUrl: "http://localhost:11434/v1",
+                    ApiKey: string.Empty,
+                    Model: "llama3.1",
+                    RepositoryAccess: "read")
+            ],
+            AgentProfiles =
+            [
+                new OpenAiCompatibleAgentProfile(
+                    Name: "planner",
+                    Role: "planner",
+                    ModelProfile: "planner-model",
+                    Instructions: string.Empty,
+                    RepositoryAccess: "read"),
+                new OpenAiCompatibleAgentProfile(
+                    Name: "spec-author",
+                    Role: "spec-author",
+                    ModelProfile: "spec-model",
+                    Instructions: string.Empty,
+                    RepositoryAccess: "read"),
+                new OpenAiCompatibleAgentProfile(
+                    Name: "implementer",
+                    Role: "implementer",
+                    ModelProfile: "implementer-model",
+                    Instructions: string.Empty,
+                    RepositoryAccess: "read-write"),
+                new OpenAiCompatibleAgentProfile(
+                    Name: "reviewer",
+                    Role: "reviewer",
+                    ModelProfile: "reviewer-model",
+                    Instructions: string.Empty,
+                    RepositoryAccess: "read")
+            ],
+            PhaseAgentAssignments = new OpenAiCompatiblePhaseAgentAssignments(
+                DefaultAgent: "planner",
+                RefinementAgent: "planner",
+                SpecAgent: "spec-author",
+                TechnicalDesignAgent: "planner",
+                ImplementationAgent: "implementer",
+                ReviewAgent: "reviewer",
+                ReleaseApprovalAgent: "planner",
+                PrPreparationAgent: "planner")
+        };
+        SpecForgePortalSettingsStore.Save(workspaceRoot, settings);
+
+        using var portal = await StartWorkflowPortalAsync(workspaceRoot);
+        using var client = CreateHttpClientWithoutRedirects();
+
+        using var response = await client.GetAsync(portal.BaseUri);
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("data-workflow-shell", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("configuration#providers", response.RequestMessage?.RequestUri?.ToString() ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(workspaceRoot))
@@ -755,6 +882,189 @@ public sealed class OpenAiCompatibleWorkflowIntegrationTests : IDisposable
                 question.Question,
                 $"Resolved in integration test for: {question.Question}",
                 "integration-test");
+        }
+    }
+
+    private async Task CreatePortalSmokeUserStoryAsync()
+    {
+        var applicationService = new SpecForgeApplicationService();
+        await applicationService.CreateUserStoryAsync(
+            workspaceRoot,
+            "US-0001",
+            "Portal smoke story",
+            "feature",
+            "workflow",
+            "As an operator I want a visible workflow story so the portal can load.");
+    }
+
+    private static HttpClient CreateHttpClientWithoutRedirects() =>
+        new(new HttpClientHandler
+        {
+            AllowAutoRedirect = false
+        });
+
+    private static async Task<WorkflowPortalHost> StartWorkflowPortalAsync(string workspaceRoot)
+    {
+        var port = GetFreeTcpPort();
+        var baseUri = $"http://localhost:{port}/";
+        var repoRoot = ResolveRepositoryRoot();
+        var cliAssemblyPath = Path.Combine(
+            repoRoot,
+            "src",
+            "SpecForge.Runner.Cli",
+            "bin",
+            "Debug",
+            "net10.0",
+            "SpecForge.Runner.Cli.dll");
+        var process = new System.Diagnostics.Process
+        {
+            StartInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "dotnet",
+                WorkingDirectory = repoRoot,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false
+            }
+        };
+        process.StartInfo.ArgumentList.Add(cliAssemblyPath);
+        process.StartInfo.ArgumentList.Add("serve-workflow");
+        process.StartInfo.ArgumentList.Add(workspaceRoot);
+        process.StartInfo.ArgumentList.Add(baseUri);
+        process.Start();
+
+        try
+        {
+            await WaitForWorkflowPortalStartupAsync(baseUri, process);
+        }
+        catch
+        {
+            try
+            {
+                if (!process.HasExited)
+                {
+                    process.Kill(entireProcessTree: true);
+                }
+            }
+            catch
+            {
+                // Best effort cleanup for failed startup.
+            }
+
+            process.Dispose();
+            throw;
+        }
+
+        return new WorkflowPortalHost(process, baseUri);
+    }
+
+    private static async Task WaitForWorkflowPortalStartupAsync(string baseUri, System.Diagnostics.Process process)
+    {
+        using var client = CreateHttpClientWithoutRedirects();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+
+        while (!timeout.IsCancellationRequested)
+        {
+            if (process.HasExited)
+            {
+                var stdout = await process.StandardOutput.ReadToEndAsync();
+                var stderr = await process.StandardError.ReadToEndAsync();
+                throw new Xunit.Sdk.XunitException(
+                    $"Workflow portal exited before startup.{Environment.NewLine}STDOUT:{Environment.NewLine}{stdout}{Environment.NewLine}STDERR:{Environment.NewLine}{stderr}");
+            }
+
+            try
+            {
+                using var response = await client.GetAsync(baseUri, timeout.Token);
+                if ((int)response.StatusCode >= 200 && (int)response.StatusCode < 400)
+                {
+                    return;
+                }
+            }
+            catch (HttpRequestException)
+            {
+                // Retry while the listener starts.
+            }
+            catch (TaskCanceledException) when (!timeout.IsCancellationRequested)
+            {
+                // Retry transient startup timeout.
+            }
+
+            await Task.Delay(150, timeout.Token);
+        }
+
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+                process.WaitForExit(5000);
+            }
+        }
+        catch
+        {
+            // Best effort timeout cleanup.
+        }
+
+        var stdoutOnTimeout = await process.StandardOutput.ReadToEndAsync();
+        var stderrOnTimeout = await process.StandardError.ReadToEndAsync();
+        throw new Xunit.Sdk.XunitException(
+            $"Workflow portal did not start listening at '{baseUri}' within the timeout.{Environment.NewLine}STDOUT:{Environment.NewLine}{stdoutOnTimeout}{Environment.NewLine}STDERR:{Environment.NewLine}{stderrOnTimeout}");
+    }
+
+    private static int GetFreeTcpPort()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        return ((IPEndPoint)listener.LocalEndpoint).Port;
+    }
+
+    private static string ResolveRepositoryRoot()
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+        while (current is not null)
+        {
+            if (File.Exists(Path.Combine(current.FullName, "SpecForge.AI.slnx")))
+            {
+                return current.FullName;
+            }
+
+            current = current.Parent;
+        }
+
+        throw new Xunit.Sdk.XunitException("Repository root could not be resolved from the test base directory.");
+    }
+
+    private sealed class WorkflowPortalHost : IDisposable
+    {
+        private readonly System.Diagnostics.Process process;
+
+        public WorkflowPortalHost(System.Diagnostics.Process process, string baseUri)
+        {
+            this.process = process;
+            BaseUri = baseUri;
+        }
+
+        public string BaseUri { get; }
+
+        public void Dispose()
+        {
+            try
+            {
+                if (!process.HasExited)
+                {
+                    process.Kill(entireProcessTree: true);
+                    process.WaitForExit(5000);
+                }
+            }
+            catch
+            {
+                // Best effort cleanup for external process.
+            }
+            finally
+            {
+                process.Dispose();
+            }
         }
     }
 
