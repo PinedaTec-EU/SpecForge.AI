@@ -12,6 +12,7 @@ function createSummary(usId: string): UserStorySummary {
   return {
     usId,
     title: usId,
+    kind: "feature",
     createdBy: "alice",
     owner: "alice",
     category: "workflow",

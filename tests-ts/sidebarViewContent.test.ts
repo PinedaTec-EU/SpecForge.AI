@@ -6,6 +6,7 @@ import type { SidebarViewModel } from "../src-vscode/sidebarViewContent";
 function model(overrides: Record<string, unknown>): SidebarViewModel {
   const userStories = Array.isArray(overrides.userStories)
     ? overrides.userStories.map((story) => ({
+        kind: "feature",
         createdBy: "alice",
         owner: "alice",
         ...story

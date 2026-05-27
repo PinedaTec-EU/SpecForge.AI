@@ -10,6 +10,7 @@ test("buildUserStoryDetailsHtml escapes user controlled fields and marks current
   const html = buildUserStoryDetailsHtml({
     usId: "US-0001<script>",
     title: "Fix <branch>",
+    kind: "feature",
     createdBy: "alice",
     owner: "alice",
     category: "workflow",
