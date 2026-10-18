@@ -59,7 +59,7 @@ This repository consumes shared skills from `../ai-skills-shared`.
 - Use property-style metadata for fields such as `Discovery date`, `Reported by`, `Audience`, `Environment`, and similar single-value fields.
 - When a local file in this repository mirrors, registers, or references a GitHub issue, include the GitHub issue number and the full GitHub issue URL in that local entry so the issue can be followed from either side.
 - From this repository onward, each completed functional task or subtask must be closed with both required commits: first a functional git commit that maps clearly to the delivered change, then a separate version bump commit produced with `dotnet tool restore` and `dotnet tool run versionbumper` from the repository root. Each commit message must include the corresponding `done` outcome and the native GitHub short reference `#<number>` for the canonical issue so the repository history can be traced back to both the task checklist and the tracker.
-- From this repository onward, any change set that reaches a local compile or validation milestone (`npm run compile`, `npm run compile:ts`, `npm run test:ts`, `dotnet build`, or equivalent) must be followed by a version bump through the local manifest-backed command `dotnet tool run versionbumper`. Do not defer the bump to a later session or batch it with unrelated compiled changes.
+- From this repository onward, each successful compiler-bearing command recorded for a change set (`npm run compile`, `npm run compile:ts`, `npm run test:ts`, `dotnet build`, or equivalent) must be allocated one version increment at the existing commit milestone through the local manifest-backed command `dotnet tool run versionbumper`. Do not defer the bump to a later session or batch it with unrelated compiled changes.
 - For this repository, `dotnet tool run versionbumper` is only expected to update the core version files such as `version.nfo`, `version_definition.json`, and the versioned project metadata. `plugins/specforge-ai/.codex-plugin/plugin.json` is an explicit exception and may remain unchanged until the later plugin marketplace sync updates it.
 - For this repository, the versioning flow is not considered complete unless the new runtime version is visible in `version.nfo`, `version_definition.json`, and, after the required plugin sync, `plugins/specforge-ai/.codex-plugin/plugin.json`.
 - Do not treat those commit/version rules as optional cleanup. If a task reaches a functional outcome, the functional commit is required. If the task also reaches a compile or validation milestone, the separate version bump commit is required in the same delivery flow before the task is considered complete.
@@ -75,3 +75,11 @@ This repository consumes shared skills from `../ai-skills-shared`.
 4. `../ai-skills-shared/AGENTS.md`.
 5. Applicable shared skills in `../ai-skills-shared/.shared-skills/skills/*`.
 6. The user prompt for the current task.
+
+<!-- ai-skills-bootstrap:begin -->
+## Shared skills
+
+Read `.skills/index.md` to discover the shared skills selected for this repository.
+Load only the adapter relevant to the current task.
+Canonical source: `../ai-skills-shared`.
+<!-- ai-skills-bootstrap:end -->
