@@ -8,12 +8,6 @@ This repository consumes shared skills from `../ai-skills-shared`.
 - The shared skills live in `../ai-skills-shared/.shared-skills/skills/*`.
 - Do not duplicate or edit domain rules in this repository unless the deviation is local and explicit.
 
-## Active Skills For This Repository
-
-- `../ai-skills-shared/.shared-skills/skills/terraform/SKILL.md`
-- `../ai-skills-shared/.shared-skills/skills/terraform/k3s-environments.md`
-- `../ai-skills-shared/.shared-skills/skills/terraform/k8s-modules.md`
-
 ## Local Process Skill
 
 - `./.codex/skills/sdd-phase-agents/SKILL.md`
@@ -75,3 +69,13 @@ This repository consumes shared skills from `../ai-skills-shared`.
 4. `../ai-skills-shared/AGENTS.md`.
 5. Applicable shared skills in `../ai-skills-shared/.shared-skills/skills/*`.
 6. The user prompt for the current task.
+
+<!-- ai-skills-bootstrap:begin -->
+## Shared skills
+
+Read `.skills/index.md` to discover the shared skills selected for this repository.
+Load only the adapter relevant to the current task.
+Canonical source: `../ai-skills-shared`.
+<!-- ai-skills-bootstrap:end -->
+
+Read `.wiki/index.md` after this file and before broad source exploration.
